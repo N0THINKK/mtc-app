@@ -16,7 +16,7 @@ namespace mtc_app
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new mtc_app.features.machine_history.presentation.screens.MachineHistoryForm());
+            Application.Run(new mtc_app.features.machine_history.presentation.screens.MachineHistoryFormTechnician());
         }
     }
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -7,7 +7,7 @@ using mtc_app.features.machine_history.presentation.components;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
-    public partial class MachineHistoryForm : Form
+    public partial class MachineHistoryFormTechnician : Form
     {
         private List<ModernInputControl> _inputs;
         private Stopwatch stopwatch;
@@ -20,7 +20,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private ModernInputControl inputProblem;
         private ModernInputControl inputProblemType;
 
-        public MachineHistoryForm()
+        public MachineHistoryFormTechnician()
         {
             InitializeComponent();
             SetupStopwatch();
@@ -154,12 +154,12 @@ namespace mtc_app.features.machine_history.presentation.screens
             // TODO: Save to database logic here
         }
 
-        private void PnlFooter_Paint(object sender, PaintEventArgs e)
+        private void PanelFooter_Paint(object sender, PaintEventArgs e)
         {
             // Draw top border for footer
             using (var pen = new Pen(Color.FromArgb(230, 230, 230)))
             {
-                e.Graphics.DrawLine(pen, 0, 0, pnlFooter.Width, 0);
+                e.Graphics.DrawLine(pen, 0, 0, panelFooter.Width, 0);
             }
         }
 

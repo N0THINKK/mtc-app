@@ -49,11 +49,17 @@
     <Compile Include="features\machine_history\presentation\components\ModernInputControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="features\machine_history\presentation\screens\MachineHistoryForm.cs">
+    <Compile Include="features\machine_history\presentation\screens\MachineHistoryFormOperator.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="features\machine_history\presentation\screens\MachineHistoryForm.Designer.cs">
-      <DependentUpon>MachineHistoryForm.cs</DependentUpon>
+    <Compile Include="features\machine_history\presentation\screens\MachineHistoryFormOperator.Designer.cs">
+      <DependentUpon>MachineHistoryFormOperator.cs</DependentUpon>
+    </Compile>
+    <Compile Include="features\machine_history\presentation\screens\MachineHistoryFormTechnician.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="features\machine_history\presentation\screens\MachineHistoryFormTechnician.Designer.cs">
+      <DependentUpon>MachineHistoryFormTechnician.cs</DependentUpon>
     </Compile>
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
