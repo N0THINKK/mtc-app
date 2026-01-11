@@ -10,10 +10,7 @@ namespace mtc_app.features.machine_history.presentation.screens
     public partial class MachineHistoryForm : Form
     {
         private List<ModernInputControl> _inputs;
-        private Stopwatch stopwatch;
-        private Timer timer;
-        private DateTime formOpenedTime;
-
+        
         // Named references for specific logic
         private ModernInputControl inputNIK;
         private ModernInputControl inputApplicator;
@@ -23,28 +20,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         public MachineHistoryForm()
         {
             InitializeComponent();
-            SetupStopwatch();
             SetupInputs();
-        }
-
-        private void SetupStopwatch()
-        {
-            formOpenedTime = DateTime.Now;
-            stopwatch = new Stopwatch();
-            stopwatch.Start();
-
-            timer = new Timer
-            {
-                Interval = 100
-            };
-            timer.Tick += Timer_Tick;
-            timer.Start();
-        }
-
-        private void Timer_Tick(object sender, EventArgs e)
-        {
-            var elapsed = stopwatch.Elapsed;
-            labelStopwatch.Text = $"{elapsed:hh\\:mm\\:ss\\.ff}";
         }
 
         private void SetupInputs()
@@ -121,16 +97,11 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
-            // Stop stopwatch and get values
-            stopwatch.Stop();
-            timer.Stop();
-
             // Prepare Data
             var data = new
             {
                 Date = DateTime.Now.ToString("yyyy-MM-dd"),
                 Time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                Duration = stopwatch.Elapsed.ToString(@"hh\:mm\:ss"),
                 NIK = inputNIK.InputValue,
                 Applicator = inputApplicator.InputValue,
                 Problem = inputProblem.InputValue,
@@ -140,8 +111,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             MessageBox.Show(
                 $"Data berhasil disimpan!\n\n" +
                 $"Tanggal: {data.Date}\n" +
-                $"Waktu: {data.Time}\n" +
-                $"Durasi: {data.Duration}\n\n" +
+                $"Waktu: {data.Time}\n\n" +
                 $"NIK: {data.NIK}\n" +
                 $"Aplikator: {data.Applicator}\n" +
                 $"Problem: {data.Problem}\n" +
@@ -161,13 +131,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 e.Graphics.DrawLine(pen, 0, 0, pnlFooter.Width, 0);
             }
-        }
-
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            timer?.Stop();
-            timer?.Dispose();
-            base.OnFormClosing(e);
         }
 
         protected override void OnResize(EventArgs e)
