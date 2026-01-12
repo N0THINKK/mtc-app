@@ -42,15 +42,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             // 
             // panelHeader
             // 
-<<<<<<< HEAD:features/machine_history/presentation/screens/MachineHistoryForm.Designer.cs
-            this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(25)))), ((int)(((byte)(118)))), ((int)(((byte)(210))))); // Modern Blue
-            this.pnlHeader.Controls.Add(this.labelTitle);
-            this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlHeader.Location = new System.Drawing.Point(0, 0);
-            this.pnlHeader.Name = "pnlHeader";
-            this.pnlHeader.Size = new System.Drawing.Size(450, 80);
-            this.pnlHeader.TabIndex = 0;
-=======
             this.panelHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(25)))), ((int)(((byte)(118)))), ((int)(((byte)(210))))); // Modern Blue
             this.panelHeader.Controls.Add(this.labelTitle);
             this.panelHeader.Dock = System.Windows.Forms.DockStyle.Top;
@@ -58,7 +49,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.panelHeader.Name = "panelHeader";
             this.panelHeader.Size = new System.Drawing.Size(450, 80);
             this.panelHeader.TabIndex = 0;
->>>>>>> faa154cf7a226b150cda1a0d8c9bf4d749284e8c:features/machine_history/presentation/screens/MachineHistoryFormOperator.Designer.cs
 
             // 
             // labelTitle
@@ -125,7 +115,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Controls.Add(this.mainLayout);
             this.Controls.Add(this.panelFooter);
             this.Controls.Add(this.panelHeader);
-            this.Name = "MachineHistoryForm";
+            this.Name = "MachineHistoryFormOperator";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Machine History";
             this.panelHeader.ResumeLayout(false);
