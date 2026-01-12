@@ -24,7 +24,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private ModernInputControl inputSparepart;
         
         // Reference ke tombol dynamic (tombol yang dibuat lewat koding, bukan designer)
-        private Button buttonSendSparepartDynamic; 
+        // private Button buttonSendSparepartDynamic; 
 
         public MachineHistoryFormTechnician()
         {
@@ -142,13 +142,13 @@ namespace mtc_app.features.machine_history.presentation.screens
             inputSparepart.Enabled = enabled;
             
             // Tombol dynamic di dalam layout
-            if(buttonSendSparepartDynamic != null) 
-                buttonSendSparepartDynamic.Enabled = enabled;
+            // if(buttonSendSparepartDynamic != null) 
+            //    buttonSendSparepartDynamic.Enabled = enabled;
 
             buttonRepairComplete.Enabled = enabled;
             
-            // PERBAIKAN 1: Menggunakan nama variabel yang benar dari Designer (buttonSendSparepartFooter)
-            buttonSendSparepartFooter.Enabled = enabled;
+            // PERBAIKAN 1: Menggunakan nama variabel yang benar dari Designer (buttonRequestSparepart)
+            buttonRequestSparepart.Enabled = enabled;
 
             inputNIK.Enabled = !enabled;
             buttonVerify.Enabled = !enabled;
@@ -156,7 +156,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         }
 
         // Method ini dipanggil oleh tombol dynamic (B besar)
-        private void ButtonSendSparepart_Click(object sender, EventArgs e)
+        private void ButtonRequestSparepart_Click(object sender, EventArgs e)
         {
             if (string.IsNullOrWhiteSpace(inputSparepart.InputValue))
             {
@@ -177,15 +177,15 @@ namespace mtc_app.features.machine_history.presentation.screens
                 inputSparepart.Enabled = false;
                 
                 // Disable dynamic button
-                if (buttonSendSparepartDynamic != null)
+                /* if (buttonSendSparepartDynamic != null)
                 {
                     buttonSendSparepartDynamic.Enabled = false;
                     buttonSendSparepartDynamic.BackColor = Color.Gray;
-                }
+                } */
 
                 // PERBAIKAN 2: Disable footer button juga (nama variabel disesuaikan)
-                buttonSendSparepartFooter.Enabled = false;
-                buttonSendSparepartFooter.BackColor = Color.Gray;
+                buttonRequestSparepart.Enabled = false;
+                buttonRequestSparepart.BackColor = Color.Gray;
 
                 MessageBox.Show("Permintaan sparepart berhasil dikirim.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
@@ -193,10 +193,10 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         // PERBAIKAN 3: Menambahkan Event Handler untuk tombol Footer (b kecil)
         // Method ini dipanggil otomatis oleh Designer saat tombol oranye di bawah diklik
-        private void buttonSendSparepart_Click(object sender, EventArgs e)
+        private void buttonRequestSparepart_Click(object sender, EventArgs e)
         {
             // Kita panggil logika yang sama dengan tombol dynamic
-            ButtonSendSparepart_Click(sender, e);
+            ButtonRequestSparepart_Click(sender, e);
         }
 
         private void ButtonVerify_Click(object sender, EventArgs e)

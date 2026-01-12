@@ -1,4 +1,4 @@
-﻿namespace mtc_app.features.machine_history.presentation.screens
+namespace mtc_app.features.machine_history.presentation.screens
 {
     partial class MachineHistoryFormTechnician
     {
@@ -36,7 +36,7 @@
             this.labelArrivalTitle = new System.Windows.Forms.Label();
             this.mainLayout = new System.Windows.Forms.FlowLayoutPanel();
             this.panelFooter = new System.Windows.Forms.Panel();
-            this.buttonSendSparepartFooter = new System.Windows.Forms.Button();
+            this.buttonRequestSparepart = new System.Windows.Forms.Button();
             this.buttonRepairComplete = new System.Windows.Forms.Button();
             this.panelHeader.SuspendLayout();
             this.panelFooter.SuspendLayout();
@@ -117,7 +117,7 @@
             // panelFooter
             // 
             this.panelFooter.BackColor = System.Drawing.Color.White;
-            this.panelFooter.Controls.Add(this.buttonSendSparepartFooter);
+            this.panelFooter.Controls.Add(this.buttonRequestSparepart);
             this.panelFooter.Controls.Add(this.buttonRepairComplete);
             this.panelFooter.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.panelFooter.Location = new System.Drawing.Point(0, 500);
@@ -126,22 +126,22 @@
             this.panelFooter.TabIndex = 2;
             this.panelFooter.Paint += new System.Windows.Forms.PaintEventHandler(this.PanelFooter_Paint);
             // 
-            // buttonSendSparepartFooter
+            // buttonRequestSparepart
             // 
-            this.buttonSendSparepartFooter.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(152)))), ((int)(((byte)(0)))));
-            this.buttonSendSparepartFooter.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.buttonSendSparepartFooter.FlatAppearance.BorderSize = 0;
-            this.buttonSendSparepartFooter.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.buttonSendSparepartFooter.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.buttonSendSparepartFooter.ForeColor = System.Drawing.Color.White;
-            this.buttonSendSparepartFooter.Location = new System.Drawing.Point(20, 10);
-            this.buttonSendSparepartFooter.Name = "buttonSendSparepartFooter";
-            this.buttonSendSparepartFooter.Size = new System.Drawing.Size(200, 40);
-            this.buttonSendSparepartFooter.TabIndex = 1;
-            this.buttonSendSparepartFooter.Text = "Kirimkan Permintaan Sparepart";
-            this.buttonSendSparepartFooter.UseVisualStyleBackColor = false;
-            this.buttonSendSparepartFooter.Enabled = false;
-            this.buttonSendSparepartFooter.Click += new System.EventHandler(this.buttonSendSparepart_Click);
+            this.buttonRequestSparepart.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(152)))), ((int)(((byte)(0)))));
+            this.buttonRequestSparepart.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.buttonRequestSparepart.FlatAppearance.BorderSize = 0;
+            this.buttonRequestSparepart.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonRequestSparepart.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.buttonRequestSparepart.ForeColor = System.Drawing.Color.White;
+            this.buttonRequestSparepart.Location = new System.Drawing.Point(20, 10);
+            this.buttonRequestSparepart.Name = "buttonRequestSparepart";
+            this.buttonRequestSparepart.Size = new System.Drawing.Size(200, 40);
+            this.buttonRequestSparepart.TabIndex = 1;
+            this.buttonRequestSparepart.Text = "Kirimkan Permintaan Sparepart";
+            this.buttonRequestSparepart.UseVisualStyleBackColor = false;
+            this.buttonRequestSparepart.Enabled = false;
+            this.buttonRequestSparepart.Click += new System.EventHandler(this.buttonRequestSparepart_Click);
             // 
             // buttonRepairComplete
             // 
@@ -187,6 +187,6 @@
         private System.Windows.Forms.FlowLayoutPanel mainLayout;
         private System.Windows.Forms.Panel panelFooter;
         private System.Windows.Forms.Button buttonRepairComplete;
-        private System.Windows.Forms.Button buttonSendSparepartFooter;
+        private System.Windows.Forms.Button buttonRequestSparepart;
     }
 }
