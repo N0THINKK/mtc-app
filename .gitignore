@@ -42,3 +42,5 @@ Desktop.ini
 # ===============================
 .env
 .env.local
+
+appsettings.json
