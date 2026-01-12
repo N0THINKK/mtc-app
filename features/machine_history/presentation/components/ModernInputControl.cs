@@ -51,6 +51,30 @@ namespace mtc_app.features.machine_history.presentation.components
         }
 
         [Category("Custom Properties")]
+        public bool Multiline
+        {
+            get { return txtInput.Multiline; }
+            set
+            {
+                txtInput.Multiline = value;
+                if (value)
+                {
+                    this.Height = 120; // Taller for multiline
+                    pnlContainer.Height = 70;
+                    txtInput.Height = 60;
+                    txtInput.ScrollBars = ScrollBars.Vertical;
+                }
+                else
+                {
+                    this.Height = 85; // Default
+                    pnlContainer.Height = 35;
+                    txtInput.Height = 20;
+                    txtInput.ScrollBars = ScrollBars.None;
+                }
+            }
+        }
+
+        [Category("Custom Properties")]
         public string LabelText
         {
             get { return lblTitle.Text; }
