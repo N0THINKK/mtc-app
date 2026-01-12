@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
-using System.Linq;
 using System.Windows.Forms;
 using mtc_app.features.machine_history.presentation.components;
 
@@ -22,17 +21,16 @@ namespace mtc_app.features.machine_history.presentation.screens
         private ModernInputControl inputProblemCause;
         private ModernInputControl inputProblemAction;
         private ModernInputControl inputCounter;
+        private ModernInputControl inputSparepart;
         
-        // Sparepart section
-        private Label labelSparepartTitle;
-        private List<SparepartRequestControl> sparepartControls;
-        
+        // Reference ke tombol dynamic (tombol yang dibuat lewat koding, bukan designer)
+        private Button buttonSendSparepartDynamic; 
+
         public MachineHistoryFormTechnician()
         {
             InitializeComponent();
             SetupStopwatch();
             SetupInputs();
-            SetupSparepartSection();
             UpdateUIState();
         }
 
@@ -42,8 +40,10 @@ namespace mtc_app.features.machine_history.presentation.screens
             arrivalStopwatch.Start();
 
             stopwatch = new Stopwatch();
-
-            timer = new Timer { Interval = 100 };
+            timer = new Timer
+            {
+                Interval = 100 // 100ms update rate
+            };
             timer.Tick += Timer_Tick;
             timer.Start();
         }
@@ -65,42 +65,54 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             _inputs = new List<ModernInputControl>();
 
+            // 1. NIK Technician
             inputNIK = CreateInput("NIK Technician", ModernInputControl.InputTypeEnum.Text, true);
 
+            // 2. Verify Button
             buttonVerify = new Button
             {
                 Text = "Cek Teknisi",
                 AutoSize = true,
-                BackColor = Color.FromArgb(40, 167, 69),
+                BackColor = Color.FromArgb(40, 167, 69), // Green
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
-                Margin = new Padding(5, 0, 5, 15)
+                Margin = new Padding(5, 0, 5, 15) // Add spacing below
             };
             buttonVerify.FlatAppearance.BorderSize = 0;
             buttonVerify.Click += ButtonVerify_Click;
             mainLayout.Controls.Add(buttonVerify);
 
+            // 3. Problem Cause
             inputProblemCause = CreateInput("Penyebab Masalah (Problem Cause)", ModernInputControl.InputTypeEnum.Text, true);
-            inputProblemAction = CreateInput("Tindakan Perbaikan (Problem Action)", ModernInputControl.InputTypeEnum.Text, true);
-            inputCounter = CreateInput("Counter Stroke / Blade / Dies", ModernInputControl.InputTypeEnum.Text, false);
-        }
-
-        private void SetupSparepartSection()
-        {
-            sparepartControls = new List<SparepartRequestControl>();
             
-            labelSparepartTitle = new Label
-            {
-                Text = "Sparepart yang Diminta",
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 33, 33),
-                AutoSize = true,
-                Margin = new Padding(5, 20, 5, 10),
-                Visible = false
-            };
-            mainLayout.Controls.Add(labelSparepartTitle);
+            // 4. Problem Action
+            inputProblemAction = CreateInput("Tindakan Perbaikan (Problem Action)", ModernInputControl.InputTypeEnum.Text, true);
+
+            // 5. Counter Stroke
+            inputCounter = CreateInput("Counter Stroke / Blade / Dies", ModernInputControl.InputTypeEnum.Text, false);
+
+            // 6. Sparepart Request (Permintaan Sparepart)
+            inputSparepart = CreateInput("Permintaan Sparepart (Sparepart Request)", ModernInputControl.InputTypeEnum.Text, false);
+            inputSparepart.Multiline = true; 
+
+            // 7. Send Sparepart Button (Dynamic Button di dalam Layout)
+            // buttonSendSparepartDynamic = new Button
+            // {
+            //     Text = "Kirimkan Permintaan Sparepart",
+            //     Size = new Size(250, 40),
+            //     BackColor = Color.FromArgb(255, 152, 0), // Orange
+            //     ForeColor = Color.White,
+            //     FlatStyle = FlatStyle.Flat,
+            //     Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            //     Cursor = Cursors.Hand,
+            //     Margin = new Padding(5, 5, 5, 20)
+            // };
+            // buttonSendSparepartDynamic.FlatAppearance.BorderSize = 0;
+            // // Kita arahkan ke logic yang sama
+            // buttonSendSparepartDynamic.Click += ButtonSendSparepart_Click; 
+            // mainLayout.Controls.Add(buttonSendSparepartDynamic);
         }
 
         private ModernInputControl CreateInput(string label, ModernInputControl.InputTypeEnum type, bool required)
@@ -110,11 +122,11 @@ namespace mtc_app.features.machine_history.presentation.screens
                 LabelText = label,
                 InputType = type,
                 IsRequired = required,
-                Width = 410
+                Width = 410 // Fixed width for consistency
             };
 
             _inputs.Add(input);
-            mainLayout.Controls.Add(input);
+            mainLayout.Controls.Add(input); // Add to layout
             return input;
         }
 
@@ -126,12 +138,65 @@ namespace mtc_app.features.machine_history.presentation.screens
             inputProblemAction.Enabled = enabled;
             inputCounter.Enabled = enabled;
             
+            // Sparepart inputs initially enabled if verified
+            inputSparepart.Enabled = enabled;
+            
+            // Tombol dynamic di dalam layout
+            if(buttonSendSparepartDynamic != null) 
+                buttonSendSparepartDynamic.Enabled = enabled;
+
             buttonRepairComplete.Enabled = enabled;
-            buttonRequestSparepart.Enabled = enabled;
+            
+            // PERBAIKAN 1: Menggunakan nama variabel yang benar dari Designer (buttonSendSparepartFooter)
+            buttonSendSparepartFooter.Enabled = enabled;
 
             inputNIK.Enabled = !enabled;
             buttonVerify.Enabled = !enabled;
-            buttonVerify.Visible = !enabled;
+            buttonVerify.Visible = !enabled; 
+        }
+
+        // Method ini dipanggil oleh tombol dynamic (B besar)
+        private void ButtonSendSparepart_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(inputSparepart.InputValue))
+            {
+                MessageBox.Show("Isi detail permintaan sparepart terlebih dahulu.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var result = MessageBox.Show(
+                "Anda tidak bisa merubah sparepart request ketika anda memilih Yes. Lanjutkan?",
+                "Konfirmasi Permintaan",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning
+            );
+
+            if (result == DialogResult.Yes)
+            {
+                // Disable controls
+                inputSparepart.Enabled = false;
+                
+                // Disable dynamic button
+                if (buttonSendSparepartDynamic != null)
+                {
+                    buttonSendSparepartDynamic.Enabled = false;
+                    buttonSendSparepartDynamic.BackColor = Color.Gray;
+                }
+
+                // PERBAIKAN 2: Disable footer button juga (nama variabel disesuaikan)
+                buttonSendSparepartFooter.Enabled = false;
+                buttonSendSparepartFooter.BackColor = Color.Gray;
+
+                MessageBox.Show("Permintaan sparepart berhasil dikirim.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        // PERBAIKAN 3: Menambahkan Event Handler untuk tombol Footer (b kecil)
+        // Method ini dipanggil otomatis oleh Designer saat tombol oranye di bawah diklik
+        private void buttonSendSparepart_Click(object sender, EventArgs e)
+        {
+            // Kita panggil logika yang sama dengan tombol dynamic
+            ButtonSendSparepart_Click(sender, e);
         }
 
         private void ButtonVerify_Click(object sender, EventArgs e)
@@ -147,8 +212,12 @@ namespace mtc_app.features.machine_history.presentation.screens
             if (nik == "12345" || nik == "admin" || nik.Length >= 3) 
             {
                 isVerified = true;
+
                 arrivalStopwatch.Stop();
+                // labelArrival.Text = DateTime.Now.ToString("HH:mm");
                 stopwatch.Start();
+                timer.Start();
+
                 UpdateUIState();
             }
             else
@@ -157,57 +226,14 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        private void ButtonRequestSparepart_Click(object sender, EventArgs e)
-        {
-            AddSparepartControl();
-        }
-
-        private void AddSparepartControl()
-        {
-            // Show title if first sparepart
-            if (sparepartControls.Count == 0)
-            {
-                labelSparepartTitle.Visible = true;
-            }
-
-            var sparepartControl = new SparepartRequestControl();
-            sparepartControl.OnRemoveRequested += RemoveSparepartControl;
-            
-            sparepartControls.Add(sparepartControl);
-            mainLayout.Controls.Add(sparepartControl);
-            
-            // Set the control index for proper ordering
-            mainLayout.Controls.SetChildIndex(sparepartControl, mainLayout.Controls.IndexOf(labelSparepartTitle) + 1 + sparepartControls.IndexOf(sparepartControl));
-        }
-
-        private void RemoveSparepartControl(SparepartRequestControl control)
-        {
-            if (sparepartControls.Contains(control))
-            {
-                sparepartControls.Remove(control);
-                mainLayout.Controls.Remove(control);
-                control.Dispose();
-
-                // Hide title if no spareparts left
-                if (sparepartControls.Count == 0)
-                {
-                    labelSparepartTitle.Visible = false;
-                }
-            }
-        }
-
-        private bool ValidateRequiredInputs()
-        {
-            return inputProblemCause.ValidateInput() && 
-                   inputProblemAction.ValidateInput() && 
-                   inputCounter.ValidateInput();
-        }
-
         private void SaveButton_Click(object sender, EventArgs e)
         {
-            if (!ValidateRequiredInputs())
+            // Validate inputs
+            if (!inputProblemCause.ValidateInput() || 
+                !inputProblemAction.ValidateInput() || 
+                !inputCounter.ValidateInput())
             {
-                MessageBox.Show("Mohon lengkapi data perbaikan.", "Validasi Gagal", 
+                 MessageBox.Show("Mohon lengkapi data perbaikan.", "Validasi Gagal", 
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -215,34 +241,22 @@ namespace mtc_app.features.machine_history.presentation.screens
             stopwatch.Stop();
             timer.Stop();
 
-            string summary = BuildSummary();
-            
-            MessageBox.Show(summary, "Laporan Tersimpan", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            this.Close();
-        }
-
-        private string BuildSummary()
-        {
             string duration = stopwatch.Elapsed.ToString(@"hh\:mm\:ss");
             string finishTime = DateTime.Now.ToString("HH:mm");
             
-            string summary = $"Perbaikan Selesai!\n\n" +
-                           $"Kedatangan: {labelArrival.Text}\n" +
-                           $"Selesai: {finishTime}\n" +
-                           $"Durasi: {duration}\n\n" +
-                           $"Penyebab: {inputProblemCause.InputValue}\n" +
-                           $"Tindakan: {inputProblemAction.InputValue}";
+            MessageBox.Show(
+                $"Perbaikan Selesai!\n\n" +
+                $"Kedatangan: {labelArrival.Text}\n" +
+                $"Selesai: {finishTime}\n" +
+                $"Durasi: {duration}\n\n" +
+                $"Penyebab: {inputProblemCause.InputValue}\n" +
+                $"Tindakan: {inputProblemAction.InputValue}",
+                "Laporan Tersimpan",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            );
 
-            if (sparepartControls.Any())
-            {
-                summary += "\n\nSparepart yang Diminta:";
-                foreach (var control in sparepartControls)
-                {
-                    summary += $"\n- {control.SparepartName}";
-                }
-            }
-
-            return summary;
+            this.Close();
         }
 
         private void PanelFooter_Paint(object sender, PaintEventArgs e)
@@ -270,56 +284,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                     input.Width = mainLayout.ClientSize.Width - 40;
                 }
             }
-        }
-    }
-
-    // Separate control for sparepart request
-    public class SparepartRequestControl : Panel
-    {
-        private TextBox textBoxSparepart;
-        private Button buttonRemove;
-        
-        public event Action<SparepartRequestControl> OnRemoveRequested;
-        
-        public string SparepartName => textBoxSparepart.Text;
-
-        public SparepartRequestControl()
-        {
-            SetupControl();
-        }
-
-        private void SetupControl()
-        {
-            this.Height = 45;
-            this.Width = 410;
-            this.Margin = new Padding(5, 5, 5, 10);
-
-            textBoxSparepart = new TextBox
-            {
-                Location = new Point(0, 10),
-                Width = 350,
-                Height = 30,
-                Font = new Font("Segoe UI", 10F),
-                BorderStyle = BorderStyle.FixedSingle
-            };
-
-            buttonRemove = new Button
-            {
-                Text = "×",
-                Location = new Point(360, 10),
-                Width = 40,
-                Height = 30,
-                BackColor = Color.FromArgb(220, 53, 69),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            buttonRemove.FlatAppearance.BorderSize = 0;
-            buttonRemove.Click += (s, e) => OnRemoveRequested?.Invoke(this);
-
-            this.Controls.Add(textBoxSparepart);
-            this.Controls.Add(buttonRemove);
         }
     }
 }
