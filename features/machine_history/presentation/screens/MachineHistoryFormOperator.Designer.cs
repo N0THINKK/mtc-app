@@ -1,6 +1,6 @@
 namespace mtc_app.features.machine_history.presentation.screens
 {
-    partial class MachineHistoryForm
+    partial class MachineHistoryFormOperator
     {
         /// <summary>
         /// Required designer variable.
@@ -29,19 +29,20 @@ namespace mtc_app.features.machine_history.presentation.screens
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            this.pnlHeader = new System.Windows.Forms.Panel();
+            this.panelHeader = new System.Windows.Forms.Panel();
             this.labelTitle = new System.Windows.Forms.Label();
             this.mainLayout = new System.Windows.Forms.FlowLayoutPanel();
-            this.pnlFooter = new System.Windows.Forms.Panel();
+            this.panelFooter = new System.Windows.Forms.Panel();
             this.buttonSave = new System.Windows.Forms.Button();
 
-            this.pnlHeader.SuspendLayout();
-            this.pnlFooter.SuspendLayout();
+            this.panelHeader.SuspendLayout();
+            this.panelFooter.SuspendLayout();
             this.SuspendLayout();
 
             // 
-            // pnlHeader
+            // panelHeader
             // 
+<<<<<<< HEAD:features/machine_history/presentation/screens/MachineHistoryForm.Designer.cs
             this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(25)))), ((int)(((byte)(118)))), ((int)(((byte)(210))))); // Modern Blue
             this.pnlHeader.Controls.Add(this.labelTitle);
             this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
@@ -49,6 +50,15 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.pnlHeader.Name = "pnlHeader";
             this.pnlHeader.Size = new System.Drawing.Size(450, 80);
             this.pnlHeader.TabIndex = 0;
+=======
+            this.panelHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(25)))), ((int)(((byte)(118)))), ((int)(((byte)(210))))); // Modern Blue
+            this.panelHeader.Controls.Add(this.labelTitle);
+            this.panelHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this.panelHeader.Location = new System.Drawing.Point(0, 0);
+            this.panelHeader.Name = "panelHeader";
+            this.panelHeader.Size = new System.Drawing.Size(450, 80);
+            this.panelHeader.TabIndex = 0;
+>>>>>>> faa154cf7a226b150cda1a0d8c9bf4d749284e8c:features/machine_history/presentation/screens/MachineHistoryFormOperator.Designer.cs
 
             // 
             // labelTitle
@@ -77,16 +87,16 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.mainLayout.WrapContents = false;
 
             // 
-            // pnlFooter
+            // panelFooter
             // 
-            this.pnlFooter.BackColor = System.Drawing.Color.White;
-            this.pnlFooter.Controls.Add(this.buttonSave);
-            this.pnlFooter.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.pnlFooter.Location = new System.Drawing.Point(0, 500);
-            this.pnlFooter.Name = "pnlFooter";
-            this.pnlFooter.Size = new System.Drawing.Size(450, 60);
-            this.pnlFooter.TabIndex = 2;
-            this.pnlFooter.Paint += new System.Windows.Forms.PaintEventHandler(this.PnlFooter_Paint); // For top border
+            this.panelFooter.BackColor = System.Drawing.Color.White;
+            this.panelFooter.Controls.Add(this.buttonSave);
+            this.panelFooter.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.panelFooter.Location = new System.Drawing.Point(0, 500);
+            this.panelFooter.Name = "panelFooter";
+            this.panelFooter.Size = new System.Drawing.Size(450, 60);
+            this.panelFooter.TabIndex = 2;
+            this.panelFooter.Paint += new System.Windows.Forms.PaintEventHandler(this.PanelFooter_Paint); // For top border
 
             // 
             // buttonSave
@@ -107,30 +117,30 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.buttonSave.FlatAppearance.BorderSize = 0;
 
             // 
-            // MachineHistoryForm
+            // MachineHistoryFormOperator
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(450, 560);
             this.Controls.Add(this.mainLayout);
-            this.Controls.Add(this.pnlFooter);
-            this.Controls.Add(this.pnlHeader);
+            this.Controls.Add(this.panelFooter);
+            this.Controls.Add(this.panelHeader);
             this.Name = "MachineHistoryForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Machine History";
-            this.pnlHeader.ResumeLayout(false);
-            this.pnlHeader.PerformLayout();
-            this.pnlFooter.ResumeLayout(false);
+            this.panelHeader.ResumeLayout(false);
+            this.panelHeader.PerformLayout();
+            this.panelFooter.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
 
         #endregion
 
-        private System.Windows.Forms.Panel pnlHeader;
+        private System.Windows.Forms.Panel panelHeader;
         private System.Windows.Forms.Label labelTitle;
         private System.Windows.Forms.FlowLayoutPanel mainLayout;
-        private System.Windows.Forms.Panel pnlFooter;
+        private System.Windows.Forms.Panel panelFooter;
         private System.Windows.Forms.Button buttonSave;
     }
 }

@@ -9,7 +9,7 @@ using mtc_app.features.machine_history.presentation.components;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
-    public partial class MachineHistoryForm : Form
+    public partial class MachineHistoryFormOperator : Form
     {
         private List<ModernInputControl> _inputs;
         
@@ -19,7 +19,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private ModernInputControl inputProblem;
         private ModernInputControl inputProblemType;
 
-        public MachineHistoryForm()
+        public MachineHistoryFormOperator()
         {
             InitializeComponent();
             SetupInputs();
@@ -141,20 +141,19 @@ namespace mtc_app.features.machine_history.presentation.screens
                         Details = fullDetails
                     });
 
-                    // Success Feedback
-                    MessageBox.Show(
-                        $"Tiket Berhasil Dibuat!\n\n" +
-                        $"Kode Tiket: {displayCode}\n" +
-                        $"Status: MENUNGGU TEKNISI",
-                        "Laporan Terkirim",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information
-                    );
+                    // Sukses Simpan -> Lanjut Buka Form Teknisi
+                    // Kita sembunyikan form ini, dan buka form teknisi.
+                    // Nanti form teknisi perlu logika untuk mengambil tiket terakhir atau tiket berdasarkan UUID.
+                    // Untuk sekarang kita buka saja dulu.
                     
-                    // Reset inputs (optional, keep NIK maybe?)
+                    var technicianForm = new MachineHistoryFormTechnician();
+                    this.Hide(); 
+                    technicianForm.FormClosed += (s, args) => this.Show(); // Show back when closed
+                    technicianForm.Show();
+                    
+                    // Reset inputs
                     inputProblem.InputValue = "";
                     inputProblemType.InputValue = "";
-                    // inputApplicator.InputValue = ""; 
                 }
             }
             catch (Exception ex)
@@ -163,12 +162,12 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        private void PnlFooter_Paint(object sender, PaintEventArgs e)
+        private void PanelFooter_Paint(object sender, PaintEventArgs e)
         {
             // Draw top border for footer
             using (var pen = new Pen(Color.FromArgb(230, 230, 230)))
             {
-                e.Graphics.DrawLine(pen, 0, 0, pnlFooter.Width, 0);
+                e.Graphics.DrawLine(pen, 0, 0, panelFooter.Width, 0);
             }
         }
 
