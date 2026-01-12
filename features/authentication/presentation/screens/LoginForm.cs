@@ -5,7 +5,7 @@ using System.Windows.Forms;
 using Dapper;
 using mtc_app.features.machine_history.presentation.screens;
 
-namespace mtc_app
+namespace mtc_app.features.authentication.presentation.screens
 {
     public partial class LoginForm : Form
     {

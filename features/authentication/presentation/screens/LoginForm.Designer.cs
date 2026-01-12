@@ -1,4 +1,4 @@
-namespace mtc_app
+namespace mtc_app.features.authentication.presentation.screens
 {
     partial class LoginForm
     {
