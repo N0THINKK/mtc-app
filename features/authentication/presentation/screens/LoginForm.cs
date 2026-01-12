@@ -12,6 +12,27 @@ namespace mtc_app.features.authentication.presentation.screens
         public LoginForm()
         {
             InitializeComponent();
+            
+            // Enable KeyPreview to catch key presses form-wide
+            this.KeyPreview = true;
+            this.KeyDown += LoginForm_KeyDown;
+        }
+
+        private void LoginForm_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                // If login button is focused, let it click
+                if (this.ActiveControl == btnLogin)
+                {
+                    return;
+                }
+
+                // Move to next control
+                this.SelectNextControl(this.ActiveControl, true, true, true, true);
+                e.Handled = true;
+                e.SuppressKeyPress = true; // Stop ding sound
+            }
         }
 
         private void btnLogin_Click(object sender, EventArgs e)
@@ -31,24 +52,55 @@ namespace mtc_app.features.authentication.presentation.screens
                 {
                     connection.Open();
                     
-                    // Simple query to check user. In production, use Hashing!
-                    // Assuming database has 'users' table with 'username' and 'password' columns.
-                    // Based on legacy info, table might be different, but using standard 'users' for now based on 'DB-MTCFULL.sql'.
-                    string sql = "SELECT * FROM users WHERE username = @Username AND password = @Password LIMIT 1";
+                    // Join with roles table to get role_name
+                    string sql = @"
+                        SELECT u.*, r.role_name 
+                        FROM users u 
+                        JOIN roles r ON u.role_id = r.role_id 
+                        WHERE u.username = @Username AND u.password = @Password 
+                        LIMIT 1";
                     
                     var user = connection.QueryFirstOrDefault(sql, new { Username = username, Password = password });
 
                     if (user != null)
                     {
-                        MessageBox.Show($"Login Berhasil! Selamat datang, {user.username}", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        string roleName = user.role_name;
+                        MessageBox.Show($"Login Berhasil! Selamat datang, {user.username} ({roleName})", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         
                         // Hide Login Form
                         this.Hide();
 
-                        // Show Main Dashboard (MachineHistoryFormOperator)
-                        MachineHistoryFormOperator mainForm = new MachineHistoryFormOperator();
-                        mainForm.FormClosed += (s, args) => this.Close(); // Close app when main form closes
-                        mainForm.Show();
+                        Form nextForm = null;
+
+                        // Normalize string for safety (lowercase, trim)
+                        switch (roleName.ToLower().Trim())
+                        {
+                            case "operator": 
+                                nextForm = new MachineHistoryFormOperator();
+                                break;
+                            case "technician":
+                            case "teknisi": 
+                                // nextForm = new MachineHistoryFormTechnician();
+                                MessageBox.Show("Halaman Teknisi sedang dalam pengembangan.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                break;
+                            case "stock control":
+                            case "stock":
+                                MessageBox.Show("Halaman Stock Control sedang dalam pengembangan.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                break;
+                            default: 
+                                MessageBox.Show($"Dashboard untuk role '{roleName}' belum tersedia.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                break;
+                        }
+
+                        if (nextForm != null)
+                        {
+                            nextForm.FormClosed += (s, args) => this.Close(); 
+                            nextForm.Show();
+                        }
+                        else
+                        {
+                            this.Show(); // Show login back if no form is opened
+                        }
                     }
                     else
                     {

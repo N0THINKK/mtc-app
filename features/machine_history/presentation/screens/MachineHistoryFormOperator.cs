@@ -23,6 +23,26 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             InitializeComponent();
             SetupInputs();
+            
+            // Enable Enter key navigation
+            this.KeyPreview = true;
+            this.KeyDown += MachineHistoryFormOperator_KeyDown;
+        }
+
+        private void MachineHistoryFormOperator_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                // If Save Button is focused, let it act naturally
+                if (this.ActiveControl == buttonSave) return;
+
+                // Move focus to next control
+                // true, true, true, true = forward, tabStopOnly, nested, wrap
+                this.SelectNextControl(this.ActiveControl, true, true, true, true);
+                
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
         }
 
         private void SetupInputs()
