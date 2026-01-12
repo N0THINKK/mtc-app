@@ -30,52 +30,76 @@
         {
             this.components = new System.ComponentModel.Container();
             this.panelHeader = new System.Windows.Forms.Panel();
-            this.labelTitle = new System.Windows.Forms.Label();
-            this.labelStopwatch = new System.Windows.Forms.Label();
+            this.labelFinished = new System.Windows.Forms.Label();
+            this.labelFinishedTitle = new System.Windows.Forms.Label();
+            this.labelArrival = new System.Windows.Forms.Label();
+            this.labelArrivalTitle = new System.Windows.Forms.Label();
             this.mainLayout = new System.Windows.Forms.FlowLayoutPanel();
             this.panelFooter = new System.Windows.Forms.Panel();
-            this.buttonSave = new System.Windows.Forms.Button();
-
+            this.buttonRequestSparepart = new System.Windows.Forms.Button();
+            this.buttonRepairComplete = new System.Windows.Forms.Button();
             this.panelHeader.SuspendLayout();
             this.panelFooter.SuspendLayout();
             this.SuspendLayout();
-
             // 
             // panelHeader
             // 
-            this.panelHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(25)))), ((int)(((byte)(118)))), ((int)(((byte)(210))))); // Modern Blue
-            this.panelHeader.Controls.Add(this.labelStopwatch);
-            this.panelHeader.Controls.Add(this.labelTitle);
+            this.panelHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(25)))), ((int)(((byte)(118)))), ((int)(((byte)(210)))));
+            this.panelHeader.Controls.Add(this.labelFinished);
+            this.panelHeader.Controls.Add(this.labelFinishedTitle);
+            this.panelHeader.Controls.Add(this.labelArrival);
+            this.panelHeader.Controls.Add(this.labelArrivalTitle);
             this.panelHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.panelHeader.Location = new System.Drawing.Point(0, 0);
             this.panelHeader.Name = "panelHeader";
             this.panelHeader.Size = new System.Drawing.Size(450, 80);
             this.panelHeader.TabIndex = 0;
-
             // 
-            // labelTitle
+            // labelFinished
             // 
-            this.labelTitle.AutoSize = true;
-            this.labelTitle.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
-            this.labelTitle.ForeColor = System.Drawing.Color.White;
-            this.labelTitle.Location = new System.Drawing.Point(15, 15);
-            this.labelTitle.Name = "labelTitle";
-            this.labelTitle.Size = new System.Drawing.Size(155, 25);
-            this.labelTitle.TabIndex = 0;
-            this.labelTitle.Text = "Machine History";
-
+            this.labelFinished.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.labelFinished.AutoSize = true;
+            this.labelFinished.Font = new System.Drawing.Font("Consolas", 14F, System.Drawing.FontStyle.Bold);
+            this.labelFinished.ForeColor = System.Drawing.Color.White;
+            this.labelFinished.Location = new System.Drawing.Point(280, 40);
+            this.labelFinished.Name = "labelFinished";
+            this.labelFinished.Size = new System.Drawing.Size(100, 22);
+            this.labelFinished.TabIndex = 3;
+            this.labelFinished.Text = "00:00:00";
             // 
-            // labelStopwatch
+            // labelFinishedTitle
             // 
-            this.labelStopwatch.AutoSize = true;
-            this.labelStopwatch.Font = new System.Drawing.Font("Consolas", 18F, System.Drawing.FontStyle.Bold);
-            this.labelStopwatch.ForeColor = System.Drawing.Color.White;
-            this.labelStopwatch.Location = new System.Drawing.Point(15, 45);
-            this.labelStopwatch.Name = "labelStopwatch";
-            this.labelStopwatch.Size = new System.Drawing.Size(155, 28);
-            this.labelStopwatch.TabIndex = 1;
-            this.labelStopwatch.Text = "00:00:00.00";
-
+            this.labelFinishedTitle.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.labelFinishedTitle.AutoSize = true;
+            this.labelFinishedTitle.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.labelFinishedTitle.ForeColor = System.Drawing.Color.White;
+            this.labelFinishedTitle.Location = new System.Drawing.Point(280, 15);
+            this.labelFinishedTitle.Name = "labelFinishedTitle";
+            this.labelFinishedTitle.Size = new System.Drawing.Size(104, 19);
+            this.labelFinishedTitle.TabIndex = 2;
+            this.labelFinishedTitle.Text = "Selesai Reparasi";
+            // 
+            // labelArrival
+            // 
+            this.labelArrival.AutoSize = true;
+            this.labelArrival.Font = new System.Drawing.Font("Consolas", 14F, System.Drawing.FontStyle.Bold);
+            this.labelArrival.ForeColor = System.Drawing.Color.White;
+            this.labelArrival.Location = new System.Drawing.Point(15, 40);
+            this.labelArrival.Name = "labelArrival";
+            this.labelArrival.Size = new System.Drawing.Size(20, 22);
+            this.labelArrival.TabIndex = 1;
+            this.labelArrival.Text = "-";
+            // 
+            // labelArrivalTitle
+            // 
+            this.labelArrivalTitle.AutoSize = true;
+            this.labelArrivalTitle.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.labelArrivalTitle.ForeColor = System.Drawing.Color.White;
+            this.labelArrivalTitle.Location = new System.Drawing.Point(15, 15);
+            this.labelArrivalTitle.Name = "labelArrivalTitle";
+            this.labelArrivalTitle.Size = new System.Drawing.Size(123, 19);
+            this.labelArrivalTitle.TabIndex = 0;
+            this.labelArrivalTitle.Text = "Kedatangan Teknisi";
             // 
             // mainLayout
             // 
@@ -89,37 +113,51 @@
             this.mainLayout.Size = new System.Drawing.Size(450, 420);
             this.mainLayout.TabIndex = 1;
             this.mainLayout.WrapContents = false;
-
             // 
             // panelFooter
             // 
             this.panelFooter.BackColor = System.Drawing.Color.White;
-            this.panelFooter.Controls.Add(this.buttonSave);
+            this.panelFooter.Controls.Add(this.buttonRequestSparepart);
+            this.panelFooter.Controls.Add(this.buttonRepairComplete);
             this.panelFooter.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.panelFooter.Location = new System.Drawing.Point(0, 500);
             this.panelFooter.Name = "panelFooter";
             this.panelFooter.Size = new System.Drawing.Size(450, 60);
             this.panelFooter.TabIndex = 2;
-            this.panelFooter.Paint += new System.Windows.Forms.PaintEventHandler(this.PanelFooter_Paint); // For top border
-
+            this.panelFooter.Paint += new System.Windows.Forms.PaintEventHandler(this.PanelFooter_Paint);
             // 
-            // buttonSave
+            // buttonRequestSparepart
             // 
-            this.buttonSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.buttonSave.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(25)))), ((int)(((byte)(118)))), ((int)(((byte)(210)))));
-            this.buttonSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.buttonSave.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.buttonSave.ForeColor = System.Drawing.Color.White;
-            this.buttonSave.Location = new System.Drawing.Point(280, 10);
-            this.buttonSave.Name = "buttonSave";
-            this.buttonSave.Size = new System.Drawing.Size(150, 40);
-            this.buttonSave.TabIndex = 0;
-            this.buttonSave.Text = "Panggil Teknisi";
-            this.buttonSave.UseVisualStyleBackColor = false;
-            this.buttonSave.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.buttonSave.Click += new System.EventHandler(this.SaveButton_Click);
-            this.buttonSave.FlatAppearance.BorderSize = 0;
-
+            this.buttonRequestSparepart.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(152)))), ((int)(((byte)(0)))));
+            this.buttonRequestSparepart.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.buttonRequestSparepart.FlatAppearance.BorderSize = 0;
+            this.buttonRequestSparepart.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonRequestSparepart.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.buttonRequestSparepart.ForeColor = System.Drawing.Color.White;
+            this.buttonRequestSparepart.Location = new System.Drawing.Point(20, 10);
+            this.buttonRequestSparepart.Name = "buttonRequestSparepart";
+            this.buttonRequestSparepart.Size = new System.Drawing.Size(140, 40);
+            this.buttonRequestSparepart.TabIndex = 1;
+            this.buttonRequestSparepart.Text = "Meminta Sparepart";
+            this.buttonRequestSparepart.UseVisualStyleBackColor = false;
+            this.buttonRequestSparepart.Enabled = false; 
+            // 
+            // buttonRepairComplete
+            // 
+            this.buttonRepairComplete.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.buttonRepairComplete.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(25)))), ((int)(((byte)(118)))), ((int)(((byte)(210)))));
+            this.buttonRepairComplete.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.buttonRepairComplete.FlatAppearance.BorderSize = 0;
+            this.buttonRepairComplete.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonRepairComplete.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.buttonRepairComplete.ForeColor = System.Drawing.Color.White;
+            this.buttonRepairComplete.Location = new System.Drawing.Point(280, 10);
+            this.buttonRepairComplete.Name = "buttonRepairComplete";
+            this.buttonRepairComplete.Size = new System.Drawing.Size(150, 40);
+            this.buttonRepairComplete.TabIndex = 0;
+            this.buttonRepairComplete.Text = "Perbaikan Selesai";
+            this.buttonRepairComplete.UseVisualStyleBackColor = false;
+            this.buttonRepairComplete.Click += new System.EventHandler(this.SaveButton_Click);
             // 
             // MachineHistoryFormTechnician
             // 
@@ -129,23 +167,30 @@
             this.Controls.Add(this.mainLayout);
             this.Controls.Add(this.panelFooter);
             this.Controls.Add(this.panelHeader);
-            this.Name = "MachineHistoryForm";
+            this.Name = "MachineHistoryFormTechnician";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Machine History";
+            this.Text = "Machine History - Technician";
             this.panelHeader.ResumeLayout(false);
             this.panelHeader.PerformLayout();
             this.panelFooter.ResumeLayout(false);
             this.ResumeLayout(false);
-
         }
 
         #endregion
 
         private System.Windows.Forms.Panel panelHeader;
-        private System.Windows.Forms.Label labelTitle;
-        private System.Windows.Forms.Label labelStopwatch;
+        private System.Windows.Forms.Label labelArrivalTitle;
+        private System.Windows.Forms.Label labelArrival;
+        private System.Windows.Forms.Label labelFinishedTitle;
+        private System.Windows.Forms.Label labelFinished;
         private System.Windows.Forms.FlowLayoutPanel mainLayout;
         private System.Windows.Forms.Panel panelFooter;
-        private System.Windows.Forms.Button buttonSave;
+        private System.Windows.Forms.Button buttonRepairComplete;
+        private System.Windows.Forms.Button buttonRequestSparepart;
+        //private System.Windows.Forms.Label labelTitle;
+        //private System.Windows.Forms.Label labelStopwatch;
+        //private System.Windows.Forms.Button buttonSave;
     }
+
 }
+

@@ -96,8 +96,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
-
-            // Prepare Data
+            // Prepare Data (Optional: Pass to next form if needed in future)
             var data = new
             {
                 NIK = inputNIK.InputValue,
@@ -106,18 +105,11 @@ namespace mtc_app.features.machine_history.presentation.screens
                 ProblemType = inputProblemType.InputValue
             };
 
-            MessageBox.Show(
-                $"Data berhasil disimpan!\n\n" +
-                $"NIK: {data.NIK}\n" +
-                $"Aplikator: {data.Applicator}\n" +
-                $"Problem: {data.Problem}\n" +
-                $"Jenis: {data.ProblemType}",
-                "Sukses",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information
-            );
-
-            // TODO: Save to database logic here
+            // Open Technician Form
+            var technicianForm = new MachineHistoryFormTechnician();
+            this.Hide(); // Hide current form
+            technicianForm.FormClosed += (s, args) => this.Show(); // Show back when closed
+            technicianForm.Show();
         }
 
         private void PanelFooter_Paint(object sender, PaintEventArgs e)
