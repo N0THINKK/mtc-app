@@ -31,6 +31,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             // 1. NIK Operator
             inputNIK = CreateInput("NIK Operator", ModernInputControl.InputTypeEnum.Dropdown, true);
+            inputNIK.AllowCustomText = true;
             inputNIK.SetDropdownItems(new[] { "12345", "67890" });
 
             // 2. No. Aplikator
@@ -57,6 +58,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             // 4. Jenis Problem
             inputProblemType = CreateInput("Jenis Problem", ModernInputControl.InputTypeEnum.Dropdown, true);
+            inputProblemType.AllowCustomText = true;
             inputProblemType.SetDropdownItems(new[] {
                 "Aplikator", "Servo", "Cutting / Stripping NG",
                 "Rubber Seal", "CPU / Monitor problem", "CFM error", "lainnya"

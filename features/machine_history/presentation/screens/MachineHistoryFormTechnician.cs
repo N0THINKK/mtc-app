@@ -85,10 +85,26 @@ namespace mtc_app.features.machine_history.presentation.screens
             mainLayout.Controls.Add(buttonVerify);
 
             // 3. Problem Cause
-            inputProblemCause = CreateInput("Penyebab Masalah (Problem Cause)", ModernInputControl.InputTypeEnum.Text, true);
-            
+            inputProblemCause = CreateInput("Penyebab Masalah (Problem Cause)", ModernInputControl.InputTypeEnum.Dropdown, true);
+            inputProblemCause.AllowCustomText = true;
+            inputProblemCause.SetDropdownItems(new[] {
+                "Baut pengunci kendor", "Crimping Dies Aus", "Cutter Blade Kotor",
+                "Langkah tidak Stabil", "LM Guide Aus", "Malservo Error",
+                "Roll Terminal NG", "Sensor Kotor", "Spring Aus",
+                "Spring Patah", "Terminal tidak center"
+            });
+
             // 4. Problem Action
-            inputProblemAction = CreateInput("Tindakan Perbaikan (Problem Action)", ModernInputControl.InputTypeEnum.Text, true);
+            inputProblemAction = CreateInput("Tindakan Perbaikan (Problem Action)", ModernInputControl.InputTypeEnum.Dropdown, true);
+            inputProblemAction.AllowCustomText = true;
+            inputProblemAction.SetDropdownItems(new[] {
+                "Adjust Diameter Konduktor", "Adjust Langkah Terminal",
+                "Ganti Crimping Dies", "Ganti Malservo",
+                "Ganti I/O mesin", "Ganti Spring Supporting Stopper",
+                "Ganti CFM", "Ganti Cutter Blade",
+                "Ganti Cutting Punch", "Ganti Wire Holder",
+                "Jig ulang FH11", "Ganti Roll Terminal"
+            });
 
             // 5. Counter Stroke
             inputCounter = CreateInput("Counter Stroke / Blade / Dies", ModernInputControl.InputTypeEnum.Text, false);
