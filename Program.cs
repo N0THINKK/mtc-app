@@ -1,7 +1,6 @@
 using System;
 using System.Windows.Forms;
 using mtc_app.features.authentication.presentation.screens;
-using mtc_app.features.machine_history.presentation.screens;
 
 namespace mtc_app
 {
@@ -15,6 +14,22 @@ namespace mtc_app
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+
+            // Check if Machine is configured
+            string machineId = DatabaseHelper.GetMachineId();
+
+            if (string.IsNullOrWhiteSpace(machineId) || machineId == "0")
+            {
+                // Show Setup Form
+                SetupForm setup = new SetupForm();
+                if (setup.ShowDialog() != DialogResult.OK)
+                {
+                    // If user cancels setup, exit app
+                    return;
+                }
+            }
+
+            // Continue to Login
             Application.Run(new LoginForm());
         }    
     }

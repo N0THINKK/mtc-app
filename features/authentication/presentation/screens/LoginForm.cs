@@ -85,7 +85,7 @@ namespace mtc_app.features.authentication.presentation.screens
                                 break;
                             case "stock control":
                             case "stock":
-                                MessageBox.Show("Halaman Stock Control sedang dalam pengembangan.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                nextForm = new mtc_app.features.stock.presentation.screens.StockDashboardForm();
                                 break;
                             default: 
                                 MessageBox.Show($"Dashboard untuk role '{roleName}' belum tersedia.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);

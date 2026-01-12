@@ -143,17 +143,19 @@ namespace mtc_app.features.machine_history.presentation.screens
 
                     int machineId = 1; 
 
-                    // 3. Insert to Database
+                    // 3. Insert to Database and Get ID
                     string insertSql = @"
                         INSERT INTO tickets 
                         (ticket_uuid, ticket_display_code, machine_id, operator_id, failure_details, status_id, created_at)
                         VALUES 
-                        (@Uuid, @Code, @MachineId, @OpId, @Details, 1, NOW());";
+                        (@Uuid, @Code, @MachineId, @OpId, @Details, 1, NOW());
+                        SELECT LAST_INSERT_ID();";
 
                     // Combine Problem Type and Problem Description
                     string fullDetails = $"[{inputProblemType.InputValue}] {inputProblem.InputValue} (Aplikator: {inputApplicator.InputValue})";
 
-                    connection.Execute(insertSql, new {
+                    // Use ExecuteScalar to get the new ID
+                    long newTicketId = connection.ExecuteScalar<long>(insertSql, new {
                         Uuid = uuid,
                         Code = displayCode,
                         MachineId = machineId,
@@ -161,19 +163,25 @@ namespace mtc_app.features.machine_history.presentation.screens
                         Details = fullDetails
                     });
 
-                    // Sukses Simpan -> Lanjut Buka Form Teknisi
-                    // Kita sembunyikan form ini, dan buka form teknisi.
-                    // Nanti form teknisi perlu logika untuk mengambil tiket terakhir atau tiket berdasarkan UUID.
-                    // Untuk sekarang kita buka saja dulu.
-                    
-                    var technicianForm = new MachineHistoryFormTechnician();
-                    this.Hide(); 
-                    technicianForm.FormClosed += (s, args) => this.Show(); // Show back when closed
-                    technicianForm.Show();
+                    // Success Feedback
+                    MessageBox.Show(
+                        $"Tiket Berhasil Dibuat!\n\n" +
+                        $"Kode Tiket: {displayCode}\n" +
+                        $"Status: MENUNGGU TEKNISI",
+                        "Laporan Terkirim",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
                     
                     // Reset inputs
                     inputProblem.InputValue = "";
                     inputProblemType.InputValue = "";
+
+                    // Open Technician Form with Ticket ID
+                    var technicianForm = new MachineHistoryFormTechnician(newTicketId);
+                    this.Hide(); 
+                    technicianForm.FormClosed += (s, args) => this.Show(); 
+                    technicianForm.Show();
                 }
             }
             catch (Exception ex)
