@@ -12,6 +12,27 @@ namespace mtc_app.features.authentication.presentation.screens
         public LoginForm()
         {
             InitializeComponent();
+            
+            // Enable KeyPreview to catch key presses form-wide
+            this.KeyPreview = true;
+            this.KeyDown += LoginForm_KeyDown;
+        }
+
+        private void LoginForm_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                // If login button is focused, let it click
+                if (this.ActiveControl == btnLogin)
+                {
+                    return;
+                }
+
+                // Move to next control
+                this.SelectNextControl(this.ActiveControl, true, true, true, true);
+                e.Handled = true;
+                e.SuppressKeyPress = true; // Stop ding sound
+            }
         }
 
         private void btnLogin_Click(object sender, EventArgs e)
