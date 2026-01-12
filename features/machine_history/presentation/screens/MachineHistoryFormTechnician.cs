@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using mtc_app.features.machine_history.presentation.components;
 
@@ -12,7 +13,6 @@ namespace mtc_app.features.machine_history.presentation.screens
         private List<ModernInputControl> _inputs;
         private Stopwatch stopwatch;
         private Stopwatch arrivalStopwatch;
-
         private Timer timer;
         private bool isVerified = false;
 
@@ -23,46 +23,38 @@ namespace mtc_app.features.machine_history.presentation.screens
         private ModernInputControl inputProblemAction;
         private ModernInputControl inputCounter;
         
+        // Sparepart section
+        private Label labelSparepartTitle;
+        private List<SparepartRequestControl> sparepartControls;
+        
         public MachineHistoryFormTechnician()
         {
             InitializeComponent();
             SetupStopwatch();
             SetupInputs();
+            SetupSparepartSection();
             UpdateUIState();
         }
 
         private void SetupStopwatch()
         {
-            // Stopwatch kedatangan
             arrivalStopwatch = new Stopwatch();
-            arrivalStopwatch.Start(); // langsung jalan saat form dibuka
+            arrivalStopwatch.Start();
 
-            // Stopwatch perbaikan
             stopwatch = new Stopwatch();
 
-            timer = new Timer
-            {
-                Interval = 100
-            };
+            timer = new Timer { Interval = 100 };
             timer.Tick += Timer_Tick;
-            timer.Start(); // timer boleh langsung hidup
+            timer.Start();
         }
 
         private void Timer_Tick(object sender, EventArgs e)
         {
-            // Show elapsed time in the "Selesai Reparasi" / Top Right spot as requested (Stopwatch)
-            // Or should it be separate? The requirement says "shows the stopwatch on top right corner".
-            // We'll use labelFinished as the stopwatch display for now.
-            var elapsed = stopwatch.Elapsed;
-            labelFinished.Text = $"{elapsed:hh\\:mm\\:ss}";
-
-            // Kedatangan Teknisi (stopwatch sejak form dibuka)
             if (arrivalStopwatch != null && arrivalStopwatch.IsRunning)
             {
                 labelArrival.Text = $"{arrivalStopwatch.Elapsed:hh\\:mm\\:ss}";
             }
 
-            // Durasi Perbaikan (setelah verifikasi)
             if (stopwatch != null && stopwatch.IsRunning)
             {
                 labelFinished.Text = $"{stopwatch.Elapsed:hh\\:mm\\:ss}";
@@ -75,33 +67,40 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             inputNIK = CreateInput("NIK Technician", ModernInputControl.InputTypeEnum.Text, true);
 
-            // 2. Verify Button (Added manually to layout)
             buttonVerify = new Button
             {
                 Text = "Cek Teknisi",
                 AutoSize = true,
-                BackColor = Color.FromArgb(40, 167, 69), // Green
+                BackColor = Color.FromArgb(40, 167, 69),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
-                Margin = new Padding(5, 0, 5, 15) // Add spacing below
+                Margin = new Padding(5, 0, 5, 15)
             };
             buttonVerify.FlatAppearance.BorderSize = 0;
             buttonVerify.Click += ButtonVerify_Click;
             mainLayout.Controls.Add(buttonVerify);
 
-            // 3. Problem Cause (Penyebab)
             inputProblemCause = CreateInput("Penyebab Masalah (Problem Cause)", ModernInputControl.InputTypeEnum.Text, true);
-            
-            // 4. Problem Action (Tindakan Perbaikan)
             inputProblemAction = CreateInput("Tindakan Perbaikan (Problem Action)", ModernInputControl.InputTypeEnum.Text, true);
-
-            // 5. Counter Stroke / Counter Blade / Crimping Dies
             inputCounter = CreateInput("Counter Stroke / Blade / Dies", ModernInputControl.InputTypeEnum.Text, false);
+        }
 
-            // Add inputs to list for validation later
-            // Note: NIK is already added by CreateInput.
+        private void SetupSparepartSection()
+        {
+            sparepartControls = new List<SparepartRequestControl>();
+            
+            labelSparepartTitle = new Label
+            {
+                Text = "Sparepart yang Diminta",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(33, 33, 33),
+                AutoSize = true,
+                Margin = new Padding(5, 20, 5, 10),
+                Visible = false
+            };
+            mainLayout.Controls.Add(labelSparepartTitle);
         }
 
         private ModernInputControl CreateInput(string label, ModernInputControl.InputTypeEnum type, bool required)
@@ -111,17 +110,16 @@ namespace mtc_app.features.machine_history.presentation.screens
                 LabelText = label,
                 InputType = type,
                 IsRequired = required,
-                Width = 410 // Fixed width for consistency
+                Width = 410
             };
 
             _inputs.Add(input);
-            mainLayout.Controls.Add(input); // Add to layout
+            mainLayout.Controls.Add(input);
             return input;
         }
 
         private void UpdateUIState()
         {
-            // If not verified, disable everything except NIK and Verify
             bool enabled = isVerified;
 
             inputProblemCause.Enabled = enabled;
@@ -129,35 +127,28 @@ namespace mtc_app.features.machine_history.presentation.screens
             inputCounter.Enabled = enabled;
             
             buttonRepairComplete.Enabled = enabled;
-            buttonRequestSparepart.Enabled = enabled; // Even if logic is skipped, button state follows flow
+            buttonRequestSparepart.Enabled = enabled;
 
             inputNIK.Enabled = !enabled;
             buttonVerify.Enabled = !enabled;
-            buttonVerify.Visible = !enabled; // Hide after verify? Or just disable. Let's hide to be clean.
+            buttonVerify.Visible = !enabled;
         }
 
         private void ButtonVerify_Click(object sender, EventArgs e)
         {
             string nik = inputNIK.InputValue;
 
-            // Dummy Data Validation
             if (string.IsNullOrWhiteSpace(nik))
             {
                 MessageBox.Show("Masukkan NIK Teknisi.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            // Simple dummy check (Allow specific IDs or just any non-empty for this demo if not specified strict list)
-            // Requirement: "you can use data dummy if needed"
             if (nik == "12345" || nik == "admin" || nik.Length >= 3) 
             {
                 isVerified = true;
-                
-                // Stop stopwatch kedatangan
                 arrivalStopwatch.Stop();
                 stopwatch.Start();
-                // timer.Start();
-
                 UpdateUIState();
             }
             else
@@ -166,46 +157,92 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        private void SaveButton_Click(object sender, EventArgs e) // This is mapped to buttonRepairComplete
+        private void ButtonRequestSparepart_Click(object sender, EventArgs e)
         {
-            // Validate inputs
-            if (!inputProblemCause.ValidateInput() || 
-                !inputProblemAction.ValidateInput() || 
-                !inputCounter.ValidateInput())
+            AddSparepartControl();
+        }
+
+        private void AddSparepartControl()
+        {
+            // Show title if first sparepart
+            if (sparepartControls.Count == 0)
             {
-                 MessageBox.Show("Mohon lengkapi data perbaikan.", "Validasi Gagal", 
+                labelSparepartTitle.Visible = true;
+            }
+
+            var sparepartControl = new SparepartRequestControl();
+            sparepartControl.OnRemoveRequested += RemoveSparepartControl;
+            
+            sparepartControls.Add(sparepartControl);
+            mainLayout.Controls.Add(sparepartControl);
+            
+            // Set the control index for proper ordering
+            mainLayout.Controls.SetChildIndex(sparepartControl, mainLayout.Controls.IndexOf(labelSparepartTitle) + 1 + sparepartControls.IndexOf(sparepartControl));
+        }
+
+        private void RemoveSparepartControl(SparepartRequestControl control)
+        {
+            if (sparepartControls.Contains(control))
+            {
+                sparepartControls.Remove(control);
+                mainLayout.Controls.Remove(control);
+                control.Dispose();
+
+                // Hide title if no spareparts left
+                if (sparepartControls.Count == 0)
+                {
+                    labelSparepartTitle.Visible = false;
+                }
+            }
+        }
+
+        private bool ValidateRequiredInputs()
+        {
+            return inputProblemCause.ValidateInput() && 
+                   inputProblemAction.ValidateInput() && 
+                   inputCounter.ValidateInput();
+        }
+
+        private void SaveButton_Click(object sender, EventArgs e)
+        {
+            if (!ValidateRequiredInputs())
+            {
+                MessageBox.Show("Mohon lengkapi data perbaikan.", "Validasi Gagal", 
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            // Stop Timer
             stopwatch.Stop();
             timer.Stop();
 
-            // Show Summary
+            string summary = BuildSummary();
+            
+            MessageBox.Show(summary, "Laporan Tersimpan", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            this.Close();
+        }
+
+        private string BuildSummary()
+        {
             string duration = stopwatch.Elapsed.ToString(@"hh\:mm\:ss");
             string finishTime = DateTime.Now.ToString("HH:mm");
-            string arrivalDuration = arrivalStopwatch.Elapsed.ToString(@"hh\:mm\:ss");
             
-            // "text on top right, it will be RepairFinished" - update label to final time?
-            // or keep duration?
-            // Let's update label to Finish Time as per "RepairFinished" label name implies
-            // But user also said "shows the stopwatch on top right corner".
-            // I'll show a message and maybe close the form. 
-            
-            MessageBox.Show(
-                $"Perbaikan Selesai!\n\n" +
-                $"Kedatangan: {labelArrival.Text}\n" +
-                $"Selesai: {finishTime}\n" +
-                $"Durasi: {duration}\n\n" +
-                $"Penyebab: {inputProblemCause.InputValue}\n" +
-                $"Tindakan: {inputProblemAction.InputValue}",
-                "Laporan Tersimpan",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information
-            );
+            string summary = $"Perbaikan Selesai!\n\n" +
+                           $"Kedatangan: {labelArrival.Text}\n" +
+                           $"Selesai: {finishTime}\n" +
+                           $"Durasi: {duration}\n\n" +
+                           $"Penyebab: {inputProblemCause.InputValue}\n" +
+                           $"Tindakan: {inputProblemAction.InputValue}";
 
-            this.Close();
+            if (sparepartControls.Any())
+            {
+                summary += "\n\nSparepart yang Diminta:";
+                foreach (var control in sparepartControls)
+                {
+                    summary += $"\n- {control.SparepartName}";
+                }
+            }
+
+            return summary;
         }
 
         private void PanelFooter_Paint(object sender, PaintEventArgs e)
@@ -233,6 +270,56 @@ namespace mtc_app.features.machine_history.presentation.screens
                     input.Width = mainLayout.ClientSize.Width - 40;
                 }
             }
+        }
+    }
+
+    // Separate control for sparepart request
+    public class SparepartRequestControl : Panel
+    {
+        private TextBox textBoxSparepart;
+        private Button buttonRemove;
+        
+        public event Action<SparepartRequestControl> OnRemoveRequested;
+        
+        public string SparepartName => textBoxSparepart.Text;
+
+        public SparepartRequestControl()
+        {
+            SetupControl();
+        }
+
+        private void SetupControl()
+        {
+            this.Height = 45;
+            this.Width = 410;
+            this.Margin = new Padding(5, 5, 5, 10);
+
+            textBoxSparepart = new TextBox
+            {
+                Location = new Point(0, 10),
+                Width = 350,
+                Height = 30,
+                Font = new Font("Segoe UI", 10F),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+
+            buttonRemove = new Button
+            {
+                Text = "×",
+                Location = new Point(360, 10),
+                Width = 40,
+                Height = 30,
+                BackColor = Color.FromArgb(220, 53, 69),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            buttonRemove.FlatAppearance.BorderSize = 0;
+            buttonRemove.Click += (s, e) => OnRemoveRequested?.Invoke(this);
+
+            this.Controls.Add(textBoxSparepart);
+            this.Controls.Add(buttonRemove);
         }
     }
 }

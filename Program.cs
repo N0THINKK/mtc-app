@@ -1,6 +1,7 @@
 using System;
 using System.Windows.Forms;
 using mtc_app.features.authentication.presentation.screens;
+using mtc_app.features.machine_history.presentation.screens;
 
 namespace mtc_app
 {

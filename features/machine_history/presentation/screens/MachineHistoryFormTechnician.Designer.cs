@@ -140,7 +140,7 @@
             this.buttonRequestSparepart.TabIndex = 1;
             this.buttonRequestSparepart.Text = "Meminta Sparepart";
             this.buttonRequestSparepart.UseVisualStyleBackColor = false;
-            this.buttonRequestSparepart.Enabled = false; 
+            this.buttonRequestSparepart.Click += new System.EventHandler(this.ButtonRequestSparepart_Click);
             // 
             // buttonRepairComplete
             // 
@@ -187,10 +187,5 @@
         private System.Windows.Forms.Panel panelFooter;
         private System.Windows.Forms.Button buttonRepairComplete;
         private System.Windows.Forms.Button buttonRequestSparepart;
-        //private System.Windows.Forms.Label labelTitle;
-        //private System.Windows.Forms.Label labelStopwatch;
-        //private System.Windows.Forms.Button buttonSave;
     }
-
 }
-
