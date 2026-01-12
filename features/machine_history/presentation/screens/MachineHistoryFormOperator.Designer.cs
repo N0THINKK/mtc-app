@@ -56,7 +56,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.labelTitle.AutoSize = true;
             this.labelTitle.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
             this.labelTitle.ForeColor = System.Drawing.Color.White;
-            this.labelTitle.Location = new System.Drawing.Point(15, 15);
+            this.labelTitle.Location = new System.Drawing.Point(15, 25);
             this.labelTitle.Name = "labelTitle";
             this.labelTitle.Size = new System.Drawing.Size(155, 25);
             this.labelTitle.TabIndex = 0;
@@ -115,7 +115,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Controls.Add(this.mainLayout);
             this.Controls.Add(this.panelFooter);
             this.Controls.Add(this.panelHeader);
-            this.Name = "MachineHistoryForm";
+            this.Name = "MachineHistoryFormOperator";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Machine History";
             this.panelHeader.ResumeLayout(false);

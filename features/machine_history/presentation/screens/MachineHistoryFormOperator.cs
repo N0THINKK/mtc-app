@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
+using Dapper;
+using mtc_app;
 using mtc_app.features.machine_history.presentation.components;
 
 namespace mtc_app.features.machine_history.presentation.screens
@@ -10,6 +12,7 @@ namespace mtc_app.features.machine_history.presentation.screens
     public partial class MachineHistoryFormOperator : Form
     {
         private List<ModernInputControl> _inputs;
+        
         // Named references for specific logic
         private ModernInputControl inputNIK;
         private ModernInputControl inputApplicator;
@@ -96,20 +99,67 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
-            // Prepare Data (Optional: Pass to next form if needed in future)
-            var data = new
+            try 
             {
-                NIK = inputNIK.InputValue,
-                Applicator = inputApplicator.InputValue,
-                Problem = inputProblem.InputValue,
-                ProblemType = inputProblemType.InputValue
-            };
+                using (var connection = DatabaseHelper.GetConnection())
+                {
+                    connection.Open();
+                    
+                    // 1. Generate UUID & Ticket Code
+                    string uuid = Guid.NewGuid().ToString();
+                    string dateCode = DateTime.Now.ToString("yyMMdd");
+                    
+                    // Get sequence for today (simple approach)
+                    string countSql = "SELECT COUNT(*) FROM tickets WHERE DATE(created_at) = CURDATE()";
+                    int dailyCount = connection.ExecuteScalar<int>(countSql);
+                    string displayCode = $"TKT-{dateCode}-{(dailyCount + 1):D3}"; 
 
-            // Open Technician Form
-            var technicianForm = new MachineHistoryFormTechnician();
-            this.Hide(); // Hide current form
-            technicianForm.FormClosed += (s, args) => this.Show(); // Show back when closed
-            technicianForm.Show();
+                    // 2. Resolve IDs
+                    // Operator: Try to find user by NIK (assuming NIK is username), else default to 1 (System/Admin)
+                    // Machine: Default to 1 for now (should come from config)
+                    int operatorId = 1; 
+                    var userCheck = connection.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE username = @Nik", new { Nik = inputNIK.InputValue });
+                    if (userCheck.HasValue) operatorId = userCheck.Value;
+
+                    int machineId = 1; 
+
+                    // 3. Insert to Database
+                    string insertSql = @"
+                        INSERT INTO tickets 
+                        (ticket_uuid, ticket_display_code, machine_id, operator_id, failure_details, status_id, created_at)
+                        VALUES 
+                        (@Uuid, @Code, @MachineId, @OpId, @Details, 1, NOW());";
+
+                    // Combine Problem Type and Problem Description
+                    string fullDetails = $"[{inputProblemType.InputValue}] {inputProblem.InputValue} (Aplikator: {inputApplicator.InputValue})";
+
+                    connection.Execute(insertSql, new {
+                        Uuid = uuid,
+                        Code = displayCode,
+                        MachineId = machineId,
+                        OpId = operatorId,
+                        Details = fullDetails
+                    });
+
+                    // Sukses Simpan -> Lanjut Buka Form Teknisi
+                    // Kita sembunyikan form ini, dan buka form teknisi.
+                    // Nanti form teknisi perlu logika untuk mengambil tiket terakhir atau tiket berdasarkan UUID.
+                    // Untuk sekarang kita buka saja dulu.
+                    
+                    var technicianForm = new MachineHistoryFormTechnician();
+                    this.Hide(); 
+                    technicianForm.FormClosed += (s, args) => this.Show(); // Show back when closed
+                    technicianForm.Show();
+                    
+                    // Reset inputs
+                    inputProblem.InputValue = "";
+                    inputProblemType.InputValue = "";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Gagal menyimpan data ke database:\n{ex.Message}", "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void PanelFooter_Paint(object sender, PaintEventArgs e)
