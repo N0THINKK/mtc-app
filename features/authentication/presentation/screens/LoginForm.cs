@@ -45,8 +45,8 @@ namespace mtc_app.features.authentication.presentation.screens
                         // Hide Login Form
                         this.Hide();
 
-                        // Show Main Dashboard (MachineHistoryForm)
-                        MachineHistoryForm mainForm = new MachineHistoryForm();
+                        // Show Main Dashboard (MachineHistoryFormOperator)
+                        MachineHistoryFormOperator mainForm = new MachineHistoryFormOperator();
                         mainForm.FormClosed += (s, args) => this.Close(); // Close app when main form closes
                         mainForm.Show();
                     }
