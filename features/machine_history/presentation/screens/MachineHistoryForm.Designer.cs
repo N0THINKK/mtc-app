@@ -31,7 +31,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.components = new System.ComponentModel.Container();
             this.pnlHeader = new System.Windows.Forms.Panel();
             this.labelTitle = new System.Windows.Forms.Label();
-            this.labelStopwatch = new System.Windows.Forms.Label();
             this.mainLayout = new System.Windows.Forms.FlowLayoutPanel();
             this.pnlFooter = new System.Windows.Forms.Panel();
             this.buttonSave = new System.Windows.Forms.Button();
@@ -44,7 +43,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             // pnlHeader
             // 
             this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(25)))), ((int)(((byte)(118)))), ((int)(((byte)(210))))); // Modern Blue
-            this.pnlHeader.Controls.Add(this.labelStopwatch);
             this.pnlHeader.Controls.Add(this.labelTitle);
             this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlHeader.Location = new System.Drawing.Point(0, 0);
@@ -58,23 +56,11 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.labelTitle.AutoSize = true;
             this.labelTitle.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
             this.labelTitle.ForeColor = System.Drawing.Color.White;
-            this.labelTitle.Location = new System.Drawing.Point(15, 15);
+            this.labelTitle.Location = new System.Drawing.Point(15, 25);
             this.labelTitle.Name = "labelTitle";
             this.labelTitle.Size = new System.Drawing.Size(155, 25);
             this.labelTitle.TabIndex = 0;
             this.labelTitle.Text = "Machine History";
-
-            // 
-            // labelStopwatch
-            // 
-            this.labelStopwatch.AutoSize = true;
-            this.labelStopwatch.Font = new System.Drawing.Font("Consolas", 18F, System.Drawing.FontStyle.Bold);
-            this.labelStopwatch.ForeColor = System.Drawing.Color.White;
-            this.labelStopwatch.Location = new System.Drawing.Point(15, 45);
-            this.labelStopwatch.Name = "labelStopwatch";
-            this.labelStopwatch.Size = new System.Drawing.Size(155, 28);
-            this.labelStopwatch.TabIndex = 1;
-            this.labelStopwatch.Text = "00:00:00.00";
 
             // 
             // mainLayout
@@ -143,7 +129,6 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private System.Windows.Forms.Panel pnlHeader;
         private System.Windows.Forms.Label labelTitle;
-        private System.Windows.Forms.Label labelStopwatch;
         private System.Windows.Forms.FlowLayoutPanel mainLayout;
         private System.Windows.Forms.Panel pnlFooter;
         private System.Windows.Forms.Button buttonSave;

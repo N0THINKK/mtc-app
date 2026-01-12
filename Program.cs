@@ -1,22 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System;
 using System.Windows.Forms;
+using mtc_app.features.authentication.presentation.screens;
 
 namespace mtc_app
 {
-    internal static class Program
+    static class Program
     {
         /// <summary>
-        /// The main entry point for the application.
+        ///  The main entry point for the application.
         /// </summary>
         [STAThread]
         static void Main()
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new mtc_app.features.machine_history.presentation.screens.MachineHistoryForm());
-        }
+            Application.Run(new LoginForm());
+        }    
     }
 }

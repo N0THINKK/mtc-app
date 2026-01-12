@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
+using Dapper;
+using mtc_app;
 using mtc_app.features.machine_history.presentation.components;
 
 namespace mtc_app.features.machine_history.presentation.screens
@@ -10,10 +12,7 @@ namespace mtc_app.features.machine_history.presentation.screens
     public partial class MachineHistoryForm : Form
     {
         private List<ModernInputControl> _inputs;
-        private Stopwatch stopwatch;
-        private Timer timer;
-        private DateTime formOpenedTime;
-
+        
         // Named references for specific logic
         private ModernInputControl inputNIK;
         private ModernInputControl inputApplicator;
@@ -23,28 +22,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         public MachineHistoryForm()
         {
             InitializeComponent();
-            SetupStopwatch();
             SetupInputs();
-        }
-
-        private void SetupStopwatch()
-        {
-            formOpenedTime = DateTime.Now;
-            stopwatch = new Stopwatch();
-            stopwatch.Start();
-
-            timer = new Timer
-            {
-                Interval = 100
-            };
-            timer.Tick += Timer_Tick;
-            timer.Start();
-        }
-
-        private void Timer_Tick(object sender, EventArgs e)
-        {
-            var elapsed = stopwatch.Elapsed;
-            labelStopwatch.Text = $"{elapsed:hh\\:mm\\:ss\\.ff}";
         }
 
         private void SetupInputs()
@@ -121,37 +99,68 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
-            // Stop stopwatch and get values
-            stopwatch.Stop();
-            timer.Stop();
-
-            // Prepare Data
-            var data = new
+            try 
             {
-                Date = DateTime.Now.ToString("yyyy-MM-dd"),
-                Time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                Duration = stopwatch.Elapsed.ToString(@"hh\:mm\:ss"),
-                NIK = inputNIK.InputValue,
-                Applicator = inputApplicator.InputValue,
-                Problem = inputProblem.InputValue,
-                ProblemType = inputProblemType.InputValue
-            };
+                using (var connection = DatabaseHelper.GetConnection())
+                {
+                    connection.Open();
+                    
+                    // 1. Generate UUID & Ticket Code
+                    string uuid = Guid.NewGuid().ToString();
+                    string dateCode = DateTime.Now.ToString("yyMMdd");
+                    
+                    // Get sequence for today (simple approach)
+                    string countSql = "SELECT COUNT(*) FROM tickets WHERE DATE(created_at) = CURDATE()";
+                    int dailyCount = connection.ExecuteScalar<int>(countSql);
+                    string displayCode = $"TKT-{dateCode}-{(dailyCount + 1):D3}"; 
 
-            MessageBox.Show(
-                $"Data berhasil disimpan!\n\n" +
-                $"Tanggal: {data.Date}\n" +
-                $"Waktu: {data.Time}\n" +
-                $"Durasi: {data.Duration}\n\n" +
-                $"NIK: {data.NIK}\n" +
-                $"Aplikator: {data.Applicator}\n" +
-                $"Problem: {data.Problem}\n" +
-                $"Jenis: {data.ProblemType}",
-                "Sukses",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information
-            );
+                    // 2. Resolve IDs
+                    // Operator: Try to find user by NIK (assuming NIK is username), else default to 1 (System/Admin)
+                    // Machine: Default to 1 for now (should come from config)
+                    int operatorId = 1; 
+                    var userCheck = connection.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE username = @Nik", new { Nik = inputNIK.InputValue });
+                    if (userCheck.HasValue) operatorId = userCheck.Value;
 
-            // TODO: Save to database logic here
+                    int machineId = 1; 
+
+                    // 3. Insert to Database
+                    string insertSql = @"
+                        INSERT INTO tickets 
+                        (ticket_uuid, ticket_display_code, machine_id, operator_id, failure_details, status_id, created_at)
+                        VALUES 
+                        (@Uuid, @Code, @MachineId, @OpId, @Details, 1, NOW());";
+
+                    // Combine Problem Type and Problem Description
+                    string fullDetails = $"[{inputProblemType.InputValue}] {inputProblem.InputValue} (Aplikator: {inputApplicator.InputValue})";
+
+                    connection.Execute(insertSql, new {
+                        Uuid = uuid,
+                        Code = displayCode,
+                        MachineId = machineId,
+                        OpId = operatorId,
+                        Details = fullDetails
+                    });
+
+                    // Success Feedback
+                    MessageBox.Show(
+                        $"Tiket Berhasil Dibuat!\n\n" +
+                        $"Kode Tiket: {displayCode}\n" +
+                        $"Status: MENUNGGU TEKNISI",
+                        "Laporan Terkirim",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
+                    
+                    // Reset inputs (optional, keep NIK maybe?)
+                    inputProblem.InputValue = "";
+                    inputProblemType.InputValue = "";
+                    // inputApplicator.InputValue = ""; 
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Gagal menyimpan data ke database:\n{ex.Message}", "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void PnlFooter_Paint(object sender, PaintEventArgs e)
@@ -161,13 +170,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 e.Graphics.DrawLine(pen, 0, 0, pnlFooter.Width, 0);
             }
-        }
-
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            timer?.Stop();
-            timer?.Dispose();
-            base.OnFormClosing(e);
         }
 
         protected override void OnResize(EventArgs e)
