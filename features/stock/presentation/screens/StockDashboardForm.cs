@@ -3,6 +3,7 @@ using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
 using Dapper;
+using mtc_app;
 
 namespace mtc_app.features.stock.presentation.screens
 {
@@ -82,7 +83,7 @@ namespace mtc_app.features.stock.presentation.screens
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Open();
-                    // Update jadi READY (2)
+                    // Update jadi READY (2) dan set ready_at
                     string sql = "UPDATE part_requests SET status_id = 2, ready_at = NOW() WHERE request_id = @Id";
                     connection.Execute(sql, new { Id = requestId });
                 }

@@ -15,8 +15,8 @@ namespace mtc_app.features.authentication.presentation.screens
 
         private void btnSave_Click(object sender, EventArgs e)
         {
-            string machineId = txtMachineId.Text.Trim();
-            string lineId = txtLineId.Text.Trim();
+            string machineId = txtMachineID.Text.Trim();
+            string lineId = txtLineID.Text.Trim();
 
             if (string.IsNullOrEmpty(machineId) || string.IsNullOrEmpty(lineId))
             {
