@@ -194,24 +194,12 @@ namespace mtc_app.features.machine_history.presentation.screens
             // 3. Problem Cause
             inputProblemCause = CreateInput("Penyebab Masalah (Problem Cause)", AppInput.InputTypeEnum.Dropdown, true);
             inputProblemCause.AllowCustomText = true;
-            inputProblemCause.SetDropdownItems(new[] {
-                "Baut pengunci kendor", "Crimping Dies Aus", "Cutter Blade Kotor",
-                "Langkah tidak Stabil", "LM Guide Aus", "Malservo Error",
-                "Roll Terminal NG", "Sensor Kotor", "Spring Aus",
-                "Spring Patah", "Terminal tidak center"
-            });
 
             // 4. Problem Action
             inputProblemAction = CreateInput("Tindakan Perbaikan (Problem Action)", AppInput.InputTypeEnum.Dropdown, true);
             inputProblemAction.AllowCustomText = true;
-            inputProblemAction.SetDropdownItems(new[] {
-                "Adjust Diameter Konduktor", "Adjust Langkah Terminal",
-                "Ganti Crimping Dies", "Ganti Malservo",
-                "Ganti I/O mesin", "Ganti Spring Supporting Stopper",
-                "Ganti CFM", "Ganti Cutter Blade",
-                "Ganti Cutting Punch", "Ganti Wire Holder",
-                "Jig ulang FH11", "Ganti Roll Terminal"
-            });
+            
+            LoadTechnicianMasterData();
 
             // 5. Counter Stroke
             inputCounter = CreateInput("Counter Stroke / Blade / Dies", AppInput.InputTypeEnum.Text, false);
@@ -220,6 +208,29 @@ namespace mtc_app.features.machine_history.presentation.screens
             inputSparepart = CreateInput("Permintaan Sparepart (Sparepart Request)", AppInput.InputTypeEnum.Dropdown, false);
             inputSparepart.AllowCustomText = true;
             LoadParts();
+        }
+
+        private void LoadTechnicianMasterData()
+        {
+            try
+            {
+                using (var connection = DatabaseHelper.GetConnection())
+                {
+                    connection.Open();
+                    
+                    // Load Causes
+                    var causes = connection.Query<string>("SELECT cause_name FROM failure_causes ORDER BY cause_name");
+                    inputProblemCause.SetDropdownItems(causes.AsList().ToArray());
+
+                    // Load Actions
+                    var actions = connection.Query<string>("SELECT action_name FROM actions ORDER BY action_name");
+                    inputProblemAction.SetDropdownItems(actions.AsList().ToArray());
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Gagal memuat data master: {ex.Message}");
+            }
         }
 
         private AppInput CreateInput(string label, AppInput.InputTypeEnum type, bool required)
