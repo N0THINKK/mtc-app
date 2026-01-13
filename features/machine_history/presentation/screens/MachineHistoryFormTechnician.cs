@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
+using Dapper;
+using mtc_app;
 using mtc_app.features.machine_history.presentation.components;
 
 namespace mtc_app.features.machine_history.presentation.screens
@@ -23,11 +25,14 @@ namespace mtc_app.features.machine_history.presentation.screens
         private ModernInputControl inputCounter;
         private ModernInputControl inputSparepart;
         
+        private long _currentTicketId;
+
         // Reference ke tombol dynamic (tombol yang dibuat lewat koding, bukan designer)
         // private Button buttonSendSparepartDynamic; 
 
-        public MachineHistoryFormTechnician()
+        public MachineHistoryFormTechnician(long ticketId)
         {
+            _currentTicketId = ticketId;
             InitializeComponent();
             SetupStopwatch();
             SetupInputs();
@@ -59,6 +64,40 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 labelFinished.Text = $"{stopwatch.Elapsed:hh\\:mm\\:ss}";
             }
+
+            // Check Sparepart Status every tick (Consider throttling this to every 5s for performance)
+            // For demo, every 1s is fine.
+            if (_currentTicketId > 0 && DateTime.Now.Second % 5 == 0) // Cek tiap detik ke-0, 5, 10...
+            {
+                CheckSparepartStatus();
+            }
+        }
+
+        private void CheckSparepartStatus()
+        {
+            try
+            {
+                using (var connection = DatabaseHelper.GetConnection())
+                {
+                    connection.Open();
+                    // Cek apakah ada request yang sudah READY (2)
+                    int readyCount = connection.ExecuteScalar<int>(
+                        "SELECT COUNT(*) FROM part_requests WHERE ticket_id = @Id AND status_id = 2", 
+                        new { Id = _currentTicketId });
+
+                    if (readyCount > 0)
+                    {
+                        // Ubah tampilan tombol request jadi Notifikasi
+                        if (buttonRequestSparepart.Enabled == false && buttonRequestSparepart.Text != "BARANG SIAP DI GUDANG!")
+                        {
+                            buttonRequestSparepart.Text = "BARANG SIAP DI GUDANG!";
+                            buttonRequestSparepart.BackColor = Color.Green;
+                            buttonRequestSparepart.Enabled = true; // Enable click to confirm taken? Or just info.
+                        }
+                    }
+                }
+            }
+            catch { /* Silent fail */ }
         }
 
         private void SetupInputs()
@@ -189,21 +228,28 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             if (result == DialogResult.Yes)
             {
-                // Disable controls
-                inputSparepart.Enabled = false;
-                
-                // Disable dynamic button
-                /* if (buttonSendSparepartDynamic != null)
+                try 
                 {
-                    buttonSendSparepartDynamic.Enabled = false;
-                    buttonSendSparepartDynamic.BackColor = Color.Gray;
-                } */
+                    using (var connection = DatabaseHelper.GetConnection())
+                    {
+                        connection.Open();
+                        string sql = "INSERT INTO part_requests (ticket_id, part_name_manual, qty, status_id, requested_at) VALUES (@TicketId, @PartName, 1, 1, NOW())";
+                        connection.Execute(sql, new { TicketId = _currentTicketId, PartName = inputSparepart.InputValue });
+                    }
 
-                // PERBAIKAN 2: Disable footer button juga (nama variabel disesuaikan)
-                buttonRequestSparepart.Enabled = false;
-                buttonRequestSparepart.BackColor = Color.Gray;
+                    // Disable controls
+                    inputSparepart.Enabled = false;
+                    
+                    // PERBAIKAN 2: Disable footer button juga (nama variabel disesuaikan)
+                    buttonRequestSparepart.Enabled = false;
+                    buttonRequestSparepart.BackColor = Color.Gray;
 
-                MessageBox.Show("Permintaan sparepart berhasil dikirim.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("Permintaan sparepart berhasil dikirim ke Stock Control.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Gagal request part: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
         }
 
@@ -225,20 +271,40 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
-            if (nik == "12345" || nik == "admin" || nik.Length >= 3) 
+            try 
             {
-                isVerified = true;
+                using (var connection = DatabaseHelper.GetConnection())
+                {
+                    connection.Open();
+                    // Check if user exists and is Technician (assuming role 'Technician' or similar)
+                    // We use broad check: allow any valid user for now, or filter by role_id if strict.
+                    // Let's assume role_id 2 is Technician based on previous discussion.
+                    var tech = connection.QueryFirstOrDefault("SELECT user_id, full_name FROM users WHERE username = @Nik", new { Nik = nik });
 
-                arrivalStopwatch.Stop();
-                // labelArrival.Text = DateTime.Now.ToString("HH:mm");
-                stopwatch.Start();
-                timer.Start();
+                    if (tech != null)
+                    {
+                        isVerified = true;
+                        
+                        // Update Ticket status to REPAIRING (2) and set technician_id
+                        string updateSql = "UPDATE tickets SET status_id = 2, technician_id = @TechId, started_at = NOW() WHERE ticket_id = @TicketId";
+                        connection.Execute(updateSql, new { TechId = tech.user_id, TicketId = _currentTicketId });
 
-                UpdateUIState();
+                        arrivalStopwatch.Stop();
+                        stopwatch.Start();
+                        timer.Start();
+
+                        MessageBox.Show($"Verifikasi Berhasil!\nSelamat bekerja, {tech.full_name}.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        UpdateUIState();
+                    }
+                    else
+                    {
+                        MessageBox.Show("NIK Teknisi tidak ditemukan di database.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
             }
-            else
+            catch (Exception ex)
             {
-                MessageBox.Show("NIK Teknisi tidak ditemukan.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Error Database: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -254,25 +320,49 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
-            stopwatch.Stop();
-            timer.Stop();
+            try 
+            {
+                using (var connection = DatabaseHelper.GetConnection())
+                {
+                    connection.Open();
+                    
+                    // Update Ticket: Status Completed (3), Finish Time, Action Details
+                    string sql = @"
+                        UPDATE tickets 
+                        SET status_id = 3, 
+                            technician_finished_at = NOW(),
+                            action_details = @Action
+                        WHERE ticket_id = @TicketId";
+                    
+                    // Combine Cause + Action + Counter into one detail string
+                    string fullAction = $"Penyebab: {inputProblemCause.InputValue} | Tindakan: {inputProblemAction.InputValue} | Counter: {inputCounter.InputValue}";
 
-            string duration = stopwatch.Elapsed.ToString(@"hh\:mm\:ss");
-            string finishTime = DateTime.Now.ToString("HH:mm");
-            
-            MessageBox.Show(
-                $"Perbaikan Selesai!\n\n" +
-                $"Kedatangan: {labelArrival.Text}\n" +
-                $"Selesai: {finishTime}\n" +
-                $"Durasi: {duration}\n\n" +
-                $"Penyebab: {inputProblemCause.InputValue}\n" +
-                $"Tindakan: {inputProblemAction.InputValue}",
-                "Laporan Tersimpan",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information
-            );
+                    connection.Execute(sql, new { Action = fullAction, TicketId = _currentTicketId });
+                }
 
-            this.Close();
+                stopwatch.Stop();
+                timer.Stop();
+
+                string duration = stopwatch.Elapsed.ToString(@"hh\:mm\:ss");
+                string finishTime = DateTime.Now.ToString("HH:mm");
+                
+                MessageBox.Show(
+                    $"Perbaikan Selesai!\n\n" +
+                    $"Kedatangan: {labelArrival.Text}\n" +
+                    $"Selesai: {finishTime}\n" +
+                    $"Durasi: {duration}\n\n" +
+                    "Terima kasih atas kerja keras Anda!",
+                    "Laporan Tersimpan",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
+
+                this.Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Gagal menyimpan data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void PanelFooter_Paint(object sender, PaintEventArgs e)
