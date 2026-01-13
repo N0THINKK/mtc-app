@@ -1,4 +1,4 @@
-namespace mtc_app.features.machine_history.presentation.screens
+﻿namespace mtc_app.features.machine_history.presentation.screens
 {
     partial class MachineHistoryFormTechnician
     {

@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using Dapper;
 using mtc_app.features.machine_history.presentation.screens;
 using mtc_app.shared.presentation.components;
+using mtc_app.features.rating.presentation.screens;
 
 namespace mtc_app.features.authentication.presentation.screens
 {
