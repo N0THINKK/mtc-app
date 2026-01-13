@@ -3,10 +3,11 @@ using System.IO;
 using System.Windows.Forms;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq; // Need to check if Newtonsoft is available or use manual parsing
+using mtc_app.shared.presentation.components;
 
 namespace mtc_app.features.authentication.presentation.screens
 {
-    public partial class SetupForm : Form
+    public partial class SetupForm : AppBaseForm
     {
         public SetupForm()
         {
@@ -15,8 +16,8 @@ namespace mtc_app.features.authentication.presentation.screens
 
         private void btnSave_Click(object sender, EventArgs e)
         {
-            string machineId = txtMachineID.Text.Trim();
-            string lineId = txtLineID.Text.Trim();
+            string machineId = txtMachineID.InputValue.Trim();
+            string lineId = txtLineID.InputValue.Trim();
 
             if (string.IsNullOrEmpty(machineId) || string.IsNullOrEmpty(lineId))
             {

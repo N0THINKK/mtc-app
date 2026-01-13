@@ -6,18 +6,19 @@ using System.Windows.Forms;
 using Dapper;
 using mtc_app;
 using mtc_app.shared.presentation.components;
+using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
-    public partial class MachineHistoryFormOperator : Form
+    public partial class MachineHistoryFormOperator : AppBaseForm
     {
-        private List<ModernInputControl> _inputs;
+        private List<AppInput> _inputs;
         
         // Named references for specific logic
-        private ModernInputControl inputNIK;
-        private ModernInputControl inputApplicator;
-        private ModernInputControl inputProblem;
-        private ModernInputControl inputProblemType;
+        private AppInput inputNIK;
+        private AppInput inputApplicator;
+        private AppInput inputProblem;
+        private AppInput inputProblemType;
 
         public MachineHistoryFormOperator()
         {
@@ -47,18 +48,18 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void SetupInputs()
         {
-            _inputs = new List<ModernInputControl>();
+            _inputs = new List<AppInput>();
 
             // 1. NIK Operator
-            inputNIK = CreateInput("NIK Operator", ModernInputControl.InputTypeEnum.Dropdown, true);
+            inputNIK = CreateInput("NIK Operator", AppInput.InputTypeEnum.Dropdown, true);
             inputNIK.AllowCustomText = true;
             inputNIK.SetDropdownItems(new[] { "12345", "67890" });
 
             // 2. No. Aplikator
-            inputApplicator = CreateInput("No. Aplikator", ModernInputControl.InputTypeEnum.Text, false);
+            inputApplicator = CreateInput("No. Aplikator", AppInput.InputTypeEnum.Text, false);
 
             // 3. Problem Mesin
-            inputProblem = CreateInput("Problem Mesin", ModernInputControl.InputTypeEnum.Dropdown, true);
+            inputProblem = CreateInput("Problem Mesin", AppInput.InputTypeEnum.Dropdown, true);
             inputProblem.AllowCustomText = true;
             inputProblem.SetDropdownItems(new[] {
                 "Bellmouth tidak standart", "Tergores", "Servo",
@@ -77,7 +78,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             });
 
             // 4. Jenis Problem
-            inputProblemType = CreateInput("Jenis Problem", ModernInputControl.InputTypeEnum.Dropdown, true);
+            inputProblemType = CreateInput("Jenis Problem", AppInput.InputTypeEnum.Dropdown, true);
             inputProblemType.AllowCustomText = true;
             inputProblemType.SetDropdownItems(new[] {
                 "Aplikator", "Servo", "Cutting / Stripping NG",
@@ -88,9 +89,9 @@ namespace mtc_app.features.machine_history.presentation.screens
             mainLayout.Controls.AddRange(_inputs.ToArray());
         }
 
-        private ModernInputControl CreateInput(string label, ModernInputControl.InputTypeEnum type, bool required)
+        private AppInput CreateInput(string label, AppInput.InputTypeEnum type, bool required)
         {
-            var input = new ModernInputControl
+            var input = new AppInput
             {
                 LabelText = label,
                 InputType = type,
@@ -195,7 +196,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private void PanelFooter_Paint(object sender, PaintEventArgs e)
         {
             // Draw top border for footer
-            using (var pen = new Pen(Color.FromArgb(230, 230, 230)))
+            using (var pen = new Pen(AppColors.Separator))
             {
                 e.Graphics.DrawLine(pen, 0, 0, panelFooter.Width, 0);
             }

@@ -4,10 +4,11 @@ using System.Linq;
 using System.Windows.Forms;
 using Dapper;
 using mtc_app.features.machine_history.presentation.screens;
+using mtc_app.shared.presentation.components;
 
 namespace mtc_app.features.authentication.presentation.screens
 {
-    public partial class LoginForm : Form
+    public partial class LoginForm : AppBaseForm
     {
         public LoginForm()
         {
@@ -37,8 +38,8 @@ namespace mtc_app.features.authentication.presentation.screens
 
         private void btnLogin_Click(object sender, EventArgs e)
         {
-            string username = txtUsername.Text.Trim();
-            string password = txtPassword.Text.Trim();
+            string username = txtUsername.InputValue.Trim();
+            string password = txtPassword.InputValue.Trim();
 
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {

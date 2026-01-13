@@ -5,10 +5,11 @@ using System.Linq;
 using System.Windows.Forms;
 using Dapper;
 using mtc_app;
+using mtc_app.shared.presentation.components;
 
 namespace mtc_app.features.stock.presentation.screens
 {
-    public partial class StockDashboardForm : Form
+    public partial class StockDashboardForm : AppBaseForm
     {
         public StockDashboardForm()
         {

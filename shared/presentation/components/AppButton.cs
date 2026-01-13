@@ -13,7 +13,8 @@ namespace mtc_app.shared.presentation.components
             Primary,
             Secondary,
             Outline,
-            Danger
+            Danger,
+            Warning
         }
 
         private ButtonType _type = ButtonType.Primary;
@@ -68,6 +69,11 @@ namespace mtc_app.shared.presentation.components
                     this.ForeColor = Color.White;
                     this.FlatAppearance.BorderSize = 0;
                     break;
+                case ButtonType.Warning:
+                    this.BackColor = AppColors.Warning;
+                    this.ForeColor = Color.White;
+                    this.FlatAppearance.BorderSize = 0;
+                    break;
             }
         }
 
@@ -86,6 +92,9 @@ namespace mtc_app.shared.presentation.components
                     break;
                 case ButtonType.Danger:
                     this.BackColor = ControlPaint.Dark(AppColors.Error);
+                    break;
+                case ButtonType.Warning:
+                    this.BackColor = ControlPaint.Dark(AppColors.Warning);
                     break;
             }
         }

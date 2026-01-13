@@ -6,30 +6,28 @@ using System.Windows.Forms;
 using Dapper;
 using mtc_app;
 using mtc_app.shared.presentation.components;
+using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
-    public partial class MachineHistoryFormTechnician : Form
+    public partial class MachineHistoryFormTechnician : AppBaseForm
     {
-        private List<ModernInputControl> _inputs;
+        private List<AppInput> _inputs;
         private Stopwatch stopwatch;
         private Stopwatch arrivalStopwatch;
         private Timer timer;
         private bool isVerified = false;
 
         // Named references for specific logic
-        private ModernInputControl inputNIK;
-        private Button buttonVerify;
-        private ModernInputControl inputProblemCause;
-        private ModernInputControl inputProblemAction;
-        private ModernInputControl inputCounter;
-        private ModernInputControl inputSparepart;
+        private AppInput inputNIK;
+        private AppButton buttonVerify;
+        private AppInput inputProblemCause;
+        private AppInput inputProblemAction;
+        private AppInput inputCounter;
+        private AppInput inputSparepart;
         
         private long _currentTicketId;
         private string _failureDetails;
-
-        // Reference ke tombol dynamic (tombol yang dibuat lewat koding, bukan designer)
-        // private Button buttonSendSparepartDynamic; 
 
         public MachineHistoryFormTechnician(long ticketId)
         {
@@ -111,7 +109,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                         if (buttonRequestSparepart.Enabled == false && buttonRequestSparepart.Text != "BARANG SIAP DI GUDANG!")
                         {
                             buttonRequestSparepart.Text = "BARANG SIAP DI GUDANG!";
-                            buttonRequestSparepart.BackColor = Color.Green;
+                            buttonRequestSparepart.Type = AppButton.ButtonType.Primary; // Use Primary instead of custom green
+                            buttonRequestSparepart.BackColor = AppColors.Success; // Explicit override if needed or rely on Type
                             buttonRequestSparepart.Enabled = true; // Enable click to confirm taken? Or just info.
                         }
                     }
@@ -142,24 +141,25 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void SetupInputs()
         {
-            _inputs = new List<ModernInputControl>();
+            _inputs = new List<AppInput>();
 
             // 1. NIK Technician
-            inputNIK = CreateInput("NIK Technician", ModernInputControl.InputTypeEnum.Text, true);
+            inputNIK = CreateInput("NIK Technician", AppInput.InputTypeEnum.Text, true);
 
             // 2. Verify Button
-            buttonVerify = new Button
+            buttonVerify = new AppButton
             {
                 Text = "Cek Teknisi",
-                AutoSize = true,
-                BackColor = Color.FromArgb(40, 167, 69), // Green
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
+                Type = AppButton.ButtonType.Primary, // Replaces manual green
                 Margin = new Padding(5, 0, 5, 15) // Add spacing below
             };
-            buttonVerify.FlatAppearance.BorderSize = 0;
+            // Override color if Primary isn't green enough, but Primary is Blue. 
+            // The original was Green (Success). I'll use Success color manually or define a Success Type in AppButton later?
+            // AppButton only has Primary, Secondary, Outline, Danger.
+            // I'll stick to Primary (Blue) for consistency or Danger (Red).
+            // Or I can just manually set BackColor after init if AppButton allows it (it does in OnPaint but Type property might reset it).
+            // Let's use Primary for now as it's the main action.
+            
             buttonVerify.Click += ButtonVerify_Click;
             mainLayout.Controls.Add(buttonVerify);
 
@@ -167,21 +167,23 @@ namespace mtc_app.features.machine_history.presentation.screens
             // Stored in _failureDetails as: "[Type] Problem (Aplikator: ...)"
             if (!string.IsNullOrEmpty(_failureDetails))
             {
-                Label labelDetailsTitle = new Label
+                AppLabel labelDetailsTitle = new AppLabel
                 {
                     Text = "Detail Kerusakan (Operator):",
-                    Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                    ForeColor = Color.DimGray,
-                    AutoSize = true,
+                    Type = AppLabel.LabelType.Body, // Bold logic handling? AppLabel Body is Regular.
+                    // Need Bold. Let's use Subtitle (Bold).
                     Margin = new Padding(5, 5, 5, 2)
                 };
+                // AppLabel Subtitle is typically Gray. Let's manually override Font if needed or just use Title.
+                labelDetailsTitle.Font = new Font(AppFonts.Body.FontFamily, 9, FontStyle.Bold); 
+                labelDetailsTitle.ForeColor = Color.DimGray;
+                
                 mainLayout.Controls.Add(labelDetailsTitle);
 
-                Label labelDetailsValue = new Label
+                AppLabel labelDetailsValue = new AppLabel
                 {
                     Text = _failureDetails,
-                    Font = new Font("Segoe UI", 10F, FontStyle.Regular),
-                    ForeColor = Color.Black,
+                    Type = AppLabel.LabelType.Body,
                     AutoSize = true,
                     MaximumSize = new Size(410, 0), // Match input width
                     Margin = new Padding(5, 0, 5, 15)
@@ -190,7 +192,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
 
             // 3. Problem Cause
-            inputProblemCause = CreateInput("Penyebab Masalah (Problem Cause)", ModernInputControl.InputTypeEnum.Dropdown, true);
+            inputProblemCause = CreateInput("Penyebab Masalah (Problem Cause)", AppInput.InputTypeEnum.Dropdown, true);
             inputProblemCause.AllowCustomText = true;
             inputProblemCause.SetDropdownItems(new[] {
                 "Baut pengunci kendor", "Crimping Dies Aus", "Cutter Blade Kotor",
@@ -200,7 +202,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             });
 
             // 4. Problem Action
-            inputProblemAction = CreateInput("Tindakan Perbaikan (Problem Action)", ModernInputControl.InputTypeEnum.Dropdown, true);
+            inputProblemAction = CreateInput("Tindakan Perbaikan (Problem Action)", AppInput.InputTypeEnum.Dropdown, true);
             inputProblemAction.AllowCustomText = true;
             inputProblemAction.SetDropdownItems(new[] {
                 "Adjust Diameter Konduktor", "Adjust Langkah Terminal",
@@ -212,34 +214,17 @@ namespace mtc_app.features.machine_history.presentation.screens
             });
 
             // 5. Counter Stroke
-            inputCounter = CreateInput("Counter Stroke / Blade / Dies", ModernInputControl.InputTypeEnum.Text, false);
+            inputCounter = CreateInput("Counter Stroke / Blade / Dies", AppInput.InputTypeEnum.Text, false);
 
             // 6. Sparepart Request (Permintaan Sparepart)
-            inputSparepart = CreateInput("Permintaan Sparepart (Sparepart Request)", ModernInputControl.InputTypeEnum.Dropdown, false);
+            inputSparepart = CreateInput("Permintaan Sparepart (Sparepart Request)", AppInput.InputTypeEnum.Dropdown, false);
             inputSparepart.AllowCustomText = true;
             LoadParts();
-
-            // 7. Send Sparepart Button (Dynamic Button di dalam Layout)
-            // buttonSendSparepartDynamic = new Button
-            // {
-            //     Text = "Kirimkan Permintaan Sparepart",
-            //     Size = new Size(250, 40),
-            //     BackColor = Color.FromArgb(255, 152, 0), // Orange
-            //     ForeColor = Color.White,
-            //     FlatStyle = FlatStyle.Flat,
-            //     Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-            //     Cursor = Cursors.Hand,
-            //     Margin = new Padding(5, 5, 5, 20)
-            // };
-            // buttonSendSparepartDynamic.FlatAppearance.BorderSize = 0;
-            // // Kita arahkan ke logic yang sama
-            // buttonSendSparepartDynamic.Click += ButtonSendSparepart_Click; 
-            // mainLayout.Controls.Add(buttonSendSparepartDynamic);
         }
 
-        private ModernInputControl CreateInput(string label, ModernInputControl.InputTypeEnum type, bool required)
+        private AppInput CreateInput(string label, AppInput.InputTypeEnum type, bool required)
         {
-            var input = new ModernInputControl
+            var input = new AppInput
             {
                 LabelText = label,
                 InputType = type,
@@ -263,10 +248,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             // Sparepart inputs initially enabled if verified
             inputSparepart.Enabled = enabled;
             
-            // Tombol dynamic di dalam layout
-            // if(buttonSendSparepartDynamic != null) 
-            //    buttonSendSparepartDynamic.Enabled = enabled;
-
             buttonRepairComplete.Enabled = enabled;
             
             // PERBAIKAN 1: Menggunakan nama variabel yang benar dari Designer (buttonRequestSparepart)
@@ -434,7 +415,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void PanelFooter_Paint(object sender, PaintEventArgs e)
         {
-            using (var pen = new Pen(Color.FromArgb(230, 230, 230)))
+            using (var pen = new Pen(AppColors.Separator))
             {
                 e.Graphics.DrawLine(pen, 0, 0, panelFooter.Width, 0);
             }
