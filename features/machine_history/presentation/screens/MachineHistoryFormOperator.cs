@@ -61,21 +61,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             // 3. Problem Mesin
             inputProblem = CreateInput("Problem Mesin", AppInput.InputTypeEnum.Dropdown, true);
             inputProblem.AllowCustomText = true;
-            inputProblem.SetDropdownItems(new[] {
-                "Bellmouth tidak standart", "Tergores", "Servo",
-                "Fraying Core", "Stripping NG", "Tidak Stripping",
-                "Cacat Crimp sisi A", "Cacat Crimp sisi B",
-                "Cacat Strip sisi A", "Cacat Strip sisi B",
-                "BDCS", "Deformasi Terminal", "Mesin Off",
-                "Terminal Crack", "Rear tidak seimbang",
-                "Insulation Tidak Tercrimping", "Komputer Mati",
-                "Insulation Tercrimping", "CFM mati", "CFM tidak connect",
-                "Conveyor tidak berputar", "Seal error", "Seal Sobek",
-                "Seal Maju Mundur", "Seal tidak Insert",
-                "Jalur Chipping Buntu", "Tekanan Udara NG",
-                "Wire Terbelit", "Damage Insulatiom",
-                "Kanban Tidak Bisa diBarcode", "Flash", "Cross section NG"
-            });
+            LoadProblemsFromDB();
 
             // 4. Jenis Problem
             inputProblemType = CreateInput("Jenis Problem", AppInput.InputTypeEnum.Dropdown, true);
@@ -87,6 +73,20 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             // Add all to layout
             mainLayout.Controls.AddRange(_inputs.ToArray());
+        }
+
+        private void LoadProblemsFromDB()
+        {
+            try
+            {
+                using (var connection = DatabaseHelper.GetConnection())
+                {
+                    connection.Open();
+                    var problems = connection.Query<string>("SELECT failure_name FROM failures ORDER BY failure_name");
+                    inputProblem.SetDropdownItems(problems.AsList().ToArray());
+                }
+            }
+            catch { /* Ignore if DB fails, dropdown will just be empty or user types manual */ }
         }
 
         private AppInput CreateInput(string label, AppInput.InputTypeEnum type, bool required)
