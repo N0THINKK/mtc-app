@@ -28,8 +28,8 @@ namespace mtc_app.shared.presentation.components
             
             ApplyStyle();
             
-            this.MouseEnter += (s, e) => OnMouseEnter();
-            this.MouseLeave += (s, e) => OnMouseLeave();
+            this.MouseEnter += (sender, e) => OnMouseEnter();
+            this.MouseLeave += (sender, e) => OnMouseLeave();
         }
 
         public ButtonType Type
@@ -105,13 +105,13 @@ namespace mtc_app.shared.presentation.components
             
             // Simple rounded region
             int radius = AppDimens.CornerRadius;
-            Rectangle r = new Rectangle(0, 0, this.Width, this.Height);
-            System.Drawing.Drawing2D.GraphicsPath gp = new System.Drawing.Drawing2D.GraphicsPath();
-            gp.AddArc(r.X, r.Y, radius, radius, 180, 90);
-            gp.AddArc(r.X + r.Width - radius, r.Y, radius, radius, 270, 90);
-            gp.AddArc(r.X + r.Width - radius, r.Y + r.Height - radius, radius, radius, 0, 90);
-            gp.AddArc(r.X, r.Y + r.Height - radius, radius, radius, 90, 90);
-            this.Region = new Region(gp);
+            Rectangle rectangle = new Rectangle(0, 0, this.Width, this.Height);
+            System.Drawing.Drawing2D.GraphicsPath graphicspath = new System.Drawing.Drawing2D.GraphicsPath();
+            graphicspath.AddArc(rectangle.X, rectangle.Y, radius, radius, 180, 90);
+            graphicspath.AddArc(rectangle.X + rectangle.Width - radius, rectangle.Y, radius, radius, 270, 90);
+            graphicspath.AddArc(rectangle.X + rectangle.Width - radius, rectangle.Y + rectangle.Height - radius, radius, radius, 0, 90);
+            graphicspath.AddArc(rectangle.X, rectangle.Y + rectangle.Height - radius, radius, radius, 90, 90);
+            this.Region = new Region(graphicspath);
         }
     }
 }

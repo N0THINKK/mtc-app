@@ -11,11 +11,11 @@ namespace mtc_app.shared.presentation.components
     {
         public enum InputTypeEnum { Text, Dropdown }
 
-        private Label lblTitle;
-        private TextBox txtInput;
-        private ComboBox cmbInput;
-        private Label lblError;
-        private Panel pnlContainer;
+        private Label labelTitle;
+        private TextBox textInput;
+        private ComboBox comboInput;
+        private Label labelError;
+        private Panel panelContainer;
 
         private InputTypeEnum _inputType = InputTypeEnum.Text;
         private bool _isRequired = false;
@@ -31,21 +31,21 @@ namespace mtc_app.shared.presentation.components
         [Category("Custom Properties")]
         public bool AllowCustomText
         {
-            get { return cmbInput.DropDownStyle == ComboBoxStyle.DropDown; }
+            get { return comboInput.DropDownStyle == ComboBoxStyle.DropDown; }
             set
             {
                 if (value)
                 {
                     // Mode Pintar: Bisa ketik, bisa pilih, ada saran otomatis
-                    cmbInput.DropDownStyle = ComboBoxStyle.DropDown;
-                    cmbInput.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-                    cmbInput.AutoCompleteSource = AutoCompleteSource.ListItems;
+                    comboInput.DropDownStyle = ComboBoxStyle.DropDown;
+                    comboInput.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+                    comboInput.AutoCompleteSource = AutoCompleteSource.ListItems;
                 }
                 else
                 {
                     // Mode Kaku: Hanya bisa pilih dari list
-                    cmbInput.DropDownStyle = ComboBoxStyle.DropDownList;
-                    cmbInput.AutoCompleteMode = AutoCompleteMode.None;
+                    comboInput.DropDownStyle = ComboBoxStyle.DropDownList;
+                    comboInput.AutoCompleteMode = AutoCompleteMode.None;
                 }
             }
         }
@@ -53,23 +53,23 @@ namespace mtc_app.shared.presentation.components
         [Category("Custom Properties")]
         public bool Multiline
         {
-            get { return txtInput.Multiline; }
+            get { return textInput.Multiline; }
             set
             {
-                txtInput.Multiline = value;
+                textInput.Multiline = value;
                 if (value)
                 {
                     this.Height = 120; // Taller for multiline
-                    pnlContainer.Height = 70;
-                    txtInput.Height = 60;
-                    txtInput.ScrollBars = ScrollBars.Vertical;
+                    panelContainer.Height = 70;
+                    textInput.Height = 60;
+                    textInput.ScrollBars = ScrollBars.Vertical;
                 }
                 else
                 {
                     this.Height = 85; // Default
-                    pnlContainer.Height = 35;
-                    txtInput.Height = 20;
-                    txtInput.ScrollBars = ScrollBars.None;
+                    panelContainer.Height = 35;
+                    textInput.Height = 20;
+                    textInput.ScrollBars = ScrollBars.None;
                 }
             }
         }
@@ -77,8 +77,8 @@ namespace mtc_app.shared.presentation.components
         [Category("Custom Properties")]
         public string LabelText
         {
-            get { return lblTitle.Text; }
-            set { lblTitle.Text = value; }
+            get { return labelTitle.Text; }
+            set { labelTitle.Text = value; }
         }
 
         [Category("Custom Properties")]
@@ -87,19 +87,19 @@ namespace mtc_app.shared.presentation.components
             get
             {
                 if (_inputType == InputTypeEnum.Dropdown)
-                    return cmbInput.Text;
-                return txtInput.Text;
+                    return comboInput.Text;
+                return textInput.Text;
             }
             set
             {
                 if (_inputType == InputTypeEnum.Dropdown)
                 {
-                    if (cmbInput.Items.Contains(value))
-                        cmbInput.SelectedItem = value;
+                    if (comboInput.Items.Contains(value))
+                        comboInput.SelectedItem = value;
                 }
                 else
                 {
-                    txtInput.Text = value;
+                    textInput.Text = value;
                 }
             }
         }
@@ -124,20 +124,20 @@ namespace mtc_app.shared.presentation.components
 
         public void SetDropdownItems(string[] items)
         {
-            cmbInput.Items.Clear();
+            comboInput.Items.Clear();
             if (items != null)
-                cmbInput.Items.AddRange(items);
+                comboInput.Items.AddRange(items);
         }
 
         public bool ValidateInput()
         {
-            lblError.Visible = false;
-            pnlContainer.Invalidate(); // Redraw border
+            labelError.Visible = false;
+            panelContainer.Invalidate(); // Redraw border
 
             if (_isRequired && string.IsNullOrWhiteSpace(InputValue))
             {
-                lblError.Text = $"{LabelText} is required.";
-                lblError.Visible = true;
+                labelError.Text = $"{LabelText} is required.";
+                labelError.Visible = true;
                 return false;
             }
 
@@ -147,69 +147,69 @@ namespace mtc_app.shared.presentation.components
         private void InitializeCustomComponents()
         {
             // Title Label
-            lblTitle = new Label();
-            lblTitle.AutoSize = true;
-            lblTitle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            lblTitle.ForeColor = Color.FromArgb(64, 64, 64);
-            lblTitle.Location = new Point(5, 5);
-            this.Controls.Add(lblTitle);
+            labelTitle = new Label();
+            labelTitle.AutoSize = true;
+            labelTitle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            labelTitle.ForeColor = Color.FromArgb(64, 64, 64);
+            labelTitle.Location = new Point(5, 5);
+            this.Controls.Add(labelTitle);
 
             // Container Panel for Input (for rounded border effect)
-            pnlContainer = new Panel();
-            pnlContainer.Location = new Point(5, 25);
-            pnlContainer.Size = new Size(this.Width - 10, 35);
-            pnlContainer.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            pnlContainer.Paint += PnlContainer_Paint;
-            pnlContainer.BackColor = Color.White;
-            this.Controls.Add(pnlContainer);
+            panelContainer = new Panel();
+            panelContainer.Location = new Point(5, 25);
+            panelContainer.Size = new Size(this.Width - 10, 35);
+            panelContainer.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            panelContainer.Paint += PanelContainer_Paint;
+            panelContainer.BackColor = Color.White;
+            this.Controls.Add(panelContainer);
 
             // TextBox
-            txtInput = new TextBox();
-            txtInput.BorderStyle = BorderStyle.None;
-            txtInput.Font = new Font("Segoe UI", 10F);
-            txtInput.Location = new Point(10, 8);
-            txtInput.Width = pnlContainer.Width - 20;
-            txtInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            pnlContainer.Controls.Add(txtInput);
+            textInput = new TextBox();
+            textInput.BorderStyle = BorderStyle.None;
+            textInput.Font = new Font("Segoe UI", 10F);
+            textInput.Location = new Point(10, 8);
+            textInput.Width = panelContainer.Width - 20;
+            textInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            panelContainer.Controls.Add(textInput);
 
             // ComboBox
-            cmbInput = new ComboBox();
-            cmbInput.FlatStyle = FlatStyle.Flat;
-            cmbInput.Font = new Font("Segoe UI", 10F);
-            cmbInput.Location = new Point(10, 6);
-            cmbInput.Width = pnlContainer.Width - 20;
-            cmbInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            cmbInput.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbInput.Visible = false;
-            pnlContainer.Controls.Add(cmbInput);
+            comboInput = new ComboBox();
+            comboInput.FlatStyle = FlatStyle.Flat;
+            comboInput.Font = new Font("Segoe UI", 10F);
+            comboInput.Location = new Point(10, 6);
+            comboInput.Width = panelContainer.Width - 20;
+            comboInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            comboInput.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboInput.Visible = false;
+            panelContainer.Controls.Add(comboInput);
 
             // Error Label
-            lblError = new Label();
-            lblError.AutoSize = true;
-            lblError.Font = new Font("Segoe UI", 8F);
-            lblError.ForeColor = Color.Red;
-            lblError.Location = new Point(5, 63);
-            lblError.Visible = false;
-            this.Controls.Add(lblError);
+            labelError = new Label();
+            labelError.AutoSize = true;
+            labelError.Font = new Font("Segoe UI", 8F);
+            labelError.ForeColor = Color.Red;
+            labelError.Location = new Point(5, 63);
+            labelError.Visible = false;
+            this.Controls.Add(labelError);
         }
 
         private void UpdateInputVisibility()
         {
-            txtInput.Visible = _inputType == InputTypeEnum.Text;
-            cmbInput.Visible = _inputType == InputTypeEnum.Dropdown;
+            textInput.Visible = _inputType == InputTypeEnum.Text;
+            comboInput.Visible = _inputType == InputTypeEnum.Dropdown;
         }
 
-        private void PnlContainer_Paint(object sender, PaintEventArgs e)
+        private void PanelContainer_Paint(object sender, PaintEventArgs e)
         {
             // Draw rounded border for the input container
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             
-            Rectangle rect = pnlContainer.ClientRectangle;
+            Rectangle rect = panelContainer.ClientRectangle;
             rect.Width -= 1;
             rect.Height -= 1;
 
             using (GraphicsPath path = GetRoundedPath(rect, 8))
-            using (Pen pen = new Pen(lblError.Visible ? Color.Red : Color.FromArgb(200, 200, 200), 1))
+            using (Pen pen = new Pen(labelError.Visible ? Color.Red : Color.FromArgb(200, 200, 200), 1))
             {
                 e.Graphics.DrawPath(pen, path);
             }
@@ -232,9 +232,9 @@ namespace mtc_app.shared.presentation.components
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            if (pnlContainer != null)
+            if (panelContainer != null)
             {
-                pnlContainer.Invalidate(); // Redraw on resize
+                panelContainer.Invalidate(); // Redraw on resize
             }
         }
     }

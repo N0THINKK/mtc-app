@@ -11,11 +11,11 @@ namespace mtc_app.shared.presentation.components
     {
         public enum InputTypeEnum { Text, Dropdown, Password }
 
-        private Label lblTitle;
-        private TextBox txtInput;
-        private ComboBox cmbInput;
-        private Label lblError;
-        private Panel pnlContainer;
+        private Label labelTitle;
+        private TextBox textInput;
+        private ComboBox comboInput;
+        private Label labelError;
+        private Panel panelContainer;
 
         private InputTypeEnum _inputType = InputTypeEnum.Text;
         private bool _isRequired = false;
@@ -32,19 +32,19 @@ namespace mtc_app.shared.presentation.components
         [Category("App Properties")]
         public bool AllowCustomText
         {
-            get { return cmbInput.DropDownStyle == ComboBoxStyle.DropDown; }
+            get { return comboInput.DropDownStyle == ComboBoxStyle.DropDown; }
             set
             {
                 if (value)
                 {
-                    cmbInput.DropDownStyle = ComboBoxStyle.DropDown;
-                    cmbInput.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-                    cmbInput.AutoCompleteSource = AutoCompleteSource.ListItems;
+                    comboInput.DropDownStyle = ComboBoxStyle.DropDown;
+                    comboInput.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+                    comboInput.AutoCompleteSource = AutoCompleteSource.ListItems;
                 }
                 else
                 {
-                    cmbInput.DropDownStyle = ComboBoxStyle.DropDownList;
-                    cmbInput.AutoCompleteMode = AutoCompleteMode.None;
+                    comboInput.DropDownStyle = ComboBoxStyle.DropDownList;
+                    comboInput.AutoCompleteMode = AutoCompleteMode.None;
                 }
             }
         }
@@ -52,23 +52,23 @@ namespace mtc_app.shared.presentation.components
         [Category("App Properties")]
         public bool Multiline
         {
-            get { return txtInput.Multiline; }
+            get { return textInput.Multiline; }
             set
             {
-                txtInput.Multiline = value;
+                textInput.Multiline = value;
                 if (value)
                 {
                     this.Height = 130;
-                    pnlContainer.Height = 80;
-                    txtInput.Height = 70;
-                    txtInput.ScrollBars = ScrollBars.Vertical;
+                    panelContainer.Height = 80;
+                    textInput.Height = 70;
+                    textInput.ScrollBars = ScrollBars.Vertical;
                 }
                 else
                 {
                     this.Height = 85; 
-                    pnlContainer.Height = AppDimens.ControlHeight;
-                    txtInput.Height = 20; // Internal height doesn't matter much for single line
-                    txtInput.ScrollBars = ScrollBars.None;
+                    panelContainer.Height = AppDimens.ControlHeight;
+                    textInput.Height = 20; // Internal height doesn't matter much for single line
+                    textInput.ScrollBars = ScrollBars.None;
                 }
             }
         }
@@ -76,8 +76,8 @@ namespace mtc_app.shared.presentation.components
         [Category("App Properties")]
         public string LabelText
         {
-            get { return lblTitle.Text; }
-            set { lblTitle.Text = value; }
+            get { return labelTitle.Text; }
+            set { labelTitle.Text = value; }
         }
 
         [Category("App Properties")]
@@ -86,22 +86,22 @@ namespace mtc_app.shared.presentation.components
             get
             {
                 if (_inputType == InputTypeEnum.Dropdown)
-                    return cmbInput.Text;
-                return txtInput.Text;
+                    return comboInput.Text;
+                return textInput.Text;
             }
             set
             {
                 if (_inputType == InputTypeEnum.Dropdown)
                 {
                     // Check if item exists, if so select it, else text (if allowed)
-                    if (cmbInput.Items.Contains(value))
-                        cmbInput.SelectedItem = value;
+                    if (comboInput.Items.Contains(value))
+                        comboInput.SelectedItem = value;
                     else if (AllowCustomText)
-                        cmbInput.Text = value;
+                        comboInput.Text = value;
                 }
                 else
                 {
-                    txtInput.Text = value;
+                    textInput.Text = value;
                 }
             }
         }
@@ -126,14 +126,14 @@ namespace mtc_app.shared.presentation.components
 
         public void SetDropdownItems(string[] items)
         {
-            cmbInput.Items.Clear();
+            comboInput.Items.Clear();
             if (items != null)
-                cmbInput.Items.AddRange(items);
+                comboInput.Items.AddRange(items);
         }
 
         public bool ValidateInput()
         {
-            lblError.Visible = false;
+            labelError.Visible = false;
             
             // Check Required
             if (_isRequired && string.IsNullOrWhiteSpace(InputValue))
@@ -142,109 +142,109 @@ namespace mtc_app.shared.presentation.components
                 return false;
             }
 
-            pnlContainer.Invalidate();
+            panelContainer.Invalidate();
             return true;
         }
 
         public void SetError(string message)
         {
-            lblError.Text = message;
-            lblError.Visible = true;
-            pnlContainer.Invalidate();
+            labelError.Text = message;
+            labelError.Visible = true;
+            panelContainer.Invalidate();
         }
 
         private void InitializeCustomComponents()
         {
             // Title Label
-            lblTitle = new Label();
-            lblTitle.AutoSize = true;
-            lblTitle.Font = AppFonts.Subtitle;
-            lblTitle.ForeColor = AppColors.TextPrimary;
-            lblTitle.Location = new Point(AppDimens.SpacingXS, 0);
-            this.Controls.Add(lblTitle);
+            labelTitle = new Label();
+            labelTitle.AutoSize = true;
+            labelTitle.Font = AppFonts.Subtitle;
+            labelTitle.ForeColor = AppColors.TextPrimary;
+            labelTitle.Location = new Point(AppDimens.SpacingXS, 0);
+            this.Controls.Add(labelTitle);
 
             // Container Panel
-            pnlContainer = new Panel();
-            pnlContainer.Location = new Point(AppDimens.SpacingXS, 25);
-            pnlContainer.Size = new Size(this.Width - (AppDimens.SpacingXS * 2), AppDimens.ControlHeight);
-            pnlContainer.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            pnlContainer.Paint += PnlContainer_Paint;
-            pnlContainer.BackColor = AppColors.Surface;
-            this.Controls.Add(pnlContainer);
+            panelContainer = new Panel();
+            panelContainer.Location = new Point(AppDimens.SpacingXS, 25);
+            panelContainer.Size = new Size(this.Width - (AppDimens.SpacingXS * 2), AppDimens.ControlHeight);
+            panelContainer.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            panelContainer.Paint += PanelContainer_Paint;
+            panelContainer.BackColor = AppColors.Surface;
+            this.Controls.Add(panelContainer);
 
             // TextBox
-            txtInput = new TextBox();
-            txtInput.BorderStyle = BorderStyle.None;
-            txtInput.Font = AppFonts.Body;
-            txtInput.Location = new Point(10, 8); // Centered vertically approx
-            txtInput.Width = pnlContainer.Width - 20;
-            txtInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            txtInput.BackColor = AppColors.Surface;
+            textInput = new TextBox();
+            textInput.BorderStyle = BorderStyle.None;
+            textInput.Font = AppFonts.Body;
+            textInput.Location = new Point(10, 8); // Centered vertically approx
+            textInput.Width = panelContainer.Width - 20;
+            textInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            textInput.BackColor = AppColors.Surface;
             
             // Focus Events
-            txtInput.Enter += (s, e) => { _isFocused = true; pnlContainer.Invalidate(); };
-            txtInput.Leave += (s, e) => { _isFocused = false; pnlContainer.Invalidate(); };
+            textInput.Enter += (s, e) => { _isFocused = true; panelContainer.Invalidate(); };
+            textInput.Leave += (s, e) => { _isFocused = false; panelContainer.Invalidate(); };
             
-            pnlContainer.Controls.Add(txtInput);
+            panelContainer.Controls.Add(textInput);
 
             // ComboBox
-            cmbInput = new ComboBox();
-            cmbInput.FlatStyle = FlatStyle.Flat;
-            cmbInput.Font = AppFonts.Body;
-            cmbInput.Location = new Point(10, 6);
-            cmbInput.Width = pnlContainer.Width - 20;
-            cmbInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            cmbInput.BackColor = AppColors.Surface;
-            cmbInput.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboInput = new ComboBox();
+            comboInput.FlatStyle = FlatStyle.Flat;
+            comboInput.Font = AppFonts.Body;
+            comboInput.Location = new Point(10, 6);
+            comboInput.Width = panelContainer.Width - 20;
+            comboInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            comboInput.BackColor = AppColors.Surface;
+            comboInput.DropDownStyle = ComboBoxStyle.DropDownList;
             
             // Focus Events
-            cmbInput.Enter += (s, e) => { _isFocused = true; pnlContainer.Invalidate(); };
-            cmbInput.Leave += (s, e) => { _isFocused = false; pnlContainer.Invalidate(); };
+            comboInput.Enter += (s, e) => { _isFocused = true; panelContainer.Invalidate(); };
+            comboInput.Leave += (s, e) => { _isFocused = false; panelContainer.Invalidate(); };
             
-            cmbInput.Visible = false;
-            pnlContainer.Controls.Add(cmbInput);
+            comboInput.Visible = false;
+            panelContainer.Controls.Add(comboInput);
 
             // Error Label
-            lblError = new Label();
-            lblError.AutoSize = true;
-            lblError.Font = AppFonts.Caption;
-            lblError.ForeColor = AppColors.Error;
-            lblError.Location = new Point(AppDimens.SpacingXS, 65);
-            lblError.Visible = false;
-            this.Controls.Add(lblError);
+            labelError = new Label();
+            labelError.AutoSize = true;
+            labelError.Font = AppFonts.Caption;
+            labelError.ForeColor = AppColors.Error;
+            labelError.Location = new Point(AppDimens.SpacingXS, 65);
+            labelError.Visible = false;
+            this.Controls.Add(labelError);
         }
 
         private void UpdateInputVisibility()
         {
             if (_inputType == InputTypeEnum.Password)
             {
-                txtInput.Visible = true;
-                txtInput.UseSystemPasswordChar = true;
-                cmbInput.Visible = false;
+                textInput.Visible = true;
+                textInput.UseSystemPasswordChar = true;
+                comboInput.Visible = false;
             }
             else if (_inputType == InputTypeEnum.Text)
             {
-                txtInput.Visible = true;
-                txtInput.UseSystemPasswordChar = false;
-                cmbInput.Visible = false;
+                textInput.Visible = true;
+                textInput.UseSystemPasswordChar = false;
+                comboInput.Visible = false;
             }
             else // Dropdown
             {
-                txtInput.Visible = false;
-                cmbInput.Visible = true;
+                textInput.Visible = false;
+                comboInput.Visible = true;
             }
         }
 
-        private void PnlContainer_Paint(object sender, PaintEventArgs e)
+        private void PanelContainer_Paint(object sender, PaintEventArgs e)
         {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             
-            Rectangle rect = pnlContainer.ClientRectangle;
+            Rectangle rect = panelContainer.ClientRectangle;
             rect.Width -= 1;
             rect.Height -= 1;
 
             Color borderColor;
-            if (lblError.Visible)
+            if (labelError.Visible)
                 borderColor = AppColors.Error;
             else if (_isFocused)
                 borderColor = AppColors.BorderFocus;

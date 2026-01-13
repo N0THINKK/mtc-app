@@ -22,26 +22,26 @@ namespace mtc_app.shared.presentation.components
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             
             int radius = AppDimens.CornerRadiusLarge;
-            Rectangle rect = this.ClientRectangle;
-            rect.Width -= 1;
-            rect.Height -= 1;
+            Rectangle rectangle = this.ClientRectangle;
+            rectangle.Width -= 1;
+            rectangle.Height -= 1;
 
-            using (var path = GetRoundedPath(rect, radius))
+            using (var path = GetRoundedPath(rectangle, radius))
             using (var pen = new Pen(AppColors.Border, 1))
             {
                 e.Graphics.DrawPath(pen, path);
             }
         }
 
-        private GraphicsPath GetRoundedPath(Rectangle rect, int radius)
+        private GraphicsPath GetRoundedPath(Rectangle rectangle, int radius)
         {
             GraphicsPath path = new GraphicsPath();
             int d = radius * 2;
 
-            path.AddArc(rect.X, rect.Y, d, d, 180, 90);
-            path.AddArc(rect.X + rect.Width - d, rect.Y, d, d, 270, 90);
-            path.AddArc(rect.X + rect.Width - d, rect.Y + rect.Height - d, d, d, 0, 90);
-            path.AddArc(rect.X, rect.Y + rect.Height - d, d, d, 90, 90);
+            path.AddArc(rectangle.X, rectangle.Y, d, d, 180, 90);
+            path.AddArc(rectangle.X + rectangle.Width - d, rectangle.Y, d, d, 270, 90);
+            path.AddArc(rectangle.X + rectangle.Width - d, rectangle.Y + rectangle.Height - d, d, d, 0, 90);
+            path.AddArc(rectangle.X, rectangle.Y + rectangle.Height - d, d, d, 90, 90);
             path.CloseFigure();
 
             return path;
