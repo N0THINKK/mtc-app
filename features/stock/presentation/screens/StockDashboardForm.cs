@@ -29,13 +29,13 @@ namespace mtc_app.features.stock.presentation.screens
                         SELECT 
                             pr.request_id,
                             pr.requested_at AS 'Waktu Request',
-                            t.ticket_display_code AS 'Kode Tiket',
+                            IFNULL(t.ticket_display_code, 'N/A') AS 'Kode Tiket',
                             pr.part_name_manual AS 'Nama Barang',
                             pr.qty AS 'Jumlah',
-                            ts.status_name AS 'Status'
+                            IFNULL(ts.status_name, 'Unknown') AS 'Status'
                         FROM part_requests pr
-                        JOIN tickets t ON pr.ticket_id = t.ticket_id
-                        JOIN request_statuses ts ON pr.status_id = ts.status_id
+                        LEFT JOIN tickets t ON pr.ticket_id = t.ticket_id
+                        LEFT JOIN request_statuses ts ON pr.status_id = ts.status_id
                         WHERE pr.status_id = 1
                         ORDER BY pr.requested_at ASC";
 
@@ -45,8 +45,8 @@ namespace mtc_app.features.stock.presentation.screens
             }
             catch (Exception ex)
             {
-                // Silent catch for timer to avoid spamming message boxes
-                // Console.WriteLine(ex.Message);
+                // Show error for debugging
+                MessageBox.Show($"Error loading stock data: {ex.Message}");
             }
         }
 
