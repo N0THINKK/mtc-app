@@ -27,5 +27,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+  
+  <ItemGroup>
+    <Folder Include="features\machine_history\presentation\components\" />
+  </ItemGroup>
 
 </Project>

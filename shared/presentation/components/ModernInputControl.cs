@@ -5,7 +5,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
-namespace mtc_app.features.machine_history.presentation.components
+namespace mtc_app.shared.presentation.components
 {
     public class ModernInputControl : UserControl
     {

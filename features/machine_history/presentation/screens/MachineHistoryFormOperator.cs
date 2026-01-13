@@ -5,7 +5,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using Dapper;
 using mtc_app;
-using mtc_app.features.machine_history.presentation.components;
+using mtc_app.shared.presentation.components;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
