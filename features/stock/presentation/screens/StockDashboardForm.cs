@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using Dapper;
 using mtc_app;
@@ -39,7 +40,12 @@ namespace mtc_app.features.stock.presentation.screens
                         WHERE pr.status_id = 1
                         ORDER BY pr.requested_at ASC";
 
-                    var data = connection.Query(sql);
+                    var data = connection.Query(sql).ToList(); // ToList to count
+                    
+                    // DEBUG: Show count
+                    // MessageBox.Show($"Ditemukan {data.Count} request pending.", "Debug Info"); 
+                    
+                    gridRequests.AutoGenerateColumns = true; // Ensure columns are created
                     gridRequests.DataSource = data;
                 }
             }

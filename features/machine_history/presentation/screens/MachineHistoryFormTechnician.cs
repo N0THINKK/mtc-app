@@ -100,6 +100,26 @@ namespace mtc_app.features.machine_history.presentation.screens
             catch { /* Silent fail */ }
         }
 
+        private void LoadParts()
+        {
+            try
+            {
+                using (var connection = DatabaseHelper.GetConnection())
+                {
+                    connection.Open();
+                    // Fetch parts: "P-001 - Sensor Proximity"
+                    var parts = connection.Query<string>(
+                        "SELECT CONCAT(IFNULL(part_code, 'N/A'), ' - ', part_name) FROM parts ORDER BY part_name");
+                    
+                    inputSparepart.SetDropdownItems(parts.AsList().ToArray());
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Gagal memuat list sparepart: {ex.Message}");
+            }
+        }
+
         private void SetupInputs()
         {
             _inputs = new List<ModernInputControl>();
@@ -149,8 +169,9 @@ namespace mtc_app.features.machine_history.presentation.screens
             inputCounter = CreateInput("Counter Stroke / Blade / Dies", ModernInputControl.InputTypeEnum.Text, false);
 
             // 6. Sparepart Request (Permintaan Sparepart)
-            inputSparepart = CreateInput("Permintaan Sparepart (Sparepart Request)", ModernInputControl.InputTypeEnum.Text, false);
-            inputSparepart.Multiline = true; 
+            inputSparepart = CreateInput("Permintaan Sparepart (Sparepart Request)", ModernInputControl.InputTypeEnum.Dropdown, false);
+            inputSparepart.AllowCustomText = true;
+            LoadParts();
 
             // 7. Send Sparepart Button (Dynamic Button di dalam Layout)
             // buttonSendSparepartDynamic = new Button
