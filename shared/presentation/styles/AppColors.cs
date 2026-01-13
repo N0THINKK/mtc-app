@@ -4,30 +4,31 @@ namespace mtc_app.shared.presentation.styles
 {
     public static class AppColors
     {
-        // Brand Colors
-        public static readonly Color Primary = Color.FromArgb(0, 120, 212); // Office Blue / Windows Blue
-        public static readonly Color PrimaryDark = Color.FromArgb(0, 90, 158);
-        public static readonly Color PrimaryLight = Color.FromArgb(202, 233, 255);
+        // Primary Brand Color (Modern Blue)
+        public static readonly Color Primary = Color.FromArgb(25, 118, 210); 
+        public static readonly Color PrimaryDark = Color.FromArgb(13, 71, 161);
+        public static readonly Color PrimaryLight = Color.FromArgb(187, 222, 251);
 
-        public static readonly Color Secondary = Color.FromArgb(43, 87, 154);
+        // Functional Colors
+        public static readonly Color Success = Color.FromArgb(46, 125, 50);  // Green
+        public static readonly Color Warning = Color.FromArgb(255, 160, 0);  // Amber/Orange
+        public static readonly Color Danger = Color.FromArgb(211, 47, 47);   // Red
+        public static readonly Color Info = Color.FromArgb(2, 136, 209);     // Light Blue
         
-        // Semantic Colors
-        public static readonly Color Success = Color.FromArgb(16, 124, 16);
-        public static readonly Color Warning = Color.FromArgb(255, 140, 0);
-        public static readonly Color Error = Color.FromArgb(209, 52, 56);
-        public static readonly Color Info = Color.FromArgb(0, 99, 177);
+        // Aliases for compatibility with existing components
+        public static readonly Color Error = Danger;
 
         // Neutral Colors
-        public static readonly Color TextPrimary = Color.FromArgb(32, 31, 30);   // Almost Black
-        public static readonly Color TextSecondary = Color.FromArgb(96, 94, 92); // Dark Gray
-        public static readonly Color TextDisabled = Color.FromArgb(161, 159, 157);
+        public static readonly Color TextPrimary = Color.FromArgb(33, 33, 33);
+        public static readonly Color TextSecondary = Color.FromArgb(117, 117, 117);
+        public static readonly Color TextDisabled = Color.FromArgb(189, 189, 189); // Added
+        
+        public static readonly Color Background = Color.White;
+        public static readonly Color Surface = Color.FromArgb(245, 245, 245); // Light Gray
+        public static readonly Color Separator = Color.FromArgb(224, 224, 224);
 
-        public static readonly Color Background = Color.FromArgb(250, 250, 250); // Off-white for app background
-        public static readonly Color Surface = Color.White;                // White for cards/panels
-        
-        public static readonly Color Border = Color.FromArgb(225, 223, 221);
-        public static readonly Color BorderFocus = Primary;
-        
-        public static readonly Color Separator = Color.FromArgb(237, 235, 233);
+        // Borders
+        public static readonly Color Border = Color.FromArgb(224, 224, 224);      // Added
+        public static readonly Color BorderFocus = Primary;                      // Added
     }
 }

@@ -89,6 +89,10 @@ namespace mtc_app.features.authentication.presentation.screens
                             case "stock":
                                 nextForm = new mtc_app.features.stock.presentation.screens.StockDashboardForm();
                                 break;
+                            case "admin":
+                            case "administrator":
+                                nextForm = new mtc_app.features.admin.presentation.screens.AdminDashboardForm();
+                                break;
                             default: 
                                 MessageBox.Show($"Dashboard untuk role '{roleName}' belum tersedia.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                 break;
