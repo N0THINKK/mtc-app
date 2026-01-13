@@ -26,6 +26,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private ModernInputControl inputSparepart;
         
         private long _currentTicketId;
+        private string _failureDetails;
 
         // Reference ke tombol dynamic (tombol yang dibuat lewat koding, bukan designer)
         // private Button buttonSendSparepartDynamic; 
@@ -34,9 +35,28 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             _currentTicketId = ticketId;
             InitializeComponent();
+            LoadTicketDetails();
             SetupStopwatch();
             SetupInputs();
             UpdateUIState();
+        }
+
+        private void LoadTicketDetails()
+        {
+            try
+            {
+                using (var connection = DatabaseHelper.GetConnection())
+                {
+                    connection.Open();
+                    string sql = "SELECT failure_details FROM tickets WHERE ticket_id = @Id";
+                    _failureDetails = connection.ExecuteScalar<string>(sql, new { Id = _currentTicketId });
+                }
+            }
+            catch (Exception ex)
+            {
+                // Silent fail or minimal log to avoid disrupting flow if just display info
+                Debug.WriteLine($"Failed to load ticket details: {ex.Message}");
+            }
         }
 
         private void SetupStopwatch()
@@ -122,6 +142,32 @@ namespace mtc_app.features.machine_history.presentation.screens
             buttonVerify.FlatAppearance.BorderSize = 0;
             buttonVerify.Click += ButtonVerify_Click;
             mainLayout.Controls.Add(buttonVerify);
+
+            // Display Failure Details (Problem Mesin, Jenis Problem, No Aplikator)
+            // Stored in _failureDetails as: "[Type] Problem (Aplikator: ...)"
+            if (!string.IsNullOrEmpty(_failureDetails))
+            {
+                Label labelDetailsTitle = new Label
+                {
+                    Text = "Detail Kerusakan (Operator):",
+                    Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                    ForeColor = Color.DimGray,
+                    AutoSize = true,
+                    Margin = new Padding(5, 5, 5, 2)
+                };
+                mainLayout.Controls.Add(labelDetailsTitle);
+
+                Label labelDetailsValue = new Label
+                {
+                    Text = _failureDetails,
+                    Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                    ForeColor = Color.Black,
+                    AutoSize = true,
+                    MaximumSize = new Size(410, 0), // Match input width
+                    Margin = new Padding(5, 0, 5, 15)
+                };
+                mainLayout.Controls.Add(labelDetailsValue);
+            }
 
             // 3. Problem Cause
             inputProblemCause = CreateInput("Penyebab Masalah (Problem Cause)", ModernInputControl.InputTypeEnum.Dropdown, true);
