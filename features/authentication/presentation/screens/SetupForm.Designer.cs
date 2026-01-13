@@ -28,80 +28,57 @@ namespace mtc_app.features.authentication.presentation.screens
         /// </summary>
         private void InitializeComponent()
         {
-            this.label1 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.txtMachineID = new System.Windows.Forms.TextBox();
-            this.txtLineID = new System.Windows.Forms.TextBox();
-            this.btnSave = new System.Windows.Forms.Button();
+            this.label1 = new mtc_app.shared.presentation.components.AppLabel();
+            this.txtMachineID = new mtc_app.shared.presentation.components.AppInput();
+            this.txtLineID = new mtc_app.shared.presentation.components.AppInput();
+            this.btnSave = new mtc_app.shared.presentation.components.AppButton();
             this.SuspendLayout();
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label1.Location = new System.Drawing.Point(12, 9);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(263, 30);
             this.label1.TabIndex = 0;
             this.label1.Text = "Konfigurasi Awal Mesin";
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(17, 60);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(135, 13);
-            this.label2.TabIndex = 1;
-            this.label2.Text = "ID Mesin (Contoh: MC-01):";
-            // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(17, 110);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(124, 13);
-            this.label3.TabIndex = 2;
-            this.label3.Text = "Line Produksi (Contoh: A):";
+            this.label1.Type = mtc_app.shared.presentation.components.AppLabel.LabelType.Header2;
             // 
             // txtMachineID
             // 
-            this.txtMachineID.Location = new System.Drawing.Point(20, 76);
+            this.txtMachineID.LabelText = "ID Mesin (Contoh: MC-01):";
+            this.txtMachineID.Location = new System.Drawing.Point(20, 50);
             this.txtMachineID.Name = "txtMachineID";
-            this.txtMachineID.Size = new System.Drawing.Size(255, 20);
+            this.txtMachineID.Size = new System.Drawing.Size(260, 85);
             this.txtMachineID.TabIndex = 3;
             // 
             // txtLineID
             // 
-            this.txtLineID.Location = new System.Drawing.Point(20, 126);
+            this.txtLineID.LabelText = "Line Produksi (Contoh: A):";
+            this.txtLineID.Location = new System.Drawing.Point(20, 130);
             this.txtLineID.Name = "txtLineID";
-            this.txtLineID.Size = new System.Drawing.Size(255, 20);
+            this.txtLineID.Size = new System.Drawing.Size(260, 85);
             this.txtLineID.TabIndex = 4;
             // 
             // btnSave
             // 
-            this.btnSave.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(123)))), ((int)(((byte)(255)))));
-            this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnSave.ForeColor = System.Drawing.Color.White;
-            this.btnSave.Location = new System.Drawing.Point(20, 170);
+            this.btnSave.Location = new System.Drawing.Point(20, 220);
             this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(255, 40);
+            this.btnSave.Size = new System.Drawing.Size(260, 40);
             this.btnSave.TabIndex = 5;
             this.btnSave.Text = "SIMPAN KONFIGURASI";
-            this.btnSave.UseVisualStyleBackColor = false;
+            this.btnSave.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Primary;
             this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
             // 
             // SetupForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(304, 241);
+            this.BackColor = mtc_app.shared.presentation.styles.AppColors.Background;
+            this.ClientSize = new System.Drawing.Size(304, 280);
             this.Controls.Add(this.btnSave);
             this.Controls.Add(this.txtLineID);
             this.Controls.Add(this.txtMachineID);
-            this.Controls.Add(this.label3);
-            this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
             this.Name = "SetupForm";
@@ -114,11 +91,9 @@ namespace mtc_app.features.authentication.presentation.screens
 
         #endregion
 
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.TextBox txtMachineID;
-        private System.Windows.Forms.TextBox txtLineID;
-        private System.Windows.Forms.Button btnSave;
+        private mtc_app.shared.presentation.components.AppLabel label1;
+        private mtc_app.shared.presentation.components.AppInput txtMachineID;
+        private mtc_app.shared.presentation.components.AppInput txtLineID;
+        private mtc_app.shared.presentation.components.AppButton btnSave;
     }
 }

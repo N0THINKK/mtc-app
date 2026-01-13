@@ -31,10 +31,10 @@ namespace mtc_app.features.stock.presentation.screens
             this.components = new System.ComponentModel.Container();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
             this.pnlHeader = new System.Windows.Forms.Panel();
-            this.labelTitle = new System.Windows.Forms.Label();
+            this.labelTitle = new mtc_app.shared.presentation.components.AppLabel();
             this.gridRequests = new System.Windows.Forms.DataGridView();
-            this.btnReady = new System.Windows.Forms.Button();
-            this.btnRefresh = new System.Windows.Forms.Button();
+            this.btnReady = new mtc_app.shared.presentation.components.AppButton();
+            this.btnRefresh = new mtc_app.shared.presentation.components.AppButton();
             this.timerRefresh = new System.Windows.Forms.Timer(this.components);
             this.pnlHeader.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.gridRequests)).BeginInit();
@@ -42,7 +42,7 @@ namespace mtc_app.features.stock.presentation.screens
             // 
             // pnlHeader
             // 
-            this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(167)))), ((int)(((byte)(69))))); // Green for Stock
+            this.pnlHeader.BackColor = mtc_app.shared.presentation.styles.AppColors.Success; // Green for Stock
             this.pnlHeader.Controls.Add(this.labelTitle);
             this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlHeader.Location = new System.Drawing.Point(0, 0);
@@ -53,13 +53,14 @@ namespace mtc_app.features.stock.presentation.screens
             // labelTitle
             // 
             this.labelTitle.AutoSize = true;
-            this.labelTitle.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
             this.labelTitle.ForeColor = System.Drawing.Color.White;
             this.labelTitle.Location = new System.Drawing.Point(20, 15);
             this.labelTitle.Name = "labelTitle";
             this.labelTitle.Size = new System.Drawing.Size(248, 30);
             this.labelTitle.TabIndex = 0;
             this.labelTitle.Text = "Stock Control - Request";
+            this.labelTitle.Type = mtc_app.shared.presentation.components.AppLabel.LabelType.Header2;
+            this.labelTitle.ForeColor = System.Drawing.Color.White;
             // 
             // gridRequests
             // 
@@ -69,7 +70,7 @@ namespace mtc_app.features.stock.presentation.screens
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.gridRequests.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
-            this.gridRequests.BackgroundColor = System.Drawing.Color.White;
+            this.gridRequests.BackgroundColor = mtc_app.shared.presentation.styles.AppColors.Surface;
             this.gridRequests.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.gridRequests.Location = new System.Drawing.Point(20, 80);
             this.gridRequests.Name = "gridRequests";
@@ -82,28 +83,23 @@ namespace mtc_app.features.stock.presentation.screens
             // btnReady
             // 
             this.btnReady.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnReady.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(123)))), ((int)(((byte)(255)))));
-            this.btnReady.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnReady.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.btnReady.ForeColor = System.Drawing.Color.White;
             this.btnReady.Location = new System.Drawing.Point(620, 400);
             this.btnReady.Name = "btnReady";
             this.btnReady.Size = new System.Drawing.Size(160, 40);
             this.btnReady.TabIndex = 2;
             this.btnReady.Text = "SET READY";
-            this.btnReady.UseVisualStyleBackColor = false;
+            this.btnReady.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Primary;
             this.btnReady.Click += new System.EventHandler(this.btnReady_Click);
             // 
             // btnRefresh
             // 
             this.btnRefresh.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.btnRefresh.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnRefresh.Location = new System.Drawing.Point(20, 400);
             this.btnRefresh.Name = "btnRefresh";
             this.btnRefresh.Size = new System.Drawing.Size(100, 40);
             this.btnRefresh.TabIndex = 3;
             this.btnRefresh.Text = "Refresh";
-            this.btnRefresh.UseVisualStyleBackColor = true;
+            this.btnRefresh.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Secondary;
             this.btnRefresh.Click += new System.EventHandler(this.btnRefresh_Click);
             // 
             // timerRefresh
@@ -134,10 +130,10 @@ namespace mtc_app.features.stock.presentation.screens
         #endregion
 
         private System.Windows.Forms.Panel pnlHeader;
-        private System.Windows.Forms.Label labelTitle;
+        private mtc_app.shared.presentation.components.AppLabel labelTitle;
         private System.Windows.Forms.DataGridView gridRequests;
-        private System.Windows.Forms.Button btnReady;
-        private System.Windows.Forms.Button btnRefresh;
+        private mtc_app.shared.presentation.components.AppButton btnReady;
+        private mtc_app.shared.presentation.components.AppButton btnRefresh;
         private System.Windows.Forms.Timer timerRefresh;
     }
 }

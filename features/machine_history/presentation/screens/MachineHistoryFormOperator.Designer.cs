@@ -30,10 +30,10 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             this.components = new System.ComponentModel.Container();
             this.panelHeader = new System.Windows.Forms.Panel();
-            this.labelTitle = new System.Windows.Forms.Label();
+            this.labelTitle = new mtc_app.shared.presentation.components.AppLabel();
             this.mainLayout = new System.Windows.Forms.FlowLayoutPanel();
             this.panelFooter = new System.Windows.Forms.Panel();
-            this.buttonSave = new System.Windows.Forms.Button();
+            this.buttonSave = new mtc_app.shared.presentation.components.AppButton();
 
             this.panelHeader.SuspendLayout();
             this.panelFooter.SuspendLayout();
@@ -42,7 +42,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             // 
             // panelHeader
             // 
-            this.panelHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(25)))), ((int)(((byte)(118)))), ((int)(((byte)(210))))); // Modern Blue
+            this.panelHeader.BackColor = mtc_app.shared.presentation.styles.AppColors.Primary;
             this.panelHeader.Controls.Add(this.labelTitle);
             this.panelHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.panelHeader.Location = new System.Drawing.Point(0, 0);
@@ -54,19 +54,21 @@ namespace mtc_app.features.machine_history.presentation.screens
             // labelTitle
             // 
             this.labelTitle.AutoSize = true;
-            this.labelTitle.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
             this.labelTitle.ForeColor = System.Drawing.Color.White;
             this.labelTitle.Location = new System.Drawing.Point(15, 25);
             this.labelTitle.Name = "labelTitle";
             this.labelTitle.Size = new System.Drawing.Size(155, 25);
             this.labelTitle.TabIndex = 0;
             this.labelTitle.Text = "Machine History";
+            this.labelTitle.Type = mtc_app.shared.presentation.components.AppLabel.LabelType.Header3;
+            // Overriding color because Header3 is usually dark, but here we want white on blue
+            this.labelTitle.ForeColor = System.Drawing.Color.White;
 
             // 
             // mainLayout
             // 
             this.mainLayout.AutoScroll = true;
-            this.mainLayout.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(245)))), ((int)(((byte)(245)))), ((int)(((byte)(245)))));
+            this.mainLayout.BackColor = mtc_app.shared.presentation.styles.AppColors.Background;
             this.mainLayout.Dock = System.Windows.Forms.DockStyle.Fill;
             this.mainLayout.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.mainLayout.Location = new System.Drawing.Point(0, 80);
@@ -79,32 +81,26 @@ namespace mtc_app.features.machine_history.presentation.screens
             // 
             // panelFooter
             // 
-            this.panelFooter.BackColor = System.Drawing.Color.White;
+            this.panelFooter.BackColor = mtc_app.shared.presentation.styles.AppColors.Surface;
             this.panelFooter.Controls.Add(this.buttonSave);
             this.panelFooter.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.panelFooter.Location = new System.Drawing.Point(0, 500);
             this.panelFooter.Name = "panelFooter";
             this.panelFooter.Size = new System.Drawing.Size(450, 60);
             this.panelFooter.TabIndex = 2;
-            this.panelFooter.Paint += new System.Windows.Forms.PaintEventHandler(this.PanelFooter_Paint); // For top border
+            this.panelFooter.Paint += new System.Windows.Forms.PaintEventHandler(this.PanelFooter_Paint);
 
             // 
             // buttonSave
             // 
             this.buttonSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.buttonSave.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(25)))), ((int)(((byte)(118)))), ((int)(((byte)(210)))));
-            this.buttonSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.buttonSave.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.buttonSave.ForeColor = System.Drawing.Color.White;
             this.buttonSave.Location = new System.Drawing.Point(280, 10);
             this.buttonSave.Name = "buttonSave";
             this.buttonSave.Size = new System.Drawing.Size(150, 40);
             this.buttonSave.TabIndex = 0;
             this.buttonSave.Text = "Panggil Teknisi";
-            this.buttonSave.UseVisualStyleBackColor = false;
-            this.buttonSave.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.buttonSave.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Primary;
             this.buttonSave.Click += new System.EventHandler(this.SaveButton_Click);
-            this.buttonSave.FlatAppearance.BorderSize = 0;
 
             // 
             // MachineHistoryFormOperator
@@ -128,9 +124,9 @@ namespace mtc_app.features.machine_history.presentation.screens
         #endregion
 
         private System.Windows.Forms.Panel panelHeader;
-        private System.Windows.Forms.Label labelTitle;
+        private mtc_app.shared.presentation.components.AppLabel labelTitle;
         private System.Windows.Forms.FlowLayoutPanel mainLayout;
         private System.Windows.Forms.Panel panelFooter;
-        private System.Windows.Forms.Button buttonSave;
+        private mtc_app.shared.presentation.components.AppButton buttonSave;
     }
 }
