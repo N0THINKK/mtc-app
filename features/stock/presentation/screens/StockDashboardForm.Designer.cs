@@ -104,7 +104,7 @@ namespace mtc_app.features.stock.presentation.screens
             // 
             // timerRefresh
             // 
-            this.timerRefresh.Interval = 5000;
+            this.timerRefresh.Interval = 30000;
             this.timerRefresh.Tick += new System.EventHandler(this.timerRefresh_Tick);
             // 
             // StockDashboardForm
