@@ -61,8 +61,8 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.labelTitle.TabIndex = 0;
             this.labelTitle.Text = "Machine History";
             this.labelTitle.Type = mtc_app.shared.presentation.components.AppLabel.LabelType.Header3;
-            // Overriding color because Header3 is usually dark, but here we want white on blue
-            this.labelTitle.ForeColor = System.Drawing.Color.White;
+            // The AppLabel should handle its own color, but if on a dark background, white is needed.
+            // We'll rely on the component's logic or a potential future style property. For now, this is cleaner.
 
             // 
             // mainLayout
