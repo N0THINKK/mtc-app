@@ -53,7 +53,7 @@ namespace mtc_app.features.admin.presentation.screens
         
         private void BtnMenuMaster_Click(object sender, EventArgs e)
         {
-            LoadView(new MasterUserView());
+            LoadView(new MasterDataView());
             lblHeaderTitle.Text = "KELOLA DATA MASTER";
         }
 
