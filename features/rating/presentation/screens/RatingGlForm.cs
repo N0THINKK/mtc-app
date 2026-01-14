@@ -198,11 +198,25 @@ namespace mtc_app.features.rating.presentation.screens
                             t.*,
                             m.machine_name,
                             op.full_name as operator_name,
-                            tech.full_name as technician_name
+                            tech.full_name as technician_name,
+                            CONCAT(
+                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                                IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown')),
+                                IF(t.applicator_code IS NOT NULL, CONCAT(' (App: ', t.applicator_code, ')'), '')
+                            ) AS failure_details,
+                            CONCAT(
+                                'Penyebab: ', IFNULL(fc.cause_name, IFNULL(t.root_cause_remarks, '-')), 
+                                ' | Tindakan: ', IFNULL(a.action_name, IFNULL(t.action_details_manual, '-')),
+                                ' | Counter: ', IFNULL(t.counter_stroke, 0)
+                            ) AS action_details
                         FROM tickets t
                         LEFT JOIN machines m ON t.machine_id = m.machine_id
                         LEFT JOIN users op ON t.operator_id = op.user_id
                         LEFT JOIN users tech ON t.technician_id = tech.user_id
+                        LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
+                        LEFT JOIN failures f ON t.failure_id = f.failure_id
+                        LEFT JOIN failure_causes fc ON t.root_cause_id = fc.cause_id
+                        LEFT JOIN actions a ON t.action_id = a.action_id
                         WHERE t.ticket_id = @Id";
 
                     var data = connection.QueryFirstOrDefault(sql, new { Id = _ticketId });

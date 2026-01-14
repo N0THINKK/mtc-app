@@ -86,10 +86,16 @@ namespace mtc_app.features.technician.presentation.screens
                         SELECT 
                             t.ticket_id,
                             m.machine_name,
-                            t.failure_details,
+                            CONCAT(
+                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                                IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown')),
+                                IF(t.applicator_code IS NOT NULL, CONCAT(' (App: ', t.applicator_code, ')'), '')
+                            ) AS failure_details,
                             t.created_at
                         FROM tickets t
                         JOIN machines m ON t.machine_id = m.machine_id
+                        LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
+                        LEFT JOIN failures f ON t.failure_id = f.failure_id
                         WHERE t.status_id = 1 -- WAITING
                         ORDER BY t.created_at ASC";
                     
