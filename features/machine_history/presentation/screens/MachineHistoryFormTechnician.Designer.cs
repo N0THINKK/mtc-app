@@ -139,8 +139,7 @@
             this.buttonRequestSparepart.Size = new System.Drawing.Size(200, 40);
             this.buttonRequestSparepart.TabIndex = 1;
             this.buttonRequestSparepart.Text = "Kirimkan Permintaan Sparepart";
-            this.buttonRequestSparepart.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Warning; // Warning (Orange)
-            this.buttonRequestSparepart.BackColor = System.Drawing.Color.FromArgb(255, 152, 0); // Override for specific orange if Warning is different
+            this.buttonRequestSparepart.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Warning;
             this.buttonRequestSparepart.Enabled = false;
             this.buttonRequestSparepart.Click += new System.EventHandler(this.buttonRequestSparepart_Click);
             // 

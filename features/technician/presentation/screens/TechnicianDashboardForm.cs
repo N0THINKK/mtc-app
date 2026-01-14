@@ -15,6 +15,9 @@ namespace mtc_app.features.technician.presentation.screens
         private System.ComponentModel.IContainer components = null;
         private FlowLayoutPanel pnlTicketList;
         private Timer timerRefresh;
+        private Panel panelHeader;
+        private AppLabel labelTitle;
+
 
         public TechnicianDashboardForm()
         {
@@ -31,28 +34,44 @@ namespace mtc_app.features.technician.presentation.screens
             this.components = new System.ComponentModel.Container();
             this.pnlTicketList = new FlowLayoutPanel();
             this.timerRefresh = new Timer(this.components);
+            this.panelHeader = new Panel();
+            this.labelTitle = new AppLabel();
             
             this.SuspendLayout();
 
             // Form
             this.Text = "Dashboard Teknisi - Daftar Tunggu Perbaikan";
-            this.BackColor = AppColors.Surface;
             this.ClientSize = new Size(1200, 700);
-            this.StartPosition = FormStartPosition.CenterScreen;
+
+            // Header
+            this.panelHeader.BackColor = AppColors.Primary;
+            this.panelHeader.Controls.Add(this.labelTitle);
+            this.panelHeader.Dock = DockStyle.Top;
+            this.panelHeader.Height = 80;
+            this.panelHeader.Padding = new Padding(20);
+            
+            // Title
+            this.labelTitle.Dock = DockStyle.Fill;
+            this.labelTitle.Text = "Daftar Tunggu Perbaikan";
+            this.labelTitle.Type = AppLabel.LabelType.Header2;
+            this.labelTitle.ForeColor = Color.White;
+            this.labelTitle.TextAlign = ContentAlignment.MiddleLeft;
 
             // FlowLayoutPanel for Ticket Cards
             this.pnlTicketList.Dock = DockStyle.Fill;
             this.pnlTicketList.AutoScroll = true;
             this.pnlTicketList.FlowDirection = FlowDirection.TopDown;
-            this.pnlTicketList.WrapContents = false; // Important for vertical list
+            this.pnlTicketList.WrapContents = false;
             this.pnlTicketList.Padding = new Padding(20);
+            this.pnlTicketList.BackColor = AppColors.Surface;
 
             // Refresh Timer
             this.timerRefresh.Interval = 10000; // 10 seconds
             this.timerRefresh.Tick += (s, e) => LoadPendingTickets();
 
-            // Add controls
+            // Add controls in Z-order
             this.Controls.Add(this.pnlTicketList);
+            this.Controls.Add(this.panelHeader);
 
             this.ResumeLayout(false);
         }
@@ -104,12 +123,23 @@ namespace mtc_app.features.technician.presentation.screens
 
         private string FormatTimeAgo(TimeSpan ts)
         {
+            if (ts.TotalMinutes < 2)
+                return "Baru saja dilaporkan";
             if (ts.TotalMinutes < 60)
                 return $"Dilaporkan {(int)ts.TotalMinutes} menit yang lalu";
             if (ts.TotalHours < 24)
                 return $"Dilaporkan {(int)ts.TotalHours} jam yang lalu";
             
             return $"Dilaporkan {ts.Days} hari yang lalu";
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }

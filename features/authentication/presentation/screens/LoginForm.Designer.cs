@@ -39,7 +39,7 @@ namespace mtc_app.features.authentication.presentation.screens
             // 
             // panel1
             // 
-            this.panel1.BackColor = System.Drawing.Color.White;
+            this.panel1.BackColor = mtc_app.shared.presentation.styles.AppColors.Surface;
             this.panel1.Controls.Add(this.btnExit);
             this.panel1.Controls.Add(this.btnLogin);
             this.panel1.Controls.Add(this.txtPassword);
