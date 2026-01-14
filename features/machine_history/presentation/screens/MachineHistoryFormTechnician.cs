@@ -338,7 +338,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     // Check if user exists and is Technician (assuming role 'Technician' or similar)
                     // We use broad check: allow any valid user for now, or filter by role_id if strict.
                     // Let's assume role_id 2 is Technician based on previous discussion.
-                    var tech = connection.QueryFirstOrDefault("SELECT user_id, full_name FROM users WHERE username = @Nik", new { Nik = nik });
+                    var tech = connection.QueryFirstOrDefault("SELECT user_id, full_name FROM users WHERE nik = @Nik", new { Nik = nik });
 
                     if (tech != null)
                     {
