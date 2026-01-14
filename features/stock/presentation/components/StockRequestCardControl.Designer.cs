@@ -9,8 +9,7 @@ namespace mtc_app.features.stock.presentation.components
     {
         private System.ComponentModel.IContainer components = null;
         private AppLabel lblPartName;
-        private AppLabel lblQty;
-        private AppLabel lblTicketCode;
+        private AppLabel lblTechnicianName;
         private AppLabel lblRequestedAt;
         private AppButton btnReady;
 
@@ -27,8 +26,7 @@ namespace mtc_app.features.stock.presentation.components
         {
             this.components = new System.ComponentModel.Container();
             this.lblPartName = new AppLabel();
-            this.lblQty = new AppLabel();
-            this.lblTicketCode = new AppLabel();
+            this.lblTechnicianName = new AppLabel();
             this.lblRequestedAt = new AppLabel();
             this.btnReady = new AppButton();
             this.SuspendLayout();
@@ -37,7 +35,7 @@ namespace mtc_app.features.stock.presentation.components
             // Card Control
             // 
             this.BackColor = AppColors.Surface;
-            this.Size = new Size(220, 280);
+            this.Size = new Size(220, 220); // Made shorter
             this.Padding = new Padding(12);
             this.Margin = new Padding(10);
             this.BorderStyle = BorderStyle.FixedSingle;
@@ -53,31 +51,21 @@ namespace mtc_app.features.stock.presentation.components
             this.lblPartName.Text = "Nama Barang Panjang Sekali Contohnya";
             
             // 
-            // lblQty
+            // lblTechnicianName
             // 
-            this.lblQty.Font = new Font("Segoe UI", 12F, FontStyle.Regular);
-            this.lblQty.ForeColor = AppColors.TextPrimary;
-            this.lblQty.Location = new Point(12, 110);
-            this.lblQty.Name = "lblQty";
-            this.lblQty.Size = new Size(196, 25);
-            this.lblQty.Text = "Qty: 99";
-
-            // 
-            // lblTicketCode
-            // 
-            this.lblTicketCode.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
-            this.lblTicketCode.ForeColor = AppColors.TextSecondary;
-            this.lblTicketCode.Location = new Point(12, 145);
-            this.lblTicketCode.Name = "lblTicketCode";
-            this.lblTicketCode.Size = new Size(196, 20);
-            this.lblTicketCode.Text = "Tiket: MTC-00123";
+            this.lblTechnicianName.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
+            this.lblTechnicianName.ForeColor = AppColors.TextSecondary;
+            this.lblTechnicianName.Location = new Point(12, 110);
+            this.lblTechnicianName.Name = "lblTechnicianName";
+            this.lblTechnicianName.Size = new Size(196, 20);
+            this.lblTechnicianName.Text = "By: Vemas Satria";
 
             // 
             // lblRequestedAt
             // 
             this.lblRequestedAt.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
             this.lblRequestedAt.ForeColor = AppColors.TextSecondary;
-            this.lblRequestedAt.Location = new Point(12, 175);
+            this.lblRequestedAt.Location = new Point(12, 140);
             this.lblRequestedAt.Name = "lblRequestedAt";
             this.lblRequestedAt.Size = new Size(196, 20);
             this.lblRequestedAt.Text = "14 Jan, 10:30";
@@ -86,7 +74,7 @@ namespace mtc_app.features.stock.presentation.components
             // btnReady
             // 
             this.btnReady.Dock = DockStyle.Bottom;
-            this.btnReady.Location = new Point(12, 228);
+            this.btnReady.Location = new Point(12, 168);
             this.btnReady.Name = "btnReady";
             this.btnReady.Size = new Size(196, 40);
             this.btnReady.Text = "SET READY";
@@ -96,8 +84,7 @@ namespace mtc_app.features.stock.presentation.components
             // Add Controls to parent
             // 
             this.Controls.Add(this.lblPartName);
-            this.Controls.Add(this.lblQty);
-            this.Controls.Add(this.lblTicketCode);
+            this.Controls.Add(this.lblTechnicianName);
             this.Controls.Add(this.lblRequestedAt);
             this.Controls.Add(this.btnReady);
             this.ResumeLayout(false);

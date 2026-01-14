@@ -15,7 +15,7 @@ namespace mtc_app.features.stock.presentation.components
         // Events
         public event EventHandler<int> OnReadyClicked;
 
-        public StockRequestCardControl(int requestId, string partName, int qty, string ticketCode, DateTime requestedAt)
+        public StockRequestCardControl(int requestId, string partName, string technicianName, DateTime requestedAt)
         {
             InitializeComponent();
 
@@ -25,8 +25,7 @@ namespace mtc_app.features.stock.presentation.components
 
             // Set display values
             lblPartName.Text = partName;
-            lblQty.Text = $"Qty: {qty}";
-            lblTicketCode.Text = $"Tiket: {ticketCode}";
+            lblTechnicianName.Text = $"By: {technicianName}";
             lblRequestedAt.Text = requestedAt.ToString("dd MMM, HH:mm");
 
             btnReady.Click += (sender, e) => OnReadyClicked?.Invoke(this, this.RequestId);

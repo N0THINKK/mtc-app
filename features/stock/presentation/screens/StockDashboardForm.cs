@@ -34,11 +34,11 @@ namespace mtc_app.features.stock.presentation.screens
                         SELECT 
                             pr.request_id,
                             pr.requested_at,
-                            t.ticket_display_code,
                             pr.part_name_manual,
-                            pr.qty
+                            u.full_name AS technician_name
                         FROM part_requests pr
                         LEFT JOIN tickets t ON pr.ticket_id = t.ticket_id
+                        LEFT JOIN users u ON t.technician_id = u.user_id
                         WHERE pr.status_id = 1
                         ORDER BY pr.requested_at ASC";
 
@@ -51,8 +51,7 @@ namespace mtc_app.features.stock.presentation.screens
                             var card = new StockRequestCardControl(
                                 (int)req.request_id,
                                 (string)req.part_name_manual,
-                                (int)req.qty,
-                                (string)req.ticket_display_code,
+                                (string)req.technician_name ?? "N/A",
                                 (DateTime)req.requested_at
                             );
                             card.OnReadyClicked += Card_OnReadyClicked;
