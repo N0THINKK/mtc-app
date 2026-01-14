@@ -22,6 +22,7 @@ namespace mtc_app.features.admin.presentation.screens
         // Menu Buttons
         private Button btnMenuDashboard;
         private Button btnMenuMaster;
+        private Button btnMenuLaporan;
         private Button btnMenuBackup;
         private Button btnLogout;
 
@@ -55,6 +56,12 @@ namespace mtc_app.features.admin.presentation.screens
         {
             LoadView(new MasterDataView());
             lblHeaderTitle.Text = "KELOLA DATA MASTER";
+        }
+
+        private void BtnMenuLaporan_Click(object sender, EventArgs e)
+        {
+            LoadView(new ReportView());
+            lblHeaderTitle.Text = "BUAT LAPORAN";
         }
 
         private void BtnMenuBackup_Click(object sender, EventArgs e)

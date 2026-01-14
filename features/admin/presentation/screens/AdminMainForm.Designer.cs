@@ -18,6 +18,7 @@ namespace mtc_app.features.admin.presentation.screens
             this.btnMenuDashboard = new Button();
             this.btnMenuMaster = new Button();
             this.btnMenuBackup = new Button();
+            this.btnMenuLaporan = new Button();
             this.btnLogout = new Button();
             
             this.pnlSidebar.SuspendLayout();
@@ -40,6 +41,7 @@ namespace mtc_app.features.admin.presentation.screens
             this.pnlSidebar.Controls.Add(this.logoBox);
             this.pnlSidebar.Controls.Add(this.btnMenuDashboard);
             this.pnlSidebar.Controls.Add(this.btnMenuMaster);
+            this.pnlSidebar.Controls.Add(this.btnMenuLaporan);
             this.pnlSidebar.Controls.Add(this.btnMenuBackup);
             this.pnlSidebar.Controls.Add(this.btnLogout);
 
@@ -54,11 +56,13 @@ namespace mtc_app.features.admin.presentation.screens
             // --- Menu Buttons ---
             ConfigureMenuButton(btnMenuDashboard, "Dashboard", 100);
             ConfigureMenuButton(btnMenuMaster, "Data Master", 150);
-            ConfigureMenuButton(btnMenuBackup, "Backup", 200);
+            ConfigureMenuButton(btnMenuLaporan, "Laporan", 200);
+            ConfigureMenuButton(btnMenuBackup, "Backup", 250);
             ConfigureMenuButton(btnLogout, "Logout", 0, true); 
             
             this.btnMenuDashboard.Click += BtnMenuDashboard_Click;
             this.btnMenuMaster.Click += BtnMenuMaster_Click;
+            this.btnMenuLaporan.Click += BtnMenuLaporan_Click;
             this.btnMenuBackup.Click += BtnMenuBackup_Click;
             this.btnLogout.Click += BtnLogout_Click;
 
