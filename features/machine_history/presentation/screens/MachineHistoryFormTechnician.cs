@@ -46,7 +46,22 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Open();
-                    string sql = "SELECT failure_details FROM tickets WHERE ticket_id = @Id";
+                    // Construct readable details from normalized tables
+                    string sql = @"
+                        SELECT CONCAT(
+                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                            CASE 
+                                WHEN f.failure_name IS NOT NULL THEN f.failure_name
+                                WHEN t.failure_remarks IS NOT NULL THEN t.failure_remarks
+                                ELSE 'Belum Diisi'
+                            END,
+                            IF(t.applicator_code IS NOT NULL AND t.applicator_code != '', CONCAT(' (App: ', t.applicator_code, ')'), '')
+                        )
+                        FROM tickets t
+                        LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
+                        LEFT JOIN failures f ON t.failure_id = f.failure_id
+                        WHERE t.ticket_id = @Id";
+
                     _failureDetails = connection.ExecuteScalar<string>(sql, new { Id = _currentTicketId });
                 }
             }
@@ -384,19 +399,40 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Open();
+
+                    // Resolve IDs
+                    int? causeId = connection.QueryFirstOrDefault<int?>("SELECT cause_id FROM failure_causes WHERE cause_name = @Name", new { Name = inputProblemCause.InputValue });
+                    int? actionId = connection.QueryFirstOrDefault<int?>("SELECT action_id FROM actions WHERE action_name = @Name", new { Name = inputProblemAction.InputValue });
+
+                    string causeRemarks = null;
+                    if (!causeId.HasValue) causeRemarks = inputProblemCause.InputValue;
+
+                    string actionManual = null;
+                    if (!actionId.HasValue) actionManual = inputProblemAction.InputValue;
+
+                    int counter = 0;
+                    int.TryParse(inputCounter.InputValue, out counter);
                     
-                    // Update Ticket: Status Completed (3), Finish Time, Action Details
+                    // Update Ticket: Status Completed (3), Finish Time, IDs
                     string sql = @"
                         UPDATE tickets 
                         SET status_id = 3, 
                             technician_finished_at = NOW(),
-                            action_details = @Action
+                            root_cause_id = @CauseId,
+                            root_cause_remarks = @CauseRem,
+                            action_id = @ActionId,
+                            action_details_manual = @ActionMan,
+                            counter_stroke = @Counter
                         WHERE ticket_id = @TicketId";
                     
-                    // Combine Cause + Action + Counter into one detail string
-                    string fullAction = $"Penyebab: {inputProblemCause.InputValue} | Tindakan: {inputProblemAction.InputValue} | Counter: {inputCounter.InputValue}";
-
-                    connection.Execute(sql, new { Action = fullAction, TicketId = _currentTicketId });
+                    connection.Execute(sql, new { 
+                        CauseId = causeId, 
+                        CauseRem = causeRemarks,
+                        ActionId = actionId, 
+                        ActionMan = actionManual,
+                        Counter = counter,
+                        TicketId = _currentTicketId 
+                    });
                 }
 
                 stopwatch.Stop();

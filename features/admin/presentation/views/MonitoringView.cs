@@ -97,7 +97,15 @@ namespace mtc_app.features.admin.presentation.views
                             m.machine_name AS 'Mesin',
                             u_op.full_name AS 'Operator',
                             u_tech.full_name AS 'Teknisi',
-                            t.failure_details AS 'Keluhan',
+                            CONCAT(
+                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                                CASE 
+                                    WHEN f.failure_name IS NOT NULL THEN f.failure_name
+                                    WHEN t.failure_remarks IS NOT NULL THEN t.failure_remarks
+                                    ELSE 'Belum Diisi'
+                                END,
+                                IF(t.applicator_code IS NOT NULL, CONCAT(' (App: ', t.applicator_code, ')'), '')
+                            ) AS 'Keluhan',
                             t.created_at AS 'Waktu Lapor',
                             t.started_at AS 'Mulai Perbaikan',
                             t.technician_finished_at AS 'Selesai',
@@ -107,6 +115,8 @@ namespace mtc_app.features.admin.presentation.views
                         LEFT JOIN users u_op ON t.operator_id = u_op.user_id
                         LEFT JOIN users u_tech ON t.technician_id = u_tech.user_id
                         LEFT JOIN ticket_statuses ts ON t.status_id = ts.status_id
+                        LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
+                        LEFT JOIN failures f ON t.failure_id = f.failure_id
                         ORDER BY t.created_at DESC
                         LIMIT 100;";
 

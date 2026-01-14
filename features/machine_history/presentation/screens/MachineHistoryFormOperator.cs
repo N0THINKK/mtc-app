@@ -61,32 +61,43 @@ namespace mtc_app.features.machine_history.presentation.screens
             // 3. Problem Mesin
             inputProblem = CreateInput("Problem Mesin", AppInput.InputTypeEnum.Dropdown, true);
             inputProblem.AllowCustomText = true;
-            LoadProblemsFromDB();
+            LoadFailuresFromDB();
 
             // 4. Jenis Problem
             inputProblemType = CreateInput("Jenis Problem", AppInput.InputTypeEnum.Dropdown, true);
             inputProblemType.AllowCustomText = true;
-            inputProblemType.SetDropdownItems(new[] {
-                "Aplikator", "Servo", "Cutting / Stripping NG",
-                "Rubber Seal", "CPU / Monitor problem", "CFM error", "lainnya"
-            });
+            LoadProblemTypesFromDB();
 
             // Add all to layout
             mainLayout.Controls.AddRange(_inputs.ToArray());
         }
 
-        private void LoadProblemsFromDB()
+        private void LoadFailuresFromDB()
         {
             try
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Open();
-                    var problems = connection.Query<string>("SELECT failure_name FROM failures ORDER BY failure_name");
-                    inputProblem.SetDropdownItems(problems.AsList().ToArray());
+                    var failures = connection.Query<string>("SELECT failure_name FROM failures ORDER BY failure_name");
+                    inputProblem.SetDropdownItems(failures.AsList().ToArray());
                 }
             }
-            catch { /* Ignore if DB fails, dropdown will just be empty or user types manual */ }
+            catch { /* Ignore */ }
+        }
+
+        private void LoadProblemTypesFromDB()
+        {
+            try
+            {
+                using (var connection = DatabaseHelper.GetConnection())
+                {
+                    connection.Open();
+                    var types = connection.Query<string>("SELECT type_name FROM problem_types ORDER BY type_name");
+                    inputProblemType.SetDropdownItems(types.AsList().ToArray());
+                }
+            }
+            catch { /* Ignore */ }
         }
 
         private AppInput CreateInput(string label, AppInput.InputTypeEnum type, bool required)
@@ -139,23 +150,34 @@ namespace mtc_app.features.machine_history.presentation.screens
 
                     // 2. Resolve IDs
                     // Operator: Try to find user by NIK (assuming NIK is username), else default to 1 (System/Admin)
-                    // Machine: Default to 1 for now (should come from config)
                     int operatorId = 1; 
                     var userCheck = connection.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE username = @Nik", new { Nik = inputNIK.InputValue });
                     if (userCheck.HasValue) operatorId = userCheck.Value;
 
                     int machineId = 1; 
 
+                    // Resolve Problem Type ID & Failure ID
+                    int? problemTypeId = connection.QueryFirstOrDefault<int?>("SELECT type_id FROM problem_types WHERE type_name = @Name", new { Name = inputProblemType.InputValue });
+                    int? failureId = connection.QueryFirstOrDefault<int?>("SELECT failure_id FROM failures WHERE failure_name = @Name", new { Name = inputProblem.InputValue });
+
+                    string failureRemarks = null;
+                    // If failure not found in DB, treat as manual remark
+                    if (!failureId.HasValue)
+                    {
+                        failureRemarks = inputProblem.InputValue;
+                    }
+
                     // 3. Insert to Database and Get ID
                     string insertSql = @"
                         INSERT INTO tickets 
-                        (ticket_uuid, ticket_display_code, machine_id, operator_id, failure_details, status_id, created_at)
+                        (ticket_uuid, ticket_display_code, machine_id, operator_id, 
+                         problem_type_id, failure_id, failure_remarks, applicator_code,
+                         status_id, created_at)
                         VALUES 
-                        (@Uuid, @Code, @MachineId, @OpId, @Details, 1, NOW());
+                        (@Uuid, @Code, @MachineId, @OpId, 
+                         @TypeId, @FailId, @Remarks, @AppCode,
+                         1, NOW());
                         SELECT LAST_INSERT_ID();";
-
-                    // Combine Problem Type and Problem Description
-                    string fullDetails = $"[{inputProblemType.InputValue}] {inputProblem.InputValue} (Aplikator: {inputApplicator.InputValue})";
 
                     // Use ExecuteScalar to get the new ID
                     long newTicketId = connection.ExecuteScalar<long>(insertSql, new {
@@ -163,7 +185,10 @@ namespace mtc_app.features.machine_history.presentation.screens
                         Code = displayCode,
                         MachineId = machineId,
                         OpId = operatorId,
-                        Details = fullDetails
+                        TypeId = problemTypeId,
+                        FailId = failureId,
+                        Remarks = failureRemarks,
+                        AppCode = inputApplicator.InputValue
                     });
 
                     // Success Feedback
