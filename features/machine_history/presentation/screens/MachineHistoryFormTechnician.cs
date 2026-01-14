@@ -37,6 +37,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             SetupStopwatch();
             SetupInputs();
             UpdateUIState();
+            UpdatePartRequestStatus();
         }
 
         private void LoadTicketDetails()
@@ -98,40 +99,61 @@ namespace mtc_app.features.machine_history.presentation.screens
                 labelFinished.Text = $"{stopwatch.Elapsed:hh\\:mm\\:ss}";
             }
 
-            // Check Sparepart Status every tick (Consider throttling this to every 5s for performance)
-            // For demo, every 1s is fine.
-            if (_currentTicketId > 0 && DateTime.Now.Second % 5 == 0) // Cek tiap detik ke-0, 5, 10...
+            // Re-introduce periodic check for real-time updates from stock control.
+            // Throttled to check every 3 seconds to avoid excessive DB calls.
+            if (isVerified && _currentTicketId > 0 && (int)stopwatch.Elapsed.TotalSeconds % 3 == 0)
             {
-                CheckSparepartStatus();
+                UpdatePartRequestStatus();
             }
         }
 
-        private void CheckSparepartStatus()
+        private void UpdatePartRequestStatus()
         {
             try
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Open();
-                    // Cek apakah ada request yang sudah READY (2)
-                    int readyCount = connection.ExecuteScalar<int>(
-                        "SELECT COUNT(*) FROM part_requests WHERE ticket_id = @Id AND status_id = 2", 
+                    var request = connection.QueryFirstOrDefault(
+                        "SELECT status_id FROM part_requests WHERE ticket_id = @Id ORDER BY requested_at DESC", 
                         new { Id = _currentTicketId });
 
-                    if (readyCount > 0)
+                    if (request != null)
                     {
-                        // Ubah tampilan tombol request jadi Notifikasi
-                        if (buttonRequestSparepart.Enabled == false && buttonRequestSparepart.Text != "BARANG SIAP DI GUDANG!")
+                        inputSparepart.Enabled = false;
+                        buttonRequestSparepart.Enabled = false;
+
+                        switch (request.status_id)
                         {
-                            buttonRequestSparepart.Text = "BARANG SIAP DI GUDANG!";
-                            buttonRequestSparepart.Type = AppButton.ButtonType.Primary; // Use Primary instead of custom green
-                            buttonRequestSparepart.BackColor = AppColors.Success; // Explicit override if needed or rely on Type
-                            buttonRequestSparepart.Enabled = true; // Enable click to confirm taken? Or just info.
+                            case 1: // PENDING
+                                buttonRequestSparepart.Text = "PERMINTAAN DIPROSES";
+                                buttonRequestSparepart.BackColor = Color.Gray;
+                                break;
+                            case 2: // READY
+                                buttonRequestSparepart.Text = "BARANG SIAP DI GUDANG";
+                                buttonRequestSparepart.BackColor = AppColors.Success;
+                                break;
+                            default: // Other statuses
+                                buttonRequestSparepart.Text = "REQUEST DITUTUP";
+                                buttonRequestSparepart.BackColor = Color.DarkGray;
+                                break;
                         }
+                    }
+                    else
+                    {
+                        // Enable if verified, disable otherwise
+                        inputSparepart.Enabled = isVerified;
+                        buttonRequestSparepart.Enabled = isVerified;
+                        buttonRequestSparepart.Text = "Request Sparepart (b)";
+                        // Reset color if you have a default
                     }
                 }
             }
-            catch { /* Silent fail */ }
+            catch (Exception ex) 
+            {
+                Debug.WriteLine($"Failed to update part request status: {ex.Message}");
+                // Don't crash the form, just log it.
+            }
         }
 
         private void LoadParts()
@@ -319,6 +341,9 @@ namespace mtc_app.features.machine_history.presentation.screens
                     buttonRequestSparepart.BackColor = Color.Gray;
 
                     MessageBox.Show("Permintaan sparepart berhasil dikirim ke Stock Control.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    
+                    // Immediately update the UI to reflect the new status
+                    UpdatePartRequestStatus();
                 }
                 catch (Exception ex)
                 {
