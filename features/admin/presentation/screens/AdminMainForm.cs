@@ -59,7 +59,8 @@ namespace mtc_app.features.admin.presentation.screens
 
         private void BtnMenuBackup_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Fitur Backup Database belum diimplementasikan.", "Info");
+            LoadView(new BackupView());
+            lblHeaderTitle.Text = "BACKUP DATABASE";
         }
 
         private void BtnLogout_Click(object sender, EventArgs e)
