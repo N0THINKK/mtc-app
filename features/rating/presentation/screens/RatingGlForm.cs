@@ -278,7 +278,7 @@ namespace mtc_app.features.rating.presentation.screens
                         SET gl_rating_score = @Score,
                             gl_rating_note = @Note,
                             gl_validated_at = NOW(),
-                            status_id = 4 
+                            status_id = 3
                         WHERE ticket_id = @Id";
                     // Assuming status_id 4 is 'Closed' or 'Validated'
 
