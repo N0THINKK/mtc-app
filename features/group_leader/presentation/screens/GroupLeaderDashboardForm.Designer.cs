@@ -112,10 +112,6 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.picStatusIndicator.Size = new System.Drawing.Size(12, 12);
             this.picStatusIndicator.Location = new System.Drawing.Point(30, 19);
             this.picStatusIndicator.BackColor = System.Drawing.Color.Transparent;
-            this.picStatusIndicator.Paint += (s, e) => {
-                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                e.Graphics.FillEllipse(new SolidBrush(Color.FromArgb(34, 197, 94)), 0, 0, 12, 12);
-            };
 
             // 
             // lblSystemStatus
@@ -146,10 +142,6 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.panelFilters.Dock = System.Windows.Forms.DockStyle.Top;
             this.panelFilters.Height = 80;
             this.panelFilters.Padding = new System.Windows.Forms.Padding(30, 20, 30, 20);
-            this.panelFilters.Paint += (s, e) => {
-                e.Graphics.DrawLine(new Pen(Color.FromArgb(230, 230, 230)),
-                    0, panelFilters.Height - 1, panelFilters.Width, panelFilters.Height - 1);
-            };
 
             // 
             // lblSort
@@ -210,7 +202,6 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.picEmptyIcon.Size = new System.Drawing.Size(80, 80);
             this.picEmptyIcon.Location = new System.Drawing.Point(160, 40);
             this.picEmptyIcon.BackColor = System.Drawing.Color.Transparent;
-            this.picEmptyIcon.Paint += (s, e) => DrawEmptyIcon(e.Graphics);
 
             // 
             // lblEmptyTitle

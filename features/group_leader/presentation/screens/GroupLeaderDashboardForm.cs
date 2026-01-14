@@ -16,13 +16,15 @@ namespace mtc_app.features.group_leader.presentation.screens
     public partial class GroupLeaderDashboardForm : AppBaseForm
     {
         private List<TicketDto> _allTickets = new List<TicketDto>();
+        private bool _isSystemActive = true;
         private Timer timerRefresh;
 
         public GroupLeaderDashboardForm()
         {
-            InitializeComponent(); // Ini akan memanggil method di file Designer.cs
+            InitializeComponent();
+            SetupEventHandlers();
 
-            // Setup Timer di sini karena Timer adalah Component (non-visual)
+            // Setup Timer
             this.timerRefresh = new Timer(this.components);
             this.timerRefresh.Interval = 15000; // 15 seconds
             this.timerRefresh.Tick += (s, e) => LoadData();
@@ -33,6 +35,8 @@ namespace mtc_app.features.group_leader.presentation.screens
                 timerRefresh.Start();
             }
         }
+
+
 
         private void LoadData()
         {
@@ -155,29 +159,45 @@ namespace mtc_app.features.group_leader.presentation.screens
 
         private void UpdateStatusIndicator(bool isActive)
         {
+            _isSystemActive = isActive;
             if (isActive)
             {
                 panelStatusBar.BackColor = Color.FromArgb(240, 253, 244);
                 lblSystemStatus.Text = "Sistem Aktif";
                 lblSystemStatus.ForeColor = Color.FromArgb(21, 128, 61);
-                picStatusIndicator.Invalidate();
             }
             else
             {
                 panelStatusBar.BackColor = Color.FromArgb(254, 242, 242);
                 lblSystemStatus.Text = "Sistem Error";
                 lblSystemStatus.ForeColor = Color.FromArgb(185, 28, 28);
-                // Clear previous events to avoid stacking
-                // Note: In real scenarios, use a dedicated method/variable for paint logic
-                picStatusIndicator.Invalidate();
             }
+            picStatusIndicator.Invalidate();
         }
 
-        // Method helper untuk menggambar status error (merah)
-        private void DrawErrorStatus(Graphics g)
+        private void SetupEventHandlers()
         {
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.FillEllipse(new SolidBrush(Color.FromArgb(239, 68, 68)), 0, 0, 12, 12);
+            // Panel Header Border
+            this.panelHeader.Paint += (s, e) => {
+                e.Graphics.DrawLine(new Pen(Color.FromArgb(230, 230, 230)),
+                    0, panelHeader.Height - 1, panelHeader.Width, panelHeader.Height - 1);
+            };
+
+            // Panel Filters Border
+            this.panelFilters.Paint += (s, e) => {
+                e.Graphics.DrawLine(new Pen(Color.FromArgb(230, 230, 230)),
+                    0, panelFilters.Height - 1, panelFilters.Width, panelFilters.Height - 1);
+            };
+
+            // Status Indicator Paint
+            this.picStatusIndicator.Paint += (s, e) => {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Color color = _isSystemActive ? Color.FromArgb(34, 197, 94) : Color.FromArgb(239, 68, 68);
+                e.Graphics.FillEllipse(new SolidBrush(color), 0, 0, 12, 12);
+            };
+
+            // Empty State Icon
+            this.picEmptyIcon.Paint += (s, e) => DrawEmptyIcon(e.Graphics);
         }
 
         private void CenterEmptyState()
