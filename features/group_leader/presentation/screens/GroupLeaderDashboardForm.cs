@@ -2,23 +2,36 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
 using Dapper;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 using mtc_app.features.rating.presentation.screens;
+using mtc_app.features.group_leader.presentation.components;
 
 namespace mtc_app.features.group_leader.presentation.screens
 {
     public partial class GroupLeaderDashboardForm : AppBaseForm
     {
         private List<TicketDto> _allTickets = new List<TicketDto>();
+        private Timer timerRefresh;
 
         public GroupLeaderDashboardForm()
         {
-            InitializeComponent();
-            LoadData();
+            InitializeComponent(); // Ini akan memanggil method di file Designer.cs
+
+            // Setup Timer di sini karena Timer adalah Component (non-visual)
+            this.timerRefresh = new Timer(this.components);
+            this.timerRefresh.Interval = 15000; // 15 seconds
+            this.timerRefresh.Tick += (s, e) => LoadData();
+
+            if (!this.DesignMode)
+            {
+                LoadData();
+                timerRefresh.Start();
+            }
         }
 
         private void LoadData()
@@ -39,31 +52,27 @@ namespace mtc_app.features.group_leader.presentation.screens
                         FROM tickets t
                         LEFT JOIN machines m ON t.machine_id = m.machine_id
                         LEFT JOIN users u ON t.technician_id = u.user_id
-                        WHERE t.status_id >= 2 
-                        ORDER BY t.created_at DESC"; 
-                        // Assuming status_id 2 means 'Finished by Technician' so it appears for GL. 
-                        // Or just show all? Prompt says "shows all the tickets". 
-                        // I'll stick to a broader query but usually GL only sees relevant ones.
-                        // Removing WHERE clause to comply with "all the tickets".
-                    
-                    sql = @"
-                        SELECT 
-                            t.ticket_id,
-                            m.machine_name,
-                            u.full_name AS technician_name,
-                            t.gl_rating_score,
-                            t.created_at,
-                            t.gl_validated_at
-                        FROM tickets t
-                        LEFT JOIN machines m ON t.machine_id = m.machine_id
-                        LEFT JOIN users u ON t.technician_id = u.user_id";
+                        WHERE t.status_id >= 2
+                        ORDER BY t.created_at DESC";
 
                     _allTickets = connection.Query<TicketDto>(sql).ToList();
+
+                    // Update stats
+                    int totalTickets = _allTickets.Count;
+                    int reviewedTickets = _allTickets.Count(t => t.gl_validated_at.HasValue || (t.gl_rating_score.HasValue && t.gl_rating_score > 0));
+                    int pendingTickets = totalTickets - reviewedTickets;
+
+                    lblTicketStats.Text = $"Total: {totalTickets} | Sudah Direview: {reviewedTickets} | Belum Direview: {pendingTickets}";
+                    lblLastUpdate.Text = $"Terakhir diperbarui: {DateTime.Now:HH:mm:ss}";
+
                     RenderTickets();
+                    UpdateStatusIndicator(true);
                 }
             }
             catch (Exception ex)
             {
+                timerRefresh.Stop();
+                UpdateStatusIndicator(false);
                 MessageBox.Show($"Gagal memuat data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -80,8 +89,7 @@ namespace mtc_app.features.group_leader.presentation.screens
 
             var filtered = _allTickets.AsEnumerable();
 
-            // 1. Status Filter
-            // "Semua", "Sudah Direview", "Belum Direview"
+            // Status Filter
             int statusIndex = cmbFilterStatus.SelectedIndex;
             if (statusIndex == 1) // Sudah Direview
             {
@@ -92,125 +100,119 @@ namespace mtc_app.features.group_leader.presentation.screens
                 filtered = filtered.Where(t => !t.gl_validated_at.HasValue && (!t.gl_rating_score.HasValue || t.gl_rating_score == 0));
             }
 
-            // 2. Sort Time
-            // "Terbaru", "Terlama"
+            // Sort Time
             int sortIndex = cmbSortTime.SelectedIndex;
-            if (sortIndex == 0) // Terbaru (Desc)
+            if (sortIndex == 0) // Terbaru
             {
                 filtered = filtered.OrderByDescending(t => t.created_at);
             }
-            else // Terlama (Asc)
+            else // Terlama
             {
                 filtered = filtered.OrderBy(t => t.created_at);
             }
 
-            foreach (var ticket in filtered)
+            var ticketList = filtered.ToList();
+
+            if (ticketList.Count == 0)
             {
-                flowTickets.Controls.Add(CreateTicketCard(ticket));
+                // Show empty state
+                panelEmptyState.Visible = true;
+                CenterEmptyState();
+                flowTickets.Controls.Add(panelEmptyState);
+            }
+            else
+            {
+                // Hide empty state and show tickets
+                panelEmptyState.Visible = false;
+
+                foreach (var ticket in ticketList)
+                {
+                    bool isReviewed = ticket.gl_validated_at.HasValue || (ticket.gl_rating_score.HasValue && ticket.gl_rating_score > 0);
+
+                    var card = new GroupLeaderTicketCardControl(
+                        ticket.ticket_id,
+                        ticket.machine_name,
+                        ticket.technician_name,
+                        ticket.created_at,
+                        ticket.gl_rating_score,
+                        isReviewed
+                    );
+
+                    card.CardClicked += (s, e) => {
+                        using (var form = new RatingGlForm(ticket.ticket_id))
+                        {
+                            form.ShowDialog();
+                            LoadData();
+                        }
+                    };
+
+                    flowTickets.Controls.Add(card);
+                }
             }
 
             flowTickets.ResumeLayout();
         }
 
-        private Control CreateTicketCard(TicketDto ticket)
+        private void UpdateStatusIndicator(bool isActive)
         {
-            AppCard card = new AppCard();
-            card.Size = new Size(300, 160);
-            card.Margin = new Padding(10);
-            
-            // Layout inside card
-            // Machine Name
-            Label lblMachine = new Label
+            if (isActive)
             {
-                Text = ticket.machine_name ?? "Unknown Machine",
-                Font = new Font(AppFonts.Body.FontFamily, 12, FontStyle.Bold),
-                ForeColor = AppColors.TextPrimary,
-                Location = new Point(15, 15),
-                AutoSize = true
-            };
-            card.Controls.Add(lblMachine);
-
-            // Technician Name
-            Label lblTech = new Label
-            {
-                Text = $"Teknisi: {ticket.technician_name ?? "-"}",
-                Font = AppFonts.Body,
-                ForeColor = AppColors.TextSecondary,
-                Location = new Point(15, 45),
-                AutoSize = true
-            };
-            card.Controls.Add(lblTech);
-
-            // Time
-            Label lblTime = new Label
-            {
-                Text = ticket.created_at.ToString("dd MMM yyyy HH:mm"),
-                Font = AppFonts.BodySmall,
-                ForeColor = AppColors.TextSecondary,
-                Location = new Point(15, 70),
-                AutoSize = true
-            };
-            card.Controls.Add(lblTime);
-
-            // Rating (Stars)
-            AppStarRating stars = new AppStarRating();
-            stars.ReadOnly = true;
-            stars.Location = new Point(12, 100);
-            if (ticket.gl_rating_score.HasValue)
-            {
-                stars.Rating = ticket.gl_rating_score.Value;
+                panelStatusBar.BackColor = Color.FromArgb(240, 253, 244);
+                lblSystemStatus.Text = "Sistem Aktif";
+                lblSystemStatus.ForeColor = Color.FromArgb(21, 128, 61);
+                picStatusIndicator.Invalidate();
             }
             else
             {
-                stars.Rating = 0;
+                panelStatusBar.BackColor = Color.FromArgb(254, 242, 242);
+                lblSystemStatus.Text = "Sistem Error";
+                lblSystemStatus.ForeColor = Color.FromArgb(185, 28, 28);
+                // Clear previous events to avoid stacking
+                // Note: In real scenarios, use a dedicated method/variable for paint logic
+                picStatusIndicator.Invalidate();
             }
-            card.Controls.Add(stars);
+        }
 
-            // Status Badge (Optional but helpful based on 'reviewed or not')
-            Label lblStatus = new Label
-            {
-                AutoSize = true,
-                Font = new Font(AppFonts.BodySmall.FontFamily, 8, FontStyle.Bold),
-                Location = new Point(200, 15),
-                TextAlign = ContentAlignment.TopRight
-            };
+        // Method helper untuk menggambar status error (merah)
+        private void DrawErrorStatus(Graphics g)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.FillEllipse(new SolidBrush(Color.FromArgb(239, 68, 68)), 0, 0, 12, 12);
+        }
 
-            if (ticket.gl_validated_at.HasValue || (ticket.gl_rating_score.HasValue && ticket.gl_rating_score > 0))
+        private void CenterEmptyState()
+        {
+            if (panelEmptyState != null && flowTickets != null)
             {
-                lblStatus.Text = "Sudah Direview";
-                lblStatus.ForeColor = AppColors.Success;
+                panelEmptyState.Left = (flowTickets.ClientSize.Width - panelEmptyState.Width) / 2;
+                panelEmptyState.Top = (flowTickets.ClientSize.Height - panelEmptyState.Height) / 2;
             }
-            else
-            {
-                lblStatus.Text = "Belum Direview";
-                lblStatus.ForeColor = AppColors.Warning;
-            }
-            // Align right
-            lblStatus.Left = card.Width - lblStatus.PreferredWidth - 15;
-            card.Controls.Add(lblStatus);
+        }
 
-            // Click Event
-            void HandleClick(object sender, EventArgs e)
+        private void DrawEmptyIcon(Graphics g)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            using (Pen pen = new Pen(Color.FromArgb(203, 213, 225), 3))
             {
-                using (var form = new RatingGlForm(ticket.ticket_id))
+                // Folder
+                g.DrawRectangle(pen, 15, 30, 50, 40);
+                g.DrawLine(pen, 15, 30, 25, 20);
+                g.DrawLine(pen, 25, 20, 40, 20);
+                g.DrawLine(pen, 40, 20, 45, 30);
+
+                // Star for rating
+                using (Pen starPen = new Pen(Color.FromArgb(234, 179, 8), 2))
                 {
-                    form.ShowDialog();
-                    LoadData(); // Refresh after closing
+                    PointF[] starPoints = {
+                        new PointF(40, 42), new PointF(43, 48), new PointF(50, 48),
+                        new PointF(44, 53), new PointF(47, 60), new PointF(40, 55),
+                        new PointF(33, 60), new PointF(36, 53), new PointF(30, 48),
+                        new PointF(37, 48)
+                    };
+                    g.DrawPolygon(starPen, starPoints);
                 }
             }
-
-            card.Click += HandleClick;
-            lblMachine.Click += HandleClick;
-            lblTech.Click += HandleClick;
-            lblTime.Click += HandleClick;
-            stars.Click += HandleClick;
-            lblStatus.Click += HandleClick;
-            
-            // Add Cursor Hand to indicate clickable
-            card.Cursor = Cursors.Hand;
-            foreach (Control c in card.Controls) c.Cursor = Cursors.Hand;
-
-            return card;
         }
 
         private class TicketDto

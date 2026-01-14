@@ -225,7 +225,7 @@ namespace mtc_app.features.technician.presentation.screens
                             TimeSpan timeSinceCreation = DateTime.Now - ticket.created_at;
                             string timeAgo = FormatTimeAgo(timeSinceCreation);
 
-                            var card = new TicketCardControl(
+                            var card = new TechnicianTicketCardControl(
                                 ticket.machine_name,
                                 ticket.failure_details,
                                 timeAgo

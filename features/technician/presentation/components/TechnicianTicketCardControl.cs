@@ -5,7 +5,7 @@ using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.technician.presentation.components
 {
-    public class TicketCardControl : UserControl
+    public class TechnicianTicketCardControl : UserControl
     {
         private Panel pnlMain;
         private Panel pnlColorStrip;
@@ -15,7 +15,7 @@ namespace mtc_app.features.technician.presentation.components
         private PictureBox iconMachine;
         private PictureBox iconClock;
 
-        public TicketCardControl(string machineName, string problem, string timeAgo)
+        public TechnicianTicketCardControl(string machineName, string problem, string timeAgo)
         {
             InitializeComponent();
             this.lblMachineName.Text = machineName;
