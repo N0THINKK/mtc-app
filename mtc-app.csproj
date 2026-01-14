@@ -30,6 +30,7 @@
   </ItemGroup>
   
   <ItemGroup>
+    <Folder Include="features\group_leader\presentation\screens\" />
     <Folder Include="features\machine_history\presentation\components\" />
     <Folder Include="features\rating\presentation\screens\" />
   </ItemGroup>

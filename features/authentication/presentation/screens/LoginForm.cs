@@ -94,6 +94,9 @@ namespace mtc_app.features.authentication.presentation.screens
                             case "administrator":
                                 nextForm = new mtc_app.features.admin.presentation.screens.AdminMainForm();
                                 break;
+                            case "gl_production":
+                                nextForm = new mtc_app.features.group_leader.presentation.screens.GroupLeaderDashboardForm();
+                                break;    
                             default: 
                                 MessageBox.Show($"Dashboard untuk role '{roleName}' belum tersedia.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                 break;
