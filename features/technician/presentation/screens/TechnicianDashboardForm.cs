@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
 using Dapper;
@@ -10,26 +11,21 @@ using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.technician.presentation.screens
 {
-    public class TechnicianDashboardForm : AppBaseForm
+    public partial class TechnicianDashboardForm : AppBaseForm
     {
-        private System.ComponentModel.IContainer components = null;
-        private FlowLayoutPanel pnlTicketList;
         private Timer timerRefresh;
-        private Panel panelHeader;
-        private Panel panelStatusBar;
-        private Panel panelEmptyState;
-        private AppLabel labelTitle;
-        private Label lblTicketCount;
-        private Label lblLastUpdate;
-        private Label lblSystemStatus;
-        private PictureBox picStatusIndicator;
-        private Label lblEmptyTitle;
-        private Label lblEmptyMessage;
-        private PictureBox picEmptyIcon;
+        private bool _isSystemActive = true;
 
         public TechnicianDashboardForm()
         {
             InitializeComponent();
+            SetupEventHandlers();
+            
+            // Setup Timer
+            this.timerRefresh = new Timer(this.components);
+            this.timerRefresh.Interval = 10000; // 10 seconds
+            this.timerRefresh.Tick += (s, e) => LoadPendingTickets();
+
             if (!this.DesignMode)
             {
                 LoadPendingTickets();
@@ -37,141 +33,23 @@ namespace mtc_app.features.technician.presentation.screens
             }
         }
 
-        private void InitializeComponent()
+        private void SetupEventHandlers()
         {
-            this.components = new System.ComponentModel.Container();
-            this.pnlTicketList = new FlowLayoutPanel();
-            this.timerRefresh = new Timer(this.components);
-            this.panelHeader = new Panel();
-            this.panelStatusBar = new Panel();
-            this.panelEmptyState = new Panel();
-            this.labelTitle = new AppLabel();
-            this.lblTicketCount = new Label();
-            this.lblLastUpdate = new Label();
-            this.lblSystemStatus = new Label();
-            this.picStatusIndicator = new PictureBox();
-            this.lblEmptyTitle = new Label();
-            this.lblEmptyMessage = new Label();
-            this.picEmptyIcon = new PictureBox();
-            
-            this.SuspendLayout();
-
-            // Form
-            this.Text = "Dashboard Teknisi - Daftar Tunggu Perbaikan";
-            this.ClientSize = new Size(1200, 700);
-            this.BackColor = Color.FromArgb(248, 250, 252);
-
-            // Header Panel
-            this.panelHeader.BackColor = Color.White;
-            this.panelHeader.Dock = DockStyle.Top;
-            this.panelHeader.Height = 120;
-            this.panelHeader.Padding = new Padding(30, 20, 30, 20);
+            // Header Border
             this.panelHeader.Paint += (s, e) => {
                 e.Graphics.DrawLine(new Pen(Color.FromArgb(230, 230, 230)), 
                     0, panelHeader.Height - 1, panelHeader.Width, panelHeader.Height - 1);
             };
-            
-            // Title
-            this.labelTitle.Text = "Daftar Tunggu Perbaikan";
-            this.labelTitle.Type = AppLabel.LabelType.Header2;
-            this.labelTitle.ForeColor = AppColors.TextPrimary;
-            this.labelTitle.Location = new Point(30, 25);
-            this.labelTitle.AutoSize = true;
 
-            // Ticket Count Label
-            this.lblTicketCount.Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold);
-            this.lblTicketCount.ForeColor = AppColors.Primary;
-            this.lblTicketCount.Location = new Point(30, 65);
-            this.lblTicketCount.AutoSize = true;
-            this.lblTicketCount.Text = "0 tiket menunggu";
-
-            this.panelHeader.Controls.Add(this.lblTicketCount);
-            this.panelHeader.Controls.Add(this.labelTitle);
-
-            // Status Bar Panel
-            this.panelStatusBar.BackColor = Color.FromArgb(240, 253, 244);
-            this.panelStatusBar.Dock = DockStyle.Top;
-            this.panelStatusBar.Height = 50;
-            this.panelStatusBar.Padding = new Padding(30, 0, 30, 0);
-
-            // Status Indicator (Green Dot)
-            this.picStatusIndicator.Size = new Size(12, 12);
-            this.picStatusIndicator.Location = new Point(30, 19);
-            this.picStatusIndicator.BackColor = Color.Transparent;
+            // Status Indicator Paint
             this.picStatusIndicator.Paint += (s, e) => {
-                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                e.Graphics.FillEllipse(new SolidBrush(Color.FromArgb(34, 197, 94)), 0, 0, 12, 12);
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Color color = _isSystemActive ? Color.FromArgb(34, 197, 94) : Color.FromArgb(239, 68, 68);
+                e.Graphics.FillEllipse(new SolidBrush(color), 0, 0, 12, 12);
             };
 
-            // System Status Label
-            this.lblSystemStatus.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
-            this.lblSystemStatus.ForeColor = Color.FromArgb(21, 128, 61);
-            this.lblSystemStatus.Location = new Point(50, 16);
-            this.lblSystemStatus.AutoSize = true;
-            this.lblSystemStatus.Text = "Sistem Aktif";
-
-            // Last Update Label
-            this.lblLastUpdate.Font = new Font("Segoe UI", 9F);
-            this.lblLastUpdate.ForeColor = Color.FromArgb(100, 116, 139);
-            this.lblLastUpdate.Location = new Point(150, 17);
-            this.lblLastUpdate.AutoSize = true;
-            this.lblLastUpdate.Text = "Terakhir diperbarui: -";
-
-            this.panelStatusBar.Controls.Add(this.lblLastUpdate);
-            this.panelStatusBar.Controls.Add(this.lblSystemStatus);
-            this.panelStatusBar.Controls.Add(this.picStatusIndicator);
-
-            // Empty State Panel
-            this.panelEmptyState.BackColor = Color.Transparent;
-            this.panelEmptyState.Size = new Size(400, 300);
-            this.panelEmptyState.Visible = false;
-            this.panelEmptyState.Anchor = AnchorStyles.None;
-
-            // Empty State Icon
-            this.picEmptyIcon.Size = new Size(80, 80);
-            this.picEmptyIcon.Location = new Point(160, 40);
-            this.picEmptyIcon.BackColor = Color.Transparent;
+            // Empty Icon Paint
             this.picEmptyIcon.Paint += (s, e) => DrawEmptyIcon(e.Graphics);
-
-            // Empty State Title
-            this.lblEmptyTitle.Font = new Font("Segoe UI Semibold", 16F, FontStyle.Bold);
-            this.lblEmptyTitle.ForeColor = AppColors.TextPrimary;
-            this.lblEmptyTitle.Text = "Tidak Ada Tiket Menunggu";
-            this.lblEmptyTitle.TextAlign = ContentAlignment.MiddleCenter;
-            this.lblEmptyTitle.Location = new Point(50, 140);
-            this.lblEmptyTitle.Size = new Size(300, 30);
-
-            // Empty State Message
-            this.lblEmptyMessage.Font = new Font("Segoe UI", 10F);
-            this.lblEmptyMessage.ForeColor = AppColors.TextSecondary;
-            this.lblEmptyMessage.Text = "Semua tiket telah diproses atau belum ada\nlaporan masalah baru dari operator.";
-            this.lblEmptyMessage.TextAlign = ContentAlignment.TopCenter;
-            this.lblEmptyMessage.Location = new Point(50, 180);
-            this.lblEmptyMessage.Size = new Size(300, 60);
-
-            this.panelEmptyState.Controls.Add(this.lblEmptyMessage);
-            this.panelEmptyState.Controls.Add(this.lblEmptyTitle);
-            this.panelEmptyState.Controls.Add(this.picEmptyIcon);
-
-            // FlowLayoutPanel for Ticket Cards
-            this.pnlTicketList.Dock = DockStyle.Fill;
-            this.pnlTicketList.AutoScroll = true;
-            this.pnlTicketList.FlowDirection = FlowDirection.LeftToRight;
-            this.pnlTicketList.WrapContents = true;
-            this.pnlTicketList.Padding = new Padding(20);
-            this.pnlTicketList.BackColor = Color.FromArgb(248, 250, 252);
-            this.pnlTicketList.Controls.Add(this.panelEmptyState);
-
-            // Refresh Timer
-            this.timerRefresh.Interval = 10000; // 10 seconds
-            this.timerRefresh.Tick += (s, e) => LoadPendingTickets();
-
-            // Add controls in Z-order
-            this.Controls.Add(this.pnlTicketList);
-            this.Controls.Add(this.panelStatusBar);
-            this.Controls.Add(this.panelHeader);
-
-            this.ResumeLayout(false);
         }
 
         private void LoadPendingTickets()
@@ -236,7 +114,6 @@ namespace mtc_app.features.technician.presentation.screens
                     
                     pnlTicketList.ResumeLayout();
 
-                    // Update status indicator to green (active)
                     UpdateStatusIndicator(true);
                 }
             }
@@ -244,9 +121,6 @@ namespace mtc_app.features.technician.presentation.screens
             {
                 timerRefresh.Stop();
                 UpdateStatusIndicator(false);
-                lblSystemStatus.Text = "Sistem Error";
-                lblSystemStatus.ForeColor = AppColors.Danger;
-                panelStatusBar.BackColor = Color.FromArgb(254, 242, 242);
                 
                 MessageBox.Show($"Gagal memuat daftar tiket: {ex.Message}", 
                     "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -255,26 +129,20 @@ namespace mtc_app.features.technician.presentation.screens
 
         private void UpdateStatusIndicator(bool isActive)
         {
+            _isSystemActive = isActive;
             if (isActive)
             {
                 panelStatusBar.BackColor = Color.FromArgb(240, 253, 244);
                 lblSystemStatus.Text = "Sistem Aktif";
                 lblSystemStatus.ForeColor = Color.FromArgb(21, 128, 61);
-                picStatusIndicator.Invalidate(); // Will paint green
             }
             else
             {
                 panelStatusBar.BackColor = Color.FromArgb(254, 242, 242);
                 lblSystemStatus.Text = "Sistem Error";
                 lblSystemStatus.ForeColor = Color.FromArgb(185, 28, 28);
-                // Repaint status indicator as red
-                picStatusIndicator.Paint -= (s, e) => { }; // Clear existing
-                picStatusIndicator.Paint += (s, e) => {
-                    e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    e.Graphics.FillEllipse(new SolidBrush(Color.FromArgb(239, 68, 68)), 0, 0, 12, 12);
-                };
-                picStatusIndicator.Invalidate();
             }
+            picStatusIndicator.Invalidate();
         }
 
         private void CenterEmptyState()
@@ -285,9 +153,8 @@ namespace mtc_app.features.technician.presentation.screens
 
         private void DrawEmptyIcon(Graphics g)
         {
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
             
-            // Draw clipboard with checkmark
             using (Pen pen = new Pen(Color.FromArgb(203, 213, 225), 3))
             {
                 // Clipboard body
@@ -314,15 +181,6 @@ namespace mtc_app.features.technician.presentation.screens
                 return $"Dilaporkan {(int)ts.TotalHours} jam yang lalu";
             
             return $"Dilaporkan {ts.Days} hari yang lalu";
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
-            base.Dispose(disposing);
         }
     }
 }
