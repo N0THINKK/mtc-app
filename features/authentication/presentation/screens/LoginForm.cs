@@ -81,9 +81,7 @@ namespace mtc_app.features.authentication.presentation.screens
                                 nextForm = new MachineHistoryFormOperator();
                                 break;
                             case "technician":
-                            case "teknisi": 
-                                // nextForm = new MachineHistoryFormTechnician();
-                                MessageBox.Show("Halaman Teknisi sedang dalam pengembangan.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                nextForm = new mtc_app.features.technician.presentation.screens.TechnicianDashboardForm();
                                 break;
                             case "stock control":
                             case "stock_control":
