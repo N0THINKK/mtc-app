@@ -11,10 +11,6 @@ namespace mtc_app.features.stock.presentation.screens
 {
     public partial class StockDashboardForm : AppBaseForm
     {
-        private int pendingCount = 0;
-        private int readyCount = 0;
-        private int todayCompletedCount = 0;
-
         public StockDashboardForm()
         {
             InitializeComponent();
@@ -24,8 +20,8 @@ namespace mtc_app.features.stock.presentation.screens
 
         private void LoadData()
         {
-            // Prevent interaction during refresh
-            this.Enabled = false;
+            // To prevent issues if user clicks while refresh is happening
+            this.Enabled = false; 
             
             flowLayoutPanelRequests.Controls.Clear();
             
@@ -34,8 +30,6 @@ namespace mtc_app.features.stock.presentation.screens
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Open();
-                    
-                    // Query untuk mengambil request yang PENDING (status_id = 1)
                     string sql = @"
                         SELECT 
                             pr.request_id,
@@ -49,29 +43,9 @@ namespace mtc_app.features.stock.presentation.screens
                         ORDER BY pr.requested_at ASC";
 
                     var requests = connection.Query(sql).ToList();
-                    pendingCount = requests.Count;
-
-                    // Get ready count
-                    string readySql = "SELECT COUNT(*) FROM part_requests WHERE status_id = 2";
-                    readyCount = connection.QuerySingle<int>(readySql);
-
-                    // Get today's completed count
-                    string completedSql = @"
-                        SELECT COUNT(*) 
-                        FROM part_requests 
-                        WHERE status_id = 3 
-                        AND DATE(picked_at) = CURDATE()";
-                    todayCompletedCount = connection.QuerySingle<int>(completedSql);
-
-                    // Update status cards
-                    UpdateStatusCards();
-
-                    // Display requests as cards or empty state
+                    
                     if (requests.Any())
                     {
-                        emptyStatePanel.Visible = false;
-                        flowLayoutPanelRequests.Visible = true;
-                        
                         foreach (var req in requests)
                         {
                             var card = new StockRequestCardControl(
@@ -86,35 +60,24 @@ namespace mtc_app.features.stock.presentation.screens
                     }
                     else
                     {
-                        flowLayoutPanelRequests.Visible = false;
-                        emptyStatePanel.Visible = true;
+                        var lblEmpty = new AppLabel { 
+                            Text = "Tidak ada permintaan sparepart.",
+                            Font = new Font("Segoe UI", 14F, FontStyle.Italic),
+                            ForeColor = Color.Gray,
+                            Margin = new Padding(20)
+                        };
+                        flowLayoutPanelRequests.Controls.Add(lblEmpty);
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error loading stock data: {ex.Message}", "Error", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Error loading stock data: {ex.Message}");
             }
             finally
             {
                 this.Enabled = true;
             }
-        }
-
-        private void UpdateStatusCards()
-        {
-            cardPending.Value = pendingCount.ToString();
-            cardPending.Subtext = pendingCount == 0 ? "All clear!" : "Needs processing";
-
-            cardReady.Value = readyCount.ToString();
-            cardReady.Subtext = readyCount == 0 ? "None waiting" : "Awaiting pickup";
-
-            cardCompleted.Value = todayCompletedCount.ToString();
-            cardCompleted.Subtext = "Completed today";
-
-            // Update last refresh time
-            lblLastUpdate.Text = $"Last updated: {DateTime.Now:HH:mm:ss}";
         }
 
         private void Card_OnReadyClicked(object sender, int requestId)
@@ -128,14 +91,12 @@ namespace mtc_app.features.stock.presentation.screens
                     connection.Execute(sql, new { Id = requestId });
                 }
                 
-                MessageBox.Show("Barang ditandai SIAP!", "Sukses", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // Animate removal (optional, for now just reload)
                 LoadData();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Gagal update: {ex.Message}", "Error", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Gagal update: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
