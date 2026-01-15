@@ -6,11 +6,16 @@ using System.Windows.Forms;
 using Dapper;
 using mtc_app;
 using mtc_app.shared.presentation.components;
+using mtc_app.features.stock.presentation.components;
 
 namespace mtc_app.features.stock.presentation.screens
 {
     public partial class StockDashboardForm : AppBaseForm
     {
+        private int pendingCount = 0;
+        private int readyCount = 0;
+        // private int todayCompletedCount = 0;
+
         public StockDashboardForm()
         {
             InitializeComponent();
@@ -25,8 +30,8 @@ namespace mtc_app.features.stock.presentation.screens
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Open();
+                    
                     // Query untuk mengambil request yang PENDING (status_id = 1)
-                    // Join dengan Tickets untuk tahu Tiket/Mesin mana
                     string sql = @"
                         SELECT 
                             pr.request_id,
@@ -41,20 +46,86 @@ namespace mtc_app.features.stock.presentation.screens
                         WHERE pr.status_id = 1
                         ORDER BY pr.requested_at ASC";
 
-                    var data = connection.Query(sql).ToList(); // ToList to count
-                    
-                    // DEBUG: Show count
-                    // MessageBox.Show($"Ditemukan {data.Count} request pending.", "Debug Info"); 
-                    
-                    gridRequests.AutoGenerateColumns = true; // Ensure columns are created
-                    gridRequests.DataSource = data;
+                    var data = connection.Query(sql).ToList();
+                    pendingCount = data.Count;
+
+                    // Get ready count
+                    string readySql = "SELECT COUNT(*) FROM part_requests WHERE status_id = 2";
+                    readyCount = connection.QuerySingle<int>(readySql);
+
+                    // Get today's completed count
+                    // string completedSql = @"
+                    //     SELECT COUNT(*) 
+                    //     FROM part_requests 
+                    //     WHERE status_id = 3 
+                    //     AND DATE(picked_at) = CURDATE()";
+                    // todayCompletedCount = connection.QuerySingle<int>(completedSql);
+
+                    // Update status cards
+                    UpdateStatusCards();
+
+                    // Update grid visibility
+                    if (data.Count > 0)
+                    {
+                        gridRequests.Visible = true;
+                        emptyStatePanel.Visible = false;
+                        gridRequests.AutoGenerateColumns = true;
+                        gridRequests.DataSource = data;
+                        
+                        // Style the grid
+                        StyleDataGrid();
+                    }
+                    else
+                    {
+                        gridRequests.Visible = false;
+                        emptyStatePanel.Visible = true;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                // Show error for debugging
-                MessageBox.Show($"Error loading stock data: {ex.Message}");
+                MessageBox.Show($"Error loading stock data: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private void StyleDataGrid()
+        {
+            // Header style
+            gridRequests.EnableHeadersVisualStyles = false;
+            gridRequests.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(52, 58, 64);
+            gridRequests.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            gridRequests.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            gridRequests.ColumnHeadersDefaultCellStyle.Padding = new Padding(5);
+            gridRequests.ColumnHeadersHeight = 40;
+
+            // Row style
+            gridRequests.DefaultCellStyle.Font = new Font("Segoe UI", 9F);
+            gridRequests.DefaultCellStyle.SelectionBackColor = mtc_app.shared.presentation.styles.AppColors.Primary;
+            gridRequests.DefaultCellStyle.SelectionForeColor = Color.White;
+            gridRequests.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(248, 249, 250);
+            gridRequests.RowTemplate.Height = 35;
+
+            // Hide request_id column
+            if (gridRequests.Columns.Count > 0)
+            {
+                gridRequests.Columns[0].Visible = false;
+            }
+        }
+
+        private void UpdateStatusCards()
+        {
+            cardPending.Value = pendingCount.ToString();
+            cardPending.Subtext = pendingCount == 0 ? "All clear!" : "Needs processing";
+
+            cardReady.Value = readyCount.ToString();
+            cardReady.Subtext = readyCount == 0 ? "None waiting" : "Awaiting pickup";
+
+            // cardCompleted.Value = todayCompletedCount.ToString();
+            // cardCompleted.Subtext = "Completed today";
+
+            // Update last refresh time
+            lblLastUpdate.Text = $"Last updated: {DateTime.Now:HH:mm:ss}";
         }
 
         private void btnRefresh_Click(object sender, EventArgs e)
@@ -71,36 +142,32 @@ namespace mtc_app.features.stock.presentation.screens
         {
             if (gridRequests.SelectedRows.Count == 0)
             {
-                MessageBox.Show("Pilih request dulu!", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Pilih request dulu!", "Info", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            // Ambil ID dari row yang dipilih
-            // Note: Karena Dapper return dynamic/object, kita harus ambil value cell
-            // DataGridView biasanya auto-generate column, col index 0 biasanya request_id
-            
-            // Safe way to get ID from current row
             if (gridRequests.CurrentRow == null) return;
             
-            // Assuming first column is request_id based on query order
-            var requestId = gridRequests.CurrentRow.Cells[0].Value; 
+            var requestId = gridRequests.CurrentRow.Cells[0].Value;
 
             try
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Open();
-                    // Update jadi READY (2) dan set ready_at
                     string sql = "UPDATE part_requests SET status_id = 2, ready_at = NOW() WHERE request_id = @Id";
                     connection.Execute(sql, new { Id = requestId });
                 }
                 
-                MessageBox.Show("Barang ditandai SIAP!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Barang ditandai SIAP!", "Sukses", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadData();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Gagal update: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Gagal update: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
