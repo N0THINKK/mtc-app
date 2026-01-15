@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Linq;
 using System.Windows.Forms;
 using mtc_app.shared.presentation.styles;
 
@@ -20,13 +22,17 @@ namespace mtc_app.shared.presentation.components
         private InputTypeEnum _inputType = InputTypeEnum.Text;
         private bool _isRequired = false;
         private bool _isFocused = false;
+        
+        // For custom autocomplete
+        private List<string> _originalItems;
+        private bool _isFiltering = false;
 
         public AppInput()
         {
             InitializeCustomComponents();
             this.Padding = new Padding(AppDimens.SpacingXS);
             this.Size = new Size(300, 85); 
-            this.BackColor = Color.Transparent; // Let parent background show
+            this.BackColor = Color.Transparent;
         }
 
         [Category("App Properties")]
@@ -38,13 +44,10 @@ namespace mtc_app.shared.presentation.components
                 if (value)
                 {
                     comboInput.DropDownStyle = ComboBoxStyle.DropDown;
-                    comboInput.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-                    comboInput.AutoCompleteSource = AutoCompleteSource.ListItems;
                 }
                 else
                 {
                     comboInput.DropDownStyle = ComboBoxStyle.DropDownList;
-                    comboInput.AutoCompleteMode = AutoCompleteMode.None;
                 }
             }
         }
@@ -67,7 +70,7 @@ namespace mtc_app.shared.presentation.components
                 {
                     this.Height = 85; 
                     panelContainer.Height = AppDimens.ControlHeight;
-                    textInput.Height = 20; // Internal height doesn't matter much for single line
+                    textInput.Height = 20;
                     textInput.ScrollBars = ScrollBars.None;
                 }
             }
@@ -93,7 +96,6 @@ namespace mtc_app.shared.presentation.components
             {
                 if (_inputType == InputTypeEnum.Dropdown)
                 {
-                    // Check if item exists, if so select it, else text (if allowed)
                     if (comboInput.Items.Contains(value))
                         comboInput.SelectedItem = value;
                     else if (AllowCustomText)
@@ -128,14 +130,19 @@ namespace mtc_app.shared.presentation.components
         {
             comboInput.Items.Clear();
             if (items != null)
+            {
+                _originalItems = new List<string>(items);
                 comboInput.Items.AddRange(items);
+            } else 
+            {
+                _originalItems = new List<string>();
+            }
         }
 
         public bool ValidateInput()
         {
             labelError.Visible = false;
             
-            // Check Required
             if (_isRequired && string.IsNullOrWhiteSpace(InputValue))
             {
                 SetError($"{LabelText} is required.");
@@ -176,15 +183,12 @@ namespace mtc_app.shared.presentation.components
             textInput = new TextBox();
             textInput.BorderStyle = BorderStyle.None;
             textInput.Font = AppFonts.Body;
-            textInput.Location = new Point(10, 8); // Centered vertically approx
+            textInput.Location = new Point(10, 8);
             textInput.Width = panelContainer.Width - 20;
             textInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             textInput.BackColor = AppColors.Surface;
-            
-            // Focus Events
             textInput.Enter += (s, e) => { _isFocused = true; panelContainer.Invalidate(); };
             textInput.Leave += (s, e) => { _isFocused = false; panelContainer.Invalidate(); };
-            
             panelContainer.Controls.Add(textInput);
 
             // ComboBox
@@ -196,11 +200,9 @@ namespace mtc_app.shared.presentation.components
             comboInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             comboInput.BackColor = AppColors.Surface;
             comboInput.DropDownStyle = ComboBoxStyle.DropDownList;
-            
-            // Focus Events
             comboInput.Enter += (s, e) => { _isFocused = true; panelContainer.Invalidate(); };
             comboInput.Leave += (s, e) => { _isFocused = false; panelContainer.Invalidate(); };
-            
+            comboInput.TextChanged += ComboInput_TextChanged; // Subscribe to event
             comboInput.Visible = false;
             panelContainer.Controls.Add(comboInput);
 
@@ -212,6 +214,49 @@ namespace mtc_app.shared.presentation.components
             labelError.Location = new Point(AppDimens.SpacingXS, 65);
             labelError.Visible = false;
             this.Controls.Add(labelError);
+        }
+
+        private void ComboInput_TextChanged(object sender, EventArgs e)
+        {
+            if (_isFiltering || !AllowCustomText) return;
+
+            _isFiltering = true;
+            
+            string typedText = comboInput.Text;
+            int selectionStart = comboInput.SelectionStart;
+
+            try
+            {
+                comboInput.BeginUpdate();
+                comboInput.Items.Clear();
+
+                if (string.IsNullOrEmpty(typedText) || _originalItems == null)
+                {
+                    if (_originalItems != null)
+                        comboInput.Items.AddRange(_originalItems.ToArray());
+                }
+                else
+                {
+                    var filteredItems = _originalItems
+                        .Where(item => item.IndexOf(typedText, StringComparison.OrdinalIgnoreCase) >= 0)
+                        .ToArray();
+
+                    if (filteredItems.Length > 0)
+                    {
+                        comboInput.Items.AddRange(filteredItems);
+                    }
+                }
+                
+                comboInput.DroppedDown = comboInput.Items.Count > 0 && this.ContainsFocus;
+                Cursor.Current = Cursors.Default;
+            }
+            finally
+            {
+                comboInput.Text = typedText;
+                comboInput.SelectionStart = selectionStart;
+                comboInput.EndUpdate();
+                _isFiltering = false;
+            }
         }
 
         private void UpdateInputVisibility()

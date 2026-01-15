@@ -4,9 +4,8 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using Dapper;
-using mtc_app;
-using mtc_app.shared.presentation.components;
 using mtc_app.features.stock.presentation.components;
+using mtc_app.shared.presentation.components;
 
 namespace mtc_app.features.stock.presentation.screens
 {
@@ -14,7 +13,7 @@ namespace mtc_app.features.stock.presentation.screens
     {
         private int pendingCount = 0;
         private int readyCount = 0;
-        // private int todayCompletedCount = 0;
+        private int todayCompletedCount = 0;
 
         public StockDashboardForm()
         {
@@ -25,6 +24,11 @@ namespace mtc_app.features.stock.presentation.screens
 
         private void LoadData()
         {
+            // Prevent interaction during refresh
+            this.Enabled = false;
+            
+            flowLayoutPanelRequests.Controls.Clear();
+            
             try
             {
                 using (var connection = DatabaseHelper.GetConnection())
@@ -35,49 +39,54 @@ namespace mtc_app.features.stock.presentation.screens
                     string sql = @"
                         SELECT 
                             pr.request_id,
-                            pr.requested_at AS 'Waktu Request',
-                            IFNULL(t.ticket_display_code, 'N/A') AS 'Kode Tiket',
-                            pr.part_name_manual AS 'Nama Barang',
-                            pr.qty AS 'Jumlah',
-                            IFNULL(ts.status_name, 'Unknown') AS 'Status'
+                            pr.requested_at,
+                            pr.part_name_manual,
+                            u.full_name AS technician_name
                         FROM part_requests pr
                         LEFT JOIN tickets t ON pr.ticket_id = t.ticket_id
-                        LEFT JOIN request_statuses ts ON pr.status_id = ts.status_id
+                        LEFT JOIN users u ON t.technician_id = u.user_id
                         WHERE pr.status_id = 1
                         ORDER BY pr.requested_at ASC";
 
-                    var data = connection.Query(sql).ToList();
-                    pendingCount = data.Count;
+                    var requests = connection.Query(sql).ToList();
+                    pendingCount = requests.Count;
 
                     // Get ready count
                     string readySql = "SELECT COUNT(*) FROM part_requests WHERE status_id = 2";
                     readyCount = connection.QuerySingle<int>(readySql);
 
                     // Get today's completed count
-                    // string completedSql = @"
-                    //     SELECT COUNT(*) 
-                    //     FROM part_requests 
-                    //     WHERE status_id = 3 
-                    //     AND DATE(picked_at) = CURDATE()";
-                    // todayCompletedCount = connection.QuerySingle<int>(completedSql);
+                    string completedSql = @"
+                        SELECT COUNT(*) 
+                        FROM part_requests 
+                        WHERE status_id = 3 
+                        AND DATE(picked_at) = CURDATE()";
+                    todayCompletedCount = connection.QuerySingle<int>(completedSql);
 
                     // Update status cards
                     UpdateStatusCards();
 
-                    // Update grid visibility
-                    if (data.Count > 0)
+                    // Display requests as cards or empty state
+                    if (requests.Any())
                     {
-                        gridRequests.Visible = true;
                         emptyStatePanel.Visible = false;
-                        gridRequests.AutoGenerateColumns = true;
-                        gridRequests.DataSource = data;
+                        flowLayoutPanelRequests.Visible = true;
                         
-                        // Style the grid
-                        StyleDataGrid();
+                        foreach (var req in requests)
+                        {
+                            var card = new StockRequestCardControl(
+                                (int)req.request_id,
+                                (string)req.part_name_manual,
+                                (string)req.technician_name ?? "N/A",
+                                (DateTime)req.requested_at
+                            );
+                            card.OnReadyClicked += Card_OnReadyClicked;
+                            flowLayoutPanelRequests.Controls.Add(card);
+                        }
                     }
                     else
                     {
-                        gridRequests.Visible = false;
+                        flowLayoutPanelRequests.Visible = false;
                         emptyStatePanel.Visible = true;
                     }
                 }
@@ -87,29 +96,9 @@ namespace mtc_app.features.stock.presentation.screens
                 MessageBox.Show($"Error loading stock data: {ex.Message}", "Error", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-        }
-
-        private void StyleDataGrid()
-        {
-            // Header style
-            gridRequests.EnableHeadersVisualStyles = false;
-            gridRequests.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(52, 58, 64);
-            gridRequests.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
-            gridRequests.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            gridRequests.ColumnHeadersDefaultCellStyle.Padding = new Padding(5);
-            gridRequests.ColumnHeadersHeight = 40;
-
-            // Row style
-            gridRequests.DefaultCellStyle.Font = new Font("Segoe UI", 9F);
-            gridRequests.DefaultCellStyle.SelectionBackColor = mtc_app.shared.presentation.styles.AppColors.Primary;
-            gridRequests.DefaultCellStyle.SelectionForeColor = Color.White;
-            gridRequests.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(248, 249, 250);
-            gridRequests.RowTemplate.Height = 35;
-
-            // Hide request_id column
-            if (gridRequests.Columns.Count > 0)
+            finally
             {
-                gridRequests.Columns[0].Visible = false;
+                this.Enabled = true;
             }
         }
 
@@ -121,36 +110,15 @@ namespace mtc_app.features.stock.presentation.screens
             cardReady.Value = readyCount.ToString();
             cardReady.Subtext = readyCount == 0 ? "None waiting" : "Awaiting pickup";
 
-            // cardCompleted.Value = todayCompletedCount.ToString();
-            // cardCompleted.Subtext = "Completed today";
+            cardCompleted.Value = todayCompletedCount.ToString();
+            cardCompleted.Subtext = "Completed today";
 
             // Update last refresh time
             lblLastUpdate.Text = $"Last updated: {DateTime.Now:HH:mm:ss}";
         }
 
-        private void btnRefresh_Click(object sender, EventArgs e)
+        private void Card_OnReadyClicked(object sender, int requestId)
         {
-            LoadData();
-        }
-
-        private void timerRefresh_Tick(object sender, EventArgs e)
-        {
-            LoadData();
-        }
-
-        private void btnReady_Click(object sender, EventArgs e)
-        {
-            if (gridRequests.SelectedRows.Count == 0)
-            {
-                MessageBox.Show("Pilih request dulu!", "Info", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            if (gridRequests.CurrentRow == null) return;
-            
-            var requestId = gridRequests.CurrentRow.Cells[0].Value;
-
             try
             {
                 using (var connection = DatabaseHelper.GetConnection())
@@ -169,6 +137,11 @@ namespace mtc_app.features.stock.presentation.screens
                 MessageBox.Show($"Gagal update: {ex.Message}", "Error", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private void timerRefresh_Tick(object sender, EventArgs e)
+        {
+            LoadData();
         }
     }
 }

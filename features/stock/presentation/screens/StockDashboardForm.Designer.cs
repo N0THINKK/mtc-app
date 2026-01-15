@@ -26,22 +26,17 @@ namespace mtc_app.features.stock.presentation.screens
             this.cardReady = new mtc_app.features.stock.presentation.components.StockStatusCard();
             this.cardPending = new mtc_app.features.stock.presentation.components.StockStatusCard();
             this.pnlContent = new System.Windows.Forms.Panel();
-            this.gridRequests = new System.Windows.Forms.DataGridView();
             this.emptyStatePanel = new mtc_app.features.stock.presentation.components.EmptyStatePanel();
-            this.pnlActions = new System.Windows.Forms.Panel();
-            this.btnReady = new mtc_app.shared.presentation.components.AppButton();
-            this.btnRefresh = new mtc_app.shared.presentation.components.AppButton();
+            this.flowLayoutPanelRequests = new System.Windows.Forms.FlowLayoutPanel();
             this.timerRefresh = new System.Windows.Forms.Timer(this.components);
             this.pnlHeader.SuspendLayout();
             this.pnlStatusCards.SuspendLayout();
             this.pnlContent.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.gridRequests)).BeginInit();
-            this.pnlActions.SuspendLayout();
             this.SuspendLayout();
             // 
             // pnlHeader
             // 
-            this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(176)))), ((int)(((byte)(255)))), ((int)(((byte)(250)))));
+            this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(52)))), ((int)(((byte)(58)))), ((int)(((byte)(64)))));
             this.pnlHeader.Controls.Add(this.lblLastUpdate);
             this.pnlHeader.Controls.Add(this.labelTitle);
             this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
@@ -55,7 +50,7 @@ namespace mtc_app.features.stock.presentation.screens
             // 
             this.lblLastUpdate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.lblLastUpdate.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.lblLastUpdate.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.lblLastUpdate.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(206)))), ((int)(((byte)(212)))), ((int)(((byte)(218)))));
             this.lblLastUpdate.Location = new System.Drawing.Point(900, 25);
             this.lblLastUpdate.Name = "lblLastUpdate";
             this.lblLastUpdate.Size = new System.Drawing.Size(280, 20);
@@ -124,33 +119,13 @@ namespace mtc_app.features.stock.presentation.screens
             // 
             this.pnlContent.BackColor = System.Drawing.Color.White;
             this.pnlContent.Controls.Add(this.emptyStatePanel);
-            this.pnlContent.Controls.Add(this.gridRequests);
+            this.pnlContent.Controls.Add(this.flowLayoutPanelRequests);
             this.pnlContent.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlContent.Location = new System.Drawing.Point(0, 230);
             this.pnlContent.Name = "pnlContent";
             this.pnlContent.Padding = new System.Windows.Forms.Padding(20);
-            this.pnlContent.Size = new System.Drawing.Size(1200, 400);
+            this.pnlContent.Size = new System.Drawing.Size(1200, 470);
             this.pnlContent.TabIndex = 2;
-            // 
-            // gridRequests
-            // 
-            this.gridRequests.AllowUserToAddRows = false;
-            this.gridRequests.AllowUserToDeleteRows = false;
-            this.gridRequests.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
-            this.gridRequests.BackgroundColor = System.Drawing.Color.White;
-            this.gridRequests.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.gridRequests.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.SingleHorizontal;
-            this.gridRequests.ColumnHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
-            this.gridRequests.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.gridRequests.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.gridRequests.GridColor = System.Drawing.Color.FromArgb(((int)(((byte)(222)))), ((int)(((byte)(226)))), ((int)(((byte)(230)))));
-            this.gridRequests.Location = new System.Drawing.Point(20, 20);
-            this.gridRequests.Name = "gridRequests";
-            this.gridRequests.ReadOnly = true;
-            this.gridRequests.RowHeadersVisible = false;
-            this.gridRequests.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.gridRequests.Size = new System.Drawing.Size(1160, 360);
-            this.gridRequests.TabIndex = 0;
             // 
             // emptyStatePanel
             // 
@@ -160,47 +135,24 @@ namespace mtc_app.features.stock.presentation.screens
             this.emptyStatePanel.Icon = "📦";
             this.emptyStatePanel.Location = new System.Drawing.Point(20, 20);
             this.emptyStatePanel.Name = "emptyStatePanel";
-            this.emptyStatePanel.Size = new System.Drawing.Size(1160, 360);
+            this.emptyStatePanel.Size = new System.Drawing.Size(1160, 430);
             this.emptyStatePanel.TabIndex = 1;
             this.emptyStatePanel.Title = "No Pending Requests";
             this.emptyStatePanel.Visible = false;
             // 
-            // pnlActions
+            // flowLayoutPanelRequests
             // 
-            this.pnlActions.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(249)))), ((int)(((byte)(250)))));
-            this.pnlActions.Controls.Add(this.btnReady);
-            this.pnlActions.Controls.Add(this.btnRefresh);
-            this.pnlActions.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.pnlActions.Location = new System.Drawing.Point(0, 630);
-            this.pnlActions.Name = "pnlActions";
-            this.pnlActions.Padding = new System.Windows.Forms.Padding(20, 15, 20, 15);
-            this.pnlActions.Size = new System.Drawing.Size(1200, 70);
-            this.pnlActions.TabIndex = 3;
-            // 
-            // btnReady
-            // 
-            this.btnReady.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnReady.Location = new System.Drawing.Point(1020, 15);
-            this.btnReady.Name = "btnReady";
-            this.btnReady.Size = new System.Drawing.Size(160, 40);
-            this.btnReady.TabIndex = 1;
-            this.btnReady.Text = "✓ SET READY";
-            this.btnReady.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Primary;
-            this.btnReady.Click += new System.EventHandler(this.btnReady_Click);
-            // 
-            // btnRefresh
-            // 
-            this.btnRefresh.Location = new System.Drawing.Point(20, 15);
-            this.btnRefresh.Name = "btnRefresh";
-            this.btnRefresh.Size = new System.Drawing.Size(120, 40);
-            this.btnRefresh.TabIndex = 0;
-            this.btnRefresh.Text = "🔄 Refresh";
-            this.btnRefresh.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Secondary;
-            this.btnRefresh.Click += new System.EventHandler(this.btnRefresh_Click);
+            this.flowLayoutPanelRequests.AutoScroll = true;
+            this.flowLayoutPanelRequests.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanelRequests.Location = new System.Drawing.Point(20, 20);
+            this.flowLayoutPanelRequests.Name = "flowLayoutPanelRequests";
+            this.flowLayoutPanelRequests.Padding = new System.Windows.Forms.Padding(10);
+            this.flowLayoutPanelRequests.Size = new System.Drawing.Size(1160, 430);
+            this.flowLayoutPanelRequests.TabIndex = 0;
             // 
             // timerRefresh
             // 
-            this.timerRefresh.Interval = 5000;
+            this.timerRefresh.Interval = 30000;
             this.timerRefresh.Tick += new System.EventHandler(this.timerRefresh_Tick);
             // 
             // StockDashboardForm
@@ -210,7 +162,6 @@ namespace mtc_app.features.stock.presentation.screens
             this.BackColor = System.Drawing.Color.White;
             this.ClientSize = new System.Drawing.Size(1200, 700);
             this.Controls.Add(this.pnlContent);
-            this.Controls.Add(this.pnlActions);
             this.Controls.Add(this.pnlStatusCards);
             this.Controls.Add(this.pnlHeader);
             this.Name = "StockDashboardForm";
@@ -221,8 +172,6 @@ namespace mtc_app.features.stock.presentation.screens
             this.pnlHeader.PerformLayout();
             this.pnlStatusCards.ResumeLayout(false);
             this.pnlContent.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.gridRequests)).EndInit();
-            this.pnlActions.ResumeLayout(false);
             this.ResumeLayout(false);
         }
 
@@ -236,11 +185,8 @@ namespace mtc_app.features.stock.presentation.screens
         private mtc_app.features.stock.presentation.components.StockStatusCard cardReady;
         private mtc_app.features.stock.presentation.components.StockStatusCard cardCompleted;
         private System.Windows.Forms.Panel pnlContent;
-        private System.Windows.Forms.DataGridView gridRequests;
         private mtc_app.features.stock.presentation.components.EmptyStatePanel emptyStatePanel;
-        private System.Windows.Forms.Panel pnlActions;
-        private mtc_app.shared.presentation.components.AppButton btnReady;
-        private mtc_app.shared.presentation.components.AppButton btnRefresh;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanelRequests;
         private System.Windows.Forms.Timer timerRefresh;
     }
 }
