@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -15,6 +16,7 @@ namespace mtc_app.features.technician.presentation.screens
     {
         private Timer timerRefresh;
         private bool _isSystemActive = true;
+        private List<TicketDto> _allTickets = new List<TicketDto>();
 
         public TechnicianDashboardForm()
         {
@@ -24,11 +26,13 @@ namespace mtc_app.features.technician.presentation.screens
             // Setup Timer
             this.timerRefresh = new Timer(this.components);
             this.timerRefresh.Interval = 10000; // 10 seconds
-            this.timerRefresh.Tick += (s, e) => LoadPendingTickets();
+            this.timerRefresh.Tick += (s, e) => LoadData();
 
             if (!this.DesignMode)
             {
-                LoadPendingTickets();
+                cmbFilterStatus.SelectedIndex = 0;
+                cmbSortTime.SelectedIndex = 0;
+                LoadData();
                 timerRefresh.Start();
             }
         }
@@ -41,6 +45,11 @@ namespace mtc_app.features.technician.presentation.screens
                     0, panelHeader.Height - 1, panelHeader.Width, panelHeader.Height - 1);
             };
 
+            this.panelFilters.Paint += (s, e) => {
+                e.Graphics.DrawLine(new Pen(Color.FromArgb(230, 230, 230)),
+                    0, panelFilters.Height - 1, panelFilters.Width, panelFilters.Height - 1);
+            };
+
             // Status Indicator Paint
             this.picStatusIndicator.Paint += (s, e) => {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
@@ -50,9 +59,13 @@ namespace mtc_app.features.technician.presentation.screens
 
             // Empty Icon Paint
             this.picEmptyIcon.Paint += (s, e) => DrawEmptyIcon(e.Graphics);
+
+            // Filter and Sort Handlers
+            this.cmbFilterStatus.SelectedIndexChanged += (s, e) => RenderTickets();
+            this.cmbSortTime.SelectedIndexChanged += (s, e) => RenderTickets();
         }
 
-        private void LoadPendingTickets()
+        private void LoadData()
         {
             try
             {
@@ -67,50 +80,27 @@ namespace mtc_app.features.technician.presentation.screens
                                 IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown')),
                                 IF(t.applicator_code IS NOT NULL, CONCAT(' (App: ', t.applicator_code, ')'), '')
                             ) AS failure_details,
-                            t.created_at
+                            t.created_at,
+                            t.status_id,
+                            t.gl_rating_score,
+                            t.gl_validated_at
                         FROM tickets t
                         JOIN machines m ON t.machine_id = m.machine_id
                         LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
                         LEFT JOIN failures f ON t.failure_id = f.failure_id
-                        WHERE t.status_id = 1 -- WAITING
-                        ORDER BY t.created_at ASC";
+                        WHERE t.status_id >= 1";
                     
-                    var tickets = connection.Query(sql).ToList();
+                    _allTickets = connection.Query<TicketDto>(sql).ToList();
                     
                     pnlTicketList.SuspendLayout();
-                    pnlTicketList.Controls.Clear();
-
+                    
                     // Update ticket count
-                    lblTicketCount.Text = $"{tickets.Count} tiket menunggu";
+                    lblTicketCount.Text = $"{_allTickets.Count} tiket";
 
                     // Update last update time
                     lblLastUpdate.Text = $"Terakhir diperbarui: {DateTime.Now:HH:mm:ss}";
 
-                    if (tickets.Count == 0)
-                    {
-                        // Show empty state
-                        panelEmptyState.Visible = true;
-                        CenterEmptyState();
-                        pnlTicketList.Controls.Add(panelEmptyState);
-                    }
-                    else
-                    {
-                        // Hide empty state and show tickets
-                        panelEmptyState.Visible = false;
-                        
-                        foreach (var ticket in tickets)
-                        {
-                            TimeSpan timeSinceCreation = DateTime.Now - ticket.created_at;
-                            string timeAgo = FormatTimeAgo(timeSinceCreation);
-
-                            var card = new TechnicianTicketCardControl(
-                                ticket.machine_name,
-                                ticket.failure_details,
-                                timeAgo
-                            );
-                            pnlTicketList.Controls.Add(card);
-                        }
-                    }
+                    RenderTickets();
                     
                     pnlTicketList.ResumeLayout();
 
@@ -125,6 +115,66 @@ namespace mtc_app.features.technician.presentation.screens
                 MessageBox.Show($"Gagal memuat daftar tiket: {ex.Message}", 
                     "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private void RenderTickets()
+        {
+            pnlTicketList.SuspendLayout();
+            pnlTicketList.Controls.Clear();
+
+            var filtered = _allTickets.AsEnumerable();
+
+            // Status Filter
+            int statusIndex = cmbFilterStatus.SelectedIndex;
+            if (statusIndex == 1) // Belum Ditangani
+            {
+                filtered = filtered.Where(t => t.status_id == 1);
+            }
+            else if (statusIndex == 2) // Sudah Direview GL
+            {
+                filtered = filtered.Where(t => t.gl_validated_at.HasValue || (t.gl_rating_score.HasValue && t.gl_rating_score > 0));
+            }
+
+            // Sort Time
+            int sortIndex = cmbSortTime.SelectedIndex;
+            if (sortIndex == 0) // Terbaru
+            {
+                filtered = filtered.OrderByDescending(t => t.created_at);
+            }
+            else // Terlama
+            {
+                filtered = filtered.OrderBy(t => t.created_at);
+            }
+
+            var ticketList = filtered.ToList();
+
+            if (ticketList.Count == 0)
+            {
+                // Show empty state
+                panelEmptyState.Visible = true;
+                CenterEmptyState();
+                pnlTicketList.Controls.Add(panelEmptyState);
+            }
+            else
+            {
+                // Hide empty state and show tickets
+                panelEmptyState.Visible = false;
+                        
+                foreach (var ticket in ticketList)
+                {
+                    TimeSpan timeSinceCreation = DateTime.Now - ticket.created_at;
+                    string timeAgo = FormatTimeAgo(timeSinceCreation);
+
+                    var card = new TechnicianTicketCardControl(
+                        ticket.machine_name,
+                        ticket.failure_details,
+                        timeAgo
+                    );
+                    pnlTicketList.Controls.Add(card);
+                }
+            }
+
+            pnlTicketList.ResumeLayout();
         }
 
         private void UpdateStatusIndicator(bool isActive)
@@ -181,6 +231,17 @@ namespace mtc_app.features.technician.presentation.screens
                 return $"Dilaporkan {(int)ts.TotalHours} jam yang lalu";
             
             return $"Dilaporkan {ts.Days} hari yang lalu";
+        }
+
+        private class TicketDto
+        {
+            public long ticket_id { get; set; }
+            public string machine_name { get; set; }
+            public string failure_details { get; set; }
+            public DateTime created_at { get; set; }
+            public int status_id { get; set; }
+            public int? gl_rating_score { get; set; }
+            public DateTime? gl_validated_at { get; set; }
         }
     }
 }
