@@ -15,6 +15,11 @@ namespace mtc_app.features.technician.presentation.screens
         private System.Windows.Forms.Label lblEmptyTitle;
         private System.Windows.Forms.Label lblEmptyMessage;
         private System.Windows.Forms.PictureBox picEmptyIcon;
+        private System.Windows.Forms.Panel panelFilters;
+        private System.Windows.Forms.ComboBox cmbFilterStatus;
+        private System.Windows.Forms.ComboBox cmbSortTime;
+        private System.Windows.Forms.Label lblFilterStatus;
+        private System.Windows.Forms.Label lblSortTime;
 
         protected override void Dispose(bool disposing)
         {
@@ -40,10 +45,16 @@ namespace mtc_app.features.technician.presentation.screens
             this.lblEmptyTitle = new System.Windows.Forms.Label();
             this.lblEmptyMessage = new System.Windows.Forms.Label();
             this.picEmptyIcon = new System.Windows.Forms.PictureBox();
+            this.panelFilters = new System.Windows.Forms.Panel();
+            this.cmbFilterStatus = new System.Windows.Forms.ComboBox();
+            this.cmbSortTime = new System.Windows.Forms.ComboBox();
+            this.lblFilterStatus = new System.Windows.Forms.Label();
+            this.lblSortTime = new System.Windows.Forms.Label();
             
             this.panelHeader.SuspendLayout();
             this.panelStatusBar.SuspendLayout();
             this.panelEmptyState.SuspendLayout();
+            this.panelFilters.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.picStatusIndicator)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.picEmptyIcon)).BeginInit();
             this.SuspendLayout();
@@ -113,6 +124,67 @@ namespace mtc_app.features.technician.presentation.screens
             this.lblLastUpdate.Text = "Terakhir diperbarui: -";
 
             // 
+            // panelFilters
+            // 
+            this.panelFilters.BackColor = System.Drawing.Color.White;
+            this.panelFilters.Controls.Add(this.lblSortTime);
+            this.panelFilters.Controls.Add(this.cmbSortTime);
+            this.panelFilters.Controls.Add(this.lblFilterStatus);
+            this.panelFilters.Controls.Add(this.cmbFilterStatus);
+            this.panelFilters.Dock = System.Windows.Forms.DockStyle.Top;
+            this.panelFilters.Location = new System.Drawing.Point(0, 170);
+            this.panelFilters.Name = "panelFilters";
+            this.panelFilters.Size = new System.Drawing.Size(1200, 60);
+            this.panelFilters.TabIndex = 4;
+            // 
+            // lblFilterStatus
+            // 
+            this.lblFilterStatus.AutoSize = true;
+            this.lblFilterStatus.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblFilterStatus.Location = new System.Drawing.Point(30, 22);
+            this.lblFilterStatus.Name = "lblFilterStatus";
+            this.lblFilterStatus.Size = new System.Drawing.Size(76, 15);
+            this.lblFilterStatus.TabIndex = 0;
+            this.lblFilterStatus.Text = "Filter Status:";
+            // 
+            // cmbFilterStatus
+            // 
+            this.cmbFilterStatus.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbFilterStatus.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.cmbFilterStatus.FormattingEnabled = true;
+            this.cmbFilterStatus.Items.AddRange(new object[] {
+            "Semua",
+            "Belum Ditangani",
+            "Sudah Direview GL"});
+            this.cmbFilterStatus.Location = new System.Drawing.Point(115, 18);
+            this.cmbFilterStatus.Name = "cmbFilterStatus";
+            this.cmbFilterStatus.Size = new System.Drawing.Size(160, 23);
+            this.cmbFilterStatus.TabIndex = 1;
+            // 
+            // lblSortTime
+            // 
+            this.lblSortTime.AutoSize = true;
+            this.lblSortTime.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblSortTime.Location = new System.Drawing.Point(300, 22);
+            this.lblSortTime.Name = "lblSortTime";
+            this.lblSortTime.Size = new System.Drawing.Size(89, 15);
+            this.lblSortTime.TabIndex = 2;
+            this.lblSortTime.Text = "Urutkan Waktu:";
+            // 
+            // cmbSortTime
+            // 
+            this.cmbSortTime.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbSortTime.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.cmbSortTime.FormattingEnabled = true;
+            this.cmbSortTime.Items.AddRange(new object[] {
+            "Terbaru",
+            "Terlama"});
+            this.cmbSortTime.Location = new System.Drawing.Point(395, 18);
+            this.cmbSortTime.Name = "cmbSortTime";
+            this.cmbSortTime.Size = new System.Drawing.Size(121, 23);
+            this.cmbSortTime.TabIndex = 3;
+
+            // 
             // panelEmptyState
             // 
             this.panelEmptyState.BackColor = System.Drawing.Color.Transparent;
@@ -169,6 +241,7 @@ namespace mtc_app.features.technician.presentation.screens
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(250)))), ((int)(((byte)(252)))));
             this.ClientSize = new System.Drawing.Size(1200, 700);
             this.Controls.Add(this.pnlTicketList);
+            this.Controls.Add(this.panelFilters);
             this.Controls.Add(this.panelStatusBar);
             this.Controls.Add(this.panelHeader);
             this.Name = "TechnicianDashboardForm";
@@ -178,6 +251,8 @@ namespace mtc_app.features.technician.presentation.screens
             this.panelHeader.PerformLayout();
             this.panelStatusBar.ResumeLayout(false);
             this.panelStatusBar.PerformLayout();
+            this.panelFilters.ResumeLayout(false);
+            this.panelFilters.PerformLayout();
             this.panelEmptyState.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.picStatusIndicator)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.picEmptyIcon)).EndInit();
@@ -185,3 +260,4 @@ namespace mtc_app.features.technician.presentation.screens
         }
     }
 }
+
