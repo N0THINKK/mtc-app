@@ -21,8 +21,15 @@ namespace mtc_app.features.stock.presentation.screens
             this.pnlHeader = new System.Windows.Forms.Panel();
             this.lblLastUpdate = new System.Windows.Forms.Label();
             this.labelTitle = new mtc_app.shared.presentation.components.AppLabel();
+            this.pnlFilters = new System.Windows.Forms.Panel();
+            this.btnSortDesc = new mtc_app.shared.presentation.components.AppButton();
+            this.btnSortAsc = new mtc_app.shared.presentation.components.AppButton();
+            this.lblSortLabel = new System.Windows.Forms.Label();
+            this.btnFilterAll = new mtc_app.shared.presentation.components.AppButton();
+            this.btnFilterReady = new mtc_app.shared.presentation.components.AppButton();
+            this.btnFilterPending = new mtc_app.shared.presentation.components.AppButton();
+            this.lblFilterLabel = new System.Windows.Forms.Label();
             this.pnlStatusCards = new System.Windows.Forms.Panel();
-            this.cardCompleted = new mtc_app.features.stock.presentation.components.StockStatusCard();
             this.cardReady = new mtc_app.features.stock.presentation.components.StockStatusCard();
             this.cardPending = new mtc_app.features.stock.presentation.components.StockStatusCard();
             this.pnlContent = new System.Windows.Forms.Panel();
@@ -33,6 +40,7 @@ namespace mtc_app.features.stock.presentation.screens
             this.btnRefresh = new mtc_app.shared.presentation.components.AppButton();
             this.timerRefresh = new System.Windows.Forms.Timer(this.components);
             this.pnlHeader.SuspendLayout();
+            this.pnlFilters.SuspendLayout();
             this.pnlStatusCards.SuspendLayout();
             this.pnlContent.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.gridRequests)).BeginInit();
@@ -62,7 +70,7 @@ namespace mtc_app.features.stock.presentation.screens
             this.lblLastUpdate.Name = "lblLastUpdate";
             this.lblLastUpdate.Size = new System.Drawing.Size(295, 24);
             this.lblLastUpdate.TabIndex = 1;
-            this.lblLastUpdate.Text = "🕐 Last updated: --:--:--";
+            this.lblLastUpdate.Text = "🕐 Terakhir diperbarui: --:--:--";
             this.lblLastUpdate.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             
             // 
@@ -75,13 +83,12 @@ namespace mtc_app.features.stock.presentation.screens
             this.labelTitle.Name = "labelTitle";
             this.labelTitle.Size = new System.Drawing.Size(380, 37);
             this.labelTitle.TabIndex = 0;
-            this.labelTitle.Text = "📦 Stock Control Dashboard";
+            this.labelTitle.Text = "📦 Kontrol Stok - Permintaan Part";
             
             // 
             // pnlStatusCards
             // 
             this.pnlStatusCards.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(249)))), ((int)(((byte)(250)))));
-            this.pnlStatusCards.Controls.Add(this.cardCompleted);
             this.pnlStatusCards.Controls.Add(this.cardReady);
             this.pnlStatusCards.Controls.Add(this.cardPending);
             this.pnlStatusCards.Dock = System.Windows.Forms.DockStyle.Top;
@@ -99,7 +106,7 @@ namespace mtc_app.features.stock.presentation.screens
             this.cardPending.Name = "cardPending";
             this.cardPending.Size = new System.Drawing.Size(220, 120);
             this.cardPending.TabIndex = 0;
-            this.cardPending.Title = "Pending Requests";
+            this.cardPending.Title = "Menunggu Diproses";
             this.cardPending.Type = mtc_app.features.stock.presentation.components.StockStatusCard.StatusType.Pending;
             this.cardPending.Value = "0";
             
@@ -111,21 +118,115 @@ namespace mtc_app.features.stock.presentation.screens
             this.cardReady.Name = "cardReady";
             this.cardReady.Size = new System.Drawing.Size(220, 120);
             this.cardReady.TabIndex = 1;
-            this.cardReady.Title = "Ready for Pickup";
+            this.cardReady.Title = "Siap Diambil";
             this.cardReady.Type = mtc_app.features.stock.presentation.components.StockStatusCard.StatusType.Ready;
             this.cardReady.Value = "0";
             
             // 
-            // cardCompleted
+            // pnlFilters
             // 
-            this.cardCompleted.BackColor = System.Drawing.Color.White;
-            this.cardCompleted.Location = new System.Drawing.Point(505, 25);
-            this.cardCompleted.Name = "cardCompleted";
-            this.cardCompleted.Size = new System.Drawing.Size(220, 120);
-            this.cardCompleted.TabIndex = 2;
-            this.cardCompleted.Title = "Completed Today";
-            this.cardCompleted.Type = mtc_app.features.stock.presentation.components.StockStatusCard.StatusType.Completed;
-            this.cardCompleted.Value = "0";
+            this.pnlFilters.BackColor = System.Drawing.Color.White;
+            this.pnlFilters.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.pnlFilters.Controls.Add(this.btnSortDesc);
+            this.pnlFilters.Controls.Add(this.btnSortAsc);
+            this.pnlFilters.Controls.Add(this.lblSortLabel);
+            this.pnlFilters.Controls.Add(this.btnFilterAll);
+            this.pnlFilters.Controls.Add(this.btnFilterReady);
+            this.pnlFilters.Controls.Add(this.btnFilterPending);
+            this.pnlFilters.Controls.Add(this.lblFilterLabel);
+            this.pnlFilters.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlFilters.Location = new System.Drawing.Point(0, 250);
+            this.pnlFilters.Name = "pnlFilters";
+            this.pnlFilters.Padding = new System.Windows.Forms.Padding(20, 15, 20, 15);
+            this.pnlFilters.Size = new System.Drawing.Size(1200, 70);
+            this.pnlFilters.TabIndex = 2;
+            
+            // 
+            // lblFilterLabel
+            // 
+            this.lblFilterLabel.AutoSize = true;
+            this.lblFilterLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.lblFilterLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(73)))), ((int)(((byte)(80)))), ((int)(((byte)(87)))));
+            this.lblFilterLabel.Location = new System.Drawing.Point(20, 15);
+            this.lblFilterLabel.Name = "lblFilterLabel";
+            this.lblFilterLabel.Size = new System.Drawing.Size(50, 19);
+            this.lblFilterLabel.TabIndex = 0;
+            this.lblFilterLabel.Text = "Filter:";
+            
+            // 
+            // btnFilterPending
+            // 
+            this.btnFilterPending.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.btnFilterPending.Location = new System.Drawing.Point(80, 10);
+            this.btnFilterPending.Name = "btnFilterPending";
+            this.btnFilterPending.Size = new System.Drawing.Size(130, 38);
+            this.btnFilterPending.TabIndex = 1;
+            this.btnFilterPending.Text = "⏳ Pending";
+            this.btnFilterPending.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Primary;
+            this.btnFilterPending.Click += new System.EventHandler(this.btnFilterPending_Click);
+            
+            // 
+            // btnFilterReady
+            // 
+            this.btnFilterReady.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.btnFilterReady.Location = new System.Drawing.Point(220, 10);
+            this.btnFilterReady.Name = "btnFilterReady";
+            this.btnFilterReady.Size = new System.Drawing.Size(130, 38);
+            this.btnFilterReady.TabIndex = 2;
+            this.btnFilterReady.Text = "✓ Siap";
+            this.btnFilterReady.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Secondary;
+            this.btnFilterReady.Click += new System.EventHandler(this.btnFilterReady_Click);
+            
+            // 
+            // btnFilterAll
+            // 
+            this.btnFilterAll.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.btnFilterAll.Location = new System.Drawing.Point(360, 10);
+            this.btnFilterAll.Name = "btnFilterAll";
+            this.btnFilterAll.Size = new System.Drawing.Size(130, 38);
+            this.btnFilterAll.TabIndex = 3;
+            this.btnFilterAll.Text = "📋 Semua";
+            this.btnFilterAll.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Secondary;
+            this.btnFilterAll.Click += new System.EventHandler(this.btnFilterAll_Click);
+            
+            // 
+            // lblSortLabel
+            // 
+            this.lblSortLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.lblSortLabel.AutoSize = true;
+            this.lblSortLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.lblSortLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(73)))), ((int)(((byte)(80)))), ((int)(((byte)(87)))));
+            this.lblSortLabel.Location = new System.Drawing.Point(850, 15);
+            this.lblSortLabel.Name = "lblSortLabel";
+            this.lblSortLabel.Size = new System.Drawing.Size(55, 19);
+            this.lblSortLabel.TabIndex = 4;
+            this.lblSortLabel.Text = "Urutkan:";
+            
+            // 
+            // btnSortAsc
+            // 
+            this.btnSortAsc.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnSortAsc.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.btnSortAsc.Location = new System.Drawing.Point(915, 10);
+            this.btnSortAsc.Name = "btnSortAsc";
+            this.btnSortAsc.Size = new System.Drawing.Size(120, 38);
+            this.btnSortAsc.TabIndex = 5;
+            this.btnSortAsc.Text = "↑ Terlama";
+            this.btnSortAsc.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Secondary;
+            this.btnSortAsc.Click += new System.EventHandler(this.btnSortAsc_Click);
+            
+            // 
+            // btnSortDesc
+            // 
+            this.btnSortDesc.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnSortDesc.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.btnSortDesc.Location = new System.Drawing.Point(1045, 10);
+            this.btnSortDesc.Name = "btnSortDesc";
+            this.btnSortDesc.Size = new System.Drawing.Size(120, 38);
+            this.btnSortDesc.TabIndex = 6;
+            this.btnSortDesc.Text = "↓ Terbaru";
+            this.btnSortDesc.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Primary;
+            this.btnSortDesc.Click += new System.EventHandler(this.btnSortDesc_Click);
             
             // 
             // pnlContent
@@ -134,11 +235,11 @@ namespace mtc_app.features.stock.presentation.screens
             this.pnlContent.Controls.Add(this.emptyStatePanel);
             this.pnlContent.Controls.Add(this.gridRequests);
             this.pnlContent.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pnlContent.Location = new System.Drawing.Point(0, 250);
+            this.pnlContent.Location = new System.Drawing.Point(0, 320);
             this.pnlContent.Name = "pnlContent";
             this.pnlContent.Padding = new System.Windows.Forms.Padding(25, 20, 25, 20);
-            this.pnlContent.Size = new System.Drawing.Size(1200, 380);
-            this.pnlContent.TabIndex = 2;
+            this.pnlContent.Size = new System.Drawing.Size(1200, 310);
+            this.pnlContent.TabIndex = 3;
             
             // 
             // gridRequests
@@ -158,21 +259,21 @@ namespace mtc_app.features.stock.presentation.screens
             this.gridRequests.ReadOnly = true;
             this.gridRequests.RowHeadersVisible = false;
             this.gridRequests.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.gridRequests.Size = new System.Drawing.Size(1150, 340);
+            this.gridRequests.Size = new System.Drawing.Size(1150, 270);
             this.gridRequests.TabIndex = 0;
             
             // 
             // emptyStatePanel
             // 
             this.emptyStatePanel.BackColor = System.Drawing.Color.White;
-            this.emptyStatePanel.Description = "All requests have been processed. The system is working correctly.";
+            this.emptyStatePanel.Description = "Semua permintaan sudah diproses. Sistem bekerja dengan baik.";
             this.emptyStatePanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.emptyStatePanel.Icon = "📦";
             this.emptyStatePanel.Location = new System.Drawing.Point(25, 20);
             this.emptyStatePanel.Name = "emptyStatePanel";
-            this.emptyStatePanel.Size = new System.Drawing.Size(1150, 340);
+            this.emptyStatePanel.Size = new System.Drawing.Size(1150, 270);
             this.emptyStatePanel.TabIndex = 1;
-            this.emptyStatePanel.Title = "No Pending Requests";
+            this.emptyStatePanel.Title = "Tidak Ada Permintaan";
             this.emptyStatePanel.Visible = false;
             
             // 
@@ -186,7 +287,7 @@ namespace mtc_app.features.stock.presentation.screens
             this.pnlActions.Name = "pnlActions";
             this.pnlActions.Padding = new System.Windows.Forms.Padding(25, 18, 25, 18);
             this.pnlActions.Size = new System.Drawing.Size(1200, 70);
-            this.pnlActions.TabIndex = 3;
+            this.pnlActions.TabIndex = 4;
             
             // 
             // btnRefresh
@@ -209,14 +310,14 @@ namespace mtc_app.features.stock.presentation.screens
             this.btnReady.Name = "btnReady";
             this.btnReady.Size = new System.Drawing.Size(160, 40);
             this.btnReady.TabIndex = 1;
-            this.btnReady.Text = "✓ SET READY";
+            this.btnReady.Text = "✓ TANDAI SIAP";
             this.btnReady.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Primary;
             this.btnReady.Click += new System.EventHandler(this.btnReady_Click);
             
             // 
             // timerRefresh
             // 
-            this.timerRefresh.Interval = 5000;
+            this.timerRefresh.Interval = 30000;
             this.timerRefresh.Tick += new System.EventHandler(this.timerRefresh_Tick);
             
             // 
@@ -227,16 +328,19 @@ namespace mtc_app.features.stock.presentation.screens
             this.BackColor = System.Drawing.Color.White;
             this.ClientSize = new System.Drawing.Size(1200, 700);
             this.Controls.Add(this.pnlContent);
+            this.Controls.Add(this.pnlFilters);
             this.Controls.Add(this.pnlActions);
             this.Controls.Add(this.pnlStatusCards);
             this.Controls.Add(this.pnlHeader);
             this.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.Name = "StockDashboardForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Stock Control Dashboard";
+            this.Text = "Kontrol Stok - Permintaan Part";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.pnlHeader.ResumeLayout(false);
             this.pnlHeader.PerformLayout();
+            this.pnlFilters.ResumeLayout(false);
+            this.pnlFilters.PerformLayout();
             this.pnlStatusCards.ResumeLayout(false);
             this.pnlContent.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.gridRequests)).EndInit();
@@ -252,7 +356,14 @@ namespace mtc_app.features.stock.presentation.screens
         private System.Windows.Forms.Panel pnlStatusCards;
         private mtc_app.features.stock.presentation.components.StockStatusCard cardPending;
         private mtc_app.features.stock.presentation.components.StockStatusCard cardReady;
-        private mtc_app.features.stock.presentation.components.StockStatusCard cardCompleted;
+        private System.Windows.Forms.Panel pnlFilters;
+        private System.Windows.Forms.Label lblFilterLabel;
+        private mtc_app.shared.presentation.components.AppButton btnFilterPending;
+        private mtc_app.shared.presentation.components.AppButton btnFilterReady;
+        private mtc_app.shared.presentation.components.AppButton btnFilterAll;
+        private System.Windows.Forms.Label lblSortLabel;
+        private mtc_app.shared.presentation.components.AppButton btnSortAsc;
+        private mtc_app.shared.presentation.components.AppButton btnSortDesc;
         private System.Windows.Forms.Panel pnlContent;
         private System.Windows.Forms.DataGridView gridRequests;
         private mtc_app.features.stock.presentation.components.EmptyStatePanel emptyStatePanel;

@@ -13,7 +13,8 @@ namespace mtc_app.features.stock.presentation.screens
     {
         private int _pendingCount = 0;
         private int _readyCount = 0;
-        private int _todayCompletedCount = 0;
+        private string _currentFilter = "PENDING"; // PENDING, READY, ALL
+        private string _currentSort = "DESC"; // ASC, DESC
 
         public StockDashboardForm()
         {
@@ -35,51 +36,65 @@ namespace mtc_app.features.stock.presentation.screens
                 {
                     connection.Open();
 
-                    LoadPendingRequests(connection);
+                    LoadRequestsWithFilter(connection);
                     LoadStatusCounts(connection);
                     UpdateStatusCards();
                 }
             }
             catch (Exception ex)
             {
-                ShowError($"Error loading stock data: {ex.Message}");
+                ShowError($"Error memuat data: {ex.Message}");
             }
         }
 
-        private void LoadPendingRequests(IDbConnection connection)
+        private void LoadRequestsWithFilter(IDbConnection connection)
         {
-            const string sql = @"
+            string whereClause = GetWhereClauseForFilter();
+            string orderClause = _currentSort == "ASC" ? "ASC" : "DESC";
+
+            string sql = $@"
                 SELECT 
-                    pr.request_id,
+                    pr.request_id AS 'ID',
                     pr.requested_at AS 'Waktu Request',
-                    IFNULL(t.ticket_display_code, 'N/A') AS 'Kode Tiket',
                     pr.part_name_manual AS 'Nama Barang',
+                    IFNULL(u.full_name, 'N/A') AS 'Nama Teknisi',
                     pr.qty AS 'Jumlah',
-                    IFNULL(ts.status_name, 'Unknown') AS 'Status'
+                    rs.status_name AS 'Status'
                 FROM part_requests pr
                 LEFT JOIN tickets t ON pr.ticket_id = t.ticket_id
-                LEFT JOIN request_statuses ts ON pr.status_id = ts.status_id
-                WHERE pr.status_id = 1
-                ORDER BY pr.requested_at ASC";
+                LEFT JOIN users u ON t.technician_id = u.user_id
+                LEFT JOIN request_statuses rs ON pr.status_id = rs.status_id
+                {whereClause}
+                ORDER BY pr.requested_at {orderClause}";
 
             var data = connection.Query(sql).ToList();
-            _pendingCount = data.Count;
-
             DisplayRequests(data);
+        }
+
+        private string GetWhereClauseForFilter()
+        {
+            switch (_currentFilter)
+            {
+                case "PENDING":
+                    return "WHERE pr.status_id = 1";
+                case "READY":
+                    return "WHERE pr.status_id = 2";
+                case "ALL":
+                    return "WHERE pr.status_id IN (1, 2)";
+                default:
+                    return "WHERE pr.status_id = 1";
+            }
         }
 
         private void LoadStatusCounts(IDbConnection connection)
         {
+            _pendingCount = connection.QuerySingle<int>(
+                "SELECT COUNT(*) FROM part_requests WHERE status_id = 1"
+            );
+
             _readyCount = connection.QuerySingle<int>(
                 "SELECT COUNT(*) FROM part_requests WHERE status_id = 2"
             );
-
-            // _todayCompletedCount = connection.QuerySingle<int>(@"
-            //     SELECT COUNT(*) 
-            //     FROM part_requests 
-            //     WHERE status_id = 3 
-            //     AND DATE(picked_at) = CURDATE()"
-            // );
         }
 
         private void DisplayRequests(dynamic data)
@@ -94,20 +109,90 @@ namespace mtc_app.features.stock.presentation.screens
             }
         }
 
+        private void HideIdColumnSafely()
+        {
+            if (gridRequests.Columns.Contains("ID"))
+            {
+                gridRequests.Columns["ID"].Visible = false;
+            }
+        }
+
         private void ShowGridView(dynamic data)
         {
             gridRequests.Visible = true;
             emptyStatePanel.Visible = false;
-            gridRequests.AutoGenerateColumns = true;
-            gridRequests.DataSource = data;
 
+            gridRequests.AutoGenerateColumns = false;
+            gridRequests.DataSource = null;
+            gridRequests.Columns.Clear();
+            gridRequests.Columns.Add(new DataGridViewTextBoxColumn {
+                Name = "Waktu Request",
+                DataPropertyName = "Waktu Request",
+                HeaderText = "Waktu Request",
+                Width = 150
+            });
+
+            gridRequests.Columns.Add(new DataGridViewTextBoxColumn {
+                Name = "Nama Barang",
+                DataPropertyName = "Nama Barang",
+                HeaderText = "Nama Barang",
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
+            });
+
+            gridRequests.Columns.Add(new DataGridViewTextBoxColumn {
+                Name = "Nama Teknisi",
+                DataPropertyName = "Nama Teknisi",
+                HeaderText = "Nama Teknisi",
+                Width = 150
+            });
+
+            gridRequests.Columns.Add(new DataGridViewTextBoxColumn {
+                Name = "Jumlah",
+                DataPropertyName = "Jumlah",
+                HeaderText = "Jumlah",
+                Width = 80
+            });
+
+            gridRequests.Columns.Add(new DataGridViewTextBoxColumn {
+                Name = "Status",
+                DataPropertyName = "Status",
+                HeaderText = "Status",
+                Width = 120
+            });
+
+            gridRequests.DataSource = data;
             StyleDataGrid();
         }
+        
 
         private void ShowEmptyState()
         {
             gridRequests.Visible = false;
             emptyStatePanel.Visible = true;
+            
+            UpdateEmptyStateMessage();
+        }
+
+        private void UpdateEmptyStateMessage()
+        {
+            switch (_currentFilter)
+            {
+                case "PENDING":
+                    emptyStatePanel.Title = "Tidak Ada Permintaan Pending";
+                    emptyStatePanel.Description = "Semua permintaan sudah diproses atau ditandai siap.";
+                    emptyStatePanel.Icon = "✅";
+                    break;
+                case "READY":
+                    emptyStatePanel.Title = "Tidak Ada Barang Siap";
+                    emptyStatePanel.Description = "Belum ada barang yang ditandai siap untuk diambil.";
+                    emptyStatePanel.Icon = "📦";
+                    break;
+                case "ALL":
+                    emptyStatePanel.Title = "Tidak Ada Data";
+                    emptyStatePanel.Description = "Tidak ada permintaan part yang tersedia.";
+                    emptyStatePanel.Icon = "📋";
+                    break;
+            }
         }
 
         private void StyleDataGrid()
@@ -127,42 +212,110 @@ namespace mtc_app.features.stock.presentation.screens
             gridRequests.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(248, 249, 250);
             gridRequests.RowTemplate.Height = 35;
 
-            // Hide request_id column
-            if (gridRequests.Columns.Count > 0)
-            {
-                gridRequests.Columns[0].Visible = false;
-            }
+            // Hide ID column
+            // if (gridRequests.Columns.Count > 0)
+            // {
+            //     gridRequests.Columns[0].Visible = false;
+                
+            //     // Set column widths
+            //     if (gridRequests.Columns.Count > 1)
+            //     {
+            //         gridRequests.Columns[1].Width = 150; // Waktu Request
+            //         gridRequests.Columns[2].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill; // Nama Barang
+            //         gridRequests.Columns[3].Width = 150; // Nama Teknisi
+            //         gridRequests.Columns[4].Width = 80; // Jumlah
+            //         gridRequests.Columns[5].Width = 120; // Status
+            //     }
+            // }
         }
 
         private void UpdateStatusCards()
         {
             UpdatePendingCard();
             UpdateReadyCard();
-            // UpdateCompletedCard();
             UpdateLastUpdateTime();
         }
 
         private void UpdatePendingCard()
         {
             cardPending.Value = _pendingCount.ToString();
-            cardPending.Subtext = _pendingCount == 0 ? "All clear!" : "Needs processing";
+            cardPending.Subtext = _pendingCount == 0 ? "Semua selesai!" : "Perlu diproses";
         }
 
         private void UpdateReadyCard()
         {
             cardReady.Value = _readyCount.ToString();
-            cardReady.Subtext = _readyCount == 0 ? "None waiting" : "Awaiting pickup";
+            cardReady.Subtext = _readyCount == 0 ? "Tidak ada" : "Menunggu diambil";
         }
-
-        // private void UpdateCompletedCard()
-        // {
-        //     cardCompleted.Value = _todayCompletedCount.ToString();
-        //     cardCompleted.Subtext = "Completed today";
-        // }
 
         private void UpdateLastUpdateTime()
         {
-            lblLastUpdate.Text = $"🕐 Last updated: {DateTime.Now:HH:mm:ss}";
+            lblLastUpdate.Text = $"🕐 Terakhir diperbarui: {DateTime.Now:HH:mm:ss}";
+        }
+
+        private void UpdateFilterButtons()
+        {
+            // Reset all to secondary
+            btnFilterPending.Type = AppButton.ButtonType.Secondary;
+            btnFilterReady.Type = AppButton.ButtonType.Secondary;
+            btnFilterAll.Type = AppButton.ButtonType.Secondary;
+
+            // Highlight active filter
+            switch (_currentFilter)
+            {
+                case "PENDING":
+                    btnFilterPending.Type = AppButton.ButtonType.Primary;
+                    break;
+                case "READY":
+                    btnFilterReady.Type = AppButton.ButtonType.Primary;
+                    break;
+                case "ALL":
+                    btnFilterAll.Type = AppButton.ButtonType.Primary;
+                    break;
+            }
+        }
+
+        private void UpdateSortButtons()
+        {
+            btnSortAsc.Type = _currentSort == "ASC" ? AppButton.ButtonType.Primary : AppButton.ButtonType.Secondary;
+            btnSortDesc.Type = _currentSort == "DESC" ? AppButton.ButtonType.Primary : AppButton.ButtonType.Secondary;
+        }
+
+        // Filter button events
+        private void btnFilterPending_Click(object sender, EventArgs e)
+        {
+            _currentFilter = "PENDING";
+            UpdateFilterButtons();
+            LoadData();
+        }
+
+        private void btnFilterReady_Click(object sender, EventArgs e)
+        {
+            _currentFilter = "READY";
+            UpdateFilterButtons();
+            LoadData();
+        }
+
+        private void btnFilterAll_Click(object sender, EventArgs e)
+        {
+            _currentFilter = "ALL";
+            UpdateFilterButtons();
+            LoadData();
+        }
+
+        // Sort button events
+        private void btnSortAsc_Click(object sender, EventArgs e)
+        {
+            _currentSort = "ASC";
+            UpdateSortButtons();
+            LoadData();
+        }
+
+        private void btnSortDesc_Click(object sender, EventArgs e)
+        {
+            _currentSort = "DESC";
+            UpdateSortButtons();
+            LoadData();
         }
 
         private void btnRefresh_Click(object sender, EventArgs e)
@@ -191,7 +344,7 @@ namespace mtc_app.features.stock.presentation.screens
         {
             if (gridRequests.SelectedRows.Count == 0)
             {
-                ShowInfo("Pilih request terlebih dahulu!");
+                ShowInfo("Pilih permintaan terlebih dahulu!");
                 return false;
             }
             return true;
@@ -205,7 +358,7 @@ namespace mtc_app.features.stock.presentation.screens
         private bool ConfirmReadyAction()
         {
             var result = MessageBox.Show(
-                "Tandai barang sebagai READY?",
+                "Tandai barang sebagai SIAP untuk diambil?",
                 "Konfirmasi",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question
@@ -230,7 +383,7 @@ namespace mtc_app.features.stock.presentation.screens
                     connection.Execute(sql, new { Id = requestId });
                 }
 
-                ShowSuccess("Barang berhasil ditandai READY!");
+                ShowSuccess("Barang berhasil ditandai SIAP!");
                 LoadData();
             }
             catch (Exception ex)
