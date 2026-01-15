@@ -17,6 +17,7 @@ Release/
 x64/
 x86/
 AnyCPU/
+database/
 
 # ===============================
 # .NET Core
