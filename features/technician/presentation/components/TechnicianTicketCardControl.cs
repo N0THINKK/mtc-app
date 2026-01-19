@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using mtc_app.shared.presentation.styles;
+using mtc_app.shared.presentation.utils;
 
 namespace mtc_app.features.technician.presentation.components
 {
@@ -143,42 +144,18 @@ namespace mtc_app.features.technician.presentation.components
 
         private void PnlMain_Paint(object sender, PaintEventArgs e)
         {
-            // Rounded corners and shadow effect
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            // Shadow
-            using (GraphicsPath shadowPath = GetRoundedRectangle(new Rectangle(2, 2, this.Width - 4, this.Height - 4), 8))
-            {
-                using (PathGradientBrush shadowBrush = new PathGradientBrush(shadowPath))
-                {
-                    shadowBrush.CenterColor = Color.FromArgb(20, 0, 0, 0);
-                    shadowBrush.SurroundColors = new[] { Color.FromArgb(0, 0, 0, 0) };
-                    g.FillPath(shadowBrush, shadowPath);
-                }
-            }
-
-            // Card background
-            using (GraphicsPath path = GetRoundedRectangle(new Rectangle(0, 0, this.Width - 1, this.Height - 1), 8))
+            var bounds = new Rectangle(0, 0, this.Width - 1, this.Height - 1);
+            using (GraphicsPath path = GraphicsUtils.GetRoundedRectangle(bounds, 8))
             {
                 g.FillPath(new SolidBrush(pnlMain.BackColor), path);
                 g.DrawPath(new Pen(Color.FromArgb(230, 230, 230), 1), path);
             }
         }
 
-        private GraphicsPath GetRoundedRectangle(Rectangle bounds, int radius)
-        {
-            GraphicsPath path = new GraphicsPath();
-            int diameter = radius * 2;
-            
-            path.AddArc(bounds.X, bounds.Y, diameter, diameter, 180, 90);
-            path.AddArc(bounds.Right - diameter, bounds.Y, diameter, diameter, 270, 90);
-            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
-            path.AddArc(bounds.X, bounds.Bottom - diameter, diameter, diameter, 90, 90);
-            path.CloseFigure();
-            
-            return path;
-        }
+        // Removed GetRoundedRectangle as it is now in GraphicsUtils
 
         private void DrawMachineIcon(Graphics g)
         {
