@@ -52,8 +52,7 @@ namespace mtc_app.features.admin.data.repositories
                     SELECT 
                         t.ticket_display_code AS 'Kode Tiket',
                         ts.status_name AS 'Status',
-                        ts.status_name AS 'Status',
-                        CONCAT(m.machine_type, m.machine_area, m.machine_number) AS 'Mesin',
+                        CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS 'Mesin',
                         u.full_name AS 'Operator',
                         t.created_at AS 'Waktu Lapor',
                         t.started_at AS 'Mulai',
@@ -79,7 +78,7 @@ namespace mtc_app.features.admin.data.repositories
                     SELECT 
                         t.ticket_display_code AS 'Kode Tiket',
                         ts.status_name AS 'Status',
-                        CONCAT(m.machine_type, m.machine_area, m.machine_number) AS 'Mesin',
+                        CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS 'Mesin',
                         u.full_name AS 'Operator',
                         t.created_at AS 'Waktu Lapor',
                         t.technician_finished_at AS 'Waktu Selesai',
