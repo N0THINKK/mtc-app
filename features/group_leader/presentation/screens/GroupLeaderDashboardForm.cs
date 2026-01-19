@@ -1,84 +1,79 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
-using Dapper;
+using mtc_app.features.group_leader.data.dtos;
+using mtc_app.features.group_leader.data.repositories;
+using mtc_app.features.group_leader.presentation.components;
+using mtc_app.features.rating.presentation.screens;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
-using mtc_app.features.rating.presentation.screens;
-using mtc_app.features.group_leader.presentation.components;
 
 namespace mtc_app.features.group_leader.presentation.screens
 {
     public partial class GroupLeaderDashboardForm : AppBaseForm
     {
-        private List<TicketDto> _allTickets = new List<TicketDto>();
+        private readonly IGroupLeaderRepository _repository;
+        private List<GroupLeaderTicketDto> _allTickets = new List<GroupLeaderTicketDto>();
         private bool _isSystemActive = true;
         private Timer timerRefresh;
 
-        public GroupLeaderDashboardForm()
+        // Composition Root: Default constructor instantiates Repository
+        public GroupLeaderDashboardForm() : this(new GroupLeaderRepository())
         {
+        }
+
+        public GroupLeaderDashboardForm(IGroupLeaderRepository repository)
+        {
+            _repository = repository;
             InitializeComponent();
             SetupEventHandlers();
 
             // Setup Timer
             this.timerRefresh = new Timer(this.components);
             this.timerRefresh.Interval = 15000; // 15 seconds
-            this.timerRefresh.Tick += (s, e) => LoadData();
+            this.timerRefresh.Tick += async (s, e) => await LoadDataAsync();
 
             if (!this.DesignMode)
             {
-                LoadData();
+                // Trigger initial load
+                this.Shown += async (s, e) => await LoadDataAsync();
                 timerRefresh.Start();
             }
         }
 
-
-
-        private void LoadData()
+        private async Task LoadDataAsync()
         {
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
-                {
-                    connection.Open();
-                    string sql = @"
-                        SELECT 
-                            t.ticket_id,
-                            m.machine_name,
-                            u.full_name AS technician_name,
-                            t.gl_rating_score,
-                            t.created_at,
-                            t.gl_validated_at
-                        FROM tickets t
-                        LEFT JOIN machines m ON t.machine_id = m.machine_id
-                        LEFT JOIN users u ON t.technician_id = u.user_id
-                        WHERE t.status_id >= 2
-                        ORDER BY t.created_at DESC";
+                // We fetch all relevant tickets. Filters are applied in memory for smooth UX (unless dataset is huge)
+                // Repo method 'GetTicketsAsync' loads tickets with status >= 2 (Repairing or Done)
+                var tickets = await _repository.GetTicketsAsync();
+                _allTickets = tickets.ToList();
 
-                    _allTickets = connection.Query<TicketDto>(sql).ToList();
-
-                    // Update stats
-                    int totalTickets = _allTickets.Count;
-                    int reviewedTickets = _allTickets.Count(t => t.gl_validated_at.HasValue || (t.gl_rating_score.HasValue && t.gl_rating_score > 0));
-                    int pendingTickets = totalTickets - reviewedTickets;
-
-                    lblTicketStats.Text = $"Total: {totalTickets} | Sudah Direview: {reviewedTickets} | Belum Direview: {pendingTickets}";
-                    lblLastUpdate.Text = $"Terakhir diperbarui: {DateTime.Now:HH:mm:ss}";
-
-                    RenderTickets();
-                    UpdateStatusIndicator(true);
-                }
+                UpdateStats();
+                RenderTickets();
+                UpdateStatusIndicator(true);
             }
             catch (Exception ex)
             {
-                timerRefresh.Stop();
+                timerRefresh.Stop(); // Stop refreshing if error persists
                 UpdateStatusIndicator(false);
                 MessageBox.Show($"Gagal memuat data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private void UpdateStats()
+        {
+            int totalTickets = _allTickets.Count;
+            int reviewedTickets = _allTickets.Count(t => t.GlValidatedAt.HasValue || (t.GlRatingScore.HasValue && t.GlRatingScore > 0));
+            int pendingTickets = totalTickets - reviewedTickets;
+
+            lblTicketStats.Text = $"Total: {totalTickets} | Sudah Direview: {reviewedTickets} | Belum Direview: {pendingTickets}";
+            lblLastUpdate.Text = $"Terakhir diperbarui: {DateTime.Now:HH:mm:ss}";
         }
 
         private void Filter_Changed(object sender, EventArgs e)
@@ -97,22 +92,22 @@ namespace mtc_app.features.group_leader.presentation.screens
             int statusIndex = cmbFilterStatus.SelectedIndex;
             if (statusIndex == 1) // Sudah Direview
             {
-                filtered = filtered.Where(t => t.gl_validated_at.HasValue || (t.gl_rating_score.HasValue && t.gl_rating_score > 0));
+                filtered = filtered.Where(t => t.GlValidatedAt.HasValue || (t.GlRatingScore.HasValue && t.GlRatingScore > 0));
             }
             else if (statusIndex == 2) // Belum Direview
             {
-                filtered = filtered.Where(t => !t.gl_validated_at.HasValue && (!t.gl_rating_score.HasValue || t.gl_rating_score == 0));
+                filtered = filtered.Where(t => !t.GlValidatedAt.HasValue && (!t.GlRatingScore.HasValue || t.GlRatingScore == 0));
             }
 
             // Sort Time
             int sortIndex = cmbSortTime.SelectedIndex;
             if (sortIndex == 0) // Terbaru
             {
-                filtered = filtered.OrderByDescending(t => t.created_at);
+                filtered = filtered.OrderByDescending(t => t.CreatedAt);
             }
             else // Terlama
             {
-                filtered = filtered.OrderBy(t => t.created_at);
+                filtered = filtered.OrderBy(t => t.CreatedAt);
             }
 
             var ticketList = filtered.ToList();
@@ -126,35 +121,41 @@ namespace mtc_app.features.group_leader.presentation.screens
             }
             else
             {
-                // Hide empty state and show tickets
                 panelEmptyState.Visible = false;
 
                 foreach (var ticket in ticketList)
                 {
-                    bool isReviewed = ticket.gl_validated_at.HasValue || (ticket.gl_rating_score.HasValue && ticket.gl_rating_score > 0);
+                    bool isReviewed = ticket.GlValidatedAt.HasValue || (ticket.GlRatingScore.HasValue && ticket.GlRatingScore > 0);
 
                     var card = new GroupLeaderTicketCardControl(
-                        ticket.ticket_id,
-                        ticket.machine_name,
-                        ticket.technician_name,
-                        ticket.created_at,
-                        ticket.gl_rating_score,
+                        ticket.TicketId,
+                        ticket.MachineName,
+                        ticket.TechnicianName,
+                        ticket.CreatedAt,
                         isReviewed
                     );
 
-                    card.CardClicked += (s, e) => {
-                        using (var form = new RatingGlForm(ticket.ticket_id))
-                        {
-                            form.ShowDialog();
-                            LoadData();
-                        }
-                    };
+                    // Subscribe to Event (Dumb Component Pattern)
+                    card.OnValidate += Card_OnValidate;
 
                     flowTickets.Controls.Add(card);
                 }
             }
 
             flowTickets.ResumeLayout();
+        }
+
+        private void Card_OnValidate(object sender, long ticketId)
+        {
+            // Open Rating Form
+            using (var form = new RatingGlForm(ticketId)) 
+            {
+                if (form.ShowDialog() == DialogResult.OK)
+                {
+                    // Refresh Data after rating
+                    _ = LoadDataAsync();
+                }
+            }
         }
 
         private void UpdateStatusIndicator(bool isActive)
@@ -196,7 +197,8 @@ namespace mtc_app.features.group_leader.presentation.screens
                 e.Graphics.FillEllipse(new SolidBrush(color), 0, 0, 12, 12);
             };
 
-            // Empty State Icon
+            // Empty State Icon (Ideally use AppEmptyState here)
+            // But leaving custom paint for now to avoid altering Designer file drastically unless needed
             this.picEmptyIcon.Paint += (s, e) => DrawEmptyIcon(e.Graphics);
         }
 
@@ -233,16 +235,6 @@ namespace mtc_app.features.group_leader.presentation.screens
                     g.DrawPolygon(starPen, starPoints);
                 }
             }
-        }
-
-        private class TicketDto
-        {
-            public long ticket_id { get; set; }
-            public string machine_name { get; set; }
-            public string technician_name { get; set; }
-            public int? gl_rating_score { get; set; }
-            public DateTime created_at { get; set; }
-            public DateTime? gl_validated_at { get; set; }
         }
     }
 }
