@@ -95,8 +95,17 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Open();
-                    string sql = "UPDATE tickets SET production_resumed_at = NOW() WHERE ticket_id = @Id";
-                    connection.Execute(sql, new { Id = _ticketId });
+                    
+                    // 1. Update Ticket: Set Production Resumed Time
+                    string sqlTicket = "UPDATE tickets SET production_resumed_at = NOW() WHERE ticket_id = @Id";
+                    connection.Execute(sqlTicket, new { Id = _ticketId });
+
+                    // 2. Update Machine Status: Set to RUNNING (1)
+                    // First, get the machine_id for this ticket
+                    int machineId = connection.ExecuteScalar<int>("SELECT machine_id FROM tickets WHERE ticket_id = @Id", new { Id = _ticketId });
+                    
+                    string sqlMachine = "UPDATE machines SET current_status_id = 1 WHERE machine_id = @MachineId";
+                    connection.Execute(sqlMachine, new { MachineId = machineId });
                 }
 
                 MessageBox.Show("Mesin Running! Waktu produksi tercatat.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);

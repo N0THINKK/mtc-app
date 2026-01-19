@@ -191,6 +191,10 @@ namespace mtc_app.features.machine_history.presentation.screens
                         AppCode = inputApplicator.InputValue
                     });
 
+                    // 4. Update Machine Status to DOWN (2)
+                    string updateMachineSql = "UPDATE machines SET current_status_id = 2 WHERE machine_id = @MachineId";
+                    connection.Execute(updateMachineSql, new { MachineId = machineId });
+
                     // Success Feedback
                     MessageBox.Show(
                         $"Tiket Berhasil Dibuat!\n\n" +
