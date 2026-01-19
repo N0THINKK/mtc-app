@@ -128,7 +128,7 @@ namespace mtc_app.features.group_leader.presentation.screens
                     bool isReviewed = ticket.GlValidatedAt.HasValue || (ticket.GlRatingScore.HasValue && ticket.GlRatingScore > 0);
 
                     var card = new GroupLeaderTicketCardControl(
-                        ticket.TicketId,
+                        ticket.TicketUuid,
                         ticket.MachineName,
                         ticket.TechnicianName,
                         ticket.CreatedAt,
@@ -145,7 +145,7 @@ namespace mtc_app.features.group_leader.presentation.screens
             flowTickets.ResumeLayout();
         }
 
-        private void Card_OnValidate(object sender, long ticketId)
+        private void Card_OnValidate(object sender, Guid ticketId)
         {
             // Open Rating Form
             using (var form = new RatingGlForm(ticketId)) 

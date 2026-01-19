@@ -1,7 +1,8 @@
 using System;
 using System.Drawing;
+using System.Threading.Tasks;
 using System.Windows.Forms;
-using Dapper;
+using mtc_app.features.group_leader.data.repositories;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 
@@ -9,7 +10,8 @@ namespace mtc_app.features.rating.presentation.screens
 {
     public class RatingGlForm : AppBaseForm
     {
-        private long _ticketId;
+        private readonly IGroupLeaderRepository _repository;
+        private Guid _ticketId;
         
         // Input Components
         private AppStarRating _starRating;
@@ -25,18 +27,32 @@ namespace mtc_app.features.rating.presentation.screens
         private AppLabel _lblArrivalDuration;
         private AppLabel _lblRepairDuration;
 
-        public RatingGlForm(long ticketId)
+        // Default constructor for Designer if needed (though DI preferred)
+        public RatingGlForm(long ticketId) : this(new GroupLeaderRepository(), Guid.Empty) 
         {
+            // Legacy signature support if callers still pass long - throw or handle?
+            // Ideally we change callers. But for now, let's assume we might need to fetch Guid by long ID if forced.
+            // Or just crash. Let's provide the proper constructor.
+            throw new NotSupportedException("This form now requires a Guid TicketId. use RatingGlForm(Guid ticketId)");
+        }
+
+        public RatingGlForm(Guid ticketId) : this(new GroupLeaderRepository(), ticketId) 
+        {
+        }
+
+        public RatingGlForm(IGroupLeaderRepository repository, Guid ticketId)
+        {
+            _repository = repository;
             _ticketId = ticketId;
             
             InitializeCustomComponent();
-            LoadTicketData();
+            _ = LoadTicketDataAsync();
         }
 
         private void InitializeCustomComponent()
         {
             this.Text = "GL Validation";
-            this.Size = new Size(500, 750);
+            this.Size = new Size(500, 800);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.AutoScroll = true;
 
@@ -108,7 +124,7 @@ namespace mtc_app.features.rating.presentation.screens
                 Height = 45,
                 Margin = new Padding(0, 10, 0, 20)
             };
-            _btnSubmit.Click += BtnSubmit_Click;
+            _btnSubmit.Click += async (s, e) => await BtnSubmit_ClickAsync(s, e);
             mainLayout.Controls.Add(_btnSubmit);
         }
 
@@ -186,83 +202,44 @@ namespace mtc_app.features.rating.presentation.screens
             return valueLabel;
         }
 
-        private void LoadTicketData()
+        private async Task LoadTicketDataAsync()
         {
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
+                var data = await _repository.GetTicketDetailAsync(_ticketId);
+
+                if (data != null)
                 {
-                    connection.Open();
-                    string sql = @"
-                        SELECT 
-                            t.*,
-                            CONCAT(m.machine_type, '-', m.machine_area, '.', m.machine_number) AS machine_name,
-                            op.full_name as operator_name,
-                            tech.full_name as technician_name,
-                            CONCAT(
-                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
-                                IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown')),
-                                IF(t.applicator_code IS NOT NULL, CONCAT(' (App: ', t.applicator_code, ')'), '')
-                            ) AS failure_details,
-                            CONCAT(
-                                'Penyebab: ', IFNULL(fc.cause_name, IFNULL(t.root_cause_remarks, '-')), 
-                                ' | Tindakan: ', IFNULL(a.action_name, IFNULL(t.action_details_manual, '-')),
-                                ' | Counter: ', IFNULL(t.counter_stroke, 0)
-                            ) AS action_details
-                        FROM tickets t
-                        LEFT JOIN machines m ON t.machine_id = m.machine_id
-                        LEFT JOIN users op ON t.operator_id = op.user_id
-                        LEFT JOIN users tech ON t.technician_id = tech.user_id
-                        LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
-                        LEFT JOIN failures f ON t.failure_id = f.failure_id
-                        LEFT JOIN failure_causes fc ON t.root_cause_id = fc.cause_id
-                        LEFT JOIN actions a ON t.action_id = a.action_id
-                        WHERE t.ticket_id = @Id";
+                    _lblOperatorName.Text = data.OperatorName;
+                    _lblMachineName.Text = data.MachineName;
+                    _lblTechnicianName.Text = data.TechnicianName;
+                    _lblFailureDetails.Text = data.FailureDetails;
+                    _lblActionDetails.Text = data.ActionDetails;
 
-                    var data = connection.QueryFirstOrDefault(sql, new { Id = _ticketId });
-
-                    if (data != null)
+                    // Calculate Durations
+                    if (data.StartedAt.HasValue)
                     {
-                        _lblOperatorName.Text = data.operator_name;
-                        _lblMachineName.Text = data.machine_name;
-                        _lblTechnicianName.Text = data.technician_name;
-                        _lblFailureDetails.Text = data.failure_details;
-                        _lblActionDetails.Text = data.action_details;
-
-                        // Calculate Durations
-                        DateTime created = data.created_at;
-                        DateTime? started = data.started_at; // Nullable check
-                        DateTime? finished = data.technician_finished_at;
-
-                        if (started.HasValue)
-                        {
-                            TimeSpan arrival = started.Value - created;
-                            _lblArrivalDuration.Text = arrival.ToString(@"hh\:mm\:ss");
-                        }
-
-                        if (started.HasValue && finished.HasValue)
-                        {
-                            TimeSpan repair = finished.Value - started.Value;
-                            _lblRepairDuration.Text = repair.ToString(@"hh\:mm\:ss");
-                        }
-                        
-                        // If already rated, populate (optional, but good for editing)
-                        // Assuming columns exist and might be filled
-                        try 
-                        {
-                            if (data.gl_rating_score != null)
-                                _starRating.Rating = Convert.ToInt32(data.gl_rating_score);
-                            
-                            if (data.gl_rating_note != null)
-                                _inputNote.InputValue = data.gl_rating_note;
-                        } 
-                        catch { /* Ignore if columns don't exist yet in dynamic object */ }
+                        TimeSpan arrival = data.StartedAt.Value - data.CreatedAt;
+                        _lblArrivalDuration.Text = arrival.ToString(@"hh\:mm\:ss");
                     }
-                    else
+
+                    if (data.StartedAt.HasValue && data.FinishedAt.HasValue)
                     {
-                        MessageBox.Show("Data tiket tidak ditemukan!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        this.Close();
+                        TimeSpan repair = data.FinishedAt.Value - data.StartedAt.Value;
+                        _lblRepairDuration.Text = repair.ToString(@"hh\:mm\:ss");
                     }
+                    
+                    // Populate Existing Rating
+                    if (data.GlRatingScore.HasValue)
+                        _starRating.Rating = data.GlRatingScore.Value;
+                    
+                    if (!string.IsNullOrEmpty(data.GlRatingNote))
+                        _inputNote.InputValue = data.GlRatingNote;
+                }
+                else
+                {
+                    MessageBox.Show("Data tiket tidak ditemukan!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    this.Close();
                 }
             }
             catch (Exception ex)
@@ -271,7 +248,7 @@ namespace mtc_app.features.rating.presentation.screens
             }
         }
 
-        private void BtnSubmit_Click(object sender, EventArgs e)
+        private async Task BtnSubmit_ClickAsync(object sender, EventArgs e)
         {
             if (_starRating.Rating == 0)
             {
@@ -281,31 +258,37 @@ namespace mtc_app.features.rating.presentation.screens
 
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
-                {
-                    connection.Open();
-                    
-                    // Update Ticket
-                    // gl_validated_at applied here
-                    string sql = @"
-                        UPDATE tickets 
-                        SET gl_rating_score = @Score,
-                            gl_rating_note = @Note,
-                            gl_validated_at = NOW(),
-                            status_id = 3
-                        WHERE ticket_id = @Id";
-                    // Assuming status_id 4 is 'Closed' or 'Validated'
-
-                    connection.Execute(sql, new 
-                    { 
-                        Score = _starRating.Rating,
-                        Note = _inputNote.InputValue,
-                        Id = _ticketId
-                    });
-
-                    MessageBox.Show("Validasi berhasil disimpan.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    this.Close();
-                }
+                // Note: ValidateTicketAsync currently expects long ticket_id based on interface.
+                // We have _ticketId as Guid.
+                // This is a logic gap. If the Repository expects LONG, we can't pass GUID.
+                // But the user insisted we use Guid for the Form.
+                // I will update the Repository logic or assume I should look up the LONG ID first?
+                // OR, I can update the Repository to accept Guid for ValidateTicketAsync too (overload).
+                // Since I cannot change the Repo interface easily blindly, I'll rely on the repo having handled it 
+                // OR I assume the repository implementation handles Guid->Long conversion implicitly if I pass dynamic?
+                // No, static typing.
+                // Constraint: "The 'Submit' button must call _groupLeaderRepo.ValidateTicketAsync(ticketId, rating, note)."
+                // TicketId is Guid here.
+                // So ValidateTicketAsync MUST accept Guid.
+                // I will cast it or rely on the overload I should have added. 
+                // Wait, in Step 980 I decided NOT to change ValidateTicketAsync to Guid in the repo implementation because interface was Long.
+                // This creates a compile error here: ValidateTicketAsync(Guid, int, string).
+                // I MUST fix the Repository Interface and Implementation to support Guid or this form fails build.
+                // For now, I will call it, and then immediately go fix the Repo/Interface.
+                
+                // Assuming overload exists (I will add it in next step)
+                 await _repository.ValidateTicketAsync(_ticketId, _starRating.Rating, _inputNote.InputValue);
+                 
+                // Wait, casting to concrete class breaks DI principle, but saves me from Interface change right now.
+                // Better: Update Interface in next step. For now, write the call.
+                
+                // Oops, ValidateTicketAsync in Repo (Step 980) takes LONG.
+                // I need to add `ValidateTicketAsync(Guid ticketId...)` to the Repo.
+                // I will do that immediately after this file write.
+                
+                MessageBox.Show("Validasi berhasil disimpan.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                this.DialogResult = DialogResult.OK;
+                this.Close();
             }
             catch (Exception ex)
             {

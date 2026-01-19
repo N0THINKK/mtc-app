@@ -44,6 +44,16 @@ namespace mtc_app.shared.presentation.components
         }
 
         [Category("App Properties")]
+        public bool IsReadOnly
+        {
+            get { return _readOnly; }
+            set 
+            { 
+                ReadOnly = value; 
+            }
+        }
+
+        [Category("App Properties")]
         public bool ReadOnly
         {
             get { return _readOnly; }
@@ -118,14 +128,13 @@ namespace mtc_app.shared.presentation.components
             }
         }
 
+
         private void DrawStar(Graphics g, PointF loc, float size, bool filled)
         {
             // Simple 5-point star path
-            PointF[] points = CalculateStarPoints(loc, size, size / 2.5f);
+            PointF[] points = CalculateStarPoints(loc, size);
             
             Color starColor = filled ? Color.Gold : Color.Gray; 
-            // Or use AppColors if we want strict theme:
-            // Color.Gold is standard for stars.
             
             if (filled)
             {
@@ -142,46 +151,8 @@ namespace mtc_app.shared.presentation.components
             }
         }
 
-        private PointF[] CalculateStarPoints(PointF origin, float outerRadius, float innerRadius)
+        private PointF[] CalculateStarPoints(PointF origin, float size)
         {
-            PointF[] points = new PointF[10];
-            double angle = Math.PI / 2; // Start at top
-            double step = Math.PI / 5;  // 36 degrees
-
-            // Adjust origin to center of square
-            float centerX = origin.X + outerRadius / 2;
-            float centerY = origin.Y + outerRadius / 2;
-
-            // Reduce radius slightly to fit in box with padding
-            float rOut = (outerRadius / 2) - 2;
-            float rIn = (innerRadius / 2) - 2;
-
-            for (int i = 0; i < 10; i++)
-            {
-                float r = (i % 2 == 0) ? rOut : rIn;
-                // Subtract angle because Y grows downwards
-                points[i] = new PointF(
-                    (float)(centerX + Math.Cos(angle) * r), // Cos for X (rotated -90deg effectively if started at 0)
-                    // Standard math: 0 is right. We want top (-90deg or 270deg).
-                    // Actually let's use standard formulation:
-                    // Angle 0 = right. Top = -PI/2.
-                    // Loop: 
-                    // i=0 (Top): -PI/2
-                    // i=1 (Inner): -PI/2 + PI/5 ...
-                    //
-                    // My var `angle` started at PI/2? Wait.
-                    // Math.Cos(-PI/2) = 0. Math.Sin(-PI/2) = -1. Correct for top.
-                    (float)(centerY + Math.Sin(angle) * r)  // Sin for Y
-                );
-                angle -= step; // Clockwise
-            }
-            return points;
-        }
-        
-        // Re-implement star points to be sure about orientation
-        private PointF[] CalculateStarPoints_Corrected(PointF origin, float size)
-        {
-             // ... actually the first one was roughly okay but let's be precise.
              // Center
              float cx = origin.X + size / 2;
              float cy = origin.Y + size / 2;

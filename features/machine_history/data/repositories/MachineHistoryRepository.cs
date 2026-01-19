@@ -21,7 +21,7 @@ namespace mtc_app.features.machine_history.data.repositories
                     SELECT 
                         t.ticket_id AS TicketId,
                         t.ticket_display_code AS TicketCode,
-                        IFNULL(m.machine_name, 'Unknown') AS MachineName,
+                        IFNULL(CONCAT(m.machine_type, m.machine_area, m.machine_number), 'Unknown') AS MachineName,
                         IFNULL(tech.full_name, '-') AS TechnicianName,
                         IFNULL(op.full_name, '-') AS OperatorName,
                         CONCAT(
@@ -52,7 +52,7 @@ namespace mtc_app.features.machine_history.data.repositories
 
                 if (!string.IsNullOrEmpty(machineFilter))
                 {
-                    sql += " AND m.machine_name LIKE @Machine";
+                    sql += " AND CONCAT(m.machine_type, m.machine_area, m.machine_number) LIKE @Machine";
                     machineFilter = $"%{machineFilter}%";
                 }
 

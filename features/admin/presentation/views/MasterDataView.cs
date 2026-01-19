@@ -27,7 +27,7 @@ namespace mtc_app.features.admin.presentation.views
 
         // Machine Tab Controls
         private DataGridView gridMachines;
-        private AppInput txtMachineCode, txtMachineName, txtLocation;
+        private AppInput txtMachineCode, txtMachineType, txtMachineArea, txtMachineNumber, txtLocation;
         private AppButton btnAddMachine, btnUpdateMachine, btnDeleteMachine;
         private int? _selectedMachineId = null;
 
@@ -219,7 +219,17 @@ namespace mtc_app.features.admin.presentation.views
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    gridMachines.DataSource = connection.Query("SELECT machine_id, machine_code, machine_name, location FROM machines ORDER BY machine_id").ToList();
+                    // Select individual columns to populate inputs on selection
+                    gridMachines.DataSource = connection.Query(@"
+                        SELECT 
+                            machine_id, 
+                            machine_code, 
+                            machine_type,
+                            machine_area,
+                            machine_number,
+                            CONCAT(machine_type, '.', machine_area, '-', machine_number) AS machine_name, 
+                            location 
+                        FROM machines ORDER BY machine_id").ToList();
                 }
             }
             catch (Exception ex) { MessageBox.Show($"Gagal memuat data mesin: {ex.Message}"); }
@@ -228,17 +238,23 @@ namespace mtc_app.features.admin.presentation.views
 
         private void BtnAddMachine_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txtMachineName.InputValue))
+            if (string.IsNullOrWhiteSpace(txtMachineType.InputValue) || string.IsNullOrWhiteSpace(txtMachineArea.InputValue) || string.IsNullOrWhiteSpace(txtMachineNumber.InputValue))
             {
-                MessageBox.Show("Nama Mesin wajib diisi.");
+                MessageBox.Show("Tipe, Area, dan Nomor Mesin wajib diisi.");
                 return;
             }
             try
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    string sql = "INSERT INTO machines (machine_code, machine_name, location) VALUES (@Code, @Name, @Location)";
-                    connection.Execute(sql, new { Code = txtMachineCode.InputValue, Name = txtMachineName.InputValue, Location = txtLocation.InputValue });
+                    string sql = "INSERT INTO machines (machine_code, machine_type, machine_area, machine_number, location) VALUES (@Code, @Type, @Area, @Number, @Location)";
+                    connection.Execute(sql, new { 
+                        Code = txtMachineCode.InputValue, 
+                        Type = txtMachineType.InputValue,
+                        Area = txtMachineArea.InputValue,
+                        Number = txtMachineNumber.InputValue,
+                        Location = txtLocation.InputValue 
+                    });
                     MessageBox.Show("Mesin berhasil ditambahkan!");
                     LoadMachines();
                 }
@@ -249,13 +265,30 @@ namespace mtc_app.features.admin.presentation.views
         private void BtnUpdateMachine_Click(object sender, EventArgs e)
         {
             if (_selectedMachineId == null) { MessageBox.Show("Pilih mesin dari tabel."); return; }
-            if (string.IsNullOrWhiteSpace(txtMachineName.InputValue)) { MessageBox.Show("Nama Mesin wajib diisi."); return; }
+             if (string.IsNullOrWhiteSpace(txtMachineType.InputValue) || string.IsNullOrWhiteSpace(txtMachineArea.InputValue) || string.IsNullOrWhiteSpace(txtMachineNumber.InputValue))
+            {
+                MessageBox.Show("Tipe, Area, dan Nomor Mesin wajib diisi.");
+                return;
+            }
             try
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    string sql = "UPDATE machines SET machine_code = @Code, machine_name = @Name, location = @Location WHERE machine_id = @Id";
-                    connection.Execute(sql, new { Code = txtMachineCode.InputValue, Name = txtMachineName.InputValue, Location = txtLocation.InputValue, Id = _selectedMachineId.Value });
+                    string sql = @"UPDATE machines 
+                                   SET machine_code = @Code, 
+                                       machine_type = @Type,
+                                       machine_area = @Area,
+                                       machine_number = @Number,
+                                       location = @Location 
+                                   WHERE machine_id = @Id";
+                    connection.Execute(sql, new { 
+                        Code = txtMachineCode.InputValue, 
+                        Type = txtMachineType.InputValue,
+                        Area = txtMachineArea.InputValue,
+                        Number = txtMachineNumber.InputValue,
+                        Location = txtLocation.InputValue, 
+                        Id = _selectedMachineId.Value 
+                    });
                     MessageBox.Show("Mesin berhasil diupdate!");
                     LoadMachines();
                 }
@@ -266,7 +299,7 @@ namespace mtc_app.features.admin.presentation.views
         private void BtnDeleteMachine_Click(object sender, EventArgs e)
         {
             if (_selectedMachineId == null) { MessageBox.Show("Pilih mesin dari tabel."); return; }
-            var confirmResult = MessageBox.Show($"Yakin ingin menghapus mesin '{txtMachineName.InputValue}'?", "Konfirmasi Hapus", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            var confirmResult = MessageBox.Show($"Yakin ingin menghapus mesin ini?", "Konfirmasi Hapus", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
             if (confirmResult == DialogResult.Yes)
             {
                 try
@@ -289,7 +322,12 @@ namespace mtc_app.features.admin.presentation.views
                 DataGridViewRow row = gridMachines.Rows[e.RowIndex];
                 _selectedMachineId = Convert.ToInt32(row.Cells["machine_id"].Value);
                 txtMachineCode.InputValue = row.Cells["machine_code"].Value?.ToString();
-                txtMachineName.InputValue = row.Cells["machine_name"].Value?.ToString();
+                
+                // Populate split fields
+                txtMachineType.InputValue = row.Cells["machine_type"].Value?.ToString();
+                txtMachineArea.InputValue = row.Cells["machine_area"].Value?.ToString();
+                txtMachineNumber.InputValue = row.Cells["machine_number"].Value?.ToString();
+
                 txtLocation.InputValue = row.Cells["location"].Value?.ToString();
                 btnUpdateMachine.Enabled = true;
                 btnDeleteMachine.Enabled = true;
@@ -299,7 +337,7 @@ namespace mtc_app.features.admin.presentation.views
         private void ClearMachineSelection()
         {
             _selectedMachineId = null;
-            txtMachineCode.InputValue = txtMachineName.InputValue = txtLocation.InputValue = "";
+            txtMachineCode.InputValue = txtMachineType.InputValue = txtMachineArea.InputValue = txtMachineNumber.InputValue = txtLocation.InputValue = "";
             btnUpdateMachine.Enabled = false;
             btnDeleteMachine.Enabled = false;
             gridMachines.ClearSelection();
@@ -441,7 +479,9 @@ namespace mtc_app.features.admin.presentation.views
             var pnlMachineForm = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
             var flowMachine = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
             this.txtMachineCode = new AppInput { LabelText = "Kode Mesin", Width = 150 };
-            this.txtMachineName = new AppInput { LabelText = "Nama Mesin", Width = 200 };
+            this.txtMachineType = new AppInput { LabelText = "Tipe Mesin", Width = 150 };
+            this.txtMachineArea = new AppInput { LabelText = "Area", Width = 100 };
+            this.txtMachineNumber = new AppInput { LabelText = "No. Mesin", Width = 100 };
             this.txtLocation = new AppInput { LabelText = "Lokasi", Width = 150 };
             this.btnAddMachine = new AppButton { Text = "Tambah", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5) };
             this.btnUpdateMachine = new AppButton { Text = "Update", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5), Enabled = false };
@@ -449,7 +489,7 @@ namespace mtc_app.features.admin.presentation.views
             this.btnAddMachine.Click += BtnAddMachine_Click;
             this.btnUpdateMachine.Click += BtnUpdateMachine_Click;
             this.btnDeleteMachine.Click += BtnDeleteMachine_Click;
-            flowMachine.Controls.AddRange(new Control[] { txtMachineCode, txtMachineName, txtLocation, btnAddMachine, btnUpdateMachine, btnDeleteMachine });
+            flowMachine.Controls.AddRange(new Control[] { txtMachineCode, txtMachineType, txtMachineArea, txtMachineNumber, txtLocation, btnAddMachine, btnUpdateMachine, btnDeleteMachine });
             pnlMachineForm.Controls.Add(flowMachine);
             this.gridMachines = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = Color.White, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect };
             this.gridMachines.CellClick += GridMachines_CellClick;
