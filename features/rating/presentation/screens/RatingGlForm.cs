@@ -196,7 +196,7 @@ namespace mtc_app.features.rating.presentation.screens
                     string sql = @"
                         SELECT 
                             t.*,
-                            m.machine_name,
+                            CONCAT(m.machine_type, '-', m.machine_area, '.', m.machine_number) AS machine_name,
                             op.full_name as operator_name,
                             tech.full_name as technician_name,
                             CONCAT(

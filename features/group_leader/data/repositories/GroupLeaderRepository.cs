@@ -15,7 +15,7 @@ namespace mtc_app.features.group_leader.data.repositories
                 string sql = @"
                     SELECT 
                         t.ticket_id AS TicketId,
-                        m.machine_name AS MachineName,
+                        CONCAT(m.machine_type, '-', m.machine_area, '.', m.machine_number) AS MachineName,
                         u.full_name AS TechnicianName,
                         t.gl_rating_score AS GlRatingScore,
                         t.created_at AS CreatedAt,
