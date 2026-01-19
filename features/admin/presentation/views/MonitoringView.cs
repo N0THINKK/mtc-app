@@ -1,135 +1,198 @@
 using System;
-using System.Data;
+using System.Drawing;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
-using Dapper;
+using mtc_app.features.admin.data.repositories;
+using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
+using mtc_app.shared.presentation.utils;
 
 namespace mtc_app.features.admin.presentation.views
 {
-    public partial class MonitoringView : UserControl
+    public class MonitoringView : UserControl
     {
-        private System.ComponentModel.IContainer components = null;
+        private readonly IAdminRepository _repository;
         private DataGridView gridTickets;
-        private Timer timerRefresh;
-        private Label lblTitle;
+        private Timer _timerRefresh;
+        private Panel pnlStats;
+        private MetricCard cardTotal;
+        private MetricCard cardMachines;
+        private MetricCard cardOpen;
+        private MetricCard cardValidate;
+        private AppLabel lblLastUpdate;
 
-        public MonitoringView()
+        // Constructor for Designer (if needed) or Parameterless fallback
+        // But for DI we need constructor with param. 
+        // WinForms Designer creates restrictions. Usually we need parameterless.
+        // But since we instantiate this manually in AdminMainForm, param ctor is fine.
+        public MonitoringView(IAdminRepository repository)
         {
+            _repository = repository;
             InitializeComponent();
-            LoadData();
-            if (!this.DesignMode)
-            {
-                timerRefresh.Start();
-            }
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && (components != null)) components.Dispose();
-            base.Dispose(disposing);
+            InitializeTimer();
         }
 
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.DataGridViewCellStyle gridStyleHeader = new System.Windows.Forms.DataGridViewCellStyle();
+            this.Size = new Size(1100, 700);
+            this.BackColor = AppColors.Surface;
 
-            this.gridTickets = new System.Windows.Forms.DataGridView();
-            this.timerRefresh = new System.Windows.Forms.Timer(this.components);
-            this.lblTitle = new System.Windows.Forms.Label();
-
-            ((System.ComponentModel.ISupportInitialize)(this.gridTickets)).BeginInit();
-            this.SuspendLayout();
+            // 1. Header & Stats Section
+            pnlStats = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 160,
+                Padding = new Padding(20),
+                BackColor = Color.White
+            };
             
-            // Title
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
-            this.lblTitle.ForeColor = AppColors.TextPrimary;
-            this.lblTitle.Location = new System.Drawing.Point(0, 0);
-            this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Size = new System.Drawing.Size(268, 25);
-            this.lblTitle.TabIndex = 0;
-            this.lblTitle.Text = "Monitoring Tiket Real-time";
+            // Create Cards
+            cardTotal = CreateMetricCard("Total Users", AppColors.Primary);
+            cardMachines = CreateMetricCard("Total Machines", AppColors.Info);
+            cardOpen = CreateMetricCard("Open Tickets", AppColors.Danger);
+            cardValidate = CreateMetricCard("Need Validation", AppColors.Warning);
 
-            // Grid
-            this.gridTickets.BackgroundColor = System.Drawing.Color.White;
-            this.gridTickets.BorderStyle = BorderStyle.None;
-            this.gridTickets.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.gridTickets.Dock = DockStyle.None; // Set later
-            this.gridTickets.Location = new System.Drawing.Point(0, 40);
-            this.gridTickets.Name = "gridTickets";
-            this.gridTickets.Size = new System.Drawing.Size(860, 560);
-            this.gridTickets.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            // Layout Cards (Simple Flow or Manual Position)
+            cardTotal.Location = new Point(20, 20);
+            cardMachines.Location = new Point(260, 20);
+            cardOpen.Location = new Point(500, 20);
+            cardValidate.Location = new Point(740, 20);
 
-            // Timer
-            this.timerRefresh.Interval = 5000; // 5 seconds
-            this.timerRefresh.Tick += new System.EventHandler(this.TimerRefresh_Tick);
+            pnlStats.Controls.AddRange(new Control[] { cardTotal, cardMachines, cardOpen, cardValidate });
+
+            // Last Update Label
+            lblLastUpdate = new AppLabel
+            {
+                Type = AppLabel.LabelType.Caption,
+                Text = "Data loaded: -",
+                Location = new Point(980, 20),
+                AutoSize = true
+            };
+            pnlStats.Controls.Add(lblLastUpdate);
+
+            // 2. DataGridView Section
+            gridTickets = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.None,
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
+                EnableHeadersVisualStyles = false,
+                RowHeadersVisible = false,
+                AllowUserToAddRows = false,
+                ReadOnly = true,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+            };
+
+            // Grid Styling
+            gridTickets.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(248, 249, 250);
+            gridTickets.ColumnHeadersDefaultCellStyle.ForeColor = AppColors.TextSecondary;
+            gridTickets.ColumnHeadersDefaultCellStyle.Font = AppFonts.BodySmall; // or Bold
+            gridTickets.ColumnHeadersDefaultCellStyle.Padding = new Padding(10);
+            gridTickets.ColumnHeadersHeight = 40;
+
+            gridTickets.DefaultCellStyle.SelectionBackColor = AppColors.PrimaryLight;
+            gridTickets.DefaultCellStyle.SelectionForeColor = AppColors.TextPrimary;
+            gridTickets.DefaultCellStyle.Padding = new Padding(10);
+            gridTickets.RowTemplate.Height = 50;
             
-            // This Control
-            this.Controls.Add(this.lblTitle);
-            this.Controls.Add(this.gridTickets);
-            this.Dock = DockStyle.Fill;
+            // Event for Formatting Status
+            gridTickets.CellFormatting += GridTickets_CellFormatting;
 
-
-            ((System.ComponentModel.ISupportInitialize)(this.gridTickets)).EndInit();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            this.Controls.Add(gridTickets);
+            this.Controls.Add(pnlStats);
         }
 
-        private void TimerRefresh_Tick(object sender, EventArgs e)
+        private MetricCard CreateMetricCard(string title, Color accent)
         {
-            LoadData();
+            return new MetricCard
+            {
+                Title = title,
+                Value = "-",
+                AccentColor = accent
+            };
         }
 
-        private void LoadData()
+        private void InitializeTimer()
+        {
+            _timerRefresh = new Timer { Interval = 15000 }; // 15s
+            _timerRefresh.Tick += async (s, e) => await LoadDataAsync();
+        }
+
+        // Public method to be called when view is shown
+        public async void OnViewLoad()
+        {
+            await LoadDataAsync();
+            _timerRefresh.Start();
+        }
+
+        public void OnViewUnload()
+        {
+            _timerRefresh.Stop();
+        }
+
+        private async Task LoadDataAsync()
         {
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
-                {
-                    connection.Open();
-                    
-                    string sql = @"
-                        SELECT 
-                            t.ticket_display_code AS 'Kode Tiket',
-                            ts.status_name AS 'Status',
-                            m.machine_name AS 'Mesin',
-                            u_op.full_name AS 'Operator',
-                            u_tech.full_name AS 'Teknisi',
-                            CONCAT(
-                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
-                                CASE 
-                                    WHEN f.failure_name IS NOT NULL THEN f.failure_name
-                                    WHEN t.failure_remarks IS NOT NULL THEN t.failure_remarks
-                                    ELSE 'Belum Diisi'
-                                END,
-                                IF(t.applicator_code IS NOT NULL, CONCAT(' (App: ', t.applicator_code, ')'), '')
-                            ) AS 'Keluhan',
-                            t.created_at AS 'Waktu Lapor',
-                            t.started_at AS 'Mulai Perbaikan',
-                            t.technician_finished_at AS 'Selesai',
-                            TIMEDIFF(t.technician_finished_at, t.created_at) AS 'Total Downtime'
-                        FROM tickets t
-                        LEFT JOIN machines m ON t.machine_id = m.machine_id
-                        LEFT JOIN users u_op ON t.operator_id = u_op.user_id
-                        LEFT JOIN users u_tech ON t.technician_id = u_tech.user_id
-                        LEFT JOIN ticket_statuses ts ON t.status_id = ts.status_id
-                        LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
-                        LEFT JOIN failures f ON t.failure_id = f.failure_id
-                        ORDER BY t.created_at DESC
-                        LIMIT 100;";
+                // Optional: Show loading indicator if initial load
+                if (gridTickets.Rows.Count == 0) this.Cursor = Cursors.WaitCursor;
 
-                    var data = connection.Query(sql).ToList();
-                    gridTickets.DataSource = data;
-                    gridTickets.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
+                // 1. Fetch Stats
+                var stats = await _repository.GetSummaryStatsAsync();
+                if (stats != null)
+                {
+                    cardTotal.Value = stats.TotalUsers.ToString();
+                    cardMachines.Value = stats.TotalMachines.ToString();
+                    cardOpen.Value = stats.OpenTickets.ToString();
+                    cardValidate.Value = stats.NeedValidation.ToString();
                 }
+
+                // 2. Fetch Monitoring List
+                var data = await _repository.GetMonitoringDataAsync();
+                
+                // Preserve selection if needed (advanced), simple rebind for now
+                gridTickets.DataSource = data;
+                
+                // Update Timestamp
+                lblLastUpdate.Text = $"Last update: {DateTime.Now:HH:mm:ss}";
             }
             catch (Exception ex)
             {
-                // Stop timer on error to prevent repeated popups
-                timerRefresh.Stop();
-                MessageBox.Show($"Gagal memuat data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                // Non-blocking error logging (Console or Toast)
+                Console.WriteLine($"Error loading monitoring data: {ex.Message}");
+            }
+            finally
+            {
+                this.Cursor = Cursors.Default;
+            }
+        }
+
+        private void GridTickets_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+
+            string colName = gridTickets.Columns[e.ColumnIndex].Name;
+            
+            // Status Column Formatting
+            if (colName == "Status" && e.Value != null)
+            {
+                string status = e.Value.ToString();
+                
+                // Simpler logic than Utils if we don't have ID, matching text for now.
+                if (status.Contains("Open") || status.Contains("Pending")) 
+                    e.CellStyle.ForeColor = AppColors.Danger;
+                else if (status.Contains("Proses") || status.Contains("Repair")) 
+                    e.CellStyle.ForeColor = AppColors.Warning;
+                else if (status.Contains("Selesai") || status.Contains("Done")) 
+                    e.CellStyle.ForeColor = AppColors.Success;
+                else
+                    e.CellStyle.ForeColor = AppColors.TextPrimary;
+
+                e.CellStyle.Font = new Font(gridTickets.DefaultCellStyle.Font, FontStyle.Bold);
             }
         }
     }
