@@ -15,12 +15,12 @@ namespace mtc_app.features.group_leader.presentation.components
         private DetailItem _detailTech;
         private DetailItem _detailDate;
 
-        public long TicketId { get; private set; }
+        public Guid TicketId { get; private set; }
         
         // Output Event (Dumb Component)
-        public event EventHandler<long> OnValidate;
+        public event EventHandler<Guid> OnValidate;
 
-        public GroupLeaderTicketCardControl(long ticketId, string machineName, string technicianName, DateTime createdAt, bool isReviewed)
+        public GroupLeaderTicketCardControl(Guid ticketId, string machineName, string technicianName, DateTime createdAt, bool isReviewed)
         {
             this.TicketId = ticketId;
             InitializeComponent(machineName, technicianName, createdAt, isReviewed);

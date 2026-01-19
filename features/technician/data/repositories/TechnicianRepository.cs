@@ -14,7 +14,7 @@ namespace mtc_app.features.technician.data.repositories
                 string sql = @"
                     SELECT 
                         t.ticket_id AS TicketId,
-                        m.machine_name AS MachineName,
+                        CONCAT(m.machine_type, m.machine_area, m.machine_number) AS MachineName,
                         CONCAT(
                             IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
                             IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown')),

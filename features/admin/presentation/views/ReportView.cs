@@ -72,7 +72,7 @@ namespace mtc_app.features.admin.presentation.views
                     SELECT 
                         t.ticket_display_code AS 'Kode Tiket',
                         ts.status_name AS 'Status',
-                        m.machine_name AS 'Mesin',
+                        CONCAT(m.machine_type, m.machine_area, m.machine_number) AS 'Mesin',
                         u_op.full_name AS 'Operator',
                         u_tech.full_name AS 'Teknisi',
                         CONCAT(
