@@ -141,5 +141,42 @@ namespace mtc_app.shared.presentation.utils
                 g.DrawLine(pen, x + 8, y + 8, x + 11, y + 8); // Minute
             }
         }
+
+        public static void DrawUserIcon(Graphics g, Rectangle bounds, Color color)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (Pen pen = new Pen(color, 2))
+            {
+                int x = bounds.X;
+                int y = bounds.Y;
+                // Head
+                g.DrawEllipse(pen, x + 4, y + 0, 8, 8);
+                // Body
+                g.DrawArc(pen, x + 0, y + 10, 16, 12, 0, 180); // Arc body
+            }
+        }
+
+        public static void DrawEmptyFolderIcon(Graphics g, Rectangle bounds, Color color)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (Pen pen = new Pen(color, 2))
+            {
+                int x = bounds.X;
+                int y = bounds.Y;
+
+                // Folder Shape
+                // M 0 10 L 0 30 L 40 30 L 40 10 L 20 10 L 15 0 L 0 0 Z (Roughly)
+                Point[] points = {
+                    new Point(x, y + 10),
+                    new Point(x, y + 30),
+                    new Point(x + 40, y + 30),
+                    new Point(x + 40, y + 10),
+                    new Point(x + 20, y + 10),
+                    new Point(x + 15, y + 0),
+                    new Point(x, y + 0)
+                };
+                g.DrawPolygon(pen, points);
+            }
+        }
     }
 }
