@@ -30,5 +30,8 @@ namespace mtc_app.shared.presentation.styles
         // Borders
         public static readonly Color Border = Color.FromArgb(224, 224, 224);      // Added
         public static readonly Color BorderFocus = Primary;                      // Added
+        
+        // Icons
+        public static readonly Color IconColor = Primary;
     }
 }
