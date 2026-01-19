@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
-using Dapper;
+using mtc_app.features.technician.data.dtos;
+using mtc_app.features.technician.data.repositories;
 using mtc_app.features.technician.presentation.components;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
@@ -14,27 +14,29 @@ namespace mtc_app.features.technician.presentation.screens
 {
     public partial class TechnicianDashboardForm : AppBaseForm
     {
-        private Timer timerRefresh;
+        private readonly TechnicianRepository _repository;
+        private readonly Timer _timerRefresh;
         private bool _isSystemActive = true;
         private List<TicketDto> _allTickets = new List<TicketDto>();
-        private long _technicianId = 1; // TODO: Get from authentication system
+        private readonly long _technicianId = 1; // TODO: Get from authentication system
 
         public TechnicianDashboardForm()
         {
+            _repository = new TechnicianRepository();
             InitializeComponent();
             SetupEventHandlers();
             
             // Setup Timer
-            this.timerRefresh = new Timer(this.components);
-            this.timerRefresh.Interval = 60000; // 60 seconds
-            this.timerRefresh.Tick += (s, e) => LoadData();
+            _timerRefresh = new Timer(this.components);
+            _timerRefresh.Interval = 10000; // 10 seconds
+            _timerRefresh.Tick += (s, e) => LoadData();
 
             if (!this.DesignMode)
             {
                 cmbFilterStatus.SelectedIndex = 0;
                 cmbSortBy.SelectedIndex = 0;
                 LoadData();
-                timerRefresh.Start();
+                _timerRefresh.Start();
             }
         }
 
@@ -71,69 +73,37 @@ namespace mtc_app.features.technician.presentation.screens
         {
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
+                // Usage of Repository Pattern separates data access logic from UI (SRP)
+                _allTickets = _repository.GetActiveTickets().ToList();
+                var stats = _repository.GetTechnicianStatistics(_technicianId);
+                
+                pnlTicketList.SuspendLayout();
+                
+                // Update stats
+                if (stats != null)
                 {
-                    // Load tickets
-                    string sql = @"
-                        SELECT 
-                            t.ticket_id,
-                            m.machine_name,
-                            CONCAT(
-                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
-                                IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown')),
-                                IF(t.applicator_code IS NOT NULL, CONCAT(' (App: ', t.applicator_code, ')'), '')
-                            ) AS failure_details,
-                            t.created_at,
-                            t.status_id,
-                            t.gl_rating_score,
-                            t.gl_validated_at
-                        FROM tickets t
-                        JOIN machines m ON t.machine_id = m.machine_id
-                        LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
-                        LEFT JOIN failures f ON t.failure_id = f.failure_id
-                        WHERE t.status_id >= 1";
-                    
-                    _allTickets = connection.Query<TicketDto>(sql).ToList();
-                    
-                    // Load statistics (DB-level calculations for performance)
-                    string statsSql = @"
-                        SELECT 
-                            COUNT(CASE WHEN status_id = 3 THEN 1 END) AS jumlah_perbaikan,
-                            COALESCE(AVG(CASE WHEN gl_rating_score > 0 THEN gl_rating_score END), 0) AS average_bintang,
-                            COALESCE(SUM(CASE WHEN gl_rating_score > 0 THEN gl_rating_score ELSE 0 END), 0) AS total_bintang
-                        FROM tickets
-                        WHERE technician_id = @TechnicianId";
-                    
-                    var stats = connection.QueryFirstOrDefault<TechnicianStatsDto>(statsSql, new { TechnicianId = _technicianId });
-                    
-                    pnlTicketList.SuspendLayout();
-                    
-                    // Update statistics panel
-                    if (stats != null)
-                    {
-                        technicianStatsControl.UpdateStats(
-                            stats.jumlah_perbaikan,
-                            stats.average_bintang,
-                            stats.total_bintang
-                        );
-                    }
-                    
-                    // Update ticket count
-                    lblTicketCount.Text = $"{_allTickets.Count} tiket";
-
-                    // Update last update time
-                    lblLastUpdate.Text = $"Terakhir diperbarui: {DateTime.Now:HH:mm:ss}";
-
-                    RenderTickets();
-                    
-                    pnlTicketList.ResumeLayout();
-
-                    UpdateStatusIndicator(true);
+                    technicianStatsControl.UpdateStats(
+                        stats.CompletedRepairs,
+                        stats.AverageRating,
+                        stats.TotalStars
+                    );
                 }
+                
+                // Update ticket count
+                lblTicketCount.Text = $"{_allTickets.Count} tiket";
+
+                // Update last update time
+                lblLastUpdate.Text = $"Terakhir diperbarui: {DateTime.Now:HH:mm:ss}";
+
+                RenderTickets();
+                
+                pnlTicketList.ResumeLayout();
+
+                UpdateStatusIndicator(true);
             }
             catch (Exception ex)
             {
-                timerRefresh.Stop();
+                _timerRefresh.Stop();
                 UpdateStatusIndicator(false);
                 
                 MessageBox.Show($"Gagal memuat daftar tiket: {ex.Message}", 
@@ -152,30 +122,30 @@ namespace mtc_app.features.technician.presentation.screens
             int statusIndex = cmbFilterStatus.SelectedIndex;
             if (statusIndex == 1) // Belum Ditangani
             {
-                filtered = filtered.Where(t => t.status_id == 1);
+                filtered = filtered.Where(t => t.StatusId == 1);
             }
             else if (statusIndex == 2) // Sedang Diperbaiki
             {
-                filtered = filtered.Where(t => t.status_id == 2);
+                filtered = filtered.Where(t => t.StatusId == 2);
             }
             else if (statusIndex == 3) // Selesai
             {
-                filtered = filtered.Where(t => t.status_id == 3);
+                filtered = filtered.Where(t => t.StatusId == 3);
             }
 
             // Sort By
             int sortIndex = cmbSortBy.SelectedIndex;
             if (sortIndex == 0) // Terbaru
             {
-                filtered = filtered.OrderByDescending(t => t.created_at);
+                filtered = filtered.OrderByDescending(t => t.CreatedAt);
             }
             else if (sortIndex == 1) // Terlama
             {
-                filtered = filtered.OrderBy(t => t.created_at);
+                filtered = filtered.OrderBy(t => t.CreatedAt);
             }
             else if (sortIndex == 2) // Status (Not Repaired First)
             {
-                filtered = filtered.OrderBy(t => t.status_id).ThenByDescending(t => t.created_at);
+                filtered = filtered.OrderBy(t => t.StatusId).ThenByDescending(t => t.CreatedAt);
             }
 
             var ticketList = filtered.ToList();
@@ -194,14 +164,15 @@ namespace mtc_app.features.technician.presentation.screens
                         
                 foreach (var ticket in ticketList)
                 {
-                    TimeSpan timeSinceCreation = DateTime.Now - ticket.created_at;
+                    TimeSpan timeSinceCreation = DateTime.Now - ticket.CreatedAt;
                     string timeAgo = FormatTimeAgo(timeSinceCreation);
 
+                    // Reusing the control with standardized parameters
                     var card = new TechnicianTicketCardControl(
-                        ticket.machine_name,
-                        ticket.failure_details,
+                        ticket.MachineName,
+                        ticket.FailureDetails,
                         timeAgo,
-                        ticket.status_id
+                        ticket.StatusId
                     );
                     pnlTicketList.Controls.Add(card);
                 }
@@ -272,22 +243,6 @@ namespace mtc_app.features.technician.presentation.screens
             cmbSortBy.SelectedIndex = 0;
         }
 
-        private class TicketDto
-        {
-            public long ticket_id { get; set; }
-            public string machine_name { get; set; }
-            public string failure_details { get; set; }
-            public DateTime created_at { get; set; }
-            public int status_id { get; set; }
-            public int? gl_rating_score { get; set; }
-            public DateTime? gl_validated_at { get; set; }
-        }
 
-        private class TechnicianStatsDto
-        {
-            public int jumlah_perbaikan { get; set; }
-            public decimal average_bintang { get; set; }
-            public int total_bintang { get; set; }
-        }
     }
 }

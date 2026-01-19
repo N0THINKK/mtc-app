@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using mtc_app.shared.presentation.styles;
+using mtc_app.shared.presentation.utils;
 
 namespace mtc_app.features.technician.presentation.components
 {
@@ -143,7 +144,7 @@ namespace mtc_app.features.technician.presentation.components
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
             // Card background with rounded corners
-            using (GraphicsPath path = GetRoundedRectangle(new Rectangle(0, 0, bounds.Width - 1, bounds.Height - 1), 8))
+            using (GraphicsPath path = GraphicsUtils.GetRoundedRectangle(new Rectangle(0, 0, bounds.Width - 1, bounds.Height - 1), 8))
             {
                 g.FillPath(new SolidBrush(Color.White), path);
                 g.DrawPath(new Pen(Color.FromArgb(230, 230, 230), 1), path);
@@ -154,20 +155,6 @@ namespace mtc_app.features.technician.presentation.components
             {
                 g.DrawLine(accentPen, 8, 0, bounds.Width - 8, 0);
             }
-        }
-
-        private GraphicsPath GetRoundedRectangle(Rectangle bounds, int radius)
-        {
-            GraphicsPath path = new GraphicsPath();
-            int diameter = radius * 2;
-            
-            path.AddArc(bounds.X, bounds.Y, diameter, diameter, 180, 90);
-            path.AddArc(bounds.Right - diameter, bounds.Y, diameter, diameter, 270, 90);
-            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
-            path.AddArc(bounds.X, bounds.Bottom - diameter, diameter, diameter, 90, 90);
-            path.CloseFigure();
-            
-            return path;
         }
 
         private void DrawChecklistIcon(Graphics g, Color color)
