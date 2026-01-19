@@ -1,20 +1,30 @@
 using System;
-using System.Data;
-using System.Linq;
+using System.Drawing;
+using System.Threading.Tasks;
 using System.Windows.Forms;
-using Dapper;
-using mtc_app.features.machine_history.presentation.screens;
+using mtc_app.features.authentication.data.repositories;
+using mtc_app.shared.data.dtos;
+using mtc_app.shared.data.session;
 using mtc_app.shared.presentation.components;
-using mtc_app.features.rating.presentation.screens;
+using mtc_app.shared.presentation.navigation;
 
 namespace mtc_app.features.authentication.presentation.screens
 {
     public partial class LoginForm : AppBaseForm
     {
-        public LoginForm()
+        private readonly IAuthRepository _authRepository;
+
+        // Composition Root Pattern: Default constructor initializes the implementation.
+        // This keeps Program.cs simple while allowing DI for testing if needed via overload.
+        public LoginForm() : this(new AuthRepository())
+        {
+        }
+
+        public LoginForm(IAuthRepository authRepository)
         {
             InitializeComponent();
-            
+            _authRepository = authRepository;
+
             // Enable KeyPreview to catch key presses form-wide
             this.KeyPreview = true;
             this.KeyDown += LoginForm_KeyDown;
@@ -37,8 +47,11 @@ namespace mtc_app.features.authentication.presentation.screens
             }
         }
 
-        private void btnLogin_Click(object sender, EventArgs e)
+        private async void btnLogin_Click(object sender, EventArgs e)
         {
+            // Reset Error State (if any)
+            // txtUsername.FrameColor = AppColors.Border; ...
+
             string username = txtUsername.InputValue.Trim();
             string password = txtPassword.InputValue.Trim();
 
@@ -48,77 +61,68 @@ namespace mtc_app.features.authentication.presentation.screens
                 return;
             }
 
+            // UI Loading State
+            btnLogin.Enabled = false;
+            btnLogin.Text = "LOGGING IN...";
+            this.Cursor = Cursors.WaitCursor;
+
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
+                // Async Login
+                UserDto user = await _authRepository.LoginAsync(username, password);
+
+                if (user != null)
                 {
-                    connection.Open();
-                    
-                    // Join with roles table to get role_name
-                    string sql = @"
-                        SELECT u.*, r.role_name 
-                        FROM users u 
-                        JOIN roles r ON u.role_id = r.role_id 
-                        WHERE u.username = @Username AND u.password = @Password 
-                        LIMIT 1";
-                    
-                    var user = connection.QueryFirstOrDefault(sql, new { Username = username, Password = password });
-
-                    if (user != null)
-                    {
-                        string roleName = user.role_name;
-                        MessageBox.Show($"Login Berhasil! Selamat datang, {user.username} ({roleName})", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        
-                        // Hide Login Form
-                        this.Hide();
-
-                        Form nextForm = null;
-
-                        // Normalize string for safety (lowercase, trim)
-                        switch (roleName.ToLower().Trim())
-                        {
-                            case "operator": 
-                                nextForm = new MachineHistoryFormOperator();
-                                break;
-                            case "technician":
-                                nextForm = new mtc_app.features.technician.presentation.screens.TechnicianDashboardForm();
-                                break;
-                            case "stock control":
-                            case "stock_control":
-                            case "stock":
-                                nextForm = new mtc_app.features.stock.presentation.screens.StockDashboardForm();
-                                break;
-                            case "admin":
-                            case "administrator":
-                                nextForm = new mtc_app.features.admin.presentation.screens.AdminMainForm();
-                                break;
-                            case "gl_production":
-                                nextForm = new mtc_app.features.group_leader.presentation.screens.GroupLeaderDashboardForm();
-                                break;    
-                            default: 
-                                MessageBox.Show($"Dashboard untuk role '{roleName}' belum tersedia.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                break;
-                        }
-
-                        if (nextForm != null)
-                        {
-                            nextForm.FormClosed += (s, args) => this.Close(); 
-                            nextForm.Show();
-                        }
-                        else
-                        {
-                            this.Show(); // Show login back if no form is opened
-                        }
-                    }
-                    else
-                    {
-                        MessageBox.Show("Username atau Password salah!", "Login Gagal", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
+                    // Success
+                    HandleLoginSuccess(user);
+                }
+                else
+                {
+                    // Fail
+                    MessageBox.Show("Username atau Password salah!", "Login Gagal", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Terjadi kesalahan database:\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                // Restore UI State
+                btnLogin.Enabled = true;
+                btnLogin.Text = "LOGIN";
+                this.Cursor = Cursors.Default;
+            }
+        }
+
+        private void HandleLoginSuccess(UserDto user)
+        {
+            // 1. Store Session
+            UserSession.SetUser(user);
+
+            MessageBox.Show($"Login Berhasil! Selamat datang, {user.Username} ({user.RoleName})", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            // 2. Hide Login Form
+            this.Hide();
+
+            // 3. Navigate
+            Form nextForm = DashboardRouter.GetDashboardForUser(user);
+
+            if (nextForm != null)
+            {
+                // Ensure Login shows back up when the dashboard closes
+                nextForm.FormClosed += (s, args) => 
+                { 
+                    this.Show(); 
+                    txtPassword.InputValue = ""; // Clear password for security
+                    txtUsername.Focus();
+                };
+                nextForm.Show();
+            }
+            else
+            {
+                MessageBox.Show($"Dashboard untuk role '{user.RoleName}' belum tersedia.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                this.Show();
             }
         }
 

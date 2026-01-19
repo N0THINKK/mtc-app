@@ -1,17 +1,17 @@
-using System;
-using System.Linq;
+using System.Threading.Tasks;
 using Dapper;
 using mtc_app.shared.data.dtos;
 
-namespace mtc_app.shared.data.services
+namespace mtc_app.features.authentication.data.repositories
 {
-    public class AuthService
+    public class AuthRepository : IAuthRepository
     {
-        public UserDto Login(string username, string password)
+        public async Task<UserDto> LoginAsync(string username, string password)
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // Note: In production, password should be hashed. keeping simple for now as per existing codebase.
+                // NOTE: Password check is currently Plain Text to support existing database data.
+                // In a future update, migrate to hashed passwords (e.g., BCrypt).
                 string sql = @"
                     SELECT 
                         u.user_id AS UserId, 
@@ -23,8 +23,8 @@ namespace mtc_app.shared.data.services
                     JOIN roles r ON u.role_id = r.role_id 
                     WHERE u.username = @Username AND u.password = @Password 
                     LIMIT 1";
-                
-                return connection.QueryFirstOrDefault<UserDto>(sql, new { Username = username, Password = password });
+
+                return await connection.QueryFirstOrDefaultAsync<UserDto>(sql, new { Username = username, Password = password });
             }
         }
     }
