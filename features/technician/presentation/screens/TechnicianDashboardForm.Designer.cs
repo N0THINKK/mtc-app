@@ -17,9 +17,11 @@ namespace mtc_app.features.technician.presentation.screens
         private System.Windows.Forms.PictureBox picEmptyIcon;
         private System.Windows.Forms.Panel panelFilters;
         private System.Windows.Forms.ComboBox cmbFilterStatus;
-        private System.Windows.Forms.ComboBox cmbSortTime;
+        private System.Windows.Forms.ComboBox cmbSortBy;
         private System.Windows.Forms.Label lblFilterStatus;
-        private System.Windows.Forms.Label lblSortTime;
+        private System.Windows.Forms.Label lblSortBy;
+        private System.Windows.Forms.Button btnClearFilters;
+        private mtc_app.features.technician.presentation.components.TechnicianStatsControl technicianStatsControl;
 
         protected override void Dispose(bool disposing)
         {
@@ -47,9 +49,11 @@ namespace mtc_app.features.technician.presentation.screens
             this.picEmptyIcon = new System.Windows.Forms.PictureBox();
             this.panelFilters = new System.Windows.Forms.Panel();
             this.cmbFilterStatus = new System.Windows.Forms.ComboBox();
-            this.cmbSortTime = new System.Windows.Forms.ComboBox();
+            this.cmbSortBy = new System.Windows.Forms.ComboBox();
             this.lblFilterStatus = new System.Windows.Forms.Label();
-            this.lblSortTime = new System.Windows.Forms.Label();
+            this.lblSortBy = new System.Windows.Forms.Label();
+            this.btnClearFilters = new System.Windows.Forms.Button();
+            this.technicianStatsControl = new mtc_app.features.technician.presentation.components.TechnicianStatsControl();
             
             this.panelHeader.SuspendLayout();
             this.panelStatusBar.SuspendLayout();
@@ -66,7 +70,7 @@ namespace mtc_app.features.technician.presentation.screens
             this.panelHeader.Controls.Add(this.lblTicketCount);
             this.panelHeader.Controls.Add(this.labelTitle);
             this.panelHeader.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panelHeader.Height = 120;
+            this.panelHeader.Height = 150;
             this.panelHeader.Padding = new System.Windows.Forms.Padding(30, 20, 30, 20);
 
             // 
@@ -86,6 +90,14 @@ namespace mtc_app.features.technician.presentation.screens
             this.lblTicketCount.Location = new System.Drawing.Point(30, 65);
             this.lblTicketCount.AutoSize = true;
             this.lblTicketCount.Text = "0 tiket menunggu";
+
+            // 
+            // technicianStatsControl
+            // 
+            this.technicianStatsControl.Location = new System.Drawing.Point(400, 25);
+            this.technicianStatsControl.Size = new System.Drawing.Size(900, 100);
+            this.technicianStatsControl.BackColor = System.Drawing.Color.Transparent;
+            this.panelHeader.Controls.Add(this.technicianStatsControl);
 
             // 
             // panelStatusBar
@@ -127,8 +139,9 @@ namespace mtc_app.features.technician.presentation.screens
             // panelFilters
             // 
             this.panelFilters.BackColor = System.Drawing.Color.White;
-            this.panelFilters.Controls.Add(this.lblSortTime);
-            this.panelFilters.Controls.Add(this.cmbSortTime);
+            this.panelFilters.Controls.Add(this.btnClearFilters);
+            this.panelFilters.Controls.Add(this.lblSortBy);
+            this.panelFilters.Controls.Add(this.cmbSortBy);
             this.panelFilters.Controls.Add(this.lblFilterStatus);
             this.panelFilters.Controls.Add(this.cmbFilterStatus);
             this.panelFilters.Dock = System.Windows.Forms.DockStyle.Top;
@@ -155,34 +168,50 @@ namespace mtc_app.features.technician.presentation.screens
             this.cmbFilterStatus.Items.AddRange(new object[] {
             "Semua",
             "Belum Ditangani",
-            "Sudah Direview GL"});
+            "Sedang Diperbaiki",
+            "Selesai"});
             this.cmbFilterStatus.Location = new System.Drawing.Point(115, 18);
             this.cmbFilterStatus.Name = "cmbFilterStatus";
             this.cmbFilterStatus.Size = new System.Drawing.Size(160, 23);
             this.cmbFilterStatus.TabIndex = 1;
             // 
-            // lblSortTime
+            // lblSortBy
             // 
-            this.lblSortTime.AutoSize = true;
-            this.lblSortTime.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.lblSortTime.Location = new System.Drawing.Point(300, 22);
-            this.lblSortTime.Name = "lblSortTime";
-            this.lblSortTime.Size = new System.Drawing.Size(89, 15);
-            this.lblSortTime.TabIndex = 2;
-            this.lblSortTime.Text = "Urutkan Waktu:";
+            this.lblSortBy.AutoSize = true;
+            this.lblSortBy.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblSortBy.Location = new System.Drawing.Point(300, 22);
+            this.lblSortBy.Name = "lblSortBy";
+            this.lblSortBy.Size = new System.Drawing.Size(89, 15);
+            this.lblSortBy.TabIndex = 2;
+            this.lblSortBy.Text = "Urutkan:";
             // 
-            // cmbSortTime
+            // cmbSortBy
             // 
-            this.cmbSortTime.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbSortTime.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.cmbSortTime.FormattingEnabled = true;
-            this.cmbSortTime.Items.AddRange(new object[] {
+            this.cmbSortBy.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbSortBy.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.cmbSortBy.FormattingEnabled = true;
+            this.cmbSortBy.Items.AddRange(new object[] {
             "Terbaru",
-            "Terlama"});
-            this.cmbSortTime.Location = new System.Drawing.Point(395, 18);
-            this.cmbSortTime.Name = "cmbSortTime";
-            this.cmbSortTime.Size = new System.Drawing.Size(121, 23);
-            this.cmbSortTime.TabIndex = 3;
+            "Terlama",
+            "Status (Belum Ditangani Dulu)"});
+            this.cmbSortBy.Location = new System.Drawing.Point(365, 18);
+            this.cmbSortBy.Name = "cmbSortBy";
+            this.cmbSortBy.Size = new System.Drawing.Size(200, 23);
+            this.cmbSortBy.TabIndex = 3;
+            // 
+            // btnClearFilters
+            // 
+            this.btnClearFilters.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(250)))), ((int)(((byte)(252)))));
+            this.btnClearFilters.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnClearFilters.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(203)))), ((int)(((byte)(213)))), ((int)(((byte)(225)))));
+            this.btnClearFilters.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.btnClearFilters.ForeColor = mtc_app.shared.presentation.styles.AppColors.TextSecondary;
+            this.btnClearFilters.Location = new System.Drawing.Point(585, 17);
+            this.btnClearFilters.Name = "btnClearFilters";
+            this.btnClearFilters.Size = new System.Drawing.Size(100, 26);
+            this.btnClearFilters.TabIndex = 4;
+            this.btnClearFilters.Text = "Reset Filter";
+            this.btnClearFilters.UseVisualStyleBackColor = false;
 
             // 
             // panelEmptyState

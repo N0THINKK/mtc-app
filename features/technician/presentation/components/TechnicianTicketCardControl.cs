@@ -12,15 +12,20 @@ namespace mtc_app.features.technician.presentation.components
         private Label lblMachineName;
         private Label lblProblem;
         private Label lblTime;
+        private Label lblStatusBadge;
         private PictureBox iconMachine;
         private PictureBox iconClock;
 
-        public TechnicianTicketCardControl(string machineName, string problem, string timeAgo)
+        private int _statusId;
+
+        public TechnicianTicketCardControl(string machineName, string problem, string timeAgo, int statusId)
         {
+            _statusId = statusId;
             InitializeComponent();
             this.lblMachineName.Text = machineName;
             this.lblProblem.Text = problem;
             this.lblTime.Text = timeAgo;
+            UpdateStatusVisuals();
         }
 
         private void InitializeComponent()
@@ -30,6 +35,7 @@ namespace mtc_app.features.technician.presentation.components
             this.lblMachineName = new Label();
             this.lblProblem = new Label();
             this.lblTime = new Label();
+            this.lblStatusBadge = new Label();
             this.iconMachine = new PictureBox();
             this.iconClock = new PictureBox();
             
@@ -55,7 +61,6 @@ namespace mtc_app.features.technician.presentation.components
             // 
             // Color Strip (Left Border)
             // 
-            this.pnlColorStrip.BackColor = AppColors.Primary;
             this.pnlColorStrip.Dock = DockStyle.Left;
             this.pnlColorStrip.Width = 6;
 
@@ -101,7 +106,16 @@ namespace mtc_app.features.technician.presentation.components
             this.lblTime.Location = new Point(42, 108);
             this.lblTime.AutoSize = true;
 
+            // 
+            // Status Badge
+            // 
+            this.lblStatusBadge.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
+            this.lblStatusBadge.AutoSize = true;
+            this.lblStatusBadge.Padding = new Padding(8, 4, 8, 4);
+            this.lblStatusBadge.Location = new Point(240, 16);
+
             // Add controls to main panel
+            this.pnlMain.Controls.Add(this.lblStatusBadge);
             this.pnlMain.Controls.Add(this.lblTime);
             this.pnlMain.Controls.Add(this.iconClock);
             this.pnlMain.Controls.Add(this.lblProblem);
@@ -191,6 +205,47 @@ namespace mtc_app.features.technician.presentation.components
                 g.DrawLine(pen, 8, 8, 8, 5);
                 g.DrawLine(pen, 8, 8, 11, 8);
             }
+        }
+
+        private void UpdateStatusVisuals()
+        {
+            Color stripColor;
+            Color badgeBgColor;
+            Color badgeTextColor;
+            string badgeText;
+
+            switch (_statusId)
+            {
+                case 1: // Not Repaired Yet
+                    stripColor = Color.FromArgb(239, 68, 68); // Red
+                    badgeBgColor = Color.FromArgb(254, 242, 242);
+                    badgeTextColor = Color.FromArgb(185, 28, 28);
+                    badgeText = "Open";
+                    break;
+                case 2: // Repairing
+                    stripColor = Color.FromArgb(249, 115, 22); // Orange
+                    badgeBgColor = Color.FromArgb(255, 247, 237);
+                    badgeTextColor = Color.FromArgb(194, 65, 12);
+                    badgeText = "Sedang Diperbaiki";
+                    break;
+                case 3: // Done
+                    stripColor = Color.FromArgb(34, 197, 94); // Green
+                    badgeBgColor = Color.FromArgb(240, 253, 244);
+                    badgeTextColor = Color.FromArgb(21, 128, 61);
+                    badgeText = "Selesai";
+                    break;
+                default:
+                    stripColor = AppColors.Primary;
+                    badgeBgColor = Color.FromArgb(240, 240, 240);
+                    badgeTextColor = AppColors.TextSecondary;
+                    badgeText = "Unknown";
+                    break;
+            }
+
+            this.pnlColorStrip.BackColor = stripColor;
+            this.lblStatusBadge.BackColor = badgeBgColor;
+            this.lblStatusBadge.ForeColor = badgeTextColor;
+            this.lblStatusBadge.Text = badgeText;
         }
 
         protected override void OnPaint(PaintEventArgs e)
