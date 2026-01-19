@@ -12,14 +12,19 @@ namespace mtc_app.features.authentication.presentation.screens
         public SetupForm()
         {
             InitializeComponent();
+            
+            // Hardcoded initial data
+            comboMachineType.SetDropdownItems(new string[] { "AC90", "AC80", "JAM", "TRX", "BSH" });
+            comboMachineArea.SetDropdownItems(new string[] { "TRX", "BSH", "JKT" });
         }
 
         private void btnSave_Click(object sender, EventArgs e)
         {
-            string machineId = txtMachineID.InputValue.Trim();
-            string lineId = txtLineID.InputValue.Trim();
+            string type = comboMachineType.InputValue.Trim();
+            string area = comboMachineArea.InputValue.Trim();
+            string number = txtMachineNumber.InputValue.Trim();
 
-            if (string.IsNullOrEmpty(machineId) || string.IsNullOrEmpty(lineId))
+            if (string.IsNullOrEmpty(type) || string.IsNullOrEmpty(area) || string.IsNullOrEmpty(number))
             {
                 MessageBox.Show("Mohon isi semua field!", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
@@ -27,10 +32,14 @@ namespace mtc_app.features.authentication.presentation.screens
 
             try
             {
-                // Save to appsettings.json
-                DatabaseHelper.UpdateMachineConfig(machineId, lineId);
+                // Format: KODE-AREA.URUT (Contoh: AC90-TRX.01)
+                string machineCode = $"{type}-{area}.{number}";
+                string machineName = $"{type} {area} {number}"; // Readable name
 
-                MessageBox.Show("Konfigurasi tersimpan! Aplikasi akan lanjut.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // Save to appsettings.json
+                DatabaseHelper.UpdateMachineConfig(machineCode);
+
+                MessageBox.Show($"Konfigurasi tersimpan!\nID Mesin: {machineCode}", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 
                 this.DialogResult = DialogResult.OK;
                 this.Close();

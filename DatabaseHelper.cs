@@ -37,7 +37,7 @@ namespace mtc_app
             return _configuration["AppSettings:MachineID"];
         }
 
-        public static void UpdateMachineConfig(string machineId, string lineId)
+        public static void UpdateMachineConfig(string machineId)
         {
             string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
             string json = File.ReadAllText(path);
@@ -50,7 +50,7 @@ namespace mtc_app
             }
 
             jsonObj["AppSettings"]["MachineID"] = machineId;
-            jsonObj["AppSettings"]["LineID"] = lineId;
+            // LineID is no longer used
 
             File.WriteAllText(path, jsonObj.ToString());
             

@@ -9,8 +9,9 @@ namespace mtc_app.features.authentication.presentation.screens
     {
         private System.ComponentModel.IContainer components = null;
         private AppLabel lblTitle;
-        private AppInput txtMachineID;
-        private AppInput txtLineID;
+        private AppInput comboMachineType;
+        private AppInput comboMachineArea;
+        private AppInput txtMachineNumber;
         private AppButton btnSave;
         private Panel pnlMain;
 
@@ -28,8 +29,9 @@ namespace mtc_app.features.authentication.presentation.screens
         private void InitializeComponent()
         {
             this.lblTitle = new AppLabel();
-            this.txtMachineID = new AppInput();
-            this.txtLineID = new AppInput();
+            this.comboMachineType = new AppInput();
+            this.comboMachineArea = new AppInput();
+            this.txtMachineNumber = new AppInput();
             this.btnSave = new AppButton();
             this.pnlMain = new Panel();
             this.pnlMain.SuspendLayout();
@@ -40,18 +42,19 @@ namespace mtc_app.features.authentication.presentation.screens
             // 
             this.pnlMain.BackColor = AppColors.Surface;
             this.pnlMain.Controls.Add(this.lblTitle);
-            this.pnlMain.Controls.Add(this.txtMachineID);
-            this.pnlMain.Controls.Add(this.txtLineID);
+            this.pnlMain.Controls.Add(this.comboMachineType);
+            this.pnlMain.Controls.Add(this.comboMachineArea);
+            this.pnlMain.Controls.Add(this.txtMachineNumber);
             this.pnlMain.Controls.Add(this.btnSave);
-            this.pnlMain.Location = new System.Drawing.Point(200, 75);
-            this.pnlMain.Size = new System.Drawing.Size(400, 300);
+            this.pnlMain.Location = new System.Drawing.Point(100, 50); // Adjusted position
+            this.pnlMain.Size = new System.Drawing.Size(600, 450); // Increased size
             this.pnlMain.Name = "pnlMain";
 
             // 
             // lblTitle
             // 
             this.lblTitle.AutoSize = true;
-            this.lblTitle.Location = new System.Drawing.Point(50, 20);
+            this.lblTitle.Location = new System.Drawing.Point(150, 20);
             this.lblTitle.Name = "lblTitle";
             this.lblTitle.Size = new System.Drawing.Size(300, 32);
             this.lblTitle.TabIndex = 0;
@@ -60,30 +63,41 @@ namespace mtc_app.features.authentication.presentation.screens
             this.lblTitle.TextAlign = ContentAlignment.MiddleCenter;
 
             // 
-            // txtMachineID
+            // comboMachineType
             // 
-            this.txtMachineID.LabelText = "ID Mesin (Contoh: 1 atau 25):";
-            this.txtMachineID.Location = new System.Drawing.Point(50, 70);
-            this.txtMachineID.Name = "txtMachineID";
-            this.txtMachineID.Size = new System.Drawing.Size(300, 55);
-            this.txtMachineID.TabIndex = 1;
+            this.comboMachineType.LabelText = "Tipe Mesin (Kode):";
+            this.comboMachineType.Location = new System.Drawing.Point(50, 70);
+            this.comboMachineType.Name = "comboMachineType";
+            this.comboMachineType.Size = new System.Drawing.Size(500, 55);
+            this.comboMachineType.TabIndex = 1;
+            this.comboMachineType.InputType = AppInput.InputTypeEnum.Dropdown;
 
             // 
-            // txtLineID
+            // comboMachineArea
             // 
-            this.txtLineID.LabelText = "Line Produksi (Contoh: A):";
-            this.txtLineID.Location = new System.Drawing.Point(50, 140);
-            this.txtLineID.Name = "txtLineID";
-            this.txtLineID.Size = new System.Drawing.Size(300, 55);
-            this.txtLineID.TabIndex = 2;
+            this.comboMachineArea.LabelText = "Area Mesin:";
+            this.comboMachineArea.Location = new System.Drawing.Point(50, 140);
+            this.comboMachineArea.Name = "comboMachineArea";
+            this.comboMachineArea.Size = new System.Drawing.Size(500, 55);
+            this.comboMachineArea.TabIndex = 2;
+            this.comboMachineArea.InputType = AppInput.InputTypeEnum.Dropdown;
+
+            // 
+            // txtMachineNumber
+            // 
+            this.txtMachineNumber.LabelText = "Nomor Urut (Contoh: 01):";
+            this.txtMachineNumber.Location = new System.Drawing.Point(50, 210);
+            this.txtMachineNumber.Name = "txtMachineNumber";
+            this.txtMachineNumber.Size = new System.Drawing.Size(500, 55);
+            this.txtMachineNumber.TabIndex = 3;
 
             // 
             // btnSave
             // 
-            this.btnSave.Location = new System.Drawing.Point(50, 220);
+            this.btnSave.Location = new System.Drawing.Point(50, 290); // Moved up
             this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(300, 45);
-            this.btnSave.TabIndex = 3;
+            this.btnSave.Size = new System.Drawing.Size(500, 45);
+            this.btnSave.TabIndex = 4;
             this.btnSave.Text = "SIMPAN & LANJUTKAN";
             this.btnSave.Type = AppButton.ButtonType.Primary;
             this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
