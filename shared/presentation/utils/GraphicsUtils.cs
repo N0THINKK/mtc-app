@@ -178,5 +178,27 @@ namespace mtc_app.shared.presentation.utils
                 g.DrawPolygon(pen, points);
             }
         }
+
+        public static void DrawBoxIcon(Graphics g, Rectangle bounds, Color color)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (Pen pen = new Pen(color, 2))
+            {
+                int x = bounds.X + 5;
+                int y = bounds.Y + 5;
+                int w = 30;
+                int h = 25;
+
+                // Box 3D-ish view
+                // Front face
+                g.DrawRectangle(pen, x, y + 5, w, h - 5);
+                // Top flaps
+                g.DrawLine(pen, x, y + 5, x + 5, y);
+                g.DrawLine(pen, x + w, y + 5, x + w - 5, y);
+                g.DrawLine(pen, x + 5, y, x + w - 5, y);
+                // Center line
+                g.DrawLine(pen, x + w / 2, y + 5, x + w / 2, y + h);
+            }
+        }
     }
 }
