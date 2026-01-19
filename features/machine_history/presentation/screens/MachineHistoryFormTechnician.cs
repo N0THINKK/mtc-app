@@ -477,7 +477,12 @@ namespace mtc_app.features.machine_history.presentation.screens
                     MessageBoxIcon.Information
                 );
 
-                this.Close();
+                // --- NEW WORKFLOW: Open Run Machine Screen ---
+                MachineRunForm runForm = new MachineRunForm(_currentTicketId);
+                if (runForm.ShowDialog() == DialogResult.OK)
+                {
+                    this.Close();
+                }
             }
             catch (Exception ex)
             {
