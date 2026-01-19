@@ -17,6 +17,7 @@ namespace mtc_app.features.technician.presentation.screens
         private Timer timerRefresh;
         private bool _isSystemActive = true;
         private List<TicketDto> _allTickets = new List<TicketDto>();
+        private long _technicianId = 1; // TODO: Get from authentication system
 
         public TechnicianDashboardForm()
         {
@@ -25,13 +26,13 @@ namespace mtc_app.features.technician.presentation.screens
             
             // Setup Timer
             this.timerRefresh = new Timer(this.components);
-            this.timerRefresh.Interval = 10000; // 10 seconds
+            this.timerRefresh.Interval = 60000; // 60 seconds
             this.timerRefresh.Tick += (s, e) => LoadData();
 
             if (!this.DesignMode)
             {
                 cmbFilterStatus.SelectedIndex = 0;
-                cmbSortTime.SelectedIndex = 0;
+                cmbSortBy.SelectedIndex = 0;
                 LoadData();
                 timerRefresh.Start();
             }
@@ -62,7 +63,8 @@ namespace mtc_app.features.technician.presentation.screens
 
             // Filter and Sort Handlers
             this.cmbFilterStatus.SelectedIndexChanged += (s, e) => RenderTickets();
-            this.cmbSortTime.SelectedIndexChanged += (s, e) => RenderTickets();
+            this.cmbSortBy.SelectedIndexChanged += (s, e) => RenderTickets();
+            this.btnClearFilters.Click += (s, e) => ClearFilters();
         }
 
         private void LoadData()
@@ -71,6 +73,7 @@ namespace mtc_app.features.technician.presentation.screens
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
+                    // Load tickets
                     string sql = @"
                         SELECT 
                             t.ticket_id,
@@ -92,7 +95,28 @@ namespace mtc_app.features.technician.presentation.screens
                     
                     _allTickets = connection.Query<TicketDto>(sql).ToList();
                     
+                    // Load statistics (DB-level calculations for performance)
+                    string statsSql = @"
+                        SELECT 
+                            COUNT(CASE WHEN status_id = 3 THEN 1 END) AS jumlah_perbaikan,
+                            COALESCE(AVG(CASE WHEN gl_rating_score > 0 THEN gl_rating_score END), 0) AS average_bintang,
+                            COALESCE(SUM(CASE WHEN gl_rating_score > 0 THEN gl_rating_score ELSE 0 END), 0) AS total_bintang
+                        FROM tickets
+                        WHERE technician_id = @TechnicianId";
+                    
+                    var stats = connection.QueryFirstOrDefault<TechnicianStatsDto>(statsSql, new { TechnicianId = _technicianId });
+                    
                     pnlTicketList.SuspendLayout();
+                    
+                    // Update statistics panel
+                    if (stats != null)
+                    {
+                        technicianStatsControl.UpdateStats(
+                            stats.jumlah_perbaikan,
+                            stats.average_bintang,
+                            stats.total_bintang
+                        );
+                    }
                     
                     // Update ticket count
                     lblTicketCount.Text = $"{_allTickets.Count} tiket";
@@ -130,20 +154,28 @@ namespace mtc_app.features.technician.presentation.screens
             {
                 filtered = filtered.Where(t => t.status_id == 1);
             }
-            else if (statusIndex == 2) // Sudah Direview GL
+            else if (statusIndex == 2) // Sedang Diperbaiki
             {
-                filtered = filtered.Where(t => t.gl_validated_at.HasValue || (t.gl_rating_score.HasValue && t.gl_rating_score > 0));
+                filtered = filtered.Where(t => t.status_id == 2);
+            }
+            else if (statusIndex == 3) // Selesai
+            {
+                filtered = filtered.Where(t => t.status_id == 3);
             }
 
-            // Sort Time
-            int sortIndex = cmbSortTime.SelectedIndex;
+            // Sort By
+            int sortIndex = cmbSortBy.SelectedIndex;
             if (sortIndex == 0) // Terbaru
             {
                 filtered = filtered.OrderByDescending(t => t.created_at);
             }
-            else // Terlama
+            else if (sortIndex == 1) // Terlama
             {
                 filtered = filtered.OrderBy(t => t.created_at);
+            }
+            else if (sortIndex == 2) // Status (Not Repaired First)
+            {
+                filtered = filtered.OrderBy(t => t.status_id).ThenByDescending(t => t.created_at);
             }
 
             var ticketList = filtered.ToList();
@@ -168,7 +200,8 @@ namespace mtc_app.features.technician.presentation.screens
                     var card = new TechnicianTicketCardControl(
                         ticket.machine_name,
                         ticket.failure_details,
-                        timeAgo
+                        timeAgo,
+                        ticket.status_id
                     );
                     pnlTicketList.Controls.Add(card);
                 }
@@ -233,6 +266,12 @@ namespace mtc_app.features.technician.presentation.screens
             return $"Dilaporkan {ts.Days} hari yang lalu";
         }
 
+        private void ClearFilters()
+        {
+            cmbFilterStatus.SelectedIndex = 0;
+            cmbSortBy.SelectedIndex = 0;
+        }
+
         private class TicketDto
         {
             public long ticket_id { get; set; }
@@ -242,6 +281,13 @@ namespace mtc_app.features.technician.presentation.screens
             public int status_id { get; set; }
             public int? gl_rating_score { get; set; }
             public DateTime? gl_validated_at { get; set; }
+        }
+
+        private class TechnicianStatsDto
+        {
+            public int jumlah_perbaikan { get; set; }
+            public decimal average_bintang { get; set; }
+            public int total_bintang { get; set; }
         }
     }
 }
