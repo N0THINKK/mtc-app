@@ -13,8 +13,13 @@ namespace mtc_app.features.technician.data.dtos
         public DateTime? StartedAt { get; set; }
         public DateTime? FinishedAt { get; set; }
         
+        public string TechnicianName { get; set; }
         // Rating given by Technician to Operator
         public int? TechRatingScore { get; set; }
         public string TechRatingNote { get; set; }
+        
+        // Rating given by GL to Technician
+        public int? GlRatingScore { get; set; }
+        public string GlRatingNote { get; set; }
     }
 }

@@ -21,8 +21,15 @@ namespace mtc_app.features.rating.presentation.screens
         // Display Labels
         private AppLabel _lblOperatorName;
         private AppLabel _lblMachineName;
+        private AppLabel _lblTechnicianName;
         private AppLabel _lblFailureDetails;
         private AppLabel _lblActionDetails;
+        private AppLabel _lblArrivalDuration;
+        private AppLabel _lblRepairDuration;
+        
+        // GL Rating Display (Read Only)
+        private AppStarRating _glRatingControl;
+        private AppLabel _lblGlNote;
 
         public RatingTechnicianForm(long ticketId)
         {
@@ -36,7 +43,7 @@ namespace mtc_app.features.rating.presentation.screens
         private void InitializeCustomComponent()
         {
             this.Text = "Rating Operator";
-            this.Size = new Size(500, 700);
+            this.Size = new Size(500, 850); // Increased height
             this.StartPosition = FormStartPosition.CenterScreen;
             this.AutoScroll = true;
 
@@ -58,14 +65,55 @@ namespace mtc_app.features.rating.presentation.screens
             });
 
             // 1. General Info
-            AddSectionHeader(mainLayout, "Informasi Tiket");
+            AddSectionHeader(mainLayout, "Informasi Umum");
             _lblOperatorName = AddInfoRow(mainLayout, "Operator:");
             _lblMachineName = AddInfoRow(mainLayout, "Mesin:");
-            _lblFailureDetails = AddInfoRow(mainLayout, "Kerusakan:");
-            _lblActionDetails = AddInfoRow(mainLayout, "Tindakan:");
+            _lblTechnicianName = AddInfoRow(mainLayout, "Teknisi:");
 
-            // 2. Rating Input
-            AddSectionHeader(mainLayout, "Rating & Catatan");
+            // 2. Report Details
+            AddSectionHeader(mainLayout, "Detail Laporan");
+            _lblFailureDetails = AddDetailRow(mainLayout, "Kerusakan:");
+            _lblActionDetails = AddDetailRow(mainLayout, "Tindakan:");
+
+            // 3. Time Metrics
+            AddSectionHeader(mainLayout, "Durasi Pengerjaan");
+            _lblArrivalDuration = AddInfoRow(mainLayout, "Respon (Arrival):");
+            _lblRepairDuration = AddInfoRow(mainLayout, "Pengerjaan (Repair):");
+
+            // 4. GL Rating (Read Only)
+            AddSectionHeader(mainLayout, "Penilaian GL");
+            
+            mainLayout.Controls.Add(new AppLabel 
+            { 
+                Text = "Rating dari GL:", 
+                Type = AppLabel.LabelType.Subtitle,
+                AutoSize = true,
+                Margin = new Padding(0, 5, 0, 2)
+            });
+
+            _glRatingControl = new AppStarRating { IsReadOnly = true };
+            _glRatingControl.Margin = new Padding(0, 0, 0, 10);
+            mainLayout.Controls.Add(_glRatingControl);
+
+            mainLayout.Controls.Add(new AppLabel 
+            { 
+                Text = "Catatan dari GL:", 
+                Type = AppLabel.LabelType.BodySmall, 
+                Margin = new Padding(0, 0, 0, 2)
+            });
+
+            _lblGlNote = new AppLabel 
+            { 
+                Text = "-", 
+                Type = AppLabel.LabelType.Body, 
+                AutoSize = true,
+                MaximumSize = new Size(440, 0),
+                Margin = new Padding(0, 0, 0, 20)
+            };
+            mainLayout.Controls.Add(_lblGlNote);
+
+            // 5. Rating Input (Operator)
+            AddSectionHeader(mainLayout, "Penilaian Operator");
             
             mainLayout.Controls.Add(new AppLabel 
             { 
@@ -139,7 +187,7 @@ namespace mtc_app.features.rating.presentation.screens
             { 
                 Text = label, 
                 Type = AppLabel.LabelType.BodySmall, 
-                Width = 100,
+                Width = 120, // Increased width for alignment like GL form
                 Margin = new Padding(0, 2, 0, 0)
             });
 
@@ -148,11 +196,32 @@ namespace mtc_app.features.rating.presentation.screens
                 Text = "-", 
                 Type = AppLabel.LabelType.Body, 
                 AutoSize = true,
-                MaximumSize = new Size(320, 0)
+                MaximumSize = new Size(300, 0)
             };
             row.Controls.Add(valueLabel);
 
             parent.Controls.Add(row);
+            return valueLabel;
+        }
+
+        private AppLabel AddDetailRow(Control parent, string label)
+        {
+            parent.Controls.Add(new AppLabel 
+            { 
+                Text = label, 
+                Type = AppLabel.LabelType.BodySmall, 
+                Margin = new Padding(0, 5, 0, 2)
+            });
+
+            AppLabel valueLabel = new AppLabel 
+            { 
+                Text = "-", 
+                Type = AppLabel.LabelType.Body, 
+                AutoSize = true,
+                MaximumSize = new Size(440, 0),
+                Margin = new Padding(0, 0, 0, 10)
+            };
+            parent.Controls.Add(valueLabel);
             return valueLabel;
         }
 
@@ -166,10 +235,33 @@ namespace mtc_app.features.rating.presentation.screens
                 {
                     _lblOperatorName.Text = data.OperatorName ?? "-";
                     _lblMachineName.Text = data.MachineName ?? "-";
+                    _lblTechnicianName.Text = data.TechnicianName ?? "-";
                     _lblFailureDetails.Text = data.FailureDetails ?? "-";
                     _lblActionDetails.Text = data.ActionDetails ?? "-";
 
-                    // Populate Existing Rating
+                    // Calculate Durations
+                    if (data.StartedAt.HasValue)
+                    {
+                        TimeSpan arrival = data.StartedAt.Value - data.CreatedAt;
+                        _lblArrivalDuration.Text = arrival.ToString(@"hh\:mm\:ss");
+                    }
+                    
+                    if (data.StartedAt.HasValue && data.FinishedAt.HasValue)
+                    {
+                        TimeSpan repair = data.FinishedAt.Value - data.StartedAt.Value;
+                        _lblRepairDuration.Text = repair.ToString(@"hh\:mm\:ss");
+                    }
+
+                    // Populate GL Rating (Read Only)
+                    if (data.GlRatingScore.HasValue)
+                        _glRatingControl.Rating = data.GlRatingScore.Value;
+                    
+                    if (!string.IsNullOrEmpty(data.GlRatingNote))
+                        _lblGlNote.Text = data.GlRatingNote;
+                    else
+                        _lblGlNote.Text = "(Belum dinilai oleh GL)";
+
+                    // Populate Operator Rating (Existing Input)
                     if (data.TechRatingScore.HasValue)
                         _starRating.Rating = data.TechRatingScore.Value;
                     
@@ -192,7 +284,7 @@ namespace mtc_app.features.rating.presentation.screens
         {
             if (_starRating.Rating == 0)
             {
-                MessageBox.Show("Mohon berikan rating (bintang).", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Mohon berikan rating untuk operator.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
