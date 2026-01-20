@@ -3,7 +3,7 @@ namespace mtc_app.features.technician.presentation.screens
     partial class TechnicianDashboardForm
     {
         private System.ComponentModel.IContainer components = null;
-        private System.Windows.Forms.FlowLayoutPanel pnlTicketList;
+        private System.Windows.Forms.Panel pnlTicketList;
         private System.Windows.Forms.Panel panelHeader;
         private System.Windows.Forms.Panel panelStatusBar;
         private System.Windows.Forms.Panel panelEmptyState;
@@ -35,7 +35,7 @@ namespace mtc_app.features.technician.presentation.screens
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            this.pnlTicketList = new System.Windows.Forms.FlowLayoutPanel();
+            this.pnlTicketList = new System.Windows.Forms.Panel();
             this.panelHeader = new System.Windows.Forms.Panel();
             this.panelStatusBar = new System.Windows.Forms.Panel();
             this.panelEmptyState = new System.Windows.Forms.Panel();
@@ -256,8 +256,7 @@ namespace mtc_app.features.technician.presentation.screens
             // 
             this.pnlTicketList.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlTicketList.AutoScroll = true;
-            this.pnlTicketList.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
-            this.pnlTicketList.WrapContents = true;
+
             this.pnlTicketList.Padding = new System.Windows.Forms.Padding(20);
             this.pnlTicketList.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(250)))), ((int)(((byte)(252)))));
             this.pnlTicketList.Controls.Add(this.panelEmptyState);
