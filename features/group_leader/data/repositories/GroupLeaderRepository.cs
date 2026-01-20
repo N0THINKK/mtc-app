@@ -70,22 +70,6 @@ namespace mtc_app.features.group_leader.data.repositories
             }
         }
 
-        public async Task ValidateTicketAsync(long ticketId, int rating, string note)
-        {
-             using (var connection = DatabaseHelper.GetConnection())
-            {
-                string sql = @"
-                    UPDATE tickets 
-                    SET gl_rating_score = @Rating, 
-                        gl_rating_note = @Note,
-                        gl_validated_at = NOW(),
-                        status_id = 3
-                    WHERE ticket_id = @TicketId";
-                
-                await connection.ExecuteAsync(sql, new { TicketId = ticketId, Rating = rating, Note = note });
-            }
-        }
-
         public async Task ValidateTicketAsync(Guid ticketId, int rating, string note)
         {
             using (var connection = DatabaseHelper.GetConnection())

@@ -9,7 +9,6 @@ namespace mtc_app.features.group_leader.data.repositories
     {
         Task<IEnumerable<GroupLeaderTicketDto>> GetTicketsAsync(string statusFilter = null, string machineFilter = null);
         Task<GroupLeaderTicketDetailDto> GetTicketDetailAsync(Guid ticketId);
-        Task ValidateTicketAsync(long ticketId, int rating, string note);
         Task ValidateTicketAsync(Guid ticketId, int rating, string note);
     }
 }
