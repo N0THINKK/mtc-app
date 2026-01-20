@@ -23,6 +23,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private AppInput inputApplicator;
         private AppInput inputProblem;
         private AppInput inputProblemType;
+        private AppInput inputShift;
         
         // History Tab Controls
         private MachineHistoryListControl _historyControl;
@@ -163,6 +164,20 @@ namespace mtc_app.features.machine_history.presentation.screens
             catch { /* Ignore */ }
         }
 
+        private void LoadShiftsFromDB()
+        {
+            try
+            {
+                using (var connection = DatabaseHelper.GetConnection())
+                {
+                    connection.Open();
+                    var shifts = connection.Query<string>("SELECT shift_name FROM shifts ORDER BY shift_name");
+                    inputShift.SetDropdownItems(shifts.AsList().ToArray());
+                }
+            }
+            catch { /* Ignore */ }
+        }
+
         // REVERTED: Simple CreateInput without manual toggle checkbox logic
         private AppInput CreateInput(string label, AppInput.InputTypeEnum type, bool required)
         {
@@ -198,6 +213,11 @@ namespace mtc_app.features.machine_history.presentation.screens
             // Reverted to simple Dropdown with AllowCustomText (handled in CreateInput)
             inputProblem = CreateInput("Problem Mesin", AppInput.InputTypeEnum.Dropdown, true);
             LoadFailuresFromDB();
+
+            // 3.5 Shift (Added)
+            inputShift = CreateInput("Shift", AppInput.InputTypeEnum.Dropdown, true);
+            inputShift.AllowCustomText = false; // Restrict to list only
+            LoadShiftsFromDB();
 
             // 4. Jenis Problem
             inputProblemType = CreateInput("Jenis Problem", AppInput.InputTypeEnum.Dropdown, true);
@@ -246,17 +266,19 @@ namespace mtc_app.features.machine_history.presentation.screens
                     if (userCheck.HasValue) operatorId = userCheck.Value;
 
                     int machineId = 1;
+                    int? shiftId = connection.QueryFirstOrDefault<int?>("SELECT shift_id FROM shifts WHERE shift_name = @Name", new { Name = inputShift.InputValue });
+                    
                     int? problemTypeId = connection.QueryFirstOrDefault<int?>("SELECT type_id FROM problem_types WHERE type_name = @Name", new { Name = inputProblemType.InputValue });
                     int? failureId = connection.QueryFirstOrDefault<int?>("SELECT failure_id FROM failures WHERE failure_name = @Name", new { Name = inputProblem.InputValue });
                     string failureRemarks = (!failureId.HasValue) ? inputProblem.InputValue : null;
 
                     string insertSql = @"
-                        INSERT INTO tickets (ticket_uuid, ticket_display_code, machine_id, operator_id, problem_type_id, failure_id, failure_remarks, applicator_code, status_id, created_at)
-                        VALUES (@Uuid, @Code, @MachineId, @OpId, @TypeId, @FailId, @Remarks, @AppCode, 1, NOW());
+                        INSERT INTO tickets (ticket_uuid, ticket_display_code, machine_id, shift_id, operator_id, problem_type_id, failure_id, failure_remarks, applicator_code, status_id, created_at)
+                        VALUES (@Uuid, @Code, @MachineId, @ShiftId, @OpId, @TypeId, @FailId, @Remarks, @AppCode, 1, NOW());
                         SELECT LAST_INSERT_ID();";
 
                     long newTicketId = connection.ExecuteScalar<long>(insertSql, new {
-                        Uuid = uuid, Code = displayCode, MachineId = machineId, OpId = operatorId,
+                        Uuid = uuid, Code = displayCode, MachineId = machineId, ShiftId = shiftId, OpId = operatorId,
                         TypeId = problemTypeId, FailId = failureId, Remarks = failureRemarks, AppCode = inputApplicator.InputValue
                     });
 
