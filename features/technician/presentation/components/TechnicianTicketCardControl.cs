@@ -128,9 +128,9 @@ namespace mtc_app.features.technician.presentation.components
             this.lblMachineName.Text = "Machine";
             
             // Status Badge
-            this.lblStatusBadge.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
+            this.lblStatusBadge.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             this.lblStatusBadge.AutoSize = true;
-            this.lblStatusBadge.Padding = new Padding(8, 4, 8, 4);
+            this.lblStatusBadge.Padding = new Padding(12, 6, 12, 6);
             this.lblStatusBadge.Dock = DockStyle.Right;
             this.lblStatusBadge.Text = "Open";
             
