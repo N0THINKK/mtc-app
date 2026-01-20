@@ -14,21 +14,6 @@ namespace mtc_app.features.admin.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // We use multiple result sets or multiple simple queries. 
-                // Since this is a dashboard summary, simple individual queries are readable and usually fast enough.
-                // Or we can combine them into one SQL string.
-                
-                string sql = @"
-                    SELECT COUNT(*) FROM users;
-                    SELECT COUNT(*) FROM machines;
-                    SELECT COUNT(*) FROM tickets WHERE status_id = 1; -- Open/Pending
-                    SELECT COUNT(*) FROM tickets WHERE status_id = 3 AND (gl_validated_at IS NULL OR gl_rating_score IS NULL); -- Need GL Validation
-                ";
-
-                // Using generic Dapper MultiMap is complex for scalar counts.
-                // Simple approach:
-                // Note: Dapper Async ExecuteScalar is per query.
-                
                 // Optimized single query:
                 string optimizedSql = @"
                     SELECT 

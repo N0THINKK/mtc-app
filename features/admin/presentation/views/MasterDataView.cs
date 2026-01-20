@@ -223,11 +223,10 @@ namespace mtc_app.features.admin.presentation.views
                     gridMachines.DataSource = connection.Query(@"
                         SELECT 
                             machine_id, 
-                            machine_code, 
                             machine_type,
                             machine_area,
                             machine_number,
-                            CONCAT(machine_type, '.', machine_area, '-', machine_number) AS machine_name, 
+                            CONCAT(machine_type, '-', machine_area, '.', machine_number) AS machine_name, 
                             location 
                         FROM machines ORDER BY machine_id").ToList();
                 }
@@ -247,9 +246,8 @@ namespace mtc_app.features.admin.presentation.views
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    string sql = "INSERT INTO machines (machine_code, machine_type, machine_area, machine_number, location) VALUES (@Code, @Type, @Area, @Number, @Location)";
+                    string sql = "INSERT INTO machines (machine_type, machine_area, machine_number, location) VALUES (@Type, @Area, @Number, @Location)";
                     connection.Execute(sql, new { 
-                        Code = txtMachineCode.InputValue, 
                         Type = txtMachineType.InputValue,
                         Area = txtMachineArea.InputValue,
                         Number = txtMachineNumber.InputValue,
@@ -275,14 +273,12 @@ namespace mtc_app.features.admin.presentation.views
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     string sql = @"UPDATE machines 
-                                   SET machine_code = @Code, 
-                                       machine_type = @Type,
+                                   SET machine_type = @Type,
                                        machine_area = @Area,
                                        machine_number = @Number,
                                        location = @Location 
                                    WHERE machine_id = @Id";
                     connection.Execute(sql, new { 
-                        Code = txtMachineCode.InputValue, 
                         Type = txtMachineType.InputValue,
                         Area = txtMachineArea.InputValue,
                         Number = txtMachineNumber.InputValue,
@@ -321,7 +317,6 @@ namespace mtc_app.features.admin.presentation.views
             {
                 DataGridViewRow row = gridMachines.Rows[e.RowIndex];
                 _selectedMachineId = Convert.ToInt32(row.Cells["machine_id"].Value);
-                txtMachineCode.InputValue = row.Cells["machine_code"].Value?.ToString();
                 
                 // Populate split fields
                 txtMachineType.InputValue = row.Cells["machine_type"].Value?.ToString();
@@ -337,7 +332,7 @@ namespace mtc_app.features.admin.presentation.views
         private void ClearMachineSelection()
         {
             _selectedMachineId = null;
-            txtMachineCode.InputValue = txtMachineType.InputValue = txtMachineArea.InputValue = txtMachineNumber.InputValue = txtLocation.InputValue = "";
+            txtMachineType.InputValue = txtMachineArea.InputValue = txtMachineNumber.InputValue = txtLocation.InputValue = "";
             btnUpdateMachine.Enabled = false;
             btnDeleteMachine.Enabled = false;
             gridMachines.ClearSelection();
