@@ -187,7 +187,9 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             // 1. NIK Operator
             inputNIK = CreateInput("NIK Operator", AppInput.InputTypeEnum.Dropdown, true);
-            LoadOperatorsFromDB(); // Dynamic Load
+            inputNIK.AllowCustomText = true;
+            inputNIK.DropdownOpened += (s, e) => LoadOperatorsFromDB(); // Real-time refresh
+            LoadOperatorsFromDB(); // Initial Load
 
             // 2. No. Aplikator
             inputApplicator = CreateInput("No. Aplikator", AppInput.InputTypeEnum.Text, false);

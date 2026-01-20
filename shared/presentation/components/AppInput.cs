@@ -27,6 +27,9 @@ namespace mtc_app.shared.presentation.components
         private List<string> _originalItems;
         private bool _isFiltering = false;
 
+        // Public Event for Dropdown Opened (Real-time data loading)
+        public event EventHandler DropdownOpened;
+
         public AppInput()
         {
             InitializeCustomComponents();
@@ -203,6 +206,7 @@ namespace mtc_app.shared.presentation.components
             comboInput.Enter += (s, e) => { _isFocused = true; panelContainer.Invalidate(); };
             comboInput.Leave += (s, e) => { _isFocused = false; panelContainer.Invalidate(); };
             comboInput.TextChanged += ComboInput_TextChanged; // Subscribe to event
+            comboInput.DropDown += (s, e) => DropdownOpened?.Invoke(this, EventArgs.Empty); // Trigger event
             comboInput.Visible = false;
             panelContainer.Controls.Add(comboInput);
 
