@@ -84,8 +84,34 @@ namespace mtc_app.features.admin.presentation.views
                 AllowUserToAddRows = false,
                 ReadOnly = true,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                AutoGenerateColumns = false // Disable auto-generation to prevent duplicates
             };
+
+            // Manual Column Definition
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Status", HeaderText = "Status", DataPropertyName = "Status", FillWeight = 80 });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Mesin", HeaderText = "Mesin", DataPropertyName = "Mesin" });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Masalah", HeaderText = "Masalah", DataPropertyName = "Masalah", FillWeight = 200 });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Teknisi", HeaderText = "Teknisi", DataPropertyName = "Teknisi" });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Total Downtime", HeaderText = "Total Downtime", DataPropertyName = "Total Downtime" });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Durasi Respon", HeaderText = "Durasi Respon", DataPropertyName = "Durasi Respon" });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Durasi Perbaikan", HeaderText = "Durasi Perbaikan", DataPropertyName = "Durasi Perbaikan" });
+            
+            // Action Button Column
+            var btnCol = new DataGridViewButtonColumn
+            {
+                Name = "Detail",
+                HeaderText = "Aksi",
+                Text = "Lihat",
+                UseColumnTextForButtonValue = true,
+                FillWeight = 60
+            };
+            gridTickets.Columns.Add(btnCol);
+
+            // Hidden Columns for Detail Popup
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Kode Tiket", DataPropertyName = "Kode Tiket", Visible = false });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Operator", DataPropertyName = "Operator", Visible = false });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Waktu Lapor", DataPropertyName = "Waktu Lapor", Visible = false });
 
             // Grid Styling
             gridTickets.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(248, 249, 250);
@@ -101,9 +127,36 @@ namespace mtc_app.features.admin.presentation.views
             
             // Event for Formatting Status
             gridTickets.CellFormatting += GridTickets_CellFormatting;
+            
+            // Event for Button Click
+            gridTickets.CellContentClick += GridTickets_CellContentClick;
 
             this.Controls.Add(gridTickets);
             this.Controls.Add(pnlStats);
+        }
+
+        private void GridTickets_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            // Check if Detail button clicked
+            if (e.RowIndex >= 0 && gridTickets.Columns[e.ColumnIndex].Name == "Detail")
+            {
+                var row = gridTickets.Rows[e.RowIndex];
+                
+                string detailMsg = 
+                    $"Kode Tiket: {row.Cells["Kode Tiket"].Value}\n" +
+                    $"Status: {row.Cells["Status"].Value}\n\n" +
+                    $"Mesin: {row.Cells["Mesin"].Value}\n" +
+                    $"Masalah: {row.Cells["Masalah"].Value}\n" +
+                    $"Teknisi: {row.Cells["Teknisi"].Value}\n" +
+                    $"Operator: {row.Cells["Operator"].Value}\n\n" +
+                    $"Waktu Lapor: {row.Cells["Waktu Lapor"].Value}\n" +
+                    $"-----------------------------------\n" +
+                    $"DURASI RESPON: {row.Cells["Durasi Respon"].Value}\n" +
+                    $"DURASI PERBAIKAN: {row.Cells["Durasi Perbaikan"].Value}\n" +
+                    $"TOTAL DOWNTIME: {row.Cells["Total Downtime"].Value}";
+
+                MessageBox.Show(detailMsg, "Detail Tiket", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
 
         private MetricCard CreateMetricCard(string title, Color accent)
@@ -154,7 +207,7 @@ namespace mtc_app.features.admin.presentation.views
                 // 2. Fetch Monitoring List
                 var data = await _repository.GetMonitoringDataAsync();
                 
-                // Preserve selection if needed (advanced), simple rebind for now
+                // Simple rebind (Columns are manually defined now)
                 gridTickets.DataSource = data;
                 
                 // Update Timestamp
@@ -162,8 +215,8 @@ namespace mtc_app.features.admin.presentation.views
             }
             catch (Exception ex)
             {
-                // Non-blocking error logging (Console or Toast)
-                Console.WriteLine($"Error loading monitoring data: {ex.Message}");
+                // Show error to help debug why columns aren't hiding
+                MessageBox.Show($"Error UI Monitoring: {ex.Message}");
             }
             finally
             {

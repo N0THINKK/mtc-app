@@ -31,22 +31,23 @@ namespace mtc_app.features.admin.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // Reordered columns based on supervisor request:
-                // 1. Time Metrics (Lapor, Respon, Repair, Downtime)
-                // 2. Main Info (Mesin, Teknisi, Masalah)
-                // 3. Status & Identifiers (Status, Ticket Code, Operator)
+                // Optimized Column Order for Monitoring:
+                // 1. Waktu Lapor
+                // 2. Total Downtime (Critical KPI)
+                // 3. Mesin & Masalah (Context)
+                // 4. Teknisi & Durasi (Performance)
                 string sql = @"
                     SELECT 
                         t.created_at AS 'Waktu Lapor',
-                        TIMEDIFF(t.started_at, t.created_at) AS 'Durasi Respon',
-                        TIMEDIFF(t.technician_finished_at, t.started_at) AS 'Durasi Perbaikan',
                         TIMEDIFF(t.production_resumed_at, t.created_at) AS 'Total Downtime',
                         CONCAT(m.machine_type, '-', m.machine_area, '.', m.machine_number) AS 'Mesin',
-                        IFNULL(tech.full_name, '-') AS 'Teknisi',
                         CONCAT(
                             IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
                             IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown'))
                         ) AS 'Masalah',
+                        IFNULL(tech.full_name, '-') AS 'Teknisi',
+                        TIMEDIFF(t.started_at, t.created_at) AS 'Durasi Respon',
+                        TIMEDIFF(t.technician_finished_at, t.started_at) AS 'Durasi Perbaikan',
                         ts.status_name AS 'Status',
                         t.ticket_display_code AS 'Kode Tiket',
                         u.full_name AS 'Operator'
@@ -68,20 +69,20 @@ namespace mtc_app.features.admin.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // Reordered columns for Excel Report (Supervisor Request)
+                // Reordered columns for Excel Report (Optimized for Management View)
                 string sql = @"
                     SELECT 
                         t.created_at AS 'Waktu Lapor',
-                        TIMEDIFF(t.started_at, t.created_at) AS 'Durasi Respon',
-                        TIMEDIFF(t.technician_finished_at, t.started_at) AS 'Durasi Perbaikan',
-                        TIMEDIFF(t.production_resumed_at, t.technician_finished_at) AS 'Durasi Trial Run',
                         TIMEDIFF(t.production_resumed_at, t.created_at) AS 'Total Downtime',
                         CONCAT(m.machine_type, '-', m.machine_area, '.', m.machine_number) AS 'Mesin',
-                        IFNULL(tech.full_name, '-') AS 'Teknisi',
                         CONCAT(
                             IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
                             IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown'))
                         ) AS 'Masalah',
+                        IFNULL(tech.full_name, '-') AS 'Teknisi',
+                        TIMEDIFF(t.started_at, t.created_at) AS 'Durasi Respon',
+                        TIMEDIFF(t.technician_finished_at, t.started_at) AS 'Durasi Perbaikan',
+                        TIMEDIFF(t.production_resumed_at, t.technician_finished_at) AS 'Durasi Trial Run',
                         IFNULL(root.cause_name, t.root_cause_remarks) AS 'Penyebab',
                         IFNULL(act.action_name, t.action_details_manual) AS 'Tindakan',
                         ts.status_name AS 'Status',
