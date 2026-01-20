@@ -10,6 +10,8 @@ using mtc_app.features.technician.presentation.components;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 
+using mtc_app.shared.data.session;
+
 namespace mtc_app.features.technician.presentation.screens
 {
     public partial class TechnicianDashboardForm : AppBaseForm
@@ -18,11 +20,22 @@ namespace mtc_app.features.technician.presentation.screens
         private readonly Timer _timerRefresh;
         private bool _isSystemActive = true;
         private List<TicketDto> _allTickets = new List<TicketDto>();
-        private readonly long _technicianId = 1; // TODO: Get from authentication system
+        private readonly long _technicianId;
 
         public TechnicianDashboardForm()
         {
             _repository = new TechnicianRepository();
+            
+            // Get ID from Session
+            if (UserSession.CurrentUser != null)
+            {
+                _technicianId = UserSession.CurrentUser.UserId;
+            }
+            else
+            {
+                _technicianId = 0; // Should redirect to login ideally
+            }
+
             InitializeComponent();
             SetupEventHandlers();
             
