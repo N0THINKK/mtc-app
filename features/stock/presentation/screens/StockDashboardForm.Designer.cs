@@ -30,11 +30,10 @@ namespace mtc_app.features.stock.presentation.screens
             this.btnFilterPending = new mtc_app.shared.presentation.components.AppButton();
             this.lblFilterLabel = new System.Windows.Forms.Label();
             this.pnlStatusCards = new System.Windows.Forms.Panel();
-            this.cardReady = new mtc_app.features.stock.presentation.components.StockStatusCard();
-            this.cardPending = new mtc_app.features.stock.presentation.components.StockStatusCard();
+
             this.pnlContent = new System.Windows.Forms.Panel();
             this.gridRequests = new System.Windows.Forms.DataGridView();
-            this.emptyStatePanel = new mtc_app.features.stock.presentation.components.EmptyStatePanel();
+
             this.pnlActions = new System.Windows.Forms.Panel();
             this.btnReady = new mtc_app.shared.presentation.components.AppButton();
             this.btnRefresh = new mtc_app.shared.presentation.components.AppButton();
@@ -89,8 +88,7 @@ namespace mtc_app.features.stock.presentation.screens
             // pnlStatusCards
             // 
             this.pnlStatusCards.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(249)))), ((int)(((byte)(250)))));
-            this.pnlStatusCards.Controls.Add(this.cardReady);
-            this.pnlStatusCards.Controls.Add(this.cardPending);
+
             this.pnlStatusCards.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlStatusCards.Location = new System.Drawing.Point(0, 80);
             this.pnlStatusCards.Name = "pnlStatusCards";
@@ -98,29 +96,7 @@ namespace mtc_app.features.stock.presentation.screens
             this.pnlStatusCards.Size = new System.Drawing.Size(1200, 170);
             this.pnlStatusCards.TabIndex = 1;
             
-            // 
-            // cardPending
-            // 
-            this.cardPending.BackColor = System.Drawing.Color.White;
-            this.cardPending.Location = new System.Drawing.Point(25, 25);
-            this.cardPending.Name = "cardPending";
-            this.cardPending.Size = new System.Drawing.Size(220, 120);
-            this.cardPending.TabIndex = 0;
-            this.cardPending.Title = "Menunggu Diproses";
-            this.cardPending.Type = mtc_app.features.stock.presentation.components.StockStatusCard.StatusType.Pending;
-            this.cardPending.Value = "0";
-            
-            // 
-            // cardReady
-            // 
-            this.cardReady.BackColor = System.Drawing.Color.White;
-            this.cardReady.Location = new System.Drawing.Point(265, 25);
-            this.cardReady.Name = "cardReady";
-            this.cardReady.Size = new System.Drawing.Size(220, 120);
-            this.cardReady.TabIndex = 1;
-            this.cardReady.Title = "Siap Diambil";
-            this.cardReady.Type = mtc_app.features.stock.presentation.components.StockStatusCard.StatusType.Ready;
-            this.cardReady.Value = "0";
+
             
             // 
             // pnlFilters
@@ -232,7 +208,7 @@ namespace mtc_app.features.stock.presentation.screens
             // pnlContent
             // 
             this.pnlContent.BackColor = System.Drawing.Color.White;
-            this.pnlContent.Controls.Add(this.emptyStatePanel);
+
             this.pnlContent.Controls.Add(this.gridRequests);
             this.pnlContent.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlContent.Location = new System.Drawing.Point(0, 320);
@@ -262,19 +238,7 @@ namespace mtc_app.features.stock.presentation.screens
             this.gridRequests.Size = new System.Drawing.Size(1150, 270);
             this.gridRequests.TabIndex = 0;
             
-            // 
-            // emptyStatePanel
-            // 
-            this.emptyStatePanel.BackColor = System.Drawing.Color.White;
-            this.emptyStatePanel.Description = "Semua permintaan sudah diproses. Sistem bekerja dengan baik.";
-            this.emptyStatePanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.emptyStatePanel.Icon = "📦";
-            this.emptyStatePanel.Location = new System.Drawing.Point(25, 20);
-            this.emptyStatePanel.Name = "emptyStatePanel";
-            this.emptyStatePanel.Size = new System.Drawing.Size(1150, 270);
-            this.emptyStatePanel.TabIndex = 1;
-            this.emptyStatePanel.Title = "Tidak Ada Permintaan";
-            this.emptyStatePanel.Visible = false;
+
             
             // 
             // pnlActions
@@ -354,8 +318,7 @@ namespace mtc_app.features.stock.presentation.screens
         private System.Windows.Forms.Label lblLastUpdate;
         private mtc_app.shared.presentation.components.AppLabel labelTitle;
         private System.Windows.Forms.Panel pnlStatusCards;
-        private mtc_app.features.stock.presentation.components.StockStatusCard cardPending;
-        private mtc_app.features.stock.presentation.components.StockStatusCard cardReady;
+
         private System.Windows.Forms.Panel pnlFilters;
         private System.Windows.Forms.Label lblFilterLabel;
         private mtc_app.shared.presentation.components.AppButton btnFilterPending;
@@ -366,7 +329,7 @@ namespace mtc_app.features.stock.presentation.screens
         private mtc_app.shared.presentation.components.AppButton btnSortDesc;
         private System.Windows.Forms.Panel pnlContent;
         private System.Windows.Forms.DataGridView gridRequests;
-        private mtc_app.features.stock.presentation.components.EmptyStatePanel emptyStatePanel;
+
         private System.Windows.Forms.Panel pnlActions;
         private mtc_app.shared.presentation.components.AppButton btnReady;
         private mtc_app.shared.presentation.components.AppButton btnRefresh;
