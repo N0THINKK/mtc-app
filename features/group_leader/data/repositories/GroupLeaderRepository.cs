@@ -56,7 +56,9 @@ namespace mtc_app.features.group_leader.data.repositories
                         t.started_at AS StartedAt,
                         t.technician_finished_at AS FinishedAt,
                         t.gl_rating_score AS GlRatingScore,
-                        t.gl_rating_note AS GlRatingNote
+                        t.gl_rating_note AS GlRatingNote,
+                        t.tech_rating_score AS TechRatingScore,
+                        t.tech_rating_note AS TechRatingNote
                     FROM tickets t
                     LEFT JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN users tech ON t.technician_id = tech.user_id

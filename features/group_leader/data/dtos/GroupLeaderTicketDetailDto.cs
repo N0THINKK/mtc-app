@@ -17,5 +17,7 @@ namespace mtc_app.features.group_leader.data.dtos
         public DateTime? FinishedAt { get; set; }
         public int? GlRatingScore { get; set; }
         public string GlRatingNote { get; set; }
+        public int? TechRatingScore { get; set; }
+        public string TechRatingNote { get; set; }
     }
 }

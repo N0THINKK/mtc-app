@@ -26,6 +26,8 @@ namespace mtc_app.features.rating.presentation.screens
         private AppLabel _lblActionDetails;
         private AppLabel _lblArrivalDuration;
         private AppLabel _lblRepairDuration;
+        private AppStarRating _techRatingControl;
+        private AppLabel _lblTechNote;
 
         // Default constructor for Designer if needed (though DI preferred)
         public RatingGlForm(long ticketId) : this(new GroupLeaderRepository(), Guid.Empty) 
@@ -88,6 +90,41 @@ namespace mtc_app.features.rating.presentation.screens
             AddSectionHeader(mainLayout, "Durasi Pengerjaan");
             _lblArrivalDuration = AddInfoRow(mainLayout, "Respon (Arrival):");
             _lblRepairDuration = AddInfoRow(mainLayout, "Pengerjaan (Repair):");
+
+            // 3.5 Technician Rating (Read Only)
+            AddSectionHeader(mainLayout, "Catatan Teknisi");
+            
+            // Tech Rating
+            mainLayout.Controls.Add(new AppLabel 
+            { 
+                Text = "Rating Mandiri:", 
+                Type = AppLabel.LabelType.Subtitle,
+                AutoSize = true,
+                Margin = new Padding(0, 5, 0, 2)
+            });
+
+            var techRating = new AppStarRating { IsReadOnly = true };
+            _techRatingControl = techRating; // Store ref to populate later
+            techRating.Margin = new Padding(0, 0, 0, 10);
+            mainLayout.Controls.Add(techRating);
+
+            // Tech Note
+            mainLayout.Controls.Add(new AppLabel 
+            { 
+                Text = "Catatan:", 
+                Type = AppLabel.LabelType.BodySmall, 
+                Margin = new Padding(0, 0, 0, 2)
+            });
+
+            _lblTechNote = new AppLabel 
+            { 
+                Text = "-", 
+                Type = AppLabel.LabelType.Body, 
+                AutoSize = true,
+                MaximumSize = new Size(440, 0),
+                Margin = new Padding(0, 0, 0, 20)
+            };
+            mainLayout.Controls.Add(_lblTechNote);
 
             // 4. Rating Input
             AddSectionHeader(mainLayout, "Penilaian GL");
@@ -229,6 +266,15 @@ namespace mtc_app.features.rating.presentation.screens
                         _lblRepairDuration.Text = repair.ToString(@"hh\:mm\:ss");
                     }
                     
+                    // Populate Tech Rating
+                    if (data.TechRatingScore.HasValue)
+                        _techRatingControl.Rating = data.TechRatingScore.Value;
+                    
+                    if (!string.IsNullOrEmpty(data.TechRatingNote))
+                        _lblTechNote.Text = data.TechRatingNote;
+                    else
+                        _lblTechNote.Text = "(Tidak ada catatan)";
+
                     // Populate Existing Rating
                     if (data.GlRatingScore.HasValue)
                         _starRating.Rating = data.GlRatingScore.Value;
