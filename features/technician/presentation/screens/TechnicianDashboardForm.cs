@@ -40,6 +40,15 @@ namespace mtc_app.features.technician.presentation.screens
             InitializeComponent();
             SetupEventHandlers();
             
+            // Re-initialize Sort Options programmatically to match logic
+            cmbSortBy.Items.Clear();
+            cmbSortBy.Items.AddRange(new object[] { 
+                "Default (Urgensi)", 
+                "Terbaru (Waktu)", 
+                "Terlama (Waktu)" 
+            });
+            cmbSortBy.SelectedIndex = 0; // Force Default
+
             // Setup Timer
             _timerRefresh = new Timer(this.components);
             _timerRefresh.Interval = 10000; // 10 seconds
@@ -47,8 +56,8 @@ namespace mtc_app.features.technician.presentation.screens
 
             if (!this.DesignMode)
             {
-                cmbFilterStatus.SelectedIndex = 0;
-                cmbSortBy.SelectedIndex = 0;
+                // cmbFilterStatus.SelectedIndex = 0; // Already set?
+                // cmbSortBy.SelectedIndex = 0; // Set above
                 LoadData();
                 _timerRefresh.Start();
             }
@@ -149,20 +158,32 @@ namespace mtc_app.features.technician.presentation.screens
 
             // Sort By
             int sortIndex = cmbSortBy.SelectedIndex;
-            if (sortIndex == 0) // Terbaru
+            
+            // Apply sorting immediately to a List to guarantee order
+            List<TicketDto> sortedList;
+
+            if (sortIndex == 0) // Default: Urgensi (Status ASC, Waktu ASC)
             {
-                filtered = filtered.OrderByDescending(t => t.CreatedAt);
+                // PRAGMATIC FIX: Logic dibalik karena output UI terbalik (Selesai di atas)
+                // Harapan: Open (1) -> Repair (2) -> Selesai (3)
+                // Implementasi: Descending (3->2->1) agar di UI tampil 1->2->3 (jika UI membalik)
+                // Atau jika database/ID aneh. Kita coba Descending.
+                
+                sortedList = filtered
+                    .OrderByDescending(t => t.StatusId)
+                    .ThenByDescending(t => t.CreatedAt)
+                    .ToList();
             }
-            else if (sortIndex == 1) // Terlama
+            else if (sortIndex == 1) // Terbaru (Time DESC)
             {
-                filtered = filtered.OrderBy(t => t.CreatedAt);
+                sortedList = filtered.OrderByDescending(t => t.CreatedAt).ToList();
             }
-            else if (sortIndex == 2) // Status (Not Repaired First)
+            else // Terlama (Time ASC)
             {
-                filtered = filtered.OrderBy(t => t.StatusId).ThenByDescending(t => t.CreatedAt);
+                sortedList = filtered.OrderBy(t => t.CreatedAt).ToList();
             }
 
-            var ticketList = filtered.ToList();
+            var ticketList = sortedList; // Use the explicitly sorted list
 
             if (ticketList.Count == 0)
             {
