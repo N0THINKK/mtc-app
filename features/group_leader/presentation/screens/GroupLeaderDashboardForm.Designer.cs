@@ -23,7 +23,7 @@ namespace mtc_app.features.group_leader.presentation.screens
         private ComboBox cmbFilterStatus;
         private Label lblSort;
         private Label lblFilter;
-        private FlowLayoutPanel flowTickets;
+        private System.Windows.Forms.Panel flowTickets;
         private Label lblEmptyTitle;
         private Label lblEmptyMessage;
         private PictureBox picEmptyIcon;
@@ -50,7 +50,7 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.cmbFilterStatus = new System.Windows.Forms.ComboBox();
             this.lblSort = new System.Windows.Forms.Label();
             this.lblFilter = new System.Windows.Forms.Label();
-            this.flowTickets = new System.Windows.Forms.FlowLayoutPanel();
+            this.flowTickets = new System.Windows.Forms.Panel();
             this.lblEmptyTitle = new System.Windows.Forms.Label();
             this.lblEmptyMessage = new System.Windows.Forms.Label();
             this.picEmptyIcon = new System.Windows.Forms.PictureBox();
@@ -228,8 +228,7 @@ namespace mtc_app.features.group_leader.presentation.screens
             // 
             this.flowTickets.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowTickets.AutoScroll = true;
-            this.flowTickets.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
-            this.flowTickets.WrapContents = true;
+
             this.flowTickets.Padding = new System.Windows.Forms.Padding(20);
             this.flowTickets.BackColor = System.Drawing.Color.FromArgb(248, 250, 252);
             this.flowTickets.Controls.Add(this.panelEmptyState);
