@@ -11,6 +11,11 @@ namespace mtc_app.features.technician.data.dtos
         public int StatusId { get; set; }
         public int? GlRatingScore { get; set; }
         public DateTime? GlValidatedAt { get; set; }
+        
+        // Additional fields for dynamic display
+        public string TechnicianName { get; set; }
+        public DateTime? StartedAt { get; set; }
+        public DateTime? FinishedAt { get; set; }
     }
 
     public class TechnicianStatsDto

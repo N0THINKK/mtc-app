@@ -164,16 +164,9 @@ namespace mtc_app.features.technician.presentation.screens
                         
                 foreach (var ticket in ticketList)
                 {
-                    TimeSpan timeSinceCreation = DateTime.Now - ticket.CreatedAt;
-                    string timeAgo = FormatTimeAgo(timeSinceCreation);
-
-                    // Reusing the control with standardized parameters
-                    var card = new TechnicianTicketCardControl(
-                        ticket.MachineName,
-                        ticket.FailureDetails,
-                        timeAgo,
-                        ticket.StatusId
-                    );
+                    // Create card and use UpdateDisplay method
+                    var card = new TechnicianTicketCardControl();
+                    card.UpdateDisplay(ticket);
                     pnlTicketList.Controls.Add(card);
                 }
             }

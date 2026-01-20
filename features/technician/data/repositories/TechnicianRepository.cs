@@ -22,12 +22,16 @@ namespace mtc_app.features.technician.data.repositories
                         ) AS FailureDetails,
                         t.created_at AS CreatedAt,
                         t.status_id AS StatusId,
+                        t.started_at AS StartedAt,
+                        t.technician_finished_at AS FinishedAt,
                         t.gl_rating_score AS GlRatingScore,
-                        t.gl_validated_at AS GlValidatedAt
+                        t.gl_validated_at AS GlValidatedAt,
+                        u.full_name AS TechnicianName
                     FROM tickets t
                     JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
                     LEFT JOIN failures f ON t.failure_id = f.failure_id
+                    LEFT JOIN users u ON t.technician_id = u.user_id
                     WHERE t.status_id >= 1";
                 
                 return connection.Query<TicketDto>(sql);
