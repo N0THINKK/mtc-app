@@ -209,19 +209,53 @@ namespace mtc_app.features.technician.presentation.components
             // Add main panel to UserControl
             this.Controls.Add(this.pnlMain);
 
-            // Hover effect
-            this.pnlMain.MouseEnter += (s, e) => {
-                this.pnlMain.BackColor = Color.FromArgb(248, 250, 252);
-                this.Cursor = Cursors.Hand;
-            };
-            this.pnlMain.MouseLeave += (s, e) => {
-                this.pnlMain.BackColor = Color.White;
-                this.Cursor = Cursors.Default;
-            };
+            // Hook interaction events
+            HookEvents(this.pnlMain);
 
             this.pnlMain.ResumeLayout(false);
             this.pnlMain.PerformLayout();
             this.ResumeLayout(false);
+        }
+
+        // Event for card click
+        public event EventHandler<long> OnCardClick;
+        private DateTime _lastClickTime = DateTime.MinValue;
+
+        private void HookEvents(Control control)
+        {
+            // 1. Hook the current control
+            control.Click += (s, e) => HandleCardClick();
+            
+            // Cursor effect
+            control.MouseEnter += (s, e) => {
+                this.Cursor = Cursors.Hand;
+                this.pnlMain.BackColor = Color.FromArgb(248, 250, 252);
+            };
+            
+            control.MouseLeave += (s, e) => {
+                // Only reset if we truly left the main panel bounds
+                Point p = this.pnlMain.PointToClient(Cursor.Position);
+                if (!this.pnlMain.ClientRectangle.Contains(p))
+                {
+                    this.Cursor = Cursors.Default;
+                    this.pnlMain.BackColor = Color.White;
+                }
+            };
+
+            // 2. Recurse for children
+            foreach (Control child in control.Controls)
+            {
+                HookEvents(child);
+            }
+        }
+
+        private void HandleCardClick()
+        {
+            // Debounce
+            if ((DateTime.Now - _lastClickTime).TotalMilliseconds < 500) return;
+            _lastClickTime = DateTime.Now;
+
+            OnCardClick?.Invoke(this, _currentTicket.TicketId);
         }
 
         /// <summary>

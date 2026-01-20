@@ -11,6 +11,7 @@ using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 
 using mtc_app.shared.data.session;
+using mtc_app.features.rating.presentation.screens;
 
 namespace mtc_app.features.technician.presentation.screens
 {
@@ -180,11 +181,23 @@ namespace mtc_app.features.technician.presentation.screens
                     // Create card and use UpdateDisplay method
                     var card = new TechnicianTicketCardControl();
                     card.UpdateDisplay(ticket);
+                    card.OnCardClick += Card_OnCardClick;
                     pnlTicketList.Controls.Add(card);
                 }
             }
 
             pnlTicketList.ResumeLayout();
+        }
+
+        private void Card_OnCardClick(object sender, long ticketId)
+        {
+            using (var form = new RatingTechnicianForm(ticketId))
+            {
+                if (form.ShowDialog() == DialogResult.OK)
+                {
+                     LoadData();
+                }
+            }
         }
 
         private void UpdateStatusIndicator(bool isActive)
