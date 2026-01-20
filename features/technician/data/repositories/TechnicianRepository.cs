@@ -48,6 +48,7 @@ namespace mtc_app.features.technician.data.repositories
                         t.ticket_id AS TicketId,
                         CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
                         op.full_name AS OperatorName,
+                        tech.full_name AS TechnicianName,
                         CONCAT(
                             IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
                             IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown')),
@@ -61,10 +62,13 @@ namespace mtc_app.features.technician.data.repositories
                         t.started_at AS StartedAt,
                         t.technician_finished_at AS FinishedAt,
                         t.tech_rating_score AS TechRatingScore,
-                        t.tech_rating_note AS TechRatingNote
+                        t.tech_rating_note AS TechRatingNote,
+                        t.gl_rating_score AS GlRatingScore,
+                        t.gl_rating_note AS GlRatingNote
                     FROM tickets t
                     JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN users op ON t.operator_id = op.user_id
+                    LEFT JOIN users tech ON t.technician_id = tech.user_id
                     LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
                     LEFT JOIN failures f ON t.failure_id = f.failure_id
                     LEFT JOIN actions act ON t.action_id = act.action_id
