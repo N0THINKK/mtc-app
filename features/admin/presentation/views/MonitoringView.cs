@@ -144,9 +144,14 @@ namespace mtc_app.features.admin.presentation.views
             {
                 var row = gridTickets.Rows[e.RowIndex];
                 
+                // Get values safely (handle nulls if necessary, though cells usually have values)
+                string shift = row.Cells["Shift"].Value?.ToString() ?? "-";
+                string waitPart = row.Cells["Waktu Tunggu Part"].Value?.ToString() ?? "-";
+
                 string detailMsg = 
                     $"Kode Tiket: {row.Cells["Kode Tiket"].Value}\n" +
-                    $"Status: {row.Cells["Status"].Value}\n\n" +
+                    $"Status: {row.Cells["Status"].Value}\n" +
+                    $"Shift: {shift}\n\n" +
                     $"Mesin: {row.Cells["Mesin"].Value}\n" +
                     $"Masalah: {row.Cells["Masalah"].Value}\n" +
                     $"Teknisi: {row.Cells["Teknisi"].Value}\n" +
@@ -155,6 +160,7 @@ namespace mtc_app.features.admin.presentation.views
                     $"-----------------------------------\n" +
                     $"DURASI RESPON: {row.Cells["Durasi Respon"].Value}\n" +
                     $"DURASI PERBAIKAN: {row.Cells["Durasi Perbaikan"].Value}\n" +
+                    $"WAKTU TUNGGU PART: {waitPart}\n" +
                     $"TOTAL DOWNTIME: {row.Cells["Total Downtime"].Value}";
 
                 MessageBox.Show(detailMsg, "Detail Tiket", MessageBoxButtons.OK, MessageBoxIcon.Information);
