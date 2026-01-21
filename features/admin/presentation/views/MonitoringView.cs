@@ -97,6 +97,7 @@ namespace mtc_app.features.admin.presentation.views
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Total Downtime", HeaderText = "Total Downtime", DataPropertyName = "Total Downtime" });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Durasi Respon", HeaderText = "Durasi Respon", DataPropertyName = "Durasi Respon" });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Durasi Perbaikan", HeaderText = "Durasi Perbaikan", DataPropertyName = "Durasi Perbaikan" });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Waktu Tunggu Part", HeaderText = "Tunggu Part", DataPropertyName = "Waktu Tunggu Part" });
             
             // Action Button Column
             var btnCol = new DataGridViewButtonColumn
