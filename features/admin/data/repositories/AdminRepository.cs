@@ -49,6 +49,13 @@ namespace mtc_app.features.admin.data.repositories
                         IFNULL(tech.full_name, '-') AS 'Teknisi',
                         TIMEDIFF(t.started_at, t.created_at) AS 'Durasi Respon',
                         TIMEDIFF(t.technician_finished_at, t.started_at) AS 'Durasi Perbaikan',
+                        
+                        -- KPI Gudang: Total Waktu Tunggu Part
+                        (SELECT SEC_TO_TIME(SUM(TIME_TO_SEC(TIMEDIFF(pr.ready_at, pr.requested_at)))) 
+                         FROM part_requests pr 
+                         WHERE pr.ticket_id = t.ticket_id AND pr.ready_at IS NOT NULL
+                        ) AS 'Waktu Tunggu Part',
+
                         ts.status_name AS 'Status',
                         t.ticket_display_code AS 'Kode Tiket',
                         u.full_name AS 'Operator'
