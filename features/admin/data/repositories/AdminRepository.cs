@@ -33,12 +33,13 @@ namespace mtc_app.features.admin.data.repositories
             {
                 // Optimized Column Order for Monitoring:
                 // 1. Waktu Lapor
-                // 2. Total Downtime (Critical KPI)
-                // 3. Mesin & Masalah (Context)
-                // 4. Teknisi & Durasi (Performance)
+                // 2. Shift (New)
+                // 3. Total Downtime (Critical KPI)
+                // ...
                 string sql = @"
                     SELECT 
                         t.created_at AS 'Waktu Lapor',
+                        s.shift_name AS 'Shift',
                         TIMEDIFF(t.production_resumed_at, t.created_at) AS 'Total Downtime',
                         CONCAT(m.machine_type, '-', m.machine_area, '.', m.machine_number) AS 'Mesin',
                         CONCAT(
@@ -58,6 +59,7 @@ namespace mtc_app.features.admin.data.repositories
                     LEFT JOIN users tech ON t.technician_id = tech.user_id
                     LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
                     LEFT JOIN failures f ON t.failure_id = f.failure_id
+                    LEFT JOIN shifts s ON t.shift_id = s.shift_id
                     ORDER BY t.created_at DESC
                     LIMIT 100;";
 
@@ -70,9 +72,11 @@ namespace mtc_app.features.admin.data.repositories
             using (var connection = DatabaseHelper.GetConnection())
             {
                 // Reordered columns for Excel Report (Optimized for Management View)
+                // Added: Total Waktu Tunggu Part (Sum of ready_at - requested_at)
                 string sql = @"
                     SELECT 
                         t.created_at AS 'Waktu Lapor',
+                        s.shift_name AS 'Shift',
                         TIMEDIFF(t.production_resumed_at, t.created_at) AS 'Total Downtime',
                         CONCAT(m.machine_type, '-', m.machine_area, '.', m.machine_number) AS 'Mesin',
                         CONCAT(
@@ -82,6 +86,13 @@ namespace mtc_app.features.admin.data.repositories
                         IFNULL(tech.full_name, '-') AS 'Teknisi',
                         TIMEDIFF(t.started_at, t.created_at) AS 'Durasi Respon',
                         TIMEDIFF(t.technician_finished_at, t.started_at) AS 'Durasi Perbaikan',
+                        
+                        -- KPI Gudang: Total Waktu Tunggu Part
+                        (SELECT SEC_TO_TIME(SUM(TIME_TO_SEC(TIMEDIFF(pr.ready_at, pr.requested_at)))) 
+                         FROM part_requests pr 
+                         WHERE pr.ticket_id = t.ticket_id AND pr.ready_at IS NOT NULL
+                        ) AS 'Waktu Tunggu Part',
+
                         TIMEDIFF(t.production_resumed_at, t.technician_finished_at) AS 'Durasi Trial Run',
                         IFNULL(root.cause_name, t.root_cause_remarks) AS 'Penyebab',
                         IFNULL(act.action_name, t.action_details_manual) AS 'Tindakan',
@@ -97,6 +108,7 @@ namespace mtc_app.features.admin.data.repositories
                     LEFT JOIN failures f ON t.failure_id = f.failure_id
                     LEFT JOIN failure_causes root ON t.root_cause_id = root.cause_id
                     LEFT JOIN actions act ON t.action_id = act.action_id
+                    LEFT JOIN shifts s ON t.shift_id = s.shift_id
                     WHERE t.created_at BETWEEN @StartDate AND @EndDate
                     ORDER BY t.created_at DESC";
 
