@@ -6,7 +6,7 @@ using mtc_app.features.technician.data.dtos;
 
 namespace mtc_app.features.technician.data.repositories
 {
-    public class TechnicianRepository
+    public class TechnicianRepository : ITechnicianRepository
     {
         public IEnumerable<TicketDto> GetActiveTickets()
         {
@@ -107,5 +107,27 @@ namespace mtc_app.features.technician.data.repositories
                 return connection.QueryFirstOrDefault<TechnicianStatsDto>(sql, new { TechnicianId = technicianId });
             }
         }
+
+        public async Task<IEnumerable<TechnicianPerformanceDto>> GetLeaderboardAsync()
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        t.technician_id AS TechnicianId,
+                        u.full_name AS TechnicianName,
+                        COUNT(CASE WHEN t.status_id = 3 THEN 1 END) AS TotalRepairs,
+                        COALESCE(AVG(CASE WHEN t.gl_rating_score > 0 THEN t.gl_rating_score END), 0) AS AverageRating,
+                        COALESCE(SUM(CASE WHEN t.gl_rating_score > 0 THEN t.gl_rating_score ELSE 0 END), 0) AS TotalStars
+                    FROM tickets t
+                    LEFT JOIN users u ON t.technician_id = u.user_id
+                    WHERE t.technician_id IS NOT NULL
+                    GROUP BY t.technician_id, u.full_name
+                    ORDER BY TotalRepairs DESC";
+
+                return await connection.QueryAsync<TechnicianPerformanceDto>(sql);
+            }
+        }
     }
 }
+
