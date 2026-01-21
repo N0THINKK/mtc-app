@@ -95,6 +95,94 @@ namespace mtc_app.features.stock.presentation.screens
             };
             pnlContent.Controls.Add(emptyStateNew);
             emptyStateNew.BringToFront(); // Ensure it's on top of grid if visible
+
+                        // --- Configure Grid Manually ---
+                        gridRequests.AutoGenerateColumns = false;
+                        gridRequests.Columns.Clear();
+            
+                        // 1. No (Sequence)
+                        gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
+                        {
+                            Name = "No", 
+                            HeaderText = "No", 
+                            Width = 60, // Sedikit lebar utk font besar
+                            ReadOnly = true 
+                        });
+            
+                        // 2. Waktu Request
+                        gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
+                        {
+                            Name = "RequestedAt", 
+                            HeaderText = "Waktu Request", 
+                            DataPropertyName = "RequestedAt",
+                            Width = 180
+                        });
+            
+                        // 3. Nama Part
+                        gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
+                        {
+                            Name = "PartName", 
+                            HeaderText = "Nama Part", 
+                            DataPropertyName = "PartName",
+                            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill 
+                        });
+            
+                        // 4. Jumlah
+                        gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
+                        {
+                            Name = "Qty", 
+                            HeaderText = "Jumlah", 
+                            DataPropertyName = "Qty",
+                            Width = 100
+                        });
+            
+                        // 5. Teknisi (Pindah ke kiri Status)
+                        gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
+                        {
+                            Name = "Technician", 
+                            HeaderText = "Teknisi", 
+                            DataPropertyName = "TechnicianName", 
+                            Width = 200
+                        });
+            
+                        // 6. Status (Paling Kanan)
+                        gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
+                        {
+                            Name = "Status", 
+                            HeaderText = "Status", 
+                            DataPropertyName = "StatusId", 
+                            Width = 150
+                        });
+                        
+                        // --- Accessibility: Larger Fonts & Rows ---
+                        gridRequests.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+                        gridRequests.DefaultCellStyle.Font = new Font("Segoe UI", 12F, FontStyle.Regular);
+                        gridRequests.RowTemplate.Height = 60; // Lebih tinggi biar lega
+                        
+                        // Add Formatting Event for Status & No
+                        gridRequests.CellFormatting += GridRequests_CellFormatting;        }
+
+        private void GridRequests_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+
+            // 1. Sequence Number
+            if (gridRequests.Columns[e.ColumnIndex].Name == "No")
+            {
+                e.Value = (e.RowIndex + 1).ToString();
+            }
+
+            // 2. Localized Status
+            if (gridRequests.Columns[e.ColumnIndex].Name == "Status" && e.Value != null)
+            {
+                if (int.TryParse(e.Value.ToString(), out int statusId))
+                {
+                    if (statusId == 1) e.Value = "Menunggu"; // Pending
+                    else if (statusId == 2) e.Value = "Siap"; // Ready
+                    else if (statusId == 3) e.Value = "Diambil"; // Taken
+                    else e.Value = "-";
+                }
+            }
         }
 
         private async void InitializeDashboard()
