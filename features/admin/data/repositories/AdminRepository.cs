@@ -33,12 +33,13 @@ namespace mtc_app.features.admin.data.repositories
             {
                 // Optimized Column Order for Monitoring:
                 // 1. Waktu Lapor
-                // 2. Total Downtime (Critical KPI)
-                // 3. Mesin & Masalah (Context)
-                // 4. Teknisi & Durasi (Performance)
+                // 2. Shift (New)
+                // 3. Total Downtime (Critical KPI)
+                // ...
                 string sql = @"
                     SELECT 
                         t.created_at AS 'Waktu Lapor',
+                        s.shift_name AS 'Shift',
                         TIMEDIFF(t.production_resumed_at, t.created_at) AS 'Total Downtime',
                         CONCAT(m.machine_type, '-', m.machine_area, '.', m.machine_number) AS 'Mesin',
                         CONCAT(
@@ -58,6 +59,7 @@ namespace mtc_app.features.admin.data.repositories
                     LEFT JOIN users tech ON t.technician_id = tech.user_id
                     LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
                     LEFT JOIN failures f ON t.failure_id = f.failure_id
+                    LEFT JOIN shifts s ON t.shift_id = s.shift_id
                     ORDER BY t.created_at DESC
                     LIMIT 100;";
 
@@ -73,6 +75,7 @@ namespace mtc_app.features.admin.data.repositories
                 string sql = @"
                     SELECT 
                         t.created_at AS 'Waktu Lapor',
+                        s.shift_name AS 'Shift',
                         TIMEDIFF(t.production_resumed_at, t.created_at) AS 'Total Downtime',
                         CONCAT(m.machine_type, '-', m.machine_area, '.', m.machine_number) AS 'Mesin',
                         CONCAT(
@@ -97,6 +100,7 @@ namespace mtc_app.features.admin.data.repositories
                     LEFT JOIN failures f ON t.failure_id = f.failure_id
                     LEFT JOIN failure_causes root ON t.root_cause_id = root.cause_id
                     LEFT JOIN actions act ON t.action_id = act.action_id
+                    LEFT JOIN shifts s ON t.shift_id = s.shift_id
                     WHERE t.created_at BETWEEN @StartDate AND @EndDate
                     ORDER BY t.created_at DESC";
 

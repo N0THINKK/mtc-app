@@ -90,6 +90,7 @@ namespace mtc_app.features.admin.presentation.views
 
             // Manual Column Definition
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Status", HeaderText = "Status", DataPropertyName = "Status", FillWeight = 80 });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Shift", HeaderText = "Shift", DataPropertyName = "Shift", FillWeight = 60 });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Mesin", HeaderText = "Mesin", DataPropertyName = "Mesin" });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Masalah", HeaderText = "Masalah", DataPropertyName = "Masalah", FillWeight = 200 });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Teknisi", HeaderText = "Teknisi", DataPropertyName = "Teknisi" });
