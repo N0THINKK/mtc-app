@@ -72,6 +72,7 @@ namespace mtc_app.features.admin.data.repositories
             using (var connection = DatabaseHelper.GetConnection())
             {
                 // Reordered columns for Excel Report (Optimized for Management View)
+                // Added: Total Waktu Tunggu Part (Sum of ready_at - requested_at)
                 string sql = @"
                     SELECT 
                         t.created_at AS 'Waktu Lapor',
@@ -85,6 +86,13 @@ namespace mtc_app.features.admin.data.repositories
                         IFNULL(tech.full_name, '-') AS 'Teknisi',
                         TIMEDIFF(t.started_at, t.created_at) AS 'Durasi Respon',
                         TIMEDIFF(t.technician_finished_at, t.started_at) AS 'Durasi Perbaikan',
+                        
+                        -- KPI Gudang: Total Waktu Tunggu Part
+                        (SELECT SEC_TO_TIME(SUM(TIME_TO_SEC(TIMEDIFF(pr.ready_at, pr.requested_at)))) 
+                         FROM part_requests pr 
+                         WHERE pr.ticket_id = t.ticket_id AND pr.ready_at IS NOT NULL
+                        ) AS 'Waktu Tunggu Part',
+
                         TIMEDIFF(t.production_resumed_at, t.technician_finished_at) AS 'Durasi Trial Run',
                         IFNULL(root.cause_name, t.root_cause_remarks) AS 'Penyebab',
                         IFNULL(act.action_name, t.action_details_manual) AS 'Tindakan',

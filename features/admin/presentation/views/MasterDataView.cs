@@ -27,7 +27,7 @@ namespace mtc_app.features.admin.presentation.views
 
         // Machine Tab Controls
         private DataGridView gridMachines;
-        private AppInput txtMachineCode, txtMachineType, txtMachineArea, txtMachineNumber, txtLocation;
+        private AppInput txtMachineCode, txtMachineType, txtMachineArea, txtMachineNumber;
         private AppButton btnAddMachine, btnUpdateMachine, btnDeleteMachine;
         private int? _selectedMachineId = null;
 
@@ -226,8 +226,7 @@ namespace mtc_app.features.admin.presentation.views
                             machine_type,
                             machine_area,
                             machine_number,
-                            CONCAT(machine_type, '-', machine_area, '.', machine_number) AS machine_name, 
-                            location 
+                            CONCAT(machine_type, '-', machine_area, '.', machine_number) AS machine_name
                         FROM machines ORDER BY machine_id").ToList();
                 }
             }
@@ -246,12 +245,11 @@ namespace mtc_app.features.admin.presentation.views
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    string sql = "INSERT INTO machines (machine_type, machine_area, machine_number, location) VALUES (@Type, @Area, @Number, @Location)";
+                    string sql = "INSERT INTO machines (machine_type, machine_area, machine_number) VALUES (@Type, @Area, @Number)";
                     connection.Execute(sql, new { 
                         Type = txtMachineType.InputValue,
                         Area = txtMachineArea.InputValue,
-                        Number = txtMachineNumber.InputValue,
-                        Location = txtLocation.InputValue 
+                        Number = txtMachineNumber.InputValue
                     });
                     MessageBox.Show("Mesin berhasil ditambahkan!");
                     LoadMachines();
@@ -275,14 +273,12 @@ namespace mtc_app.features.admin.presentation.views
                     string sql = @"UPDATE machines 
                                    SET machine_type = @Type,
                                        machine_area = @Area,
-                                       machine_number = @Number,
-                                       location = @Location 
+                                       machine_number = @Number
                                    WHERE machine_id = @Id";
                     connection.Execute(sql, new { 
                         Type = txtMachineType.InputValue,
                         Area = txtMachineArea.InputValue,
                         Number = txtMachineNumber.InputValue,
-                        Location = txtLocation.InputValue, 
                         Id = _selectedMachineId.Value 
                     });
                     MessageBox.Show("Mesin berhasil diupdate!");
@@ -323,7 +319,6 @@ namespace mtc_app.features.admin.presentation.views
                 txtMachineArea.InputValue = row.Cells["machine_area"].Value?.ToString();
                 txtMachineNumber.InputValue = row.Cells["machine_number"].Value?.ToString();
 
-                txtLocation.InputValue = row.Cells["location"].Value?.ToString();
                 btnUpdateMachine.Enabled = true;
                 btnDeleteMachine.Enabled = true;
             }
@@ -332,7 +327,7 @@ namespace mtc_app.features.admin.presentation.views
         private void ClearMachineSelection()
         {
             _selectedMachineId = null;
-            txtMachineType.InputValue = txtMachineArea.InputValue = txtMachineNumber.InputValue = txtLocation.InputValue = "";
+            txtMachineType.InputValue = txtMachineArea.InputValue = txtMachineNumber.InputValue = "";
             btnUpdateMachine.Enabled = false;
             btnDeleteMachine.Enabled = false;
             gridMachines.ClearSelection();
@@ -464,7 +459,13 @@ namespace mtc_app.features.admin.presentation.views
             this.btnDeleteUser.Click += BtnDeleteUser_Click;
             flowUser.Controls.AddRange(new Control[] { txtUsername, txtPassword, txtFullName, comboRole, btnAddUser, btnUpdateUser, btnDeleteUser });
             pnlUserForm.Controls.Add(flowUser);
-            this.gridUsers = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = Color.White, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect };
+            
+            this.gridUsers = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = Color.White, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect, AutoGenerateColumns = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
+            this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "user_id", DataPropertyName = "user_id", Visible = false });
+            this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "username", HeaderText = "Username", DataPropertyName = "username" });
+            this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "full_name", HeaderText = "Nama Lengkap", DataPropertyName = "full_name" });
+            this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "role_name", HeaderText = "Role", DataPropertyName = "role_name" });
+            
             this.gridUsers.CellClick += GridUsers_CellClick;
             var pnlGridUser = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
             pnlGridUser.Controls.Add(gridUsers);
@@ -473,20 +474,28 @@ namespace mtc_app.features.admin.presentation.views
             // --- TAB 2: MACHINES ---
             var pnlMachineForm = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
             var flowMachine = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
-            this.txtMachineCode = new AppInput { LabelText = "Kode Mesin", Width = 150 };
+            this.txtMachineCode = new AppInput { LabelText = "Kode Mesin", Width = 150 }; // Keeping UI input name for compatibility
             this.txtMachineType = new AppInput { LabelText = "Tipe Mesin", Width = 150 };
             this.txtMachineArea = new AppInput { LabelText = "Area", Width = 100 };
             this.txtMachineNumber = new AppInput { LabelText = "No. Mesin", Width = 100 };
-            this.txtLocation = new AppInput { LabelText = "Lokasi", Width = 150 };
+            // txtLocation removed
             this.btnAddMachine = new AppButton { Text = "Tambah", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5) };
             this.btnUpdateMachine = new AppButton { Text = "Update", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5), Enabled = false };
             this.btnDeleteMachine = new AppButton { Text = "Hapus", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5), Enabled = false, Type = AppButton.ButtonType.Danger };
             this.btnAddMachine.Click += BtnAddMachine_Click;
             this.btnUpdateMachine.Click += BtnUpdateMachine_Click;
             this.btnDeleteMachine.Click += BtnDeleteMachine_Click;
-            flowMachine.Controls.AddRange(new Control[] { txtMachineCode, txtMachineType, txtMachineArea, txtMachineNumber, txtLocation, btnAddMachine, btnUpdateMachine, btnDeleteMachine });
+            flowMachine.Controls.AddRange(new Control[] { txtMachineCode, txtMachineType, txtMachineArea, txtMachineNumber, btnAddMachine, btnUpdateMachine, btnDeleteMachine });
             pnlMachineForm.Controls.Add(flowMachine);
-            this.gridMachines = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = Color.White, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect };
+            
+            this.gridMachines = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = Color.White, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect, AutoGenerateColumns = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
+            this.gridMachines.Columns.Add(new DataGridViewTextBoxColumn { Name = "machine_id", DataPropertyName = "machine_id", Visible = false });
+            this.gridMachines.Columns.Add(new DataGridViewTextBoxColumn { Name = "machine_name", HeaderText = "Nama Mesin (Kode)", DataPropertyName = "machine_name" });
+            this.gridMachines.Columns.Add(new DataGridViewTextBoxColumn { Name = "machine_type", HeaderText = "Tipe", DataPropertyName = "machine_type" });
+            this.gridMachines.Columns.Add(new DataGridViewTextBoxColumn { Name = "machine_area", HeaderText = "Area", DataPropertyName = "machine_area" });
+            this.gridMachines.Columns.Add(new DataGridViewTextBoxColumn { Name = "machine_number", HeaderText = "No.", DataPropertyName = "machine_number" });
+            // Location column removed
+            
             this.gridMachines.CellClick += GridMachines_CellClick;
             var pnlGridMachine = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
             pnlGridMachine.Controls.Add(gridMachines);
@@ -504,7 +513,11 @@ namespace mtc_app.features.admin.presentation.views
             this.btnDeleteFailure.Click += BtnDeleteFailure_Click;
             flowFailure.Controls.AddRange(new Control[] { txtFailureName, btnAddFailure, btnUpdateFailure, btnDeleteFailure });
             pnlFailureForm.Controls.Add(flowFailure);
-            this.gridFailures = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = Color.White, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect };
+            
+            this.gridFailures = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = Color.White, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect, AutoGenerateColumns = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
+            this.gridFailures.Columns.Add(new DataGridViewTextBoxColumn { Name = "failure_id", DataPropertyName = "failure_id", Visible = false });
+            this.gridFailures.Columns.Add(new DataGridViewTextBoxColumn { Name = "failure_name", HeaderText = "Nama Masalah", DataPropertyName = "failure_name" });
+            
             this.gridFailures.CellClick += GridFailures_CellClick;
             var pnlGridFailure = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
             pnlGridFailure.Controls.Add(gridFailures);
