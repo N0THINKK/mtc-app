@@ -225,12 +225,12 @@ namespace mtc_app.shared.presentation.components
             if (_isFiltering || !AllowCustomText) return;
 
             _isFiltering = true;
-            
-            string typedText = comboInput.Text;
-            int selectionStart = comboInput.SelectionStart;
 
             try
             {
+                string typedText = comboInput.Text ?? "";
+                int selectionStart = Math.Max(0, Math.Min(comboInput.SelectionStart, typedText.Length));
+
                 comboInput.BeginUpdate();
                 comboInput.Items.Clear();
 
@@ -250,15 +250,35 @@ namespace mtc_app.shared.presentation.components
                         comboInput.Items.AddRange(filteredItems);
                     }
                 }
-                
-                comboInput.DroppedDown = comboInput.Items.Count > 0 && this.ContainsFocus;
+
+                comboInput.EndUpdate();
+
+                // Restore text and cursor position AFTER EndUpdate
+                comboInput.Text = typedText;
+
+                // Bounds check to prevent ArgumentOutOfRangeException
+                int safePosition = Math.Max(0, Math.Min(selectionStart, comboInput.Text.Length));
+                comboInput.SelectionStart = safePosition;
+
+                // Show dropdown only if we have items and control is focused
+                if (comboInput.Items.Count > 0 && this.ContainsFocus && !string.IsNullOrEmpty(typedText))
+                {
+                    comboInput.DroppedDown = true;
+                }
+
                 Cursor.Current = Cursors.Default;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // Handle Ctrl+Backspace and other edge cases silently
+                try { comboInput.SelectionStart = 0; } catch { }
+            }
+            catch (Exception)
+            {
+                // Silently handle any remaining edge cases
             }
             finally
             {
-                comboInput.Text = typedText;
-                comboInput.SelectionStart = selectionStart;
-                comboInput.EndUpdate();
                 _isFiltering = false;
             }
         }

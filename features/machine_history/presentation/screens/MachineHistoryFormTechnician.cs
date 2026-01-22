@@ -25,6 +25,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private AppInput inputProblemAction;
         private AppInput inputCounter;
         private AppInput inputSparepart;
+        private CheckBox chk4M;
         
         private long _currentTicketId;
         private string _failureDetails;
@@ -144,7 +145,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                         // Enable if verified, disable otherwise
                         inputSparepart.Enabled = isVerified;
                         buttonRequestSparepart.Enabled = isVerified;
-                        buttonRequestSparepart.Text = "Request Sparepart (b)";
+                        buttonRequestSparepart.Text = "Request Sparepart";
                         // Reset color if you have a default
                     }
                 }
@@ -238,7 +239,27 @@ namespace mtc_app.features.machine_history.presentation.screens
             
             LoadTechnicianMasterData();
 
-            // 5. Counter Stroke
+            // 5. 4M Analysis Checkbox
+            chk4M = new CheckBox
+            {
+                Text = "4M Analysis (Aktifkan untuk mengisi Counter)",
+                Font = new Font("Segoe UI", 10F),
+                AutoSize = true,
+                Margin = new Padding(5, 10, 5, 5),
+                Checked = false
+            };
+            chk4M.CheckedChanged += (s, e) =>
+            {
+                // Enable/disable Counter input based on checkbox
+                inputCounter.Enabled = isVerified && chk4M.Checked;
+                if (!chk4M.Checked)
+                {
+                    inputCounter.InputValue = ""; // Clear when unchecked
+                }
+            };
+            mainLayout.Controls.Add(chk4M);
+
+            // 6. Counter Stroke (only enabled when 4M is checked)
             inputCounter = CreateInput("Counter Stroke / Blade / Dies", AppInput.InputTypeEnum.Text, false);
 
             // 6. Sparepart Request (Permintaan Sparepart)
@@ -291,7 +312,10 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             inputProblemCause.Enabled = enabled;
             inputProblemAction.Enabled = enabled;
-            inputCounter.Enabled = enabled;
+            
+            // Counter only enabled if verified AND 4M checkbox is checked
+            chk4M.Enabled = enabled;
+            inputCounter.Enabled = enabled && chk4M.Checked;
             
             // Sparepart inputs initially enabled if verified
             inputSparepart.Enabled = enabled;
@@ -447,7 +471,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                             root_cause_remarks = @CauseRem,
                             action_id = @ActionId,
                             action_details_manual = @ActionMan,
-                            counter_stroke = @Counter
+                            counter_stroke = @Counter,
+                            is_4m = @Is4M
                         WHERE ticket_id = @TicketId";
                     
                     connection.Execute(sql, new { 
@@ -456,6 +481,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                         ActionId = actionId, 
                         ActionMan = actionManual,
                         Counter = counter,
+                        Is4M = chk4M.Checked ? 1 : 0,
                         TicketId = _currentTicketId 
                     });
                 }
