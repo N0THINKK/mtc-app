@@ -97,7 +97,7 @@ namespace mtc_app.features.rating.presentation.screens
             // Tech Rating
             mainLayout.Controls.Add(new AppLabel 
             { 
-                Text = "Rating Mandiri:", 
+                Text = "Rating Operator:", 
                 Type = AppLabel.LabelType.Subtitle,
                 AutoSize = true,
                 Margin = new Padding(0, 5, 0, 2)
