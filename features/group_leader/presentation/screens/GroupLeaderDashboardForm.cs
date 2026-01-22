@@ -103,11 +103,11 @@ namespace mtc_app.features.group_leader.presentation.screens
             int sortIndex = cmbSortTime.SelectedIndex;
             if (sortIndex == 0) // Terbaru
             {
-                filtered = filtered.OrderByDescending(t => t.CreatedAt);
+                filtered = filtered.OrderBy(t => t.CreatedAt);
             }
             else // Terlama
             {
-                filtered = filtered.OrderBy(t => t.CreatedAt);
+                filtered = filtered.OrderByDescending(t => t.CreatedAt);
             }
 
             var ticketList = filtered.ToList();

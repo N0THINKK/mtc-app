@@ -288,9 +288,9 @@ namespace mtc_app.features.technician.presentation.components
             if (sortIndex == 0)
                 sortedList = filtered.OrderByDescending(t => t.StatusId).ThenByDescending(t => t.CreatedAt).ToList();
             else if (sortIndex == 1)
-                sortedList = filtered.OrderByDescending(t => t.CreatedAt).ToList();
-            else
                 sortedList = filtered.OrderBy(t => t.CreatedAt).ToList();
+            else
+                sortedList = filtered.OrderByDescending(t => t.CreatedAt).ToList();
 
             if (sortedList.Count == 0)
             {
