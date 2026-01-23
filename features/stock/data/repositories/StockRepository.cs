@@ -22,6 +22,7 @@ namespace mtc_app.features.stock.data.repositories
                 SELECT 
                     pr.request_id AS RequestId,
                     pr.requested_at AS RequestedAt,
+                    p.part_code AS PartCode,
                     COALESCE(p.part_name, pr.part_name_manual) AS PartName,
                     u.full_name AS TechnicianName,
                     pr.qty AS Qty,

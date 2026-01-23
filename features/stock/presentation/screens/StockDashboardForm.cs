@@ -115,7 +115,7 @@ namespace mtc_app.features.stock.presentation.screens
             { 
                 Name = "RequestedAt", 
                 HeaderText = "Waktu Request", 
-                DataPropertyName = "RequestedAt",
+                DataPropertyName = "FormattedRequestTime",
                 Width = 180
             });
 
@@ -124,7 +124,7 @@ namespace mtc_app.features.stock.presentation.screens
             { 
                 Name = "PartName", 
                 HeaderText = "Nama Part", 
-                DataPropertyName = "PartName",
+                DataPropertyName = "PartDisplayName",
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill 
             });
 
@@ -230,7 +230,7 @@ namespace mtc_app.features.stock.presentation.screens
                     // Get latest part name (Assuming list is sorted DESC by default or by DB query)
                     // If current sort is ASC, we might need Last(). But repository usually defaults DESC for recent.
                     var latestRequest = requestsTask.Result.FirstOrDefault();
-                    string partName = latestRequest != null ? latestRequest.PartName : "Barang Tidak Dikenal";
+                    string partName = latestRequest != null ? latestRequest.PartDisplayName : "Barang Tidak Dikenal";
 
                     // Show Custom Notification Form
                     using (var notifForm = new NotificationForm(partName))
