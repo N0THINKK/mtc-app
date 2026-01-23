@@ -353,8 +353,31 @@ namespace mtc_app.features.machine_history.presentation.screens
                     using (var connection = DatabaseHelper.GetConnection())
                     {
                         connection.Open();
-                        string sql = "INSERT INTO part_requests (ticket_id, part_name_manual, qty, status_id, requested_at) VALUES (@TicketId, @PartName, 1, 1, NOW())";
-                        connection.Execute(sql, new { TicketId = _currentTicketId, PartName = inputSparepart.InputValue });
+
+                        // Try to resolve Part ID
+                        int? partId = null;
+                        string inputValue = inputSparepart.InputValue;
+                        string partCode = null;
+
+                        // Parse "P-001 - Sensor Name" -> "P-001"
+                        if (inputValue.Contains(" - "))
+                        {
+                            var parts = inputValue.Split(new[] { " - " }, StringSplitOptions.RemoveEmptyEntries);
+                            if (parts.Length > 0)
+                            {
+                                partCode = parts[0].Trim();
+                                partId = connection.QueryFirstOrDefault<int?>("SELECT part_id FROM parts WHERE part_code = @Code", new { Code = partCode });
+                            }
+                        }
+
+                        // If not found by code (or manual input), try exact name match just in case
+                        if (partId == null)
+                        {
+                             partId = connection.QueryFirstOrDefault<int?>("SELECT part_id FROM parts WHERE part_name = @Name", new { Name = inputValue });
+                        }
+
+                        string sql = "INSERT INTO part_requests (ticket_id, part_id, part_name_manual, qty, status_id, requested_at) VALUES (@TicketId, @PartId, @PartName, 1, 1, NOW())";
+                        connection.Execute(sql, new { TicketId = _currentTicketId, PartId = partId, PartName = inputValue });
                     }
 
                     // Disable controls
