@@ -182,7 +182,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             _inputs = new List<AppInput>();
 
             // 1. NIK Technician
-            inputNIK = CreateInput("NIK Technician", AppInput.InputTypeEnum.Text, true);
+            inputNIK = CreateInput("Inisial Teknisi", AppInput.InputTypeEnum.Text, true);
 
             // 2. Verify Button
             buttonVerify = new AppButton
@@ -413,7 +413,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             if (string.IsNullOrWhiteSpace(nik))
             {
-                MessageBox.Show("Masukkan NIK Teknisi.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Masukkan Inisial Teknisi.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -422,9 +422,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Open();
-                    // Check if user exists and is Technician (assuming role 'Technician' or similar)
-                    // We use broad check: allow any valid user for now, or filter by role_id if strict.
-                    // Let's assume role_id 2 is Technician based on previous discussion.
+                    // The 'nik' column now contains initials, so this logic is correct again.
                     var tech = connection.QueryFirstOrDefault("SELECT user_id, full_name FROM users WHERE nik = @Nik", new { Nik = nik });
 
                     if (tech != null)
@@ -444,7 +442,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     }
                     else
                     {
-                        MessageBox.Show("NIK Teknisi tidak ditemukan di database.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show("Inisial Teknisi tidak ditemukan di database.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
