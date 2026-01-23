@@ -128,6 +128,15 @@ namespace mtc_app.features.stock.presentation.screens
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill 
             });
 
+            // NEW: Machine Column
+            gridRequests.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "Machine",
+                HeaderText = "Mesin",
+                DataPropertyName = "MachineName",
+                Width = 150
+            });
+
             // 4. Jumlah
             gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
             { 
