@@ -57,6 +57,8 @@ namespace mtc_app.features.admin.data.repositories
                          WHERE pr.ticket_id = t.ticket_id AND pr.ready_at IS NOT NULL
                         ) AS 'Waktu Tunggu Part',
 
+                        TIMEDIFF(t.production_resumed_at, t.technician_finished_at) AS 'Waktu Tunggu Operator',
+
                         ts.status_name AS 'Status',
                         t.ticket_display_code AS 'Kode Tiket',
                         u.full_name AS 'Operator'
@@ -102,7 +104,7 @@ namespace mtc_app.features.admin.data.repositories
                          WHERE pr.ticket_id = t.ticket_id AND pr.ready_at IS NOT NULL
                         ) AS 'Waktu Tunggu Part',
 
-                        TIMEDIFF(t.production_resumed_at, t.technician_finished_at) AS 'Durasi Trial Run',
+                        TIMEDIFF(t.production_resumed_at, t.technician_finished_at) AS 'Waktu Tunggu Operator',
                         IFNULL(root.cause_name, t.root_cause_remarks) AS 'Penyebab',
                         IFNULL(act.action_name, t.action_details_manual) AS 'Tindakan',
                         ts.status_name AS 'Status',

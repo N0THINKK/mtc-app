@@ -98,6 +98,7 @@ namespace mtc_app.features.admin.presentation.views
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Durasi Respon", HeaderText = "Durasi Respon", DataPropertyName = "Durasi Respon" });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Durasi Perbaikan", HeaderText = "Durasi Perbaikan", DataPropertyName = "Durasi Perbaikan" });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Waktu Tunggu Part", HeaderText = "Tunggu Part", DataPropertyName = "Waktu Tunggu Part" });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Waktu Tunggu Operator", HeaderText = "Tunggu Operator", DataPropertyName = "Waktu Tunggu Operator" });
             
             // Action Button Column
             var btnCol = new DataGridViewButtonColumn
@@ -161,6 +162,7 @@ namespace mtc_app.features.admin.presentation.views
                     $"DURASI RESPON: {row.Cells["Durasi Respon"].Value}\n" +
                     $"DURASI PERBAIKAN: {row.Cells["Durasi Perbaikan"].Value}\n" +
                     $"WAKTU TUNGGU PART: {waitPart}\n" +
+                    $"WAKTU TUNGGU OPERATOR: {row.Cells["Waktu Tunggu Operator"].Value}\n" +
                     $"TOTAL DOWNTIME: {row.Cells["Total Downtime"].Value}";
 
                 MessageBox.Show(detailMsg, "Detail Tiket", MessageBoxButtons.OK, MessageBoxIcon.Information);
