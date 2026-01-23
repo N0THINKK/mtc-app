@@ -15,42 +15,38 @@ namespace mtc_app.features.stock.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // Note: Dapper's OpenAsync is preferred but reusing existing pattern if GetConnection opens it or not. 
-                // Assuming DatabaseHelper returns a ready connection or we open it.
                 if (connection.State != ConnectionState.Open)
                     connection.Open();
 
-                var builder = new SqlBuilder();
-                
-                // Select template
-                var selector = builder.AddTemplate(@"
-                    SELECT 
-                        pr.request_id AS RequestId,
-                        pr.requested_at AS RequestedAt,
-                        pr.part_name_manual AS PartName,
-                        IFNULL(u.full_name, 'N/A') AS TechnicianName,
-                        pr.qty AS Qty,
-                        rs.status_name AS StatusName,
-                        pr.status_id AS StatusId
-                    FROM part_requests pr
-                    LEFT JOIN tickets t ON pr.ticket_id = t.ticket_id
-                    LEFT JOIN users u ON t.technician_id = u.user_id
-                    LEFT JOIN request_statuses rs ON pr.status_id = rs.status_id
-                    /**where**/
-                    /**orderby**/
-                ");
+                string sql = @"
+                SELECT 
+                    pr.request_id AS RequestId,
+                    pr.requested_at AS RequestedAt,
+                    COALESCE(p.part_name, pr.part_name_manual) AS PartName,
+                    u.full_name AS TechnicianName,
+                    pr.qty AS Qty,
+                    rs.status_name AS StatusName,
+                    pr.status_id AS StatusId,
+                    CONCAT(m.machine_type, '-', m.machine_area, '.', m.machine_number) AS MachineName
+                FROM part_requests pr
+                LEFT JOIN parts p ON pr.part_id = p.part_id
+                LEFT JOIN tickets t ON pr.ticket_id = t.ticket_id
+                LEFT JOIN users u ON t.technician_id = u.user_id
+                LEFT JOIN request_statuses rs ON pr.status_id = rs.status_id
+                LEFT JOIN machines m ON t.machine_id = m.machine_id";
 
-                // Dynamic Filtering
+                var parameters = new DynamicParameters();
+
                 if (filter.HasValue && filter.Value != RequestStatus.None)
                 {
-                    builder.Where("pr.status_id = @StatusId", new { StatusId = (int)filter.Value });
+                    sql += " WHERE pr.status_id = @StatusId";
+                    parameters.Add("StatusId", (int)filter.Value);
                 }
 
-                // Sorting
                 string sortDirection = sort == SortOrder.Ascending ? "ASC" : "DESC";
-                builder.OrderBy($"pr.requested_at {sortDirection}");
+                sql += $" ORDER BY pr.requested_at {sortDirection}";
 
-                return await connection.QueryAsync<PartRequestDto>(selector.RawSql, selector.Parameters);
+                return await connection.QueryAsync<PartRequestDto>(sql, parameters);
             }
         }
 
