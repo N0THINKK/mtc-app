@@ -91,22 +91,43 @@ namespace mtc_app.shared.presentation.components
         {
             get
             {
-                if (_inputType == InputTypeEnum.Dropdown)
-                    return comboInput.Text;
-                return textInput.Text;
+                try
+                {
+                    if (_inputType == InputTypeEnum.Dropdown)
+                        return comboInput.Text ?? "";
+                    return textInput.Text ?? "";
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    // ComboBox in invalid state, return empty
+                    return "";
+                }
+                catch
+                {
+                    return "";
+                }
             }
             set
             {
-                if (_inputType == InputTypeEnum.Dropdown)
+                try
                 {
-                    if (comboInput.Items.Contains(value))
-                        comboInput.SelectedItem = value;
-                    else if (AllowCustomText)
-                        comboInput.Text = value;
+                    if (_inputType == InputTypeEnum.Dropdown)
+                    {
+                        _isFiltering = true; // Prevent TextChanged during programmatic set
+                        if (comboInput.Items.Contains(value))
+                            comboInput.SelectedItem = value;
+                        else if (AllowCustomText)
+                            comboInput.Text = value ?? "";
+                        _isFiltering = false;
+                    }
+                    else
+                    {
+                        textInput.Text = value ?? "";
+                    }
                 }
-                else
+                catch
                 {
-                    textInput.Text = value;
+                    _isFiltering = false;
                 }
             }
         }
@@ -229,42 +250,72 @@ namespace mtc_app.shared.presentation.components
             try
             {
                 string typedText = comboInput.Text ?? "";
-                int selectionStart = Math.Max(0, Math.Min(comboInput.SelectionStart, typedText.Length));
+                int cursorPos = 0;
+                
+                try
+                {
+                    cursorPos = comboInput.SelectionStart;
+                }
+                catch
+                {
+                    cursorPos = typedText.Length;
+                }
+
+                // Safely clamp cursor position
+                int selectionStart = Math.Max(0, Math.Min(cursorPos, typedText.Length));
 
                 comboInput.BeginUpdate();
-                comboInput.Items.Clear();
-
-                if (string.IsNullOrEmpty(typedText) || _originalItems == null)
+                
+                try
                 {
-                    if (_originalItems != null)
-                        comboInput.Items.AddRange(_originalItems.ToArray());
-                }
-                else
-                {
-                    var filteredItems = _originalItems
-                        .Where(item => item.IndexOf(typedText, StringComparison.OrdinalIgnoreCase) >= 0)
-                        .ToArray();
+                    comboInput.Items.Clear();
 
-                    if (filteredItems.Length > 0)
+                    if (string.IsNullOrEmpty(typedText) || _originalItems == null)
                     {
-                        comboInput.Items.AddRange(filteredItems);
+                        if (_originalItems != null)
+                            comboInput.Items.AddRange(_originalItems.ToArray());
+                    }
+                    else
+                    {
+                        var filteredItems = _originalItems
+                            .Where(item => item.IndexOf(typedText, StringComparison.OrdinalIgnoreCase) >= 0)
+                            .ToArray();
+
+                        if (filteredItems.Length > 0)
+                        {
+                            comboInput.Items.AddRange(filteredItems);
+                        }
                     }
                 }
-
-                comboInput.EndUpdate();
+                finally
+                {
+                    comboInput.EndUpdate();
+                }
 
                 // Restore text and cursor position AFTER EndUpdate
-                comboInput.Text = typedText;
-
-                // Bounds check to prevent ArgumentOutOfRangeException
-                int safePosition = Math.Max(0, Math.Min(selectionStart, comboInput.Text.Length));
-                comboInput.SelectionStart = safePosition;
+                try
+                {
+                    comboInput.Text = typedText;
+                    
+                    // Bounds check to prevent ArgumentOutOfRangeException
+                    int safePosition = Math.Max(0, Math.Min(selectionStart, comboInput.Text.Length));
+                    comboInput.SelectionStart = safePosition;
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    // If position is still invalid, just set to end
+                    try { comboInput.SelectionStart = comboInput.Text.Length; } catch { }
+                }
 
                 // Show dropdown only if we have items and control is focused
-                if (comboInput.Items.Count > 0 && this.ContainsFocus && !string.IsNullOrEmpty(typedText))
+                try
                 {
-                    comboInput.DroppedDown = true;
+                    if (comboInput.Items.Count > 0 && this.ContainsFocus && !string.IsNullOrEmpty(typedText))
+                    {
+                        comboInput.DroppedDown = true;
+                    }
                 }
+                catch { }
 
                 Cursor.Current = Cursors.Default;
             }

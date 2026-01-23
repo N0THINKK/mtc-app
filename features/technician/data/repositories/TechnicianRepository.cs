@@ -17,7 +17,8 @@ namespace mtc_app.features.technician.data.repositories
                         t.ticket_id AS TicketId,
                         CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
                         CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), 
+                               IF(t.problem_type_remarks IS NOT NULL, CONCAT('[', t.problem_type_remarks, '] '), '')), 
                             IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown')),
                             IF(t.applicator_code IS NOT NULL, CONCAT(' (App: ', t.applicator_code, ')'), '')
                         ) AS FailureDetails,
@@ -50,7 +51,8 @@ namespace mtc_app.features.technician.data.repositories
                         op.full_name AS OperatorName,
                         tech.full_name AS TechnicianName,
                         CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), 
+                               IF(t.problem_type_remarks IS NOT NULL, CONCAT('[', t.problem_type_remarks, '] '), '')), 
                             IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown')),
                             IF(t.applicator_code IS NOT NULL, CONCAT(' (App: ', t.applicator_code, ')'), '')
                         ) AS FailureDetails,
