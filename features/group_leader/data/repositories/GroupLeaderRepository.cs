@@ -44,7 +44,8 @@ namespace mtc_app.features.group_leader.data.repositories
                         tech.full_name AS TechnicianName,
                         op.full_name AS OperatorName,
                         CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), 
+                               IF(t.problem_type_remarks IS NOT NULL, CONCAT('[', t.problem_type_remarks, '] '), '')), 
                             IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown'))
                         ) AS FailureDetails,
                         CONCAT(

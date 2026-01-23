@@ -26,6 +26,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private AppInput inputCounter;
         private AppInput inputSparepart;
         private CheckBox chk4M;
+        private CheckBox chkTidak4M;
         
         private long _currentTicketId;
         private string _failureDetails;
@@ -51,7 +52,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                     // Construct readable details from normalized tables
                     string sql = @"
                         SELECT CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), 
+                               IF(t.problem_type_remarks IS NOT NULL, CONCAT('[', t.problem_type_remarks, '] '), '')), 
                             CASE 
                                 WHEN f.failure_name IS NOT NULL THEN f.failure_name
                                 WHEN t.failure_remarks IS NOT NULL THEN t.failure_remarks
@@ -239,25 +241,72 @@ namespace mtc_app.features.machine_history.presentation.screens
             
             LoadTechnicianMasterData();
 
-            // 5. 4M Analysis Checkbox
+            // 5. 4M Selection (Mutually Exclusive Checkboxes)
+            var panel4MSelection = new Panel
+            {
+                AutoSize = true,
+                Margin = new Padding(5, 10, 5, 5)
+            };
+
+            var lbl4MTitle = new Label
+            {
+                Text = "Analisis 4M:",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Location = new Point(0, 0),
+                AutoSize = true,
+                ForeColor = AppColors.TextPrimary
+            };
+            panel4MSelection.Controls.Add(lbl4MTitle);
+
             chk4M = new CheckBox
             {
-                Text = "4M Analysis (Aktifkan untuk mengisi Counter)",
+                Text = "4M",
                 Font = new Font("Segoe UI", 10F),
+                Location = new Point(0, 25),
                 AutoSize = true,
-                Margin = new Padding(5, 10, 5, 5),
                 Checked = false
             };
             chk4M.CheckedChanged += (s, e) =>
             {
-                // Enable/disable Counter input based on checkbox
+                if (chk4M.Checked && chkTidak4M.Checked)
+                {
+                    chkTidak4M.Checked = false; // Uncheck the other
+                }
+                // Enable Counter only if 4M is checked AND verified
                 inputCounter.Enabled = isVerified && chk4M.Checked;
                 if (!chk4M.Checked)
                 {
                     inputCounter.InputValue = ""; // Clear when unchecked
                 }
             };
-            mainLayout.Controls.Add(chk4M);
+            panel4MSelection.Controls.Add(chk4M);
+
+            chkTidak4M = new CheckBox
+            {
+                Text = "Tidak 4M",
+                Font = new Font("Segoe UI", 10F),
+                Location = new Point(80, 25), // Horizontal spacing
+                AutoSize = true,
+                Checked = false
+            };
+            chkTidak4M.CheckedChanged += (s, e) =>
+            {
+                if (chkTidak4M.Checked && chk4M.Checked)
+                {
+                    chk4M.Checked = false; // Uncheck the other
+                }
+                // Disable Counter when Tidak 4M is checked
+                if (chkTidak4M.Checked)
+                {
+                    inputCounter.Enabled = false;
+                    inputCounter.InputValue = "";
+                }
+            };
+            panel4MSelection.Controls.Add(chkTidak4M);
+
+            // Set panel height to accommodate checkboxes
+            panel4MSelection.Height = 50;
+            mainLayout.Controls.Add(panel4MSelection);
 
             // 6. Counter Stroke (only enabled when 4M is checked)
             inputCounter = CreateInput("Counter Stroke / Blade / Dies", AppInput.InputTypeEnum.Text, false);
@@ -313,8 +362,11 @@ namespace mtc_app.features.machine_history.presentation.screens
             inputProblemCause.Enabled = enabled;
             inputProblemAction.Enabled = enabled;
             
-            // Counter only enabled if verified AND 4M checkbox is checked
+            // Both 4M checkboxes enabled after verification
             chk4M.Enabled = enabled;
+            chkTidak4M.Enabled = enabled;
+            
+            // Counter only enabled if verified AND 4M checkbox is checked
             inputCounter.Enabled = enabled && chk4M.Checked;
             
             // Sparepart inputs initially enabled if verified
@@ -456,6 +508,14 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
+            // Validate 4M selection (required)
+            if (!chk4M.Checked && !chkTidak4M.Checked)
+            {
+                MessageBox.Show("Pilih salah satu: 4M atau Tidak 4M.", "Validasi Gagal", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             // Validate inputs
             if (!inputProblemCause.ValidateInput() || 
                 !inputProblemAction.ValidateInput() || 

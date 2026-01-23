@@ -269,17 +269,19 @@ namespace mtc_app.features.machine_history.presentation.screens
                     int? shiftId = connection.QueryFirstOrDefault<int?>("SELECT shift_id FROM shifts WHERE shift_name = @Name", new { Name = inputShift.InputValue });
                     
                     int? problemTypeId = connection.QueryFirstOrDefault<int?>("SELECT type_id FROM problem_types WHERE type_name = @Name", new { Name = inputProblemType.InputValue });
+                    string problemTypeRemarks = (!problemTypeId.HasValue) ? inputProblemType.InputValue : null;
+                    
                     int? failureId = connection.QueryFirstOrDefault<int?>("SELECT failure_id FROM failures WHERE failure_name = @Name", new { Name = inputProblem.InputValue });
                     string failureRemarks = (!failureId.HasValue) ? inputProblem.InputValue : null;
 
                     string insertSql = @"
-                        INSERT INTO tickets (ticket_uuid, ticket_display_code, machine_id, shift_id, operator_id, problem_type_id, failure_id, failure_remarks, applicator_code, status_id, created_at)
-                        VALUES (@Uuid, @Code, @MachineId, @ShiftId, @OpId, @TypeId, @FailId, @Remarks, @AppCode, 1, NOW());
+                        INSERT INTO tickets (ticket_uuid, ticket_display_code, machine_id, shift_id, operator_id, problem_type_id, problem_type_remarks, failure_id, failure_remarks, applicator_code, status_id, created_at)
+                        VALUES (@Uuid, @Code, @MachineId, @ShiftId, @OpId, @TypeId, @TypeRemarks, @FailId, @Remarks, @AppCode, 1, NOW());
                         SELECT LAST_INSERT_ID();";
 
                     long newTicketId = connection.ExecuteScalar<long>(insertSql, new {
                         Uuid = uuid, Code = displayCode, MachineId = machineId, ShiftId = shiftId, OpId = operatorId,
-                        TypeId = problemTypeId, FailId = failureId, Remarks = failureRemarks, AppCode = inputApplicator.InputValue
+                        TypeId = problemTypeId, TypeRemarks = problemTypeRemarks, FailId = failureId, Remarks = failureRemarks, AppCode = inputApplicator.InputValue
                     });
 
                     // Update Machine Status to DOWN (2)
