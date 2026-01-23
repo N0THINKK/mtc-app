@@ -384,6 +384,18 @@ namespace mtc_app.features.stock.presentation.screens
         {
             if (gridRequests.CurrentRow?.DataBoundItem is PartRequestDto request)
             {
+                if (request.StatusId == 2)
+                {
+                    MessageBox.Show("Permintaan ini sudah berstatus SIAP.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                
+                if (request.StatusId == 3)
+                {
+                   MessageBox.Show("Barang sudah diambil.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                   return;
+                }
+
                 if (MessageBox.Show("Tandai barang sebagai SIAP?", "Konfirmasi", MessageBoxButtons.YesNo) == DialogResult.Yes)
                 {
                     bool success = await _repository.MarkAsReadyAsync(request.RequestId);
