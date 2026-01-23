@@ -13,17 +13,24 @@ namespace mtc_app.features.machine_history.presentation.screens
         private System.ComponentModel.IContainer components = null;
         private Label lblTitle;
         private Label lblSubtitle;
+        private Label lblStopwatch;
+        private Panel panelButton;
         private AppButton btnRun;
+        private System.Diagnostics.Stopwatch stopwatch;
+        private Timer timer;
 
         public MachineRunForm(long ticketId)
         {
             _ticketId = ticketId;
             InitializeComponent();
+            this.Shown += MachineRunForm_Shown;
         }
 
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null)) components.Dispose();
+            timer?.Stop();
+            timer?.Dispose();
             base.Dispose(disposing);
         }
 
@@ -32,6 +39,8 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.components = new System.ComponentModel.Container();
             this.lblTitle = new Label();
             this.lblSubtitle = new Label();
+            this.lblStopwatch = new Label();
+            this.panelButton = new Panel();
             this.btnRun = new AppButton();
             this.SuspendLayout();
 
@@ -66,6 +75,23 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.lblSubtitle.Text = "Silakan validasi kondisi mesin.\nJika mesin sudah siap produksi, tekan tombol di bawah.";
 
             // 
+            // lblStopwatch
+            // 
+            this.lblStopwatch.AutoSize = false;
+            this.lblStopwatch.Dock = DockStyle.Top;
+            this.lblStopwatch.Height = 120;
+            this.lblStopwatch.TextAlign = ContentAlignment.MiddleCenter;
+            this.lblStopwatch.Font = new Font("Segoe UI", 60F, FontStyle.Bold);
+            this.lblStopwatch.ForeColor = Color.FromArgb(255, 193, 7); // Gold/Yellow
+            this.lblStopwatch.Text = "00:00:00";
+
+            // 
+            // panelButton - Container for centering button
+            // 
+            this.panelButton.Dock = DockStyle.Fill;
+            this.panelButton.BackColor = Color.Transparent;
+
+            // 
             // btnRun
             // 
             this.btnRun.Anchor = AnchorStyles.None;
@@ -74,18 +100,52 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.btnRun.BackColor = AppColors.Success; // Green for GO
             this.btnRun.Font = new Font("Segoe UI", 24F, FontStyle.Bold);
             this.btnRun.Size = new Size(500, 120);
-            this.btnRun.Location = new Point(
-                (Screen.PrimaryScreen.Bounds.Width - 500) / 2,
-                (Screen.PrimaryScreen.Bounds.Height - 120) / 2 + 50
-            );
             this.btnRun.Click += BtnRun_Click;
+            
+            // Center button in panel
+            this.panelButton.Resize += (s, e) => {
+                 this.btnRun.Location = new Point(
+                    (this.panelButton.Width - this.btnRun.Width) / 2,
+                    (this.panelButton.Height - this.btnRun.Height) / 2
+                );
+            };
+            
+            this.panelButton.Controls.Add(this.btnRun);
 
             // 
             // Controls
             // 
-            this.Controls.Add(this.btnRun);
+            this.Controls.Add(this.panelButton);
+            this.Controls.Add(this.lblStopwatch);
             this.Controls.Add(this.lblSubtitle);
             this.Controls.Add(this.lblTitle);
+            
+            this.ResumeLayout(false);
+        }
+
+        private void MachineRunForm_Shown(object sender, EventArgs e)
+        {
+            StartStopwatch();
+        }
+
+        private void StartStopwatch()
+        {
+            stopwatch = new System.Diagnostics.Stopwatch();
+            stopwatch.Start();
+
+            timer = new Timer();
+            timer.Interval = 100; // Update every 100ms
+            timer.Tick += Timer_Tick;
+            timer.Enabled = true;
+            timer.Start();
+        }
+
+        private void Timer_Tick(object sender, EventArgs e)
+        {
+            if (stopwatch != null && stopwatch.IsRunning && lblStopwatch != null)
+            {
+                lblStopwatch.Text = stopwatch.Elapsed.ToString(@"hh\:mm\:ss");
+            }
         }
 
         private void BtnRun_Click(object sender, EventArgs e)
@@ -109,6 +169,9 @@ namespace mtc_app.features.machine_history.presentation.screens
                 }
 
                 MessageBox.Show("Mesin Running! Waktu produksi tercatat.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                
+                stopwatch?.Stop();
+                timer?.Stop();
                 
                 // Return OK result to parent form so it knows to close too
                 this.DialogResult = DialogResult.OK;
