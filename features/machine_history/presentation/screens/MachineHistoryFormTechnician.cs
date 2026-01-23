@@ -250,7 +250,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             var lbl4MTitle = new Label
             {
-                Text = "Analisis 4M:",
+                Text = "Apakah ada pergantian blade atau crimping dies?",
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 Location = new Point(0, 0),
                 AutoSize = true,
@@ -260,7 +260,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             chk4M = new CheckBox
             {
-                Text = "4M",
+                Text = "Iya",
                 Font = new Font("Segoe UI", 10F),
                 Location = new Point(0, 25),
                 AutoSize = true,
@@ -283,7 +283,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             chkTidak4M = new CheckBox
             {
-                Text = "Tidak 4M",
+                Text = "Tidak",
                 Font = new Font("Segoe UI", 10F),
                 Location = new Point(80, 25), // Horizontal spacing
                 AutoSize = true,
@@ -309,7 +309,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             mainLayout.Controls.Add(panel4MSelection);
 
             // 6. Counter Stroke (only enabled when 4M is checked)
-            inputCounter = CreateInput("Counter Stroke / Blade / Dies", AppInput.InputTypeEnum.Text, false);
+            inputCounter = CreateInput("Jumlah Counter", AppInput.InputTypeEnum.Text, false);
 
             // 6. Sparepart Request (Permintaan Sparepart)
             inputSparepart = CreateInput("Permintaan Sparepart (Sparepart Request)", AppInput.InputTypeEnum.Dropdown, false);
