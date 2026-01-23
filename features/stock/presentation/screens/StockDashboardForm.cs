@@ -2,15 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Media;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using mtc_app.features.stock.data.dtos;
 using mtc_app.features.stock.data.enums;
 using mtc_app.features.stock.data.repositories;
+using mtc_app.features.stock.presentation.components; // Import custom component
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 
-// Ambiguity Resolution
 using StockSortOrder = mtc_app.features.stock.data.enums.SortOrder;
 
 namespace mtc_app.features.stock.presentation.screens
@@ -21,23 +22,16 @@ namespace mtc_app.features.stock.presentation.screens
         private RequestStatus _currentFilter = RequestStatus.Pending;
         private StockSortOrder _currentSort = StockSortOrder.Descending;
         
-        // UI Controls - These should be in Designer.cs normally but we are assuming they exist or we'd need to create them.
-        // For the sake of this refactor, we assume the variable names match what was in the previous file or we update them.
-        // Previous use: cardPending (StockStatusCard), cardReady (StockStatusCard), emptyStatePanel (EmptyStatePanel)
-        // We need to replace these with StatCard and AppEmptyState.
-        // Since we cannot easily "edit" the Designer.cs file without risk, we will assume code-behind compatibility
-        // or we would be replacing the logic that INTERACTS with them.
-        // HACK: To make this compile against an existing Designer.cs that has 'StockStatusCard', 
-        // we might have issues. However, the user asked to REPLACE local UI widgets.
-        // I will assume I can't touch Designer.cs easily to change Types.
-        // BUT, I can programmatically add the NEW controls and hide/remove the old ones if I can't edit Designer.cs.
-        // OR better: I will rewrite the code assuming the user will fix the Designer types or I would need to edit Designer.cs too.
-        // Given I am "Standardizing", I should probably implement the Form logic cleanly.
+        // Notification Logic
+        private Timer _timerNotifSound;
+        private int _previousPendingCount = 0;
+        private bool _isNotificationShowing = false;
         
-        // I will assume the Designer.cs IS NOT updated by me (I don't have it open/safe to edit blindly).
-        // I will dynamically replace them in the constructor to be safe, or just use the new types if I am confident.
-        // Let's rely on the user complying with the "Replace duplication" instruction implies I should change the usage.
-        
+        // Custom UI components (replacing designer placeholders if needed)
+        private StatCard cardPendingNew;
+        private StatCard cardReadyNew;
+        private AppEmptyState emptyStateNew;
+
         public StockDashboardForm() : this(new StockRepository())
         {
         }
@@ -46,16 +40,23 @@ namespace mtc_app.features.stock.presentation.screens
         {
             _repository = repository;
             InitializeComponent();
-            InitializeCustomComponents(); // Method to swap out old controls avoiding Designer errors if possible
+            InitializeCustomComponents();
+            InitializeNotificationTimer();
             InitializeDashboard();
         }
 
-        // We need to swap the old controls for new shared ones programmatically 
-        // if we don't edit Designer.cs. 
-        // To do this cleanly, I'll remove the old ones from Controls collection and add new ones.
-        private StatCard cardPendingNew;
-        private StatCard cardReadyNew;
-        private AppEmptyState emptyStateNew;
+        private void InitializeNotificationTimer()
+        {
+            _timerNotifSound = new Timer();
+            _timerNotifSound.Interval = 1500; // Loop sound every 1.5 seconds
+            _timerNotifSound.Tick += TimerNotifSound_Tick;
+        }
+
+        private void TimerNotifSound_Tick(object sender, EventArgs e)
+        {
+            // Play Asterisk sound repeatedly until user dismisses the alert
+            SystemSounds.Asterisk.Play();
+        }
 
         private void InitializeCustomComponents()
         {
@@ -96,71 +97,72 @@ namespace mtc_app.features.stock.presentation.screens
             pnlContent.Controls.Add(emptyStateNew);
             emptyStateNew.BringToFront(); // Ensure it's on top of grid if visible
 
-                        // --- Configure Grid Manually ---
-                        gridRequests.AutoGenerateColumns = false;
-                        gridRequests.Columns.Clear();
+            // --- Configure Grid Manually ---
+            gridRequests.AutoGenerateColumns = false;
+            gridRequests.Columns.Clear();
+
+            // 1. No (Sequence)
+            gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
+            { 
+                Name = "No", 
+                HeaderText = "No", 
+                Width = 60, // Sedikit lebar utk font besar
+                ReadOnly = true 
+            });
+
+            // 2. Waktu Request
+            gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
+            { 
+                Name = "RequestedAt", 
+                HeaderText = "Waktu Request", 
+                DataPropertyName = "RequestedAt",
+                Width = 180
+            });
+
+            // 3. Nama Part
+            gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
+            { 
+                Name = "PartName", 
+                HeaderText = "Nama Part", 
+                DataPropertyName = "PartName",
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill 
+            });
+
+            // 4. Jumlah
+            gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
+            { 
+                Name = "Qty", 
+                HeaderText = "Jumlah", 
+                DataPropertyName = "Qty",
+                Width = 100
+            });
+
+            // 5. Teknisi (Pindah ke kiri Status)
+            gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
+            { 
+                Name = "Technician", 
+                HeaderText = "Teknisi", 
+                DataPropertyName = "TechnicianName", 
+                Width = 200
+            });
+
+            // 6. Status (Paling Kanan)
+            gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
+            { 
+                Name = "Status", 
+                HeaderText = "Status", 
+                DataPropertyName = "StatusId", 
+                Width = 150
+            });
             
-                        // 1. No (Sequence)
-                        gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
-                        {
-                            Name = "No", 
-                            HeaderText = "No", 
-                            Width = 60, // Sedikit lebar utk font besar
-                            ReadOnly = true 
-                        });
+            // --- Accessibility: Larger Fonts & Rows ---
+            gridRequests.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            gridRequests.DefaultCellStyle.Font = new Font("Segoe UI", 12F, FontStyle.Regular);
+            gridRequests.RowTemplate.Height = 60; // Lebih tinggi biar lega
             
-                        // 2. Waktu Request
-                        gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
-                        {
-                            Name = "RequestedAt", 
-                            HeaderText = "Waktu Request", 
-                            DataPropertyName = "RequestedAt",
-                            Width = 180
-                        });
-            
-                        // 3. Nama Part
-                        gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
-                        {
-                            Name = "PartName", 
-                            HeaderText = "Nama Part", 
-                            DataPropertyName = "PartName",
-                            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill 
-                        });
-            
-                        // 4. Jumlah
-                        gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
-                        {
-                            Name = "Qty", 
-                            HeaderText = "Jumlah", 
-                            DataPropertyName = "Qty",
-                            Width = 100
-                        });
-            
-                        // 5. Teknisi (Pindah ke kiri Status)
-                        gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
-                        {
-                            Name = "Technician", 
-                            HeaderText = "Teknisi", 
-                            DataPropertyName = "TechnicianName", 
-                            Width = 200
-                        });
-            
-                        // 6. Status (Paling Kanan)
-                        gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
-                        {
-                            Name = "Status", 
-                            HeaderText = "Status", 
-                            DataPropertyName = "StatusId", 
-                            Width = 150
-                        });
-                        
-                        // --- Accessibility: Larger Fonts & Rows ---
-                        gridRequests.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-                        gridRequests.DefaultCellStyle.Font = new Font("Segoe UI", 12F, FontStyle.Regular);
-                        gridRequests.RowTemplate.Height = 60; // Lebih tinggi biar lega
-                        
-                        // Add Formatting Event for Status & No
-                        gridRequests.CellFormatting += GridRequests_CellFormatting;        }
+            // Add Formatting Event for Status & No
+            gridRequests.CellFormatting += GridRequests_CellFormatting;
+        }
 
         private void GridRequests_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
@@ -187,7 +189,7 @@ namespace mtc_app.features.stock.presentation.screens
 
         private async void InitializeDashboard()
         {
-            await LoadDataAsync();
+            await LoadDataAsync(isInitialLoad: true);
             timerRefresh.Start();
         }
 
@@ -197,7 +199,7 @@ namespace mtc_app.features.stock.presentation.screens
             await LoadDataAsync();
         }
 
-        private async Task LoadDataAsync()
+        private async Task LoadDataAsync(bool isInitialLoad = false)
         {
             try
             {
@@ -206,16 +208,43 @@ namespace mtc_app.features.stock.presentation.screens
                 var requestsTask = _repository.GetRequestsAsync(_currentFilter, _currentSort);
 
                 await Task.WhenAll(statsTask, requestsTask);
+                
+                var newStats = statsTask.Result;
+                
+                // NOTIFICATION LOGIC
+                // Check if pending count increased AND notification is not already showing
+                if (!isInitialLoad && newStats.PendingCount > _previousPendingCount && !_isNotificationShowing)
+                {
+                    _isNotificationShowing = true;
+                    _timerNotifSound.Start();
+                    
+                    // Get latest part name (Assuming list is sorted DESC by default or by DB query)
+                    // If current sort is ASC, we might need Last(). But repository usually defaults DESC for recent.
+                    var latestRequest = requestsTask.Result.FirstOrDefault();
+                    string partName = latestRequest != null ? latestRequest.PartName : "Barang Tidak Dikenal";
 
-                UpdateStats(statsTask.Result);
+                    // Show Custom Notification Form
+                    using (var notifForm = new NotificationForm(partName))
+                    {
+                        notifForm.ShowDialog();
+                    }
+                    
+                    // After user clicks OK:
+                    _timerNotifSound.Stop();
+                    _isNotificationShowing = false;
+                }
+                
+                // Update tracker
+                _previousPendingCount = newStats.PendingCount;
+
+                UpdateStats(newStats);
                 DisplayRequests(requestsTask.Result);
                 
                 lblLastUpdate.Text = $"🕐 Terakhir diperbarui: {DateTime.Now:HH:mm:ss}";
             }
             catch (Exception ex)
             {
-                // In a real app, maybe log this. For UI, we might not want to spam msg box on timer tick.
-                if (!timerRefresh.Enabled) // Only show error if manual refresh or init
+                if (!timerRefresh.Enabled)
                     MessageBox.Show($"Error memuat data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -241,11 +270,6 @@ namespace mtc_app.features.stock.presentation.screens
             {
                 gridRequests.Visible = true;
                 if (emptyStateNew != null) emptyStateNew.Visible = false;
-                
-                // Bind Data
-                // Use a BindingSource or manual row addition. 
-                // Manual is often safer for custom grids if AutoGenerateColumns is strict.
-                // But let's try strict binding to DTO props.
                 gridRequests.DataSource = data;
             }
             else
