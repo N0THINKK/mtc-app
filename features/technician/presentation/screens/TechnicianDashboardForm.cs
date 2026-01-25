@@ -5,6 +5,7 @@ using mtc_app.features.technician.data.repositories;
 using mtc_app.features.technician.presentation.components;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.data.session;
+using mtc_app.shared.presentation.styles; // Fix AppColors
 
 namespace mtc_app.features.technician.presentation.screens
 {
@@ -17,6 +18,11 @@ namespace mtc_app.features.technician.presentation.screens
         private TabControl tabControl;
         private TechnicianWorkQueueControl workQueueControl;
         private TechnicianPerformanceControl performanceControl;
+        private MachinePerformanceControl machinePerformanceControl;
+        
+        // Auto Switch Feature
+        private Timer timerTabSwitch;
+        private Button btnAutoSwitch;
 
         public TechnicianDashboardForm() : this(new TechnicianRepository())
         {
@@ -37,6 +43,53 @@ namespace mtc_app.features.technician.presentation.screens
 
             InitializeComponent();
             InitializeTabs();
+            InitializeAutoSwitch();
+        }
+
+        private void InitializeAutoSwitch()
+        {
+            // Timer Setup
+            timerTabSwitch = new Timer();
+            timerTabSwitch.Interval = 10000; // 10 Seconds
+            timerTabSwitch.Tick += (s, e) =>
+            {
+                if (tabControl.TabCount > 0)
+                {
+                    int nextIndex = (tabControl.SelectedIndex + 1) % tabControl.TabCount;
+                    tabControl.SelectedIndex = nextIndex;
+                }
+            };
+
+            // Button Setup (Added directly to Form, on top of everything)
+            btnAutoSwitch = new Button
+            {
+                Text = "Auto Switch: OFF",
+                Size = new Size(120, 30),
+                Location = new Point(this.ClientSize.Width - 140, 15), // Top Right of Form
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                BackColor = Color.WhiteSmoke,
+                FlatStyle = FlatStyle.Flat
+            };
+            btnAutoSwitch.Click += (s, e) =>
+            {
+                if (timerTabSwitch.Enabled)
+                {
+                    timerTabSwitch.Stop();
+                    btnAutoSwitch.Text = "Auto Switch: OFF";
+                    btnAutoSwitch.BackColor = Color.WhiteSmoke;
+                    btnAutoSwitch.ForeColor = Color.Black;
+                }
+                else
+                {
+                    timerTabSwitch.Start();
+                    btnAutoSwitch.Text = "Auto Switch: ON";
+                    btnAutoSwitch.BackColor = AppColors.Success; // Green indicates active
+                    btnAutoSwitch.ForeColor = Color.White;
+                }
+            };
+            
+            this.Controls.Add(btnAutoSwitch);
+            btnAutoSwitch.BringToFront(); // Ensure it is above the header panel
         }
 
         private void InitializeTabs()
@@ -73,8 +126,21 @@ namespace mtc_app.features.technician.presentation.screens
 
             tabPerformance.Controls.Add(performanceControl);
 
+            // Tab 3: Machine Analysis (NEW)
+            var tabMachine = new TabPage("Analisis Mesin")
+            {
+                BackColor = Color.White
+            };
+            
+            machinePerformanceControl = new MachinePerformanceControl(_repository)
+            {
+                Dock = DockStyle.Fill
+            };
+            tabMachine.Controls.Add(machinePerformanceControl);
+
             tabControl.TabPages.Add(tabWorkQueue);
             tabControl.TabPages.Add(tabPerformance);
+            tabControl.TabPages.Add(tabMachine);
 
             // Load data when tab changes
             tabControl.SelectedIndexChanged += async (s, e) =>
@@ -82,6 +148,10 @@ namespace mtc_app.features.technician.presentation.screens
                 if (tabControl.SelectedIndex == 1)
                 {
                     await performanceControl.LoadDataAsync();
+                }
+                else if (tabControl.SelectedIndex == 2)
+                {
+                    await machinePerformanceControl.LoadDataAsync();
                 }
             };
 
