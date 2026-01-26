@@ -24,6 +24,11 @@ namespace mtc_app.features.technician.presentation.screens
         private Timer timerTabSwitch;
         private Button btnAutoSwitch;
 
+        // Date Filter Feature
+        private DateTimePicker dtpStart;
+        private DateTimePicker dtpEnd;
+        private Button btnFilter;
+
         public TechnicianDashboardForm() : this(new TechnicianRepository())
         {
         }
@@ -42,8 +47,129 @@ namespace mtc_app.features.technician.presentation.screens
             }
 
             InitializeComponent();
+            
+            // 1. Setup Toolbar Container
+            var pnlToolbar = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 60,
+                BackColor = Color.White,
+                Padding = new Padding(10)
+            };
+            // Add Toolbar BEFORE Tabs so it docks to top
+            this.Controls.Add(pnlToolbar);
+            pnlToolbar.BringToFront(); // Ensure it's below header but above content if z-order matters
+
+            // 2. Initialize Features into Toolbar
+            InitializeDateFilter(pnlToolbar);
+            InitializeAutoSwitch(pnlToolbar);
+            
+            // 3. Initialize Tabs (Dock=Fill will take remaining space)
             InitializeTabs();
-            InitializeAutoSwitch();
+            tabControl.BringToFront(); // Tabs should be main content
+            pnlToolbar.SendToBack(); // Push toolbar up? No, Dock order matters.
+            // Dock Order: Last Added is First in Dock hierarchy usually? No, it's z-order.
+            // To be safe: Add Toolbar, Then Add Tabs.
+            // Since InitializeTabs adds tabControl, let's ensure tabControl is added AFTER toolbar.
+        }
+
+        private void InitializeDateFilter(Panel parent)
+        {
+            var flowFilter = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                Location = new Point(10, 15), // Vertical center roughly
+                Anchor = AnchorStyles.Top | AnchorStyles.Left
+            };
+
+            var lblFrom = new Label { Text = "Periode:", AutoSize = true, Margin = new Padding(0, 5, 5, 0), Font = new Font("Segoe UI", 10F) };
+            dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110, Font = new Font("Segoe UI", 10F), Value = DateTime.Now.AddDays(-7) };
+            var lblTo = new Label { Text = "-", AutoSize = true, Margin = new Padding(5, 5, 5, 0) };
+            dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110, Font = new Font("Segoe UI", 10F), Value = DateTime.Now };
+
+            btnFilter = new Button 
+            { 
+                Text = "Terapkan", 
+                Size = new Size(90, 27),
+                BackColor = AppColors.Primary,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(10, 0, 0, 0)
+            };
+            btnFilter.FlatAppearance.BorderSize = 0;
+            btnFilter.Click += (s, e) => LoadCurrentTabData();
+
+            flowFilter.Controls.AddRange(new Control[] { lblFrom, dtpStart, lblTo, dtpEnd, btnFilter });
+            parent.Controls.Add(flowFilter);
+        }
+
+        private async void LoadCurrentTabData()
+        {
+            DateTime start = dtpStart.Value.Date;
+            DateTime end = dtpEnd.Value.Date.AddDays(1).AddSeconds(-1); // End of day
+
+            if (tabControl.SelectedIndex == 1) // Performa
+            {
+                await performanceControl.LoadDataAsync(start, end);
+            }
+            else if (tabControl.SelectedIndex == 2) // Analisis Mesin
+            {
+                await machinePerformanceControl.LoadDataAsync(start, end);
+            }
+        }
+
+        private void InitializeAutoSwitch(Panel parent)
+        {
+            // Timer Setup
+            timerTabSwitch = new Timer();
+            timerTabSwitch.Interval = 10000; // 10 Seconds
+            timerTabSwitch.Tick += (s, e) =>
+            {
+                if (tabControl.TabCount > 0)
+                {
+                    int nextIndex = (tabControl.SelectedIndex + 1) % tabControl.TabCount;
+                    tabControl.SelectedIndex = nextIndex;
+                }
+            };
+
+            // Button Setup
+            btnAutoSwitch = new Button
+            {
+                Text = "Auto Switch: OFF",
+                Size = new Size(140, 30),
+                Location = new Point(parent.Width - 160, 15), // Right aligned
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                BackColor = Color.WhiteSmoke,
+                ForeColor = Color.DimGray,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnAutoSwitch.FlatAppearance.BorderColor = Color.LightGray;
+            
+            btnAutoSwitch.Click += (s, e) =>
+            {
+                if (timerTabSwitch.Enabled)
+                {
+                    timerTabSwitch.Stop();
+                    btnAutoSwitch.Text = "Auto Switch: OFF";
+                    btnAutoSwitch.BackColor = Color.WhiteSmoke;
+                    btnAutoSwitch.ForeColor = Color.DimGray;
+                }
+                else
+                {
+                    timerTabSwitch.Start();
+                    btnAutoSwitch.Text = "Auto Switch: ON";
+                    btnAutoSwitch.BackColor = AppColors.Success; 
+                    btnAutoSwitch.ForeColor = Color.White;
+                }
+            };
+            
+            parent.Controls.Add(btnAutoSwitch);
         }
 
         private void InitializeAutoSwitch()
@@ -143,16 +269,9 @@ namespace mtc_app.features.technician.presentation.screens
             tabControl.TabPages.Add(tabMachine);
 
             // Load data when tab changes
-            tabControl.SelectedIndexChanged += async (s, e) =>
+            tabControl.SelectedIndexChanged += (s, e) =>
             {
-                if (tabControl.SelectedIndex == 1)
-                {
-                    await performanceControl.LoadDataAsync();
-                }
-                else if (tabControl.SelectedIndex == 2)
-                {
-                    await machinePerformanceControl.LoadDataAsync();
-                }
+                LoadCurrentTabData();
             };
 
             this.Controls.Add(tabControl);

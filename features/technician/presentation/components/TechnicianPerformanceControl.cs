@@ -38,11 +38,11 @@ namespace mtc_app.features.technician.presentation.components
             InitializeComponent();
         }
 
-        public async Task LoadDataAsync()
+        public async Task LoadDataAsync(DateTime start, DateTime end)
         {
             try
             {
-                var data = await _repository.GetLeaderboardAsync();
+                var data = await _repository.GetLeaderboardAsync(start, end);
                 _leaderboardData = data?.ToList() ?? new List<TechnicianPerformanceDto>();
                 
                 // Update shop-wide stats (sum of all technicians)

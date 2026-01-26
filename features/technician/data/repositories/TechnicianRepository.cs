@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks; // Added
@@ -110,7 +111,7 @@ namespace mtc_app.features.technician.data.repositories
             }
         }
 
-        public async Task<IEnumerable<TechnicianPerformanceDto>> GetLeaderboardAsync()
+        public async Task<IEnumerable<TechnicianPerformanceDto>> GetLeaderboardAsync(DateTime start, DateTime end)
         {
             const string sql = @"
                 SELECT 
@@ -120,18 +121,20 @@ namespace mtc_app.features.technician.data.repositories
                     SUM(t.gl_rating_score) AS TotalStars
                 FROM tickets t
                 JOIN users u ON t.technician_id = u.user_id
-                WHERE t.status_id = 3 AND t.gl_validated_at IS NOT NULL
+                WHERE t.status_id = 3 
+                  AND t.gl_validated_at IS NOT NULL
+                  AND t.created_at BETWEEN @Start AND @End
                 GROUP BY u.user_id, u.full_name
                 HAVING COUNT(t.ticket_id) > 0";
 
             using (var connection = DatabaseHelper.GetConnection())
             {
-                var data = await connection.QueryAsync<TechnicianPerformanceDto>(sql);
+                var data = await connection.QueryAsync<TechnicianPerformanceDto>(sql, new { Start = start, End = end });
                 return data;
             }
         }
 
-        public async Task<IEnumerable<MachinePerformanceDto>> GetMachinePerformanceAsync()
+        public async Task<IEnumerable<MachinePerformanceDto>> GetMachinePerformanceAsync(DateTime start, DateTime end)
         {
             const string sql = @"
                 SELECT
@@ -154,13 +157,14 @@ namespace mtc_app.features.technician.data.repositories
                 FROM machines m
                 JOIN tickets t ON m.machine_id = t.machine_id
                 WHERE t.status_id = 3 -- Only completed tickets
+                  AND t.created_at BETWEEN @Start AND @End
                 GROUP BY m.machine_id, MachineName
                 ORDER BY TotalDowntimeSeconds DESC;
             ";
 
             using (var connection = DatabaseHelper.GetConnection())
             {
-                var data = await connection.QueryAsync<MachinePerformanceDto>(sql);
+                var data = await connection.QueryAsync<MachinePerformanceDto>(sql, new { Start = start, End = end });
                 return data;
             }
         }
