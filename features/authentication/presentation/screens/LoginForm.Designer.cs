@@ -45,9 +45,9 @@ namespace mtc_app.features.authentication.presentation.screens
             this.panel1.Controls.Add(this.txtPassword);
             this.panel1.Controls.Add(this.txtUsername);
             this.panel1.Controls.Add(this.lblTitle);
-            this.panel1.Location = new System.Drawing.Point(180, 60);
+            this.panel1.Location = new System.Drawing.Point(0, 0); // Reset to Top-Left
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(440, 360); // Increased height slightly
+            this.panel1.Size = new System.Drawing.Size(440, 360);
             this.panel1.TabIndex = 0;
             // 
             // lblTitle

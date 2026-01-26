@@ -25,6 +25,11 @@ namespace mtc_app.features.authentication.presentation.screens
             InitializeComponent();
             _authRepository = authRepository;
 
+            // Compact UI
+            this.AutoSize = true;
+            this.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            this.StartPosition = FormStartPosition.CenterScreen;
+
             // Enable KeyPreview to catch key presses form-wide
             this.KeyPreview = true;
             this.KeyDown += LoginForm_KeyDown;
