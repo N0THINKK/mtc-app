@@ -125,15 +125,10 @@ namespace mtc_app.features.group_leader.presentation.screens
 
                 foreach (var ticket in ticketList)
                 {
-                    bool isReviewed = ticket.GlValidatedAt.HasValue || (ticket.GlRatingScore.HasValue && ticket.GlRatingScore > 0);
-
-                    var card = new GroupLeaderTicketCardControl(
-                        ticket.TicketUuid,
-                        ticket.MachineName,
-                        ticket.TechnicianName,
-                        ticket.CreatedAt,
-                        isReviewed
-                    );
+                    // bool isReviewed = ... (Already calculated in ticket properties mostly, 
+                    // but let's just pass the ticket, logic is inside Card now)
+                    
+                    var card = new GroupLeaderTicketCardControl(ticket);
 
                     // Subscribe to Event (Dumb Component Pattern)
                     card.OnValidate += Card_OnValidate;

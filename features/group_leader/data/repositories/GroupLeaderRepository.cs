@@ -18,12 +18,20 @@ namespace mtc_app.features.group_leader.data.repositories
                         t.ticket_id AS TicketId,
                         CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
                         u.full_name AS TechnicianName,
+                        CONCAT(
+                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), 
+                               IF(t.problem_type_remarks IS NOT NULL, CONCAT('[', t.problem_type_remarks, '] '), '')), 
+                            IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown')),
+                            IF(t.applicator_code IS NOT NULL, CONCAT(' (App: ', t.applicator_code, ')'), '')
+                        ) AS FailureDetails,
                         t.gl_rating_score AS GlRatingScore,
                         t.created_at AS CreatedAt,
                         t.gl_validated_at AS GlValidatedAt
                     FROM tickets t
                     LEFT JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN users u ON t.technician_id = u.user_id
+                    LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
+                    LEFT JOIN failures f ON t.failure_id = f.failure_id
                     WHERE t.status_id >= 2
                     ORDER BY t.created_at DESC";
 

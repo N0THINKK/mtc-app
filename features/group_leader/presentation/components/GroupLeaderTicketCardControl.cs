@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using mtc_app.features.group_leader.data.dtos;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 using mtc_app.shared.presentation.utils;
@@ -17,35 +18,24 @@ namespace mtc_app.features.group_leader.presentation.components
         
         // Content Controls
         private Label lblMachineName;
+        private Label lblProblem; // Added to match Technician
         private Label lblTechnicianName;
         private Label lblTime;
         private Label lblStatusBadge;
         private PictureBox iconMachine;
         private PictureBox iconClock;
         private AppStarRating starRating;
-        private AppButton btnValidate;
         
         // Data
-        public Guid TicketId { get; private set; }
-        private bool _isReviewed;
-        private DateTime _createdAt;
+        private GroupLeaderTicketDto _currentTicket;
         
-        // Output Event
+        // Output Event (Guid for GL flow)
         public event EventHandler<Guid> OnValidate;
-
-        public GroupLeaderTicketCardControl(Guid ticketId, string machineName, string technicianName, DateTime createdAt, bool isReviewed)
+        
+        public GroupLeaderTicketCardControl(GroupLeaderTicketDto ticket)
         {
-            this.TicketId = ticketId;
-            _isReviewed = isReviewed;
-            _createdAt = createdAt;
-            
             InitializeComponent();
-            
-            // Set Data
-            this.lblMachineName.Text = machineName;
-            this.lblTechnicianName.Text = $"👤 Teknisi: {technicianName ?? "-"}";
-            
-            UpdateDisplay(createdAt, isReviewed);
+            UpdateDisplay(ticket);
         }
 
         private void InitializeComponent()
@@ -54,13 +44,13 @@ namespace mtc_app.features.group_leader.presentation.components
             this.pnlColorStrip = new Panel();
             this.layoutTable = new TableLayoutPanel();
             this.lblMachineName = new Label();
+            this.lblProblem = new Label();
             this.lblTechnicianName = new Label();
             this.lblTime = new Label();
             this.lblStatusBadge = new Label();
             this.iconMachine = new PictureBox();
             this.iconClock = new PictureBox();
             this.starRating = new AppStarRating();
-            this.btnValidate = new AppButton();
             
             this.SuspendLayout();
             this.pnlMain.SuspendLayout();
@@ -78,7 +68,7 @@ namespace mtc_app.features.group_leader.presentation.components
             this.Dock = DockStyle.Top;
 
             // 
-            // Main Panel (Card Container)
+            // Main Panel
             // 
             this.pnlMain.BackColor = Color.White;
             this.pnlMain.Dock = DockStyle.Fill;
@@ -88,7 +78,7 @@ namespace mtc_app.features.group_leader.presentation.components
             this.pnlMain.Paint += PnlMain_Paint;
 
             // 
-            // Color Strip (Left Border)
+            // Color Strip
             // 
             this.pnlColorStrip.Dock = DockStyle.Left;
             this.pnlColorStrip.Width = 6;
@@ -107,9 +97,9 @@ namespace mtc_app.features.group_leader.presentation.components
             this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             
             this.layoutTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 0: Header
-            this.layoutTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 1: Technician
-            this.layoutTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F)); // Row 2: Spacer
-            this.layoutTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 3: Action/Stars
+            this.layoutTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 1: Problem
+            this.layoutTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 2: Technician
+            this.layoutTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 3: Stars
             this.layoutTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 4: Time
 
             // 
@@ -147,39 +137,37 @@ namespace mtc_app.features.group_leader.presentation.components
             this.layoutTable.SetColumnSpan(pnlHeader, 1);
 
             // 
+            // Problem Label
+            // 
+            this.lblProblem.Font = new Font("Segoe UI", 9.5F);
+            this.lblProblem.ForeColor = AppColors.TextSecondary;
+            this.lblProblem.AutoSize = true;
+            this.lblProblem.MaximumSize = new Size(0, 60);
+            this.lblProblem.Dock = DockStyle.Fill;
+            this.lblProblem.Padding = new Padding(0, 5, 0, 5);
+            this.layoutTable.Controls.Add(this.lblProblem, 0, 1);
+            this.layoutTable.SetColumnSpan(this.lblProblem, 2);
+
+            // 
             // Technician Name
             // 
-            this.lblTechnicianName.Font = new Font("Segoe UI", 9.5F);
-            this.lblTechnicianName.ForeColor = AppColors.TextSecondary;
+            this.lblTechnicianName.Font = new Font("Segoe UI", 9F);
+            this.lblTechnicianName.ForeColor = AppColors.TextPrimary;
             this.lblTechnicianName.AutoSize = true;
             this.lblTechnicianName.Dock = DockStyle.Fill;
-            this.lblTechnicianName.Padding = new Padding(0, 5, 0, 5);
-            this.layoutTable.Controls.Add(this.lblTechnicianName, 0, 1);
+            this.lblTechnicianName.Padding = new Padding(0, 3, 0, 3);
+            this.layoutTable.Controls.Add(this.lblTechnicianName, 0, 2);
             this.layoutTable.SetColumnSpan(this.lblTechnicianName, 2);
 
             // 
-            // Action Area (Stars or Button)
+            // Star Rating
             // 
-            // Stars
             this.starRating.Dock = DockStyle.Left;
             this.starRating.Padding = new Padding(0, 3, 0, 3);
             this.starRating.IsReadOnly = true;
             this.starRating.Visible = false;
-            
-            // Validate Button
-            this.btnValidate.Text = "Validasi & Nilai";
-            this.btnValidate.Type = AppButton.ButtonType.Primary;
-            this.btnValidate.Size = new Size(140, 36);
-            this.btnValidate.Anchor = AnchorStyles.Left;
-            this.btnValidate.Visible = false;
-            this.btnValidate.Click += (s, e) => OnValidate?.Invoke(this, this.TicketId);
-
-            var pnlAction = new Panel { AutoSize = true, Dock = DockStyle.Fill };
-            pnlAction.Controls.Add(this.starRating);
-            pnlAction.Controls.Add(this.btnValidate);
-            
-            this.layoutTable.Controls.Add(pnlAction, 0, 3);
-            this.layoutTable.SetColumnSpan(pnlAction, 2);
+            this.layoutTable.Controls.Add(this.starRating, 0, 3);
+            this.layoutTable.SetColumnSpan(this.starRating, 2);
 
             // 
             // Time Container
@@ -188,18 +176,17 @@ namespace mtc_app.features.group_leader.presentation.components
             {
                 Dock = DockStyle.Fill,
                 AutoSize = true,
-                Height = 24,
-                Padding = new Padding(0, 5, 0, 0)
+                Height = 24
             };
 
             this.iconClock.Size = new Size(16, 16);
-            this.iconClock.Location = new Point(0, 7);
+            this.iconClock.Location = new Point(0, 4);
             this.iconClock.BackColor = Color.Transparent;
             this.iconClock.Paint += (s, e) => DrawClockIcon(e.Graphics);
 
             this.lblTime.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             this.lblTime.ForeColor = AppColors.Danger;
-            this.lblTime.Location = new Point(22, 5);
+            this.lblTime.Location = new Point(22, 2);
             this.lblTime.AutoSize = true;
 
             pnlTime.Controls.Add(this.lblTime);
@@ -211,7 +198,7 @@ namespace mtc_app.features.group_leader.presentation.components
             this.pnlMain.Controls.Add(this.pnlColorStrip);
             this.Controls.Add(this.pnlMain);
 
-            // Hook events for interaction (Click & Hover)
+            // Hook Events
             HookEvents(this.pnlMain);
 
             this.pnlMain.ResumeLayout(false);
@@ -223,17 +210,14 @@ namespace mtc_app.features.group_leader.presentation.components
 
         private void HookEvents(Control control)
         {
-            // 1. Hook the current control
             control.Click += (s, e) => HandleCardClick();
             
-            // Cursor effect
             control.MouseEnter += (s, e) => {
                 this.Cursor = Cursors.Hand;
                 this.pnlMain.BackColor = Color.FromArgb(248, 250, 252);
             };
             
             control.MouseLeave += (s, e) => {
-                // Only reset if we truly left the main panel bounds
                 Point p = this.pnlMain.PointToClient(Cursor.Position);
                 if (!this.pnlMain.ClientRectangle.Contains(p))
                 {
@@ -242,28 +226,34 @@ namespace mtc_app.features.group_leader.presentation.components
                 }
             };
 
-            // 2. Recurse for children
             foreach (Control child in control.Controls)
             {
-                if (child is AppButton) continue; // Skip buttons (they have their own logic)
-                HookEvents(child);
+                 if (child is AppButton) continue;
+                 HookEvents(child);
             }
         }
 
         private void HandleCardClick()
         {
-            // Debounce to prevent double opening (limit to once per 500ms)
             if ((DateTime.Now - _lastClickTime).TotalMilliseconds < 500) return;
             _lastClickTime = DateTime.Now;
 
-            OnValidate?.Invoke(this, this.TicketId);
+            if (_currentTicket != null)
+                OnValidate?.Invoke(this, _currentTicket.TicketUuid);
         }
 
-        private void UpdateDisplay(DateTime date, bool isReviewed)
+        public void UpdateDisplay(GroupLeaderTicketDto ticket)
         {
-            // Time Logic
-            this.lblTime.Text = FormatTime(date);
+            if (ticket == null) return;
+            _currentTicket = ticket;
 
+            this.lblMachineName.Text = ticket.MachineName ?? "Unknown Machine";
+            this.lblProblem.Text = ticket.FailureDetails ?? "No details provided";
+            this.lblTechnicianName.Text = $"👤 Teknisi: {ticket.TechnicianName ?? "-"}";
+
+            bool isReviewed = ticket.GlValidatedAt.HasValue || (ticket.GlRatingScore.HasValue && ticket.GlRatingScore > 0);
+
+            // Status Visuals
             if (isReviewed)
             {
                 // Sudah Direview
@@ -272,18 +262,10 @@ namespace mtc_app.features.group_leader.presentation.components
                 this.lblStatusBadge.BackColor = Color.FromArgb(240, 253, 244);
                 this.lblStatusBadge.ForeColor = Color.FromArgb(21, 128, 61);
                 
-                this.btnValidate.Visible = false;
+                // Show Rating
                 this.starRating.Visible = true;
                 this.starRating.MinimumSize = new Size(150, 30);
-                // Note: The actual rating score isn't passed in this constructor.
-                // Assuming 5 stars for visual or we need to update constructor later if user asks.
-                // For now, setting to 0 or 5? User said "reviewed (gl_rating_score has value)".
-                // I'll default to 5 or leave empty? 
-                // "hasn't been reviewed (gl_rating_score didn't have value)"
-                // I'll show 5 stars as placeholder since I don't have the score, 
-                // OR I should assume the caller should have passed it.
-                // Given the constraint, I'll set it to 5 just to show "filled" stars, or 0 if that's safer.
-                this.starRating.Rating = 5; 
+                this.starRating.Rating = ticket.GlRatingScore ?? 0;
             }
             else
             {
@@ -293,23 +275,43 @@ namespace mtc_app.features.group_leader.presentation.components
                 this.lblStatusBadge.BackColor = Color.FromArgb(255, 247, 237);
                 this.lblStatusBadge.ForeColor = Color.FromArgb(194, 65, 12);
                 
-                this.btnValidate.Visible = true;
-                this.starRating.Visible = false;
-                this.starRating.MinimumSize = new Size(0, 0);
+                // Show empty rating placeholder or nothing? 
+                // Technician card shows 0 stars if pending.
+                this.starRating.Visible = true;
+                this.starRating.MinimumSize = new Size(150, 30);
+                this.starRating.Rating = 0;
             }
+
+            this.lblTime.Text = FormatTime(ticket.CreatedAt);
+            
+            AdjustMaximumSizes();
         }
 
         private string FormatTime(DateTime time)
         {
-            // If day has passed, show date
             if (time.Date < DateTime.Now.Date)
             {
                 return time.ToString("dd MMM HH:mm");
             }
             return time.ToString("HH:mm");
         }
+        
+        private void AdjustMaximumSizes()
+        {
+            if (this.Parent != null && this.Width > 0)
+            {
+                int availableWidth = this.Width - 70;
+                this.lblMachineName.MaximumSize = new Size(availableWidth - 120, 0);
+                this.lblProblem.MaximumSize = new Size(availableWidth, 60);
+            }
+        }
 
-        // Paint Helpers (Copied from TechnicianTicketCardControl)
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            AdjustMaximumSizes();
+        }
+
         private void PnlMain_Paint(object sender, PaintEventArgs e)
         {
             Graphics g = e.Graphics;
