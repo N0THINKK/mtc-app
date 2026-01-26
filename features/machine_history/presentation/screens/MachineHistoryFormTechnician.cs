@@ -564,7 +564,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
-            // Validate 4M selection (required)
+            // 1. Validate 4M Selection
             if (!chk4M.Checked && !chkTidak4M.Checked)
             {
                 MessageBox.Show("Pilih salah satu: 4M atau Tidak 4M.", "Validasi Gagal", 
@@ -572,16 +572,31 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
-            // Validate inputs
-            if (!inputProblemCause.ValidateInput() || 
-                !inputProblemAction.ValidateInput() || 
-                !inputCounter.ValidateInput())
+            // 2. Validate Standard Inputs
+            bool isCauseValid = inputProblemCause.ValidateInput();
+            bool isActionValid = inputProblemAction.ValidateInput();
+            
+            // 3. Validate Conditional Input (Counter)
+            bool isCounterValid = true;
+            if (chk4M.Checked)
+            {
+                // Manual check because IsRequired is false by default
+                if (string.IsNullOrWhiteSpace(inputCounter.InputValue))
+                {
+                    inputCounter.SetError("Wajib diisi jika 4M.");
+                    isCounterValid = false;
+                }
+            }
+
+            // 4. Check All
+            if (!isCauseValid || !isActionValid || !isCounterValid)
             {
                  MessageBox.Show("Mohon lengkapi data perbaikan.", "Validasi Gagal", 
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
+            // 5. Validate Rating
             if (ratingOperator.Rating == 0)
             {
                 MessageBox.Show("Mohon berikan rating (bintang) untuk operator.", "Validasi Gagal", 
