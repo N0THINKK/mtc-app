@@ -138,7 +138,7 @@ namespace mtc_app.features.technician.data.repositories
         {
             const string sql = @"
                 SELECT
-                    CONCAT(m.machine_type, '-', m.machine_area, '.', m.machine_number) AS MachineName,
+                    CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
                     COUNT(t.ticket_id) AS RepairCount,
                     
                     -- Calculate durations in seconds

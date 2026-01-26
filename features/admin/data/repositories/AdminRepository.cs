@@ -41,7 +41,7 @@ namespace mtc_app.features.admin.data.repositories
                         t.created_at AS 'Waktu Lapor',
                         s.shift_name AS 'Shift',
                         TIMEDIFF(t.production_resumed_at, t.created_at) AS 'Total Downtime',
-                        CONCAT(m.machine_type, '-', m.machine_area, '.', m.machine_number) AS 'Mesin',
+                        CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS 'Mesin',
                         CONCAT(
                             IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), 
                                IF(t.problem_type_remarks IS NOT NULL, CONCAT('[', t.problem_type_remarks, '] '), '')), 
@@ -88,7 +88,7 @@ namespace mtc_app.features.admin.data.repositories
                         t.created_at AS 'Waktu Lapor',
                         s.shift_name AS 'Shift',
                         TIMEDIFF(t.production_resumed_at, t.created_at) AS 'Total Downtime',
-                        CONCAT(m.machine_type, '-', m.machine_area, '.', m.machine_number) AS 'Mesin',
+                        CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS 'Mesin',
                         CONCAT(
                             IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), 
                                IF(t.problem_type_remarks IS NOT NULL, CONCAT('[', t.problem_type_remarks, '] '), '')), 
