@@ -228,7 +228,7 @@ namespace mtc_app.features.group_leader.presentation.components
 
         private string FormatTime(DateTime time)
         {
-            if (time.Date < DateTime.Now.Date) return time.ToString("dd MMM");
+            if (time.Date < DateTime.Now.Date) return time.ToString("dd MMM HH:mm");
             return time.ToString("HH:mm");
         }
 
