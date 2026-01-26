@@ -27,6 +27,8 @@ namespace mtc_app.features.machine_history.presentation.screens
         private AppInput inputSparepart;
         private CheckBox chk4M;
         private CheckBox chkTidak4M;
+        private AppStarRating ratingOperator;
+        private AppInput inputOperatorNote;
         
         private long _currentTicketId;
         private string _failureDetails;
@@ -315,6 +317,58 @@ namespace mtc_app.features.machine_history.presentation.screens
             inputSparepart = CreateInput("Permintaan Sparepart (Sparepart Request)", AppInput.InputTypeEnum.Dropdown, false);
             inputSparepart.AllowCustomText = true;
             LoadParts();
+
+            // 7. Operator Review (Rating & Note)
+            var panelReview = new Panel 
+            { 
+                Width = 410, 
+                Height = 60, // Reduced from 150
+                Margin = new Padding(10, 0, 0, 0) // Reduced top margin
+            };
+
+            var lblReview = new Label
+            {
+                Text = "Rating Operator:",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Location = new Point(3, 0), // Slight text indentation to match AppInput label
+                AutoSize = true
+            };
+            panelReview.Controls.Add(lblReview);
+
+            ratingOperator = new AppStarRating
+            {
+                Location = new Point(0, 25),
+                Rating = 0
+            };
+            panelReview.Controls.Add(ratingOperator);
+
+            inputOperatorNote = new AppInput
+            {
+                LabelText = "Catatan untuk Operator (Opsional)",
+                InputType = AppInput.InputTypeEnum.Text,
+                IsRequired = false,
+                Width = 410,
+                Location = new Point(0, 60)
+            };
+            // Input location is handled by flow layout if added directly,
+            // but we are adding to a standard fixed panel?
+            // Wait, mainLayout is FlowLayoutPanel.
+            // So adding inputOperatorNote to panelReview is better if we want them grouped.
+            // But AppInput is a UserControl, so location within panelReview matters.
+            
+            // Adjust panel height if needed or let AppInput handle it.
+            // AppInput is usually ~60-70px height.
+            // Let's add AppInput to mainLayout directly to match styling of other inputs.
+            
+            // Re-think: Add Review Label + Star Rating as one unit, then Note as another AppInput
+            
+            // Clean up panelReview usage
+            mainLayout.Controls.Add(panelReview); 
+            // panelReview only contains Label and Stars now.
+            
+            // Add Note Input separately
+            inputOperatorNote = CreateInput("Catatan untuk Operator", AppInput.InputTypeEnum.Text, false);
+            // Override height/multiline if needed, but standard text is fine.
         }
 
         private void LoadTechnicianMasterData()
@@ -371,6 +425,10 @@ namespace mtc_app.features.machine_history.presentation.screens
             
             // Sparepart inputs initially enabled if verified
             inputSparepart.Enabled = enabled;
+
+            // Review controls
+            ratingOperator.ReadOnly = !enabled;
+            inputOperatorNote.Enabled = enabled;
             
             buttonRepairComplete.Enabled = enabled;
             
@@ -524,6 +582,13 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
+            if (ratingOperator.Rating == 0)
+            {
+                MessageBox.Show("Mohon berikan rating (bintang) untuk operator.", "Validasi Gagal", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             try 
             {
                 using (var connection = DatabaseHelper.GetConnection())
@@ -553,7 +618,9 @@ namespace mtc_app.features.machine_history.presentation.screens
                             action_id = @ActionId,
                             action_details_manual = @ActionMan,
                             counter_stroke = @Counter,
-                            is_4m = @Is4M
+                            is_4m = @Is4M,
+                            tech_rating_score = @TechScore,
+                            tech_rating_note = @TechNote
                         WHERE ticket_id = @TicketId";
                     
                     connection.Execute(sql, new { 
@@ -563,6 +630,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                         ActionMan = actionManual,
                         Counter = counter,
                         Is4M = chk4M.Checked ? 1 : 0,
+                        TechScore = ratingOperator.Rating,
+                        TechNote = inputOperatorNote.InputValue,
                         TicketId = _currentTicketId 
                     });
                 }
