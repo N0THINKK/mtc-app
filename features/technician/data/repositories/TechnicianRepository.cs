@@ -112,22 +112,56 @@ namespace mtc_app.features.technician.data.repositories
 
         public async Task<IEnumerable<TechnicianPerformanceDto>> GetLeaderboardAsync()
         {
+            const string sql = @"
+                SELECT 
+                    u.full_name AS TechnicianName,
+                    COUNT(t.ticket_id) AS TotalRepairs,
+                    AVG(t.gl_rating_score) AS AverageRating,
+                    SUM(t.gl_rating_score) AS TotalStars
+                FROM tickets t
+                JOIN users u ON t.technician_id = u.user_id
+                WHERE t.status_id = 3 AND t.gl_validated_at IS NOT NULL
+                GROUP BY u.user_id, u.full_name
+                HAVING COUNT(t.ticket_id) > 0";
+
             using (var connection = DatabaseHelper.GetConnection())
             {
-                string sql = @"
-                    SELECT 
-                        t.technician_id AS TechnicianId,
-                        u.full_name AS TechnicianName,
-                        COUNT(CASE WHEN t.status_id = 3 THEN 1 END) AS TotalRepairs,
-                        COALESCE(AVG(CASE WHEN t.gl_rating_score > 0 THEN t.gl_rating_score END), 0) AS AverageRating,
-                        COALESCE(SUM(CASE WHEN t.gl_rating_score > 0 THEN t.gl_rating_score ELSE 0 END), 0) AS TotalStars
-                    FROM tickets t
-                    LEFT JOIN users u ON t.technician_id = u.user_id
-                    WHERE t.technician_id IS NOT NULL
-                    GROUP BY t.technician_id, u.full_name
-                    ORDER BY TotalRepairs DESC";
+                var data = await connection.QueryAsync<TechnicianPerformanceDto>(sql);
+                return data;
+            }
+        }
 
-                return await connection.QueryAsync<TechnicianPerformanceDto>(sql);
+        public async Task<IEnumerable<MachinePerformanceDto>> GetMachinePerformanceAsync()
+        {
+            const string sql = @"
+                SELECT
+                    CONCAT(m.machine_type, '-', m.machine_area, '.', m.machine_number) AS MachineName,
+                    COUNT(t.ticket_id) AS RepairCount,
+                    
+                    -- Calculate durations in seconds
+                    SUM(TIMESTAMPDIFF(SECOND, t.created_at, t.production_resumed_at)) AS TotalDowntimeSeconds,
+                    SUM(TIMESTAMPDIFF(SECOND, t.created_at, t.started_at)) AS ResponseDurationSeconds,
+                    SUM(TIMESTAMPDIFF(SECOND, t.started_at, t.technician_finished_at)) AS RepairDurationSeconds,
+                    SUM(TIMESTAMPDIFF(SECOND, t.technician_finished_at, t.production_resumed_at)) AS OperatorWaitDurationSeconds,
+
+                    -- Subquery for total part wait time per machine
+                    (SELECT COALESCE(SUM(TIMESTAMPDIFF(SECOND, pr.requested_at, pr.ready_at)), 0)
+                     FROM part_requests pr 
+                     JOIN tickets t_sub ON pr.ticket_id = t_sub.ticket_id
+                     WHERE t_sub.machine_id = m.machine_id AND pr.ready_at IS NOT NULL
+                    ) AS PartWaitDurationSeconds
+
+                FROM machines m
+                JOIN tickets t ON m.machine_id = t.machine_id
+                WHERE t.status_id = 3 -- Only completed tickets
+                GROUP BY m.machine_id, MachineName
+                ORDER BY TotalDowntimeSeconds DESC;
+            ";
+
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                var data = await connection.QueryAsync<MachinePerformanceDto>(sql);
+                return data;
             }
         }
     }
