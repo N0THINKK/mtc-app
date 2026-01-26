@@ -206,20 +206,23 @@ namespace mtc_app.features.machine_history.presentation.screens
             inputNIK.DropdownOpened += (s, e) => LoadOperatorsFromDB(); // Real-time refresh
             LoadOperatorsFromDB(); // Initial Load
 
-            // 2. No. Aplikator
-            inputApplicator = CreateInput("No. Aplikator", AppInput.InputTypeEnum.Text, false);
-
-            // 3. Problem Mesin
-            // Reverted to simple Dropdown with AllowCustomText (handled in CreateInput)
-            inputProblem = CreateInput("Problem Mesin", AppInput.InputTypeEnum.Dropdown, true);
-            LoadFailuresFromDB();
-
-            // 3.5 Shift (Added)
+            // 2. Shift (Moved Up)
             inputShift = CreateInput("Shift", AppInput.InputTypeEnum.Dropdown, true);
             inputShift.AllowCustomText = false; // Restrict to list only
             LoadShiftsFromDB();
 
-            // 4. Jenis Problem
+                        // 3. No. Aplikator
+
+                        inputApplicator = CreateInput("No. Aplikator", AppInput.InputTypeEnum.Text, true); // Required = true
+
+                        // inputApplicator.CharacterCasing = CharacterCasing.Upper; // (Optional: if we want consistent uppercasing)
+
+            // 4. Problem Mesin
+            // Reverted to simple Dropdown with AllowCustomText (handled in CreateInput)
+            inputProblem = CreateInput("Problem Mesin", AppInput.InputTypeEnum.Dropdown, true);
+            LoadFailuresFromDB();
+
+            // 5. Jenis Problem
             inputProblemType = CreateInput("Jenis Problem", AppInput.InputTypeEnum.Dropdown, true);
             LoadProblemTypesFromDB();
             
