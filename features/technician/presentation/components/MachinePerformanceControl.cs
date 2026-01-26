@@ -30,11 +30,11 @@ namespace mtc_app.features.technician.presentation.components
             InitializeComponent();
         }
 
-        public async Task LoadDataAsync()
+        public async Task LoadDataAsync(DateTime start, DateTime end)
         {
             try
             {
-                var result = await _repository.GetMachinePerformanceAsync();
+                var result = await _repository.GetMachinePerformanceAsync(start, end);
                 _data = result?.ToList() ?? new List<MachinePerformanceDto>();
                 chartPanel.Invalidate();
             }
@@ -81,17 +81,7 @@ namespace mtc_app.features.technician.presentation.components
             // Legend
             DrawLegend(headerPanel, 20, 50);
 
-            // Refresh Button
-            btnRefresh = new Button
-            {
-                Text = "Refresh",
-                Location = new Point(headerPanel.Width - 100, 20),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Size = new Size(80, 30),
-                FlatStyle = FlatStyle.Flat
-            };
-            btnRefresh.Click += async (s, e) => await LoadDataAsync();
-            headerPanel.Controls.Add(btnRefresh);
+            // Refresh Button removed (Handled by Dashboard Filter)
 
             mainLayout.Controls.Add(headerPanel, 0, 0);
 
