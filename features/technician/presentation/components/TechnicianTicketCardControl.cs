@@ -293,12 +293,12 @@ namespace mtc_app.features.technician.presentation.components
 
         private string FormatFinishedTime(DateTime time)
         {
-            return time.Date == DateTime.Now.Date ? time.ToString("HH:mm") : time.ToString("dd MMM HH:mm");
+            return time.ToString("dd MMM HH:mm");
         }
 
         private string FormatTime(DateTime time)
         {
-            return time.ToString("HH:mm");
+            return time.ToString("dd MMM HH:mm");
         }
 
         private string FormatDuration(TimeSpan d)
