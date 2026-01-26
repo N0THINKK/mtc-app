@@ -11,5 +11,6 @@ namespace mtc_app.features.group_leader.data.dtos
         public int? GlRatingScore { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? GlValidatedAt { get; set; }
+        public string FailureDetails { get; set; }
     }
 }
