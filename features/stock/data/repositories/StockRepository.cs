@@ -28,7 +28,7 @@ namespace mtc_app.features.stock.data.repositories
                     pr.qty AS Qty,
                     rs.status_name AS StatusName,
                     pr.status_id AS StatusId,
-                    CONCAT(m.machine_type, '-', m.machine_area, '.', m.machine_number) AS MachineName
+                    CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName
                 FROM part_requests pr
                 LEFT JOIN parts p ON pr.part_id = p.part_id
                 LEFT JOIN tickets t ON pr.ticket_id = t.ticket_id
