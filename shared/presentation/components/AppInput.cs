@@ -144,6 +144,13 @@ namespace mtc_app.shared.presentation.components
         }
 
         [Category("App Properties")]
+        public CharacterCasing CharacterCasing
+        {
+            get { return textInput.CharacterCasing; }
+            set { textInput.CharacterCasing = value; }
+        }
+
+        [Category("App Properties")]
         public bool IsRequired
         {
             get { return _isRequired; }
