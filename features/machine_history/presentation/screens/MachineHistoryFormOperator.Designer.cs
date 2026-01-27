@@ -33,7 +33,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.labelTitle = new mtc_app.shared.presentation.components.AppLabel();
             this.mainLayout = new System.Windows.Forms.FlowLayoutPanel();
             this.panelFooter = new System.Windows.Forms.Panel();
-            this.buttonSave = new mtc_app.shared.presentation.components.AppButton();
+
 
             this.panelHeader.SuspendLayout();
             this.panelFooter.SuspendLayout();
@@ -82,7 +82,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             // panelFooter
             // 
             this.panelFooter.BackColor = mtc_app.shared.presentation.styles.AppColors.Surface;
-            this.panelFooter.Controls.Add(this.buttonSave);
+            // this.panelFooter.Controls.Add(this.buttonSave); // Removed
             this.panelFooter.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.panelFooter.Location = new System.Drawing.Point(0, 500);
             this.panelFooter.Name = "panelFooter";
@@ -90,17 +90,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.panelFooter.TabIndex = 2;
             this.panelFooter.Paint += new System.Windows.Forms.PaintEventHandler(this.PanelFooter_Paint);
 
-            // 
-            // buttonSave
-            // 
-            this.buttonSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.buttonSave.Location = new System.Drawing.Point(280, 10);
-            this.buttonSave.Name = "buttonSave";
-            this.buttonSave.Size = new System.Drawing.Size(150, 40);
-            this.buttonSave.TabIndex = 0;
-            this.buttonSave.Text = "Panggil Teknisi";
-            this.buttonSave.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Primary;
-            this.buttonSave.Click += new System.EventHandler(this.SaveButton_Click);
+
 
             // 
             // MachineHistoryFormOperator
@@ -127,6 +117,5 @@ namespace mtc_app.features.machine_history.presentation.screens
         private mtc_app.shared.presentation.components.AppLabel labelTitle;
         private System.Windows.Forms.FlowLayoutPanel mainLayout;
         private System.Windows.Forms.Panel panelFooter;
-        private mtc_app.shared.presentation.components.AppButton buttonSave;
     }
 }
