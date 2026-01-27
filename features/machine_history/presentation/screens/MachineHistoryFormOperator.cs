@@ -18,12 +18,14 @@ namespace mtc_app.features.machine_history.presentation.screens
         private readonly IMachineHistoryRepository _repository;
         
         // Report Tab Controls
-        private List<AppInput> _reportInputs;
         private AppInput inputNIK;
-        private AppInput inputApplicator;
-        private AppInput inputProblem;
-        private AppInput inputProblemType;
         private AppInput inputShift;
+        private AppInput inputApplicator;
+        
+        // Dynamic Problem List
+        private FlowLayoutPanel pnlProblems;
+        private AppButton btnAddProblem;
+        private List<ProblemInputControl> _problemControls = new List<ProblemInputControl>();
         
         // History Tab Controls
         private MachineHistoryListControl _historyControl;
@@ -31,7 +33,6 @@ namespace mtc_app.features.machine_history.presentation.screens
         private DateTimePicker _dtpEnd;
         private AppButton _btnFilter;
 
-        // Composition Root
         public MachineHistoryFormOperator() : this(new MachineHistoryRepository())
         {
         }
@@ -43,8 +44,23 @@ namespace mtc_app.features.machine_history.presentation.screens
             InitializeCustomTabs();
             SetupInputs();
             
+            
+            // Compact UI
+            // this.AutoSize = true;
+            this.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            // this.StartPosition = FormStartPosition.CenterScreen;
+            // this.MinimumSize = new Size(1024, 768);
+            this.WindowState = FormWindowState.Maximized; // Full Screen Start
+
             this.KeyPreview = true;
             this.KeyDown += MachineHistoryFormOperator_KeyDown;
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            // Force layout update after form is loaded and maximized
+            this.OnResize(EventArgs.Empty);
         }
 
         private void InitializeCustomTabs()
@@ -122,63 +138,22 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        private void LoadFailuresFromDB()
-        {
-            try
-            {
-                using (var connection = DatabaseHelper.GetConnection())
-                {
-                    connection.Open();
-                    var failures = connection.Query<string>("SELECT failure_name FROM failures ORDER BY failure_name");
-                    inputProblem.SetDropdownItems(failures.AsList().ToArray());
-                }
-            }
-            catch { /* Ignore */ }
-        }
-
-        private void LoadProblemTypesFromDB()
-        {
-            try
-            {
-                using (var connection = DatabaseHelper.GetConnection())
-                {
-                    connection.Open();
-                    var types = connection.Query<string>("SELECT type_name FROM problem_types ORDER BY type_name");
-                    inputProblemType.SetDropdownItems(types.AsList().ToArray());
-                }
-            }
-            catch { /* Ignore */ }
-        }
-
         private void LoadOperatorsFromDB()
         {
-            try
-            {
-                using (var connection = DatabaseHelper.GetConnection())
-                {
-                    connection.Open();
-                    var niks = connection.Query<string>("SELECT nik FROM users WHERE role_id = 1 AND nik IS NOT NULL ORDER BY nik");
-                    inputNIK.SetDropdownItems(niks.AsList().ToArray());
-                }
-            }
-            catch { /* Ignore */ }
+            try { using (var conn = DatabaseHelper.GetConnection()) {
+                var niks = conn.Query<string>("SELECT nik FROM users WHERE role_id = 1 AND nik IS NOT NULL ORDER BY nik");
+                inputNIK.SetDropdownItems(niks.AsList().ToArray());
+            }} catch { }
         }
 
         private void LoadShiftsFromDB()
         {
-            try
-            {
-                using (var connection = DatabaseHelper.GetConnection())
-                {
-                    connection.Open();
-                    var shifts = connection.Query<string>("SELECT shift_name FROM shifts ORDER BY shift_name");
-                    inputShift.SetDropdownItems(shifts.AsList().ToArray());
-                }
-            }
-            catch { /* Ignore */ }
+            try { using (var conn = DatabaseHelper.GetConnection()) {
+                var shifts = conn.Query<string>("SELECT shift_name FROM shifts ORDER BY shift_name");
+                inputShift.SetDropdownItems(shifts.AsList().ToArray());
+            }} catch { }
         }
 
-        // REVERTED: Simple CreateInput without manual toggle checkbox logic
         private AppInput CreateInput(string label, AppInput.InputTypeEnum type, bool required)
         {
             var input = new AppInput
@@ -186,48 +161,84 @@ namespace mtc_app.features.machine_history.presentation.screens
                 LabelText = label,
                 InputType = type,
                 IsRequired = required,
-                Width = 410,
-                // Allow custom text for Dropdowns by default to support manual entry
+                Width = 450, // Slightly wider for consistency with problem panel
                 AllowCustomText = (type == AppInput.InputTypeEnum.Dropdown) 
             };
-            
-            // Add directly to layout list
-            _reportInputs.Add(input);
             return input;
         }
 
         private void SetupInputs()
         {
-            _reportInputs = new List<AppInput>();
-
-            // 1. NIK Operator
+            // 1. General Info Inputs
             inputNIK = CreateInput("NIK Operator", AppInput.InputTypeEnum.Dropdown, true);
             inputNIK.AllowCustomText = true;
-            inputNIK.DropdownOpened += (s, e) => LoadOperatorsFromDB(); // Real-time refresh
-            LoadOperatorsFromDB(); // Initial Load
+            inputNIK.DropdownOpened += (s, e) => LoadOperatorsFromDB();
+            LoadOperatorsFromDB();
 
-            // 2. Shift (Moved Up)
             inputShift = CreateInput("Shift", AppInput.InputTypeEnum.Dropdown, true);
-            inputShift.AllowCustomText = false; // Restrict to list only
+            inputShift.AllowCustomText = false;
             LoadShiftsFromDB();
 
-                        // 3. No. Aplikator
+            inputApplicator = CreateInput("No. Aplikator", AppInput.InputTypeEnum.Text, true);
+            inputApplicator.CharacterCasing = CharacterCasing.Upper;
 
-                        inputApplicator = CreateInput("No. Aplikator", AppInput.InputTypeEnum.Text, true); // Required = true
+            mainLayout.Controls.Add(inputNIK);
+            mainLayout.Controls.Add(inputShift);
+            mainLayout.Controls.Add(inputApplicator);
 
-                        // inputApplicator.CharacterCasing = CharacterCasing.Upper; // (Optional: if we want consistent uppercasing)
+            // 2. Dynamic Problem Section
+            var lblProblems = new Label 
+            {
+                Text = "Daftar Kerusakan:", 
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                AutoSize = true,
+                Margin = new Padding(0, 20, 0, 5)
+            };
+            mainLayout.Controls.Add(lblProblems);
 
-            // 4. Problem Mesin
-            // Reverted to simple Dropdown with AllowCustomText (handled in CreateInput)
-            inputProblem = CreateInput("Problem Mesin", AppInput.InputTypeEnum.Dropdown, true);
-            LoadFailuresFromDB();
+            pnlProblems = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.TopDown,
+                AutoSize = true,
+                Width = 460,
+                WrapContents = false
+            };
+            mainLayout.Controls.Add(pnlProblems);
 
-            // 5. Jenis Problem
-            inputProblemType = CreateInput("Jenis Problem", AppInput.InputTypeEnum.Dropdown, true);
-            LoadProblemTypesFromDB();
+            btnAddProblem = new AppButton
+            {
+                Text = "+ Tambah Masalah Lain",
+                Width = 200,
+                Type = AppButton.ButtonType.Secondary,
+                Margin = new Padding(0, 5, 0, 20)
+            };
+            btnAddProblem.Click += (s, e) => AddProblemInput();
+            mainLayout.Controls.Add(btnAddProblem);
+
+            // Add Initial Problem Input
+            AddProblemInput();
+        }
+
+        private void AddProblemInput()
+        {
+            var problemControl = new ProblemInputControl(_problemControls.Count);
+            problemControl.RemoveRequested += (s, e) => RemoveProblemInput(problemControl);
             
-            // IMPORTANT: Add controls to the layout so they are VISIBLE
-            mainLayout?.Controls.AddRange(_reportInputs.ToArray());
+            _problemControls.Add(problemControl);
+            pnlProblems.Controls.Add(problemControl);
+        }
+
+        private void RemoveProblemInput(ProblemInputControl control)
+        {
+            if (_problemControls.Count <= 1)
+            {
+                MessageBox.Show("Minimal harus ada satu masalah.", "Info");
+                return;
+            }
+            
+            pnlProblems.Controls.Remove(control);
+            _problemControls.Remove(control);
+            control.Dispose();
         }
 
         private async Task LoadHistoryAsync()
@@ -245,10 +256,21 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
-            if (_reportInputs.Any(i => !i.ValidateInput()))
+            // Validate Header Inputs
+            if (!inputNIK.ValidateInput() || !inputShift.ValidateInput() || !inputApplicator.ValidateInput())
             {
-                MessageBox.Show("Mohon lengkapi data yang diperlukan.", "Validasi Gagal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Mohon lengkapi data header.", "Validasi Gagal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
+            }
+
+            // Validate Problems
+            foreach (var prob in _problemControls)
+            {
+                if (!prob.InputType.ValidateInput() || !prob.InputFailure.ValidateInput())
+                {
+                    MessageBox.Show("Mohon lengkapi detail masalah.", "Validasi Gagal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
             }
 
             try 
@@ -256,49 +278,73 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Open();
-                    
-                    string uuid = Guid.NewGuid().ToString();
-                    string dateCode = DateTime.Now.ToString("yyMMdd");
-                    string countSql = "SELECT COUNT(*) FROM tickets WHERE DATE(created_at) = CURDATE()";
-                    int dailyCount = connection.ExecuteScalar<int>(countSql);
-                    string displayCode = $"TKT-{dateCode}-{(dailyCount + 1):D3}"; 
+                    using (var transaction = connection.BeginTransaction())
+                    {
+                        try
+                        {
+                            string uuid = Guid.NewGuid().ToString();
+                            string dateCode = DateTime.Now.ToString("yyMMdd");
+                            string countSql = "SELECT COUNT(*) FROM tickets WHERE DATE(created_at) = CURDATE()";
+                            int dailyCount = connection.ExecuteScalar<int>(countSql, transaction: transaction);
+                            string displayCode = $"TKT-{dateCode}-{(dailyCount + 1):D3}"; 
 
-                    // Resolve IDs
-                    int operatorId = 1; 
-                    var userCheck = connection.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE nik = @Nik", new { Nik = inputNIK.InputValue });
-                    if (userCheck.HasValue) operatorId = userCheck.Value;
+                            // Resolve Header IDs
+                            int operatorId = 1; 
+                            var userCheck = connection.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE nik = @Nik", new { Nik = inputNIK.InputValue }, transaction: transaction);
+                            if (userCheck.HasValue) operatorId = userCheck.Value;
 
-                    int machineId = 1;
-                    int? shiftId = connection.QueryFirstOrDefault<int?>("SELECT shift_id FROM shifts WHERE shift_name = @Name", new { Name = inputShift.InputValue });
-                    
-                    int? problemTypeId = connection.QueryFirstOrDefault<int?>("SELECT type_id FROM problem_types WHERE type_name = @Name", new { Name = inputProblemType.InputValue });
-                    string problemTypeRemarks = (!problemTypeId.HasValue) ? inputProblemType.InputValue : null;
-                    
-                    int? failureId = connection.QueryFirstOrDefault<int?>("SELECT failure_id FROM failures WHERE failure_name = @Name", new { Name = inputProblem.InputValue });
-                    string failureRemarks = (!failureId.HasValue) ? inputProblem.InputValue : null;
+                            int machineId = 1;
+                            int? shiftId = connection.QueryFirstOrDefault<int?>("SELECT shift_id FROM shifts WHERE shift_name = @Name", new { Name = inputShift.InputValue }, transaction: transaction);
 
-                    string insertSql = @"
-                        INSERT INTO tickets (ticket_uuid, ticket_display_code, machine_id, shift_id, operator_id, problem_type_id, problem_type_remarks, failure_id, failure_remarks, applicator_code, status_id, created_at)
-                        VALUES (@Uuid, @Code, @MachineId, @ShiftId, @OpId, @TypeId, @TypeRemarks, @FailId, @Remarks, @AppCode, 1, NOW());
-                        SELECT LAST_INSERT_ID();";
+                            // 1. Insert Header Ticket (Note: problem/failure columns are removed/ignored)
+                            string insertTicketSql = @"
+                                INSERT INTO tickets (ticket_uuid, ticket_display_code, machine_id, shift_id, operator_id, applicator_code, status_id, created_at)
+                                VALUES (@Uuid, @Code, @MachineId, @ShiftId, @OpId, @AppCode, 1, NOW());
+                                SELECT LAST_INSERT_ID();";
 
-                    long newTicketId = connection.ExecuteScalar<long>(insertSql, new {
-                        Uuid = uuid, Code = displayCode, MachineId = machineId, ShiftId = shiftId, OpId = operatorId,
-                        TypeId = problemTypeId, TypeRemarks = problemTypeRemarks, FailId = failureId, Remarks = failureRemarks, AppCode = inputApplicator.InputValue
-                    });
+                            long ticketId = connection.ExecuteScalar<long>(insertTicketSql, new {
+                                Uuid = uuid, Code = displayCode, MachineId = machineId, ShiftId = shiftId, OpId = operatorId,
+                                AppCode = inputApplicator.InputValue
+                            }, transaction: transaction);
 
-                    // Update Machine Status to DOWN (2)
-                    connection.Execute("UPDATE machines SET current_status_id = 2 WHERE machine_id = @MachineId", new { MachineId = machineId });
+                            // 2. Insert Problem Details
+                            string insertDetailSql = @"
+                                INSERT INTO ticket_problems (ticket_id, problem_type_id, problem_type_remarks, failure_id, failure_remarks)
+                                VALUES (@TicketId, @TypeId, @TypeRem, @FailId, @FailRem)";
 
-                    AutoClosingMessageBox.Show($"Tiket Berhasil Dibuat!\nKode: {displayCode}", "Sukses", 2000);
-                    
-                    inputProblem.InputValue = "";
-                    inputProblemType.InputValue = "";
+                            foreach (var prob in _problemControls)
+                            {
+                                int? typeId = connection.QueryFirstOrDefault<int?>("SELECT type_id FROM problem_types WHERE type_name = @Name", new { Name = prob.InputType.InputValue }, transaction: transaction);
+                                string typeRem = (!typeId.HasValue) ? prob.InputType.InputValue : null;
 
-                    var technicianForm = new MachineHistoryFormTechnician(newTicketId);
-                    this.Hide(); 
-                    technicianForm.FormClosed += (s, args) => this.Show(); 
-                    technicianForm.Show();
+                                int? failId = connection.QueryFirstOrDefault<int?>("SELECT failure_id FROM failures WHERE failure_name = @Name", new { Name = prob.InputFailure.InputValue }, transaction: transaction);
+                                string failRem = (!failId.HasValue) ? prob.InputFailure.InputValue : null;
+
+                                connection.Execute(insertDetailSql, new {
+                                    TicketId = ticketId, TypeId = typeId, TypeRem = typeRem, FailId = failId, FailRem = failRem
+                                }, transaction: transaction);
+                            }
+
+                            // 3. Update Machine Status
+                            connection.Execute("UPDATE machines SET current_status_id = 2 WHERE machine_id = @MachineId", new { MachineId = machineId }, transaction: transaction);
+
+                            transaction.Commit();
+
+                            AutoClosingMessageBox.Show($"Tiket Berhasil Dibuat!\nKode: {displayCode}", "Sukses", 2000);
+                            
+                            // Reset Form
+                            // We can create a new Technician Form for immediate follow up if needed
+                            var technicianForm = new MachineHistoryFormTechnician(ticketId);
+                            this.Hide(); 
+                            technicianForm.FormClosed += (s, args) => this.Show(); 
+                            technicianForm.Show();
+                        }
+                        catch
+                        {
+                            transaction.Rollback();
+                            throw;
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -318,11 +364,26 @@ namespace mtc_app.features.machine_history.presentation.screens
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            if (mainLayout != null && _reportInputs != null)
+            if (mainLayout != null)
             {
-                foreach (var input in _reportInputs)
+                int newWidth = mainLayout.ClientSize.Width - 100; // 50px padding each side
+                
+                foreach (Control c in mainLayout.Controls)
                 {
-                    input.Width = mainLayout.ClientSize.Width - 40;
+                    // Resize Inputs, Problem Panel, and Add Button
+                    if (c is AppInput || c == pnlProblems || c == btnAddProblem)
+                    {
+                        c.Width = newWidth;
+                    }
+                }
+                
+                // Resize children inside Problem Panel
+                if (pnlProblems != null)
+                {
+                    foreach (Control child in pnlProblems.Controls)
+                    {
+                        child.Width = newWidth - 10; // Slightly smaller to fit inside panel
+                    }
                 }
             }
         }
