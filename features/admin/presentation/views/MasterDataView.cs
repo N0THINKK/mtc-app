@@ -105,7 +105,7 @@ namespace mtc_app.features.admin.presentation.views
                 {
                     string sql = "INSERT INTO users (username, password, full_name, role_id) VALUES (@Username, @Password, @FullName, @RoleId)";
                     connection.Execute(sql, new { Username = txtUsername.InputValue, Password = txtPassword.InputValue, FullName = txtFullName.InputValue, RoleId = roleId });
-                    MessageBox.Show("User berhasil ditambahkan!");
+                    AutoClosingMessageBox.Show("User berhasil ditambahkan!", "Sukses", 1500);
                     LoadUsers();
                 }
             }
@@ -149,7 +149,7 @@ namespace mtc_app.features.admin.presentation.views
                         UserId = _selectedUserId.Value 
                     });
 
-                    MessageBox.Show("User berhasil diupdate!");
+                    AutoClosingMessageBox.Show("User berhasil diupdate!", "Sukses", 1500);
                     LoadUsers();
                 }
             }
@@ -173,7 +173,7 @@ namespace mtc_app.features.admin.presentation.views
                     {
                         string sql = "DELETE FROM users WHERE user_id = @UserId";
                         connection.Execute(sql, new { UserId = _selectedUserId.Value });
-                        MessageBox.Show("User berhasil dihapus!");
+                        AutoClosingMessageBox.Show("User berhasil dihapus!", "Sukses", 1500);
                         LoadUsers();
                     }
                 }
@@ -251,7 +251,7 @@ namespace mtc_app.features.admin.presentation.views
                         Area = txtMachineArea.InputValue,
                         Number = txtMachineNumber.InputValue
                     });
-                    MessageBox.Show("Mesin berhasil ditambahkan!");
+                    AutoClosingMessageBox.Show("Mesin berhasil ditambahkan!", "Sukses", 1500);
                     LoadMachines();
                 }
             }
@@ -281,7 +281,7 @@ namespace mtc_app.features.admin.presentation.views
                         Number = txtMachineNumber.InputValue,
                         Id = _selectedMachineId.Value 
                     });
-                    MessageBox.Show("Mesin berhasil diupdate!");
+                    AutoClosingMessageBox.Show("Mesin berhasil diupdate!", "Sukses", 1500);
                     LoadMachines();
                 }
             }
@@ -299,7 +299,7 @@ namespace mtc_app.features.admin.presentation.views
                     using (var connection = DatabaseHelper.GetConnection())
                     {
                         connection.Execute("DELETE FROM machines WHERE machine_id = @Id", new { Id = _selectedMachineId.Value });
-                        MessageBox.Show("Mesin berhasil dihapus!");
+                        AutoClosingMessageBox.Show("Mesin berhasil dihapus!", "Sukses", 1500);
                         LoadMachines();
                     }
                 }
@@ -356,7 +356,7 @@ namespace mtc_app.features.admin.presentation.views
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Execute("INSERT INTO failures (failure_name) VALUES (@Name)", new { Name = txtFailureName.InputValue });
-                    MessageBox.Show("Jenis masalah berhasil ditambahkan!");
+                    AutoClosingMessageBox.Show("Jenis masalah berhasil ditambahkan!", "Sukses", 1500);
                     LoadFailures();
                 }
             }
@@ -372,7 +372,7 @@ namespace mtc_app.features.admin.presentation.views
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Execute("UPDATE failures SET failure_name = @Name WHERE failure_id = @Id", new { Name = txtFailureName.InputValue, Id = _selectedFailureId.Value });
-                    MessageBox.Show("Jenis masalah berhasil diupdate!");
+                    AutoClosingMessageBox.Show("Jenis masalah berhasil diupdate!", "Sukses", 1500);
                     LoadFailures();
                 }
             }
@@ -390,7 +390,7 @@ namespace mtc_app.features.admin.presentation.views
                     using (var connection = DatabaseHelper.GetConnection())
                     {
                         connection.Execute("DELETE FROM failures WHERE failure_id = @Id", new { Id = _selectedFailureId.Value });
-                        MessageBox.Show("Masalah berhasil dihapus!");
+                        AutoClosingMessageBox.Show("Masalah berhasil dihapus!", "Sukses", 1500);
                         LoadFailures();
                     }
                 }

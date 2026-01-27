@@ -290,7 +290,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     // Update Machine Status to DOWN (2)
                     connection.Execute("UPDATE machines SET current_status_id = 2 WHERE machine_id = @MachineId", new { MachineId = machineId });
 
-                    MessageBox.Show($"Tiket Berhasil Dibuat!\nKode: {displayCode}", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    AutoClosingMessageBox.Show($"Tiket Berhasil Dibuat!\nKode: {displayCode}", "Sukses", 2000);
                     
                     inputProblem.InputValue = "";
                     inputProblemType.InputValue = "";
