@@ -574,7 +574,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
-            // Validate 4M selection (required)
+            // 1. Validate 4M Selection
             if (!chk4M.Checked && !chkTidak4M.Checked)
             {
                 MessageBox.Show("Pilih salah satu: 4M atau Tidak 4M.", "Validasi Gagal", 
@@ -594,6 +594,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
+            // 5. Validate Rating
             if (ratingOperator.Rating == 0)
             {
                 MessageBox.Show("Mohon berikan rating (bintang) untuk operator.", "Validasi Gagal", 
