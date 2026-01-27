@@ -507,7 +507,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     buttonRequestSparepart.Enabled = false;
                     buttonRequestSparepart.BackColor = Color.Gray;
 
-                    MessageBox.Show("Permintaan sparepart berhasil dikirim ke Stock Control.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    AutoClosingMessageBox.Show("Permintaan sparepart berhasil dikirim ke Stock Control.", "Sukses", 2000);
                     
                     // Immediately update the UI to reflect the new status
                     UpdatePartRequestStatus();
@@ -557,7 +557,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                         stopwatch.Start();
                         timer.Start();
 
-                        MessageBox.Show($"Verifikasi Berhasil!\nSelamat bekerja, {tech.full_name}.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        AutoClosingMessageBox.Show($"Verifikasi Berhasil!\nSelamat bekerja, {tech.full_name}.", "Sukses", 2000);
                         UpdateUIState();
                     }
                     else
@@ -672,15 +672,14 @@ namespace mtc_app.features.machine_history.presentation.screens
                 string duration = stopwatch.Elapsed.ToString(@"hh\:mm\:ss");
                 string finishTime = DateTime.Now.ToString("HH:mm");
                 
-                MessageBox.Show(
+                AutoClosingMessageBox.Show(
                     $"Perbaikan Selesai!\n\n" +
                     $"Kedatangan: {labelArrival.Text}\n" +
                     $"Selesai: {finishTime}\n" +
                     $"Durasi: {duration}\n\n" +
                     "Terima kasih atas kerja keras Anda!",
                     "Laporan Tersimpan",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information
+                    2000
                 );
 
                 // --- NEW WORKFLOW: Open Run Machine Screen ---
