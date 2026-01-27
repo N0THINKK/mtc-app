@@ -17,7 +17,7 @@ namespace mtc_app.features.machine_history.presentation.screens
     {
         private readonly IMachineHistoryRepository _repository;
         
-        // Report Tab Controls
+        // Header Inputs
         private AppInput inputNIK;
         private AppInput inputShift;
         private AppInput inputApplicator;
@@ -25,6 +25,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         // Dynamic Problem List
         private FlowLayoutPanel pnlProblems;
         private AppButton btnAddProblem;
+        private AppButton btnSave;
         private List<ProblemInputControl> _problemControls = new List<ProblemInputControl>();
         
         // History Tab Controls
@@ -33,33 +34,23 @@ namespace mtc_app.features.machine_history.presentation.screens
         private DateTimePicker _dtpEnd;
         private AppButton _btnFilter;
 
-        public MachineHistoryFormOperator() : this(new MachineHistoryRepository())
-        {
-        }
+        public MachineHistoryFormOperator() : this(new MachineHistoryRepository()) { }
 
         public MachineHistoryFormOperator(IMachineHistoryRepository repository)
         {
             _repository = repository;
-            InitializeComponent(); 
+            InitializeComponent();
             InitializeCustomTabs();
             SetupInputs();
             
-            
-            // Compact UI
-            // this.AutoSize = true;
-            this.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            // this.StartPosition = FormStartPosition.CenterScreen;
-            // this.MinimumSize = new Size(1024, 768);
-            this.WindowState = FormWindowState.Maximized; // Full Screen Start
-
+            this.WindowState = FormWindowState.Maximized;
             this.KeyPreview = true;
-            this.KeyDown += MachineHistoryFormOperator_KeyDown;
+            this.KeyDown += HandleKeyDown;
         }
 
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
-            // Force layout update after form is loaded and maximized
             this.OnResize(EventArgs.Empty);
         }
 
@@ -70,106 +61,64 @@ namespace mtc_app.features.machine_history.presentation.screens
             var tabControl = new TabControl
             {
                 Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                Font = AppFonts.Body,
                 Padding = new Point(10, 5)
             };
 
-            // --- Tab 1: Lapor Kerusakan ---
-            var tabReport = new TabPage("Lapor Kerusakan");
-            tabReport.BackColor = Color.White;
+            // === Tab 1: Report Tab ===
+            var tabReport = new TabPage("Lapor Kerusakan") { BackColor = Color.White };
             
             var reportLayout = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.TopDown,
-                Padding = new Padding(20),
+                Padding = new Padding(30, 20, 30, 20),
                 AutoScroll = true,
                 WrapContents = false
             };
-            this.mainLayout = reportLayout; 
+            this.mainLayout = reportLayout;
             tabReport.Controls.Add(reportLayout);
             tabControl.TabPages.Add(tabReport);
 
-            // --- Tab 2: Riwayat Mesin ---
-            var tabHistory = new TabPage("Riwayat Mesin");
-            tabHistory.BackColor = Color.White;
+            // === Tab 2: History Tab ===
+            var tabHistory = new TabPage("Riwayat Mesin") { BackColor = Color.White };
             
             var pnlFilter = new Panel { Dock = DockStyle.Top, Height = 60, Padding = new Padding(10) };
-            
             _dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 120, Top = 15, Left = 10 };
             _dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 120, Top = 15, Left = 140 };
-            
-            var lblTo = new Label { Text = "s/d", AutoSize = true, Top = 18, Left = 130 }; 
-            
+            var lblTo = new Label { Text = "s/d", AutoSize = true, Top = 18, Left = 130 };
             _btnFilter = new AppButton { Text = "Filter", Type = AppButton.ButtonType.Primary, Width = 80, Height = 30, Top = 12, Left = 280 };
             _btnFilter.Click += async (s, e) => await LoadHistoryAsync();
 
-            pnlFilter.Controls.Add(_dtpStart);
-            pnlFilter.Controls.Add(lblTo);
-            pnlFilter.Controls.Add(_dtpEnd);
-            pnlFilter.Controls.Add(_btnFilter);
-            
+            pnlFilter.Controls.AddRange(new Control[] { _dtpStart, lblTo, _dtpEnd, _btnFilter });
             tabHistory.Controls.Add(pnlFilter);
 
             _historyControl = new MachineHistoryListControl { Dock = DockStyle.Fill };
-            tabHistory.Controls.Add(_historyControl); 
+            tabHistory.Controls.Add(_historyControl);
             _historyControl.BringToFront();
-
             tabControl.TabPages.Add(tabHistory);
 
+            // Add TabControl to form
             this.Controls.Add(tabControl);
-            tabControl.BringToFront();
-            this.panelHeader.BringToFront(); 
-            this.panelFooter.BringToFront(); 
             
-            this.panelFooter.SendToBack(); 
-            this.panelHeader.SendToBack(); 
-            tabControl.BringToFront(); 
+            // Proper Z-Order: Tab control fills middle, header/footer stay on top
+            tabControl.SendToBack();
         }
 
-        private void MachineHistoryFormOperator_KeyDown(object sender, KeyEventArgs e)
+        private void HandleKeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
             {
-                if (this.ActiveControl == buttonSave) return;
+                if (this.ActiveControl == btnSave) return;
                 this.SelectNextControl(this.ActiveControl, true, true, true, true);
                 e.Handled = true;
                 e.SuppressKeyPress = true;
             }
         }
 
-        private void LoadOperatorsFromDB()
-        {
-            try { using (var conn = DatabaseHelper.GetConnection()) {
-                var niks = conn.Query<string>("SELECT nik FROM users WHERE role_id = 1 AND nik IS NOT NULL ORDER BY nik");
-                inputNIK.SetDropdownItems(niks.AsList().ToArray());
-            }} catch { }
-        }
-
-        private void LoadShiftsFromDB()
-        {
-            try { using (var conn = DatabaseHelper.GetConnection()) {
-                var shifts = conn.Query<string>("SELECT shift_name FROM shifts ORDER BY shift_name");
-                inputShift.SetDropdownItems(shifts.AsList().ToArray());
-            }} catch { }
-        }
-
-        private AppInput CreateInput(string label, AppInput.InputTypeEnum type, bool required)
-        {
-            var input = new AppInput
-            {
-                LabelText = label,
-                InputType = type,
-                IsRequired = required,
-                Width = 450, // Slightly wider for consistency with problem panel
-                AllowCustomText = (type == AppInput.InputTypeEnum.Dropdown) 
-            };
-            return input;
-        }
-
         private void SetupInputs()
         {
-            // 1. General Info Inputs
+            // === Header Inputs ===
             inputNIK = CreateInput("NIK Operator", AppInput.InputTypeEnum.Dropdown, true);
             inputNIK.AllowCustomText = true;
             inputNIK.DropdownOpened += (s, e) => LoadOperatorsFromDB();
@@ -186,11 +135,12 @@ namespace mtc_app.features.machine_history.presentation.screens
             mainLayout.Controls.Add(inputShift);
             mainLayout.Controls.Add(inputApplicator);
 
-            // 2. Dynamic Problem Section
+            // === Problem Section ===
             var lblProblems = new Label 
             {
                 Text = "Daftar Kerusakan:", 
-                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                Font = AppFonts.Subtitle,
+                ForeColor = AppColors.TextPrimary,
                 AutoSize = true,
                 Margin = new Padding(0, 20, 0, 5)
             };
@@ -200,8 +150,8 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 FlowDirection = FlowDirection.TopDown,
                 AutoSize = true,
-                Width = 460,
-                WrapContents = false
+                WrapContents = false,
+                Margin = new Padding(0)
             };
             mainLayout.Controls.Add(pnlProblems);
 
@@ -210,13 +160,35 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Text = "+ Tambah Masalah Lain",
                 Width = 200,
                 Type = AppButton.ButtonType.Secondary,
-                Margin = new Padding(0, 5, 0, 20)
+                Margin = new Padding(0, 10, 0, 20)
             };
             btnAddProblem.Click += (s, e) => AddProblemInput();
             mainLayout.Controls.Add(btnAddProblem);
 
-            // Add Initial Problem Input
+            // === Save Button ===
+            btnSave = new AppButton 
+            { 
+                Text = "Simpan & Panggil Teknisi", 
+                Type = AppButton.ButtonType.Primary, 
+                Height = 45,
+                Margin = new Padding(0, 10, 0, 50)
+            };
+            btnSave.Click += SaveButton_Click;
+            mainLayout.Controls.Add(btnSave);
+
+            // Add initial problem
             AddProblemInput();
+        }
+
+        private AppInput CreateInput(string label, AppInput.InputTypeEnum type, bool required)
+        {
+            return new AppInput
+            {
+                LabelText = label,
+                InputType = type,
+                IsRequired = required,
+                AllowCustomText = (type == AppInput.InputTypeEnum.Dropdown)
+            };
         }
 
         private void AddProblemInput()
@@ -226,19 +198,54 @@ namespace mtc_app.features.machine_history.presentation.screens
             
             _problemControls.Add(problemControl);
             pnlProblems.Controls.Add(problemControl);
+            
+            // Trigger resize to set correct width
+            this.OnResize(EventArgs.Empty);
         }
 
         private void RemoveProblemInput(ProblemInputControl control)
         {
             if (_problemControls.Count <= 1)
             {
-                MessageBox.Show("Minimal harus ada satu masalah.", "Info");
+                AutoClosingMessageBox.Show("Minimal harus ada satu masalah.", "Info", 1500);
                 return;
             }
             
             pnlProblems.Controls.Remove(control);
             _problemControls.Remove(control);
             control.Dispose();
+            
+            // Renumber remaining problems
+            for (int i = 0; i < _problemControls.Count; i++)
+            {
+                _problemControls[i].UpdateIndex(i);
+            }
+        }
+
+        private void LoadOperatorsFromDB()
+        {
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    var niks = conn.Query<string>("SELECT nik FROM users WHERE role_id = 1 AND nik IS NOT NULL ORDER BY nik");
+                    inputNIK.SetDropdownItems(niks.AsList().ToArray());
+                }
+            }
+            catch { /* Ignore */ }
+        }
+
+        private void LoadShiftsFromDB()
+        {
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    var shifts = conn.Query<string>("SELECT shift_name FROM shifts ORDER BY shift_name");
+                    inputShift.SetDropdownItems(shifts.AsList().ToArray());
+                }
+            }
+            catch { /* Ignore */ }
         }
 
         private async Task LoadHistoryAsync()
@@ -256,10 +263,10 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
-            // Validate Header Inputs
+            // Validate Header
             if (!inputNIK.ValidateInput() || !inputShift.ValidateInput() || !inputApplicator.ValidateInput())
             {
-                MessageBox.Show("Mohon lengkapi data header.", "Validasi Gagal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Mohon lengkapi data header.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -268,80 +275,77 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 if (!prob.InputType.ValidateInput() || !prob.InputFailure.ValidateInput())
                 {
-                    MessageBox.Show("Mohon lengkapi detail masalah.", "Validasi Gagal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Mohon lengkapi detail masalah.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
             }
 
             try 
             {
-                using (var connection = DatabaseHelper.GetConnection())
+                using (var conn = DatabaseHelper.GetConnection())
                 {
-                    connection.Open();
-                    using (var transaction = connection.BeginTransaction())
+                    conn.Open();
+                    using (var trans = conn.BeginTransaction())
                     {
                         try
                         {
+                            // Generate ticket code
                             string uuid = Guid.NewGuid().ToString();
                             string dateCode = DateTime.Now.ToString("yyMMdd");
-                            string countSql = "SELECT COUNT(*) FROM tickets WHERE DATE(created_at) = CURDATE()";
-                            int dailyCount = connection.ExecuteScalar<int>(countSql, transaction: transaction);
-                            string displayCode = $"TKT-{dateCode}-{(dailyCount + 1):D3}"; 
+                            int dailyCount = conn.ExecuteScalar<int>("SELECT COUNT(*) FROM tickets WHERE DATE(created_at) = CURDATE()", transaction: trans);
+                            string displayCode = $"TKT-{dateCode}-{(dailyCount + 1):D3}";
 
-                            // Resolve Header IDs
-                            int operatorId = 1; 
-                            var userCheck = connection.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE nik = @Nik", new { Nik = inputNIK.InputValue }, transaction: transaction);
-                            if (userCheck.HasValue) operatorId = userCheck.Value;
-
+                            // Resolve IDs
+                            int operatorId = conn.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE nik = @Nik", new { Nik = inputNIK.InputValue }, trans) ?? 1;
+                            int? shiftId = conn.QueryFirstOrDefault<int?>("SELECT shift_id FROM shifts WHERE shift_name = @Name", new { Name = inputShift.InputValue }, trans);
                             int machineId = 1;
-                            int? shiftId = connection.QueryFirstOrDefault<int?>("SELECT shift_id FROM shifts WHERE shift_name = @Name", new { Name = inputShift.InputValue }, transaction: transaction);
 
-                            // 1. Insert Header Ticket (Note: problem/failure columns are removed/ignored)
+                            // Insert Ticket
                             string insertTicketSql = @"
                                 INSERT INTO tickets (ticket_uuid, ticket_display_code, machine_id, shift_id, operator_id, applicator_code, status_id, created_at)
                                 VALUES (@Uuid, @Code, @MachineId, @ShiftId, @OpId, @AppCode, 1, NOW());
                                 SELECT LAST_INSERT_ID();";
 
-                            long ticketId = connection.ExecuteScalar<long>(insertTicketSql, new {
-                                Uuid = uuid, Code = displayCode, MachineId = machineId, ShiftId = shiftId, OpId = operatorId,
-                                AppCode = inputApplicator.InputValue
-                            }, transaction: transaction);
+                            long ticketId = conn.ExecuteScalar<long>(insertTicketSql, new {
+                                Uuid = uuid, Code = displayCode, MachineId = machineId, ShiftId = shiftId, 
+                                OpId = operatorId, AppCode = inputApplicator.InputValue
+                            }, trans);
 
-                            // 2. Insert Problem Details
-                            string insertDetailSql = @"
+                            // Insert Problems
+                            string insertProblemSql = @"
                                 INSERT INTO ticket_problems (ticket_id, problem_type_id, problem_type_remarks, failure_id, failure_remarks)
                                 VALUES (@TicketId, @TypeId, @TypeRem, @FailId, @FailRem)";
 
                             foreach (var prob in _problemControls)
                             {
-                                int? typeId = connection.QueryFirstOrDefault<int?>("SELECT type_id FROM problem_types WHERE type_name = @Name", new { Name = prob.InputType.InputValue }, transaction: transaction);
-                                string typeRem = (!typeId.HasValue) ? prob.InputType.InputValue : null;
+                                int? typeId = conn.QueryFirstOrDefault<int?>("SELECT type_id FROM problem_types WHERE type_name = @N", new { N = prob.InputType.InputValue }, trans);
+                                int? failId = conn.QueryFirstOrDefault<int?>("SELECT failure_id FROM failures WHERE failure_name = @N", new { N = prob.InputFailure.InputValue }, trans);
 
-                                int? failId = connection.QueryFirstOrDefault<int?>("SELECT failure_id FROM failures WHERE failure_name = @Name", new { Name = prob.InputFailure.InputValue }, transaction: transaction);
-                                string failRem = (!failId.HasValue) ? prob.InputFailure.InputValue : null;
-
-                                connection.Execute(insertDetailSql, new {
-                                    TicketId = ticketId, TypeId = typeId, TypeRem = typeRem, FailId = failId, FailRem = failRem
-                                }, transaction: transaction);
+                                conn.Execute(insertProblemSql, new {
+                                    TicketId = ticketId,
+                                    TypeId = typeId,
+                                    TypeRem = (!typeId.HasValue) ? prob.InputType.InputValue : null,
+                                    FailId = failId,
+                                    FailRem = (!failId.HasValue) ? prob.InputFailure.InputValue : null
+                                }, trans);
                             }
 
-                            // 3. Update Machine Status
-                            connection.Execute("UPDATE machines SET current_status_id = 2 WHERE machine_id = @MachineId", new { MachineId = machineId }, transaction: transaction);
+                            // Update machine status
+                            conn.Execute("UPDATE machines SET current_status_id = 2 WHERE machine_id = @Id", new { Id = machineId }, trans);
 
-                            transaction.Commit();
+                            trans.Commit();
 
                             AutoClosingMessageBox.Show($"Tiket Berhasil Dibuat!\nKode: {displayCode}", "Sukses", 2000);
                             
-                            // Reset Form
-                            // We can create a new Technician Form for immediate follow up if needed
-                            var technicianForm = new MachineHistoryFormTechnician(ticketId);
-                            this.Hide(); 
-                            technicianForm.FormClosed += (s, args) => this.Show(); 
-                            technicianForm.Show();
+                            // Open Technician Form
+                            var techForm = new MachineHistoryFormTechnician(ticketId);
+                            this.Hide();
+                            techForm.FormClosed += (s, args) => this.Show();
+                            techForm.Show();
                         }
                         catch
                         {
-                            transaction.Rollback();
+                            trans.Rollback();
                             throw;
                         }
                     }
@@ -349,7 +353,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Gagal menyimpan data: {ex.Message}", "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Gagal menyimpan: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -364,26 +368,26 @@ namespace mtc_app.features.machine_history.presentation.screens
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            if (mainLayout != null)
+            
+            if (mainLayout == null) return;
+            
+            int contentWidth = mainLayout.ClientSize.Width - 80;
+            if (contentWidth < 400) contentWidth = 400;
+            
+            foreach (Control c in mainLayout.Controls)
             {
-                int newWidth = mainLayout.ClientSize.Width - 100; // 50px padding each side
-                
-                foreach (Control c in mainLayout.Controls)
+                if (c is AppInput || c is AppButton || c == pnlProblems)
                 {
-                    // Resize Inputs, Problem Panel, and Add Button
-                    if (c is AppInput || c == pnlProblems || c == btnAddProblem)
-                    {
-                        c.Width = newWidth;
-                    }
+                    c.Width = contentWidth;
                 }
-                
-                // Resize children inside Problem Panel
-                if (pnlProblems != null)
+            }
+            
+            // Resize problem controls
+            if (pnlProblems != null)
+            {
+                foreach (Control child in pnlProblems.Controls)
                 {
-                    foreach (Control child in pnlProblems.Controls)
-                    {
-                        child.Width = newWidth - 10; // Slightly smaller to fit inside panel
-                    }
+                    child.Width = contentWidth;
                 }
             }
         }

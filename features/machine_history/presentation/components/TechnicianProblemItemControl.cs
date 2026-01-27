@@ -7,6 +7,9 @@ using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.machine_history.presentation.components
 {
+    /// <summary>
+    /// Control for technician to input cause and action for a problem reported by operator.
+    /// </summary>
     public class TechnicianProblemItemControl : UserControl
     {
         public long ProblemId { get; private set; }
@@ -25,73 +28,57 @@ namespace mtc_app.features.machine_history.presentation.components
 
         private void InitializeComponent(string problemInfo, bool isEnabled)
         {
-            this.AutoSize = true;
-            this.Width = 450;
-            this.Padding = new Padding(0, 0, 0, 15);
-            this.Margin = new Padding(-5, 0, 0, 0); // Force Left Alignment
-            this.BackColor = Color.White;
+            this.AutoSize = false;
+            this.Height = 210;
+            this.Margin = new Padding(0, 0, 0, 15);
+            this.BackColor = Color.Transparent;
 
-            var layout = new FlowLayoutPanel
-            {
-                FlowDirection = FlowDirection.TopDown,
-                AutoSize = true,
-                Width = 450,
-                WrapContents = false
-            };
-
-            // Read-only Info from Operator
+            // Problem Info Label (read-only from operator)
             lblProblemInfo = new Label
             {
                 Text = $"Laporan: {problemInfo}",
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Font = AppFonts.Subtitle,
                 ForeColor = AppColors.TextPrimary,
                 AutoSize = true,
-                MaximumSize = new Size(440, 0),
-                Margin = new Padding(0, 0, 0, 5)
+                MaximumSize = new Size(500, 0),
+                Location = new Point(0, 0)
             };
-            layout.Controls.Add(lblProblemInfo);
+            this.Controls.Add(lblProblemInfo);
 
-            // Inputs for Technician
+            // Cause Input
             InputCause = new AppInput 
             { 
                 LabelText = "Penyebab Masalah", 
                 InputType = AppInput.InputTypeEnum.Dropdown,
-                Width = 440,
                 AllowCustomText = true,
                 IsRequired = true,
                 Enabled = isEnabled,
-                Margin = new Padding(-5, 0, 0, 0) // Shift Input Left
+                Location = new Point(0, 30)
             };
+            this.Controls.Add(InputCause);
             
+            // Action Input
             InputAction = new AppInput 
             { 
                 LabelText = "Tindakan Perbaikan", 
                 InputType = AppInput.InputTypeEnum.Dropdown, 
-                Width = 440,
                 AllowCustomText = true,
                 IsRequired = true,
                 Enabled = isEnabled,
-                Margin = new Padding(-5, 0, 0, 0) // Shift Input Left
+                Location = new Point(0, 115)
             };
-
-            layout.Controls.Add(InputCause);
-            layout.Controls.Add(InputAction);
-
-            this.Controls.Add(layout);
+            this.Controls.Add(InputAction);
         }
 
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            if (this.Controls.Count > 0 && this.Controls[0] is FlowLayoutPanel layout)
-            {
-                layout.Width = this.Width;
-                
-                foreach (Control c in layout.Controls)
-                {
-                    c.Width = this.Width - 10;
-                }
-            }
+            
+            int inputWidth = this.Width - 10;
+            
+            if (lblProblemInfo != null) lblProblemInfo.MaximumSize = new Size(inputWidth, 0);
+            if (InputCause != null) InputCause.Width = inputWidth;
+            if (InputAction != null) InputAction.Width = inputWidth;
         }
 
         public void SetEnabled(bool enabled)
@@ -106,16 +93,14 @@ namespace mtc_app.features.machine_history.presentation.components
             {
                 using (var conn = DatabaseHelper.GetConnection())
                 {
-                    // Load Causes
                     var causes = conn.Query<string>("SELECT cause_name FROM failure_causes ORDER BY cause_name");
                     InputCause.SetDropdownItems(causes.AsList().ToArray());
 
-                    // Load Actions
                     var actions = conn.Query<string>("SELECT action_name FROM actions ORDER BY action_name");
                     InputAction.SetDropdownItems(actions.AsList().ToArray());
                 }
             }
-            catch { /* Ignore */ }
+            catch { /* Ignore DB errors on load */ }
         }
     }
 }
