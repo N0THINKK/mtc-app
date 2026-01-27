@@ -31,7 +31,13 @@ namespace mtc_app.features.machine_history.presentation.screens
         private AppInput inputOperatorNote;
         
         private long _currentTicketId;
-        private string _failureDetails;
+        
+        private string _applicatorCode;
+        private string _problemTypeName;
+        private string _failureName;
+        
+        private AppInput inputProblemType;
+        private AppInput inputFailureName;
 
         public MachineHistoryFormTechnician(long ticketId)
         {
@@ -51,29 +57,27 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     connection.Open();
-                    // Construct readable details from normalized tables
                     string sql = @"
-                        SELECT CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), 
-                               IF(t.problem_type_remarks IS NOT NULL, CONCAT('[', t.problem_type_remarks, '] '), '')), 
-                            CASE 
-                                WHEN f.failure_name IS NOT NULL THEN f.failure_name
-                                WHEN t.failure_remarks IS NOT NULL THEN t.failure_remarks
-                                ELSE 'Belum Diisi'
-                            END,
-                            IF(t.applicator_code IS NOT NULL AND t.applicator_code != '', CONCAT(' (App: ', t.applicator_code, ')'), '')
-                        )
+                        SELECT 
+                            IF(pt.type_name IS NOT NULL, pt.type_name, t.problem_type_remarks) AS ProblemType,
+                            IF(f.failure_name IS NOT NULL, f.failure_name, t.failure_remarks) AS FailureName,
+                            t.applicator_code AS ApplicatorCode
                         FROM tickets t
                         LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
                         LEFT JOIN failures f ON t.failure_id = f.failure_id
                         WHERE t.ticket_id = @Id";
 
-                    _failureDetails = connection.ExecuteScalar<string>(sql, new { Id = _currentTicketId });
+                    var data = connection.QueryFirstOrDefault(sql, new { Id = _currentTicketId });
+                    if (data != null)
+                    {
+                        _problemTypeName = data.ProblemType;
+                        _failureName = data.FailureName;
+                        _applicatorCode = data.ApplicatorCode;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                // Silent fail or minimal log to avoid disrupting flow if just display info
                 Debug.WriteLine($"Failed to load ticket details: {ex.Message}");
             }
         }
@@ -205,32 +209,28 @@ namespace mtc_app.features.machine_history.presentation.screens
             buttonVerify.Click += ButtonVerify_Click;
             mainLayout.Controls.Add(buttonVerify);
 
-            // Display Failure Details (Problem Mesin, Jenis Problem, No Aplikator)
-            // Stored in _failureDetails as: "[Type] Problem (Aplikator: ...)"
-            if (!string.IsNullOrEmpty(_failureDetails))
-            {
-                AppLabel labelDetailsTitle = new AppLabel
-                {
-                    Text = "Detail Kerusakan (Operator):",
-                    Type = AppLabel.LabelType.Body, // Bold logic handling? AppLabel Body is Regular.
-                    // Need Bold. Let's use Subtitle (Bold).
-                    Margin = new Padding(5, 5, 5, 2)
-                };
-                // AppLabel Subtitle is typically Gray. Let's manually override Font if needed or just use Title.
-                labelDetailsTitle.Font = new Font(AppFonts.Body.FontFamily, 9, FontStyle.Bold); 
-                labelDetailsTitle.ForeColor = Color.DimGray;
-                
-                mainLayout.Controls.Add(labelDetailsTitle);
+            // 2b. Problem Type & Machine Problem (Added per request)
+            inputProblemType = CreateInput("Jenis Problem (Problem Type)", AppInput.InputTypeEnum.Dropdown, true);
+            inputProblemType.AllowCustomText = true;
+            if (!string.IsNullOrEmpty(_problemTypeName)) inputProblemType.InputValue = _problemTypeName;
 
-                AppLabel labelDetailsValue = new AppLabel
-                {
-                    Text = _failureDetails,
-                    Type = AppLabel.LabelType.Body,
-                    AutoSize = true,
-                    MaximumSize = new Size(410, 0), // Match input width
-                    Margin = new Padding(5, 0, 5, 15)
-                };
-                mainLayout.Controls.Add(labelDetailsValue);
+            inputFailureName = CreateInput("Problem Mesin (Failure Name)", AppInput.InputTypeEnum.Dropdown, true);
+            inputFailureName.AllowCustomText = true;
+            if (!string.IsNullOrEmpty(_failureName)) inputFailureName.InputValue = _failureName;
+
+            // 2c. Applicator Code (Display Only)
+            if (!string.IsNullOrEmpty(_applicatorCode))
+            {
+                 AppLabel lblApp = new AppLabel 
+                 {
+                     Text = $"No. Aplikator: {_applicatorCode}",
+                     Type = AppLabel.LabelType.Subtitle, 
+                     ForeColor = Color.DimGray,
+                     Margin = new Padding(5, 5, 5, 15)
+                 };
+                 // Manual Bold Font
+                 lblApp.Font = new Font("Segoe UI", 10F, FontStyle.Bold); 
+                 mainLayout.Controls.Add(lblApp);
             }
 
             // 3. Problem Cause
@@ -386,6 +386,14 @@ namespace mtc_app.features.machine_history.presentation.screens
                     // Load Actions
                     var actions = connection.Query<string>("SELECT action_name FROM actions ORDER BY action_name");
                     inputProblemAction.SetDropdownItems(actions.AsList().ToArray());
+
+                    // Load Problem Types
+                    var types = connection.Query<string>("SELECT type_name FROM problem_types ORDER BY type_name");
+                    inputProblemType.SetDropdownItems(types.AsList().ToArray());
+
+                    // Load Failures
+                    var failures = connection.Query<string>("SELECT failure_name FROM failures ORDER BY failure_name");
+                    inputFailureName.SetDropdownItems(failures.AsList().ToArray());
                 }
             }
             catch (Exception ex)
@@ -415,6 +423,8 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             inputProblemCause.Enabled = enabled;
             inputProblemAction.Enabled = enabled;
+            inputProblemType.Enabled = enabled;
+            inputFailureName.Enabled = enabled;
             
             // Both 4M checkboxes enabled after verification
             chk4M.Enabled = enabled;
@@ -572,24 +582,12 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
-            // 2. Validate Standard Inputs
-            bool isCauseValid = inputProblemCause.ValidateInput();
-            bool isActionValid = inputProblemAction.ValidateInput();
-            
-            // 3. Validate Conditional Input (Counter)
-            bool isCounterValid = true;
-            if (chk4M.Checked)
-            {
-                // Manual check because IsRequired is false by default
-                if (string.IsNullOrWhiteSpace(inputCounter.InputValue))
-                {
-                    inputCounter.SetError("Wajib diisi jika 4M.");
-                    isCounterValid = false;
-                }
-            }
-
-            // 4. Check All
-            if (!isCauseValid || !isActionValid || !isCounterValid)
+            // Validate inputs
+            if (!inputProblemType.ValidateInput() ||
+                !inputFailureName.ValidateInput() ||
+                !inputProblemCause.ValidateInput() || 
+                !inputProblemAction.ValidateInput() || 
+                !inputCounter.ValidateInput())
             {
                  MessageBox.Show("Mohon lengkapi data perbaikan.", "Validasi Gagal", 
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -611,14 +609,23 @@ namespace mtc_app.features.machine_history.presentation.screens
                     connection.Open();
 
                     // Resolve IDs
+                    // Resolve IDs
                     int? causeId = connection.QueryFirstOrDefault<int?>("SELECT cause_id FROM failure_causes WHERE cause_name = @Name", new { Name = inputProblemCause.InputValue });
                     int? actionId = connection.QueryFirstOrDefault<int?>("SELECT action_id FROM actions WHERE action_name = @Name", new { Name = inputProblemAction.InputValue });
+                    int? typeId = connection.QueryFirstOrDefault<int?>("SELECT type_id FROM problem_types WHERE type_name = @Name", new { Name = inputProblemType.InputValue });
+                    int? failureId = connection.QueryFirstOrDefault<int?>("SELECT failure_id FROM failures WHERE failure_name = @Name", new { Name = inputFailureName.InputValue });
 
                     string causeRemarks = null;
                     if (!causeId.HasValue) causeRemarks = inputProblemCause.InputValue;
 
                     string actionManual = null;
                     if (!actionId.HasValue) actionManual = inputProblemAction.InputValue;
+
+                    string typeManual = null;
+                    if (!typeId.HasValue) typeManual = inputProblemType.InputValue;
+
+                    string failureManual = null;
+                    if (!failureId.HasValue) failureManual = inputFailureName.InputValue;
 
                     int counter = 0;
                     int.TryParse(inputCounter.InputValue, out counter);
@@ -628,6 +635,10 @@ namespace mtc_app.features.machine_history.presentation.screens
                         UPDATE tickets 
                         SET status_id = 3, 
                             technician_finished_at = NOW(),
+                            problem_type_id = @TypeId,
+                            problem_type_remarks = @TypeRem,
+                            failure_id = @FailId,
+                            failure_remarks = @FailRem,
                             root_cause_id = @CauseId,
                             root_cause_remarks = @CauseRem,
                             action_id = @ActionId,
@@ -639,6 +650,10 @@ namespace mtc_app.features.machine_history.presentation.screens
                         WHERE ticket_id = @TicketId";
                     
                     connection.Execute(sql, new { 
+                        TypeId = typeId,
+                        TypeRem = typeManual,
+                        FailId = failureId,
+                        FailRem = failureManual,
                         CauseId = causeId, 
                         CauseRem = causeRemarks,
                         ActionId = actionId, 
