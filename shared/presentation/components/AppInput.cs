@@ -23,11 +23,11 @@ namespace mtc_app.shared.presentation.components
         private bool _isRequired = false;
         private bool _isFocused = false;
         
-        // For custom autocomplete
+        // Custom AutoComplete & Cache
         private List<string> _originalItems;
         private bool _isFiltering = false;
+        private string _cachedText = ""; // Cache to handle ComboBox state issues
 
-        // Public Event for Dropdown Opened (Real-time data loading)
         public event EventHandler DropdownOpened;
 
         public AppInput()
@@ -45,13 +45,9 @@ namespace mtc_app.shared.presentation.components
             set
             {
                 if (value)
-                {
                     comboInput.DropDownStyle = ComboBoxStyle.DropDown;
-                }
                 else
-                {
                     comboInput.DropDownStyle = ComboBoxStyle.DropDownList;
-                }
             }
         }
 
@@ -91,29 +87,37 @@ namespace mtc_app.shared.presentation.components
         {
             get
             {
-                try
+                if (_inputType == InputTypeEnum.Dropdown)
                 {
-                    if (_inputType == InputTypeEnum.Dropdown)
-                        return comboInput.Text ?? "";
-                    return textInput.Text ?? "";
+                    try
+                    {
+                        // Try to get live text
+                        string val = comboInput.Text;
+                        // Update cache if successful
+                        _cachedText = val ?? "";
+                        return _cachedText;
+                    }
+                    catch (ArgumentOutOfRangeException)
+                    {
+                        // Fallback to cache if ComboBox is in invalid state
+                        return _cachedText;
+                    }
+                    catch
+                    {
+                        return _cachedText;
+                    }
                 }
-                catch (ArgumentOutOfRangeException)
-                {
-                    // ComboBox in invalid state, return empty
-                    return "";
-                }
-                catch
-                {
-                    return "";
-                }
+                return textInput.Text ?? "";
             }
             set
             {
                 try
                 {
+                    _cachedText = value ?? ""; // Update cache
+                    
                     if (_inputType == InputTypeEnum.Dropdown)
                     {
-                        _isFiltering = true; // Prevent TextChanged during programmatic set
+                        _isFiltering = true;
                         if (comboInput.Items.Contains(value))
                             comboInput.SelectedItem = value;
                         else if (AllowCustomText)
@@ -174,7 +178,10 @@ namespace mtc_app.shared.presentation.components
         {
             labelError.Visible = false;
             
-            if (_isRequired && string.IsNullOrWhiteSpace(InputValue))
+            // Allow checking InputValue which handles exception
+            string val = InputValue; 
+            
+            if (_isRequired && string.IsNullOrWhiteSpace(val))
             {
                 SetError($"{LabelText} is required.");
                 return false;
@@ -233,8 +240,16 @@ namespace mtc_app.shared.presentation.components
             comboInput.DropDownStyle = ComboBoxStyle.DropDownList;
             comboInput.Enter += (s, e) => { _isFocused = true; panelContainer.Invalidate(); };
             comboInput.Leave += (s, e) => { _isFocused = false; panelContainer.Invalidate(); };
-            comboInput.TextChanged += ComboInput_TextChanged; // Subscribe to event
-            comboInput.DropDown += (s, e) => DropdownOpened?.Invoke(this, EventArgs.Empty); // Trigger event
+            
+            // Update cache whenever text changes (safely)
+            comboInput.TextChanged += (s, e) => 
+            {
+                 // Only update cache if we can safely read Text
+                 try { _cachedText = comboInput.Text; } catch { }
+            };
+            
+            comboInput.TextChanged += ComboInput_TextChanged; 
+            comboInput.DropDown += (s, e) => DropdownOpened?.Invoke(this, EventArgs.Empty);
             comboInput.Visible = false;
             panelContainer.Controls.Add(comboInput);
 
@@ -257,22 +272,14 @@ namespace mtc_app.shared.presentation.components
             try
             {
                 string typedText = comboInput.Text ?? "";
-                int cursorPos = 0;
-                
-                try
-                {
-                    cursorPos = comboInput.SelectionStart;
-                }
-                catch
-                {
-                    cursorPos = typedText.Length;
-                }
+                _cachedText = typedText; // Ensure cache is up to date with typing
 
-                // Safely clamp cursor position
+                int cursorPos = 0;
+                try { cursorPos = comboInput.SelectionStart; } catch { cursorPos = typedText.Length; }
+
                 int selectionStart = Math.Max(0, Math.Min(cursorPos, typedText.Length));
 
                 comboInput.BeginUpdate();
-                
                 try
                 {
                     comboInput.Items.Clear();
@@ -299,22 +306,19 @@ namespace mtc_app.shared.presentation.components
                     comboInput.EndUpdate();
                 }
 
-                // Restore text and cursor position AFTER EndUpdate
                 try
                 {
                     comboInput.Text = typedText;
-                    
-                    // Bounds check to prevent ArgumentOutOfRangeException
+                    // Fix cursor and selection
                     int safePosition = Math.Max(0, Math.Min(selectionStart, comboInput.Text.Length));
                     comboInput.SelectionStart = safePosition;
                 }
                 catch (ArgumentOutOfRangeException)
                 {
-                    // If position is still invalid, just set to end
+                    // If reset fails, at least we have _cachedText
                     try { comboInput.SelectionStart = comboInput.Text.Length; } catch { }
                 }
 
-                // Show dropdown only if we have items and control is focused
                 try
                 {
                     if (comboInput.Items.Count > 0 && this.ContainsFocus && !string.IsNullOrEmpty(typedText))
@@ -326,15 +330,7 @@ namespace mtc_app.shared.presentation.components
 
                 Cursor.Current = Cursors.Default;
             }
-            catch (ArgumentOutOfRangeException)
-            {
-                // Handle Ctrl+Backspace and other edge cases silently
-                try { comboInput.SelectionStart = 0; } catch { }
-            }
-            catch (Exception)
-            {
-                // Silently handle any remaining edge cases
-            }
+            catch { }
             finally
             {
                 _isFiltering = false;
@@ -355,7 +351,7 @@ namespace mtc_app.shared.presentation.components
                 textInput.UseSystemPasswordChar = false;
                 comboInput.Visible = false;
             }
-            else // Dropdown
+            else 
             {
                 textInput.Visible = false;
                 comboInput.Visible = true;

@@ -353,7 +353,9 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Gagal menyimpan: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                string msg = ex.Message;
+                if (ex.InnerException != null) msg += $"\nDetails: {ex.InnerException.Message}";
+                MessageBox.Show($"Gagal menyimpan: {msg}", "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
