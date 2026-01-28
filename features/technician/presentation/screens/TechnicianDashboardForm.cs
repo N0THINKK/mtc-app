@@ -19,6 +19,7 @@ namespace mtc_app.features.technician.presentation.screens
         private TechnicianWorkQueueControl workQueueControl;
         private TechnicianPerformanceControl performanceControl;
         private MachinePerformanceControl machinePerformanceControl;
+        private MachineMonitorControl machineMonitorControl;
         
         // Auto Switch Feature
         private Timer timerTabSwitch;
@@ -264,13 +265,36 @@ namespace mtc_app.features.technician.presentation.screens
             };
             tabMachine.Controls.Add(machinePerformanceControl);
 
+            // Tab 4: Machine Monitor (Real-time)
+            var tabMonitor = new TabPage("Monitoring Mesin")
+            {
+                BackColor = Color.White
+            };
+            
+            machineMonitorControl = new MachineMonitorControl
+            {
+                Dock = DockStyle.Fill
+            };
+            tabMonitor.Controls.Add(machineMonitorControl);
+
             tabControl.TabPages.Add(tabWorkQueue);
             tabControl.TabPages.Add(tabPerformance);
             tabControl.TabPages.Add(tabMachine);
+            tabControl.TabPages.Add(tabMonitor);
 
             // Load data when tab changes
             tabControl.SelectedIndexChanged += (s, e) =>
             {
+                // Manage Real-time monitoring
+                if (tabControl.SelectedTab == tabMonitor)
+                {
+                    machineMonitorControl.StartMonitoring();
+                }
+                else
+                {
+                    machineMonitorControl.StopMonitoring();
+                }
+
                 LoadCurrentTabData();
             };
 
