@@ -201,6 +201,8 @@ namespace mtc_app.features.machine_history.presentation.screens
             // === Notes ===
             inputOperatorNote = new AppInput { LabelText = "Catatan untuk Operator", InputType = AppInput.InputTypeEnum.Text, IsRequired = false };
             mainLayout.Controls.Add(inputOperatorNote);
+            var spacer = new Panel { Height = 30, Width = 10, BackColor = Color.Transparent };
+            mainLayout.Controls.Add(spacer);
         }
 
         private void LoadParts()
