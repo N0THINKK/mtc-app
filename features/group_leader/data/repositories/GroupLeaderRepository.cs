@@ -12,26 +12,34 @@ namespace mtc_app.features.group_leader.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
+                // PERBAIKAN: Menggunakan Subquery untuk FailureDetails
+                // Menghapus join langsung ke failures/problem_types
                 string sql = @"
                     SELECT 
                         t.ticket_uuid AS TicketUuid,
                         t.ticket_id AS TicketId,
                         CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
                         u.full_name AS TechnicianName,
-                        CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), 
-                               IF(t.problem_type_remarks IS NOT NULL, CONCAT('[', t.problem_type_remarks, '] '), '')), 
-                            IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown')),
-                            IF(t.applicator_code IS NOT NULL, CONCAT(' (App: ', t.applicator_code, ')'), '')
+                        
+                        -- Subquery mengambil detail masalah dari ticket_problems
+                        (SELECT CONCAT(
+                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                            IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown')),
+                            IF(t.applicator_code IS NOT NULL AND t.applicator_code != '', CONCAT(' (App: ', t.applicator_code, ')'), '')
+                         )
+                         FROM ticket_problems tp
+                         LEFT JOIN problem_types pt ON tp.problem_type_id = pt.type_id
+                         LEFT JOIN failures f ON tp.failure_id = f.failure_id
+                         WHERE tp.ticket_id = t.ticket_id
+                         LIMIT 1
                         ) AS FailureDetails,
+
                         t.gl_rating_score AS GlRatingScore,
                         t.created_at AS CreatedAt,
                         t.gl_validated_at AS GlValidatedAt
                     FROM tickets t
                     LEFT JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN users u ON t.technician_id = u.user_id
-                    LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
-                    LEFT JOIN failures f ON t.failure_id = f.failure_id
                     WHERE t.status_id >= 2
                     ORDER BY t.created_at DESC";
 
@@ -43,23 +51,38 @@ namespace mtc_app.features.group_leader.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // NOTE: Querying by ticket_uuid since input is Guid
+                // PERBAIKAN: Menggunakan Subquery untuk FailureDetails dan ActionDetails
                 string sql = @"
                     SELECT 
                         t.ticket_uuid AS TicketId, 
                         t.ticket_display_code AS TicketCode,
-                        CONCAT(m.machine_type, m.machine_area, m.machine_number) AS MachineName,
+                        CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
                         tech.full_name AS TechnicianName,
                         op.full_name AS OperatorName,
-                        CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), 
-                               IF(t.problem_type_remarks IS NOT NULL, CONCAT('[', t.problem_type_remarks, '] '), '')), 
-                            IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown'))
+                        
+                        -- Subquery FailureDetails
+                        (SELECT CONCAT(
+                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                            IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown'))
+                         )
+                         FROM ticket_problems tp
+                         LEFT JOIN problem_types pt ON tp.problem_type_id = pt.type_id
+                         LEFT JOIN failures f ON tp.failure_id = f.failure_id
+                         WHERE tp.ticket_id = t.ticket_id
+                         LIMIT 1
                         ) AS FailureDetails,
-                        CONCAT(
-                            IFNULL(act.action_name, IFNULL(t.action_details_manual, '-')),
-                            IF(t.root_cause_remarks IS NOT NULL, CONCAT(' (Cause: ', t.root_cause_remarks, ')'), '')
+
+                        -- Subquery ActionDetails (termasuk Root Cause)
+                        (SELECT CONCAT(
+                            IFNULL(act.action_name, IFNULL(tp.action_details_manual, '-')),
+                            IF(tp.root_cause_remarks IS NOT NULL, CONCAT(' (Cause: ', tp.root_cause_remarks, ')'), '')
+                         )
+                         FROM ticket_problems tp
+                         LEFT JOIN actions act ON tp.action_id = act.action_id
+                         WHERE tp.ticket_id = t.ticket_id
+                         LIMIT 1
                         ) AS ActionDetails,
+
                         t.counter_stroke AS CounterStroke,
                         t.created_at AS CreatedAt,
                         t.started_at AS StartedAt,
@@ -72,9 +95,7 @@ namespace mtc_app.features.group_leader.data.repositories
                     LEFT JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN users tech ON t.technician_id = tech.user_id
                     LEFT JOIN users op ON t.operator_id = op.user_id
-                    LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
-                    LEFT JOIN failures f ON t.failure_id = f.failure_id
-                    LEFT JOIN actions act ON t.action_id = act.action_id
+                    -- Join ke failures/actions dihapus dari query utama
                     WHERE t.ticket_uuid = @TicketId";
 
                 return await connection.QueryFirstOrDefaultAsync<GroupLeaderTicketDetailDto>(sql, new { TicketId = ticketId.ToString() });
@@ -85,6 +106,7 @@ namespace mtc_app.features.group_leader.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
+                // Tidak ada perubahan di sini karena hanya update status & rating
                 string sql = @"
                     UPDATE tickets 
                     SET gl_rating_score = @Rating, 

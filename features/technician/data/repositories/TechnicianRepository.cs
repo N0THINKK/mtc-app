@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks; // Added
+using System.Threading.Tasks;
 using Dapper;
 using mtc_app.features.technician.data.dtos;
 
@@ -13,16 +13,25 @@ namespace mtc_app.features.technician.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
+                // PERBAIKAN: Mengambil data failure/masalah dari tabel ticket_problems
+                // Menggunakan subquery untuk memastikan 1 tiket tetap 1 baris meskipun ada multiple problems
                 string sql = @"
                     SELECT 
                         t.ticket_id AS TicketId,
                         CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
-                        CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), 
-                               IF(t.problem_type_remarks IS NOT NULL, CONCAT('[', t.problem_type_remarks, '] '), '')), 
-                            IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown')),
-                            IF(t.applicator_code IS NOT NULL, CONCAT(' (App: ', t.applicator_code, ')'), '')
+                        
+                        (SELECT CONCAT(
+                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                            IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown')),
+                            IF(t.applicator_code IS NOT NULL AND t.applicator_code != '', CONCAT(' (App: ', t.applicator_code, ')'), '')
+                         )
+                         FROM ticket_problems tp
+                         LEFT JOIN problem_types pt ON tp.problem_type_id = pt.type_id
+                         LEFT JOIN failures f ON tp.failure_id = f.failure_id
+                         WHERE tp.ticket_id = t.ticket_id
+                         LIMIT 1
                         ) AS FailureDetails,
+
                         t.created_at AS CreatedAt,
                         t.status_id AS StatusId,
                         t.started_at AS StartedAt,
@@ -32,10 +41,9 @@ namespace mtc_app.features.technician.data.repositories
                         u.full_name AS TechnicianName
                     FROM tickets t
                     JOIN machines m ON t.machine_id = m.machine_id
-                    LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
-                    LEFT JOIN failures f ON t.failure_id = f.failure_id
                     LEFT JOIN users u ON t.technician_id = u.user_id
-                    WHERE t.status_id >= 1";
+                    WHERE t.status_id >= 1
+                    ORDER BY t.created_at DESC";
                 
                 return connection.Query<TicketDto>(sql);
             }
@@ -45,22 +53,28 @@ namespace mtc_app.features.technician.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
+                // PERBAIKAN: Join ke ticket_problems (tp) untuk mengambil detail masalah dan tindakan
+                // Menggunakan LIMIT 1 pada JOIN atau grouping logic agar tidak error jika ada multiple records
+                // Namun untuk detail, biasanya kita ingin melihat masalah utamanya.
+                
                 string sql = @"
                     SELECT 
                         t.ticket_id AS TicketId,
                         CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
                         op.full_name AS OperatorName,
                         tech.full_name AS TechnicianName,
+                        
                         CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), 
-                               IF(t.problem_type_remarks IS NOT NULL, CONCAT('[', t.problem_type_remarks, '] '), '')), 
-                            IFNULL(f.failure_name, IFNULL(t.failure_remarks, 'Unknown')),
-                            IF(t.applicator_code IS NOT NULL, CONCAT(' (App: ', t.applicator_code, ')'), '')
+                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                            IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown')),
+                            IF(t.applicator_code IS NOT NULL AND t.applicator_code != '', CONCAT(' (App: ', t.applicator_code, ')'), '')
                         ) AS FailureDetails,
+                        
                         CONCAT(
-                            IFNULL(act.action_name, IFNULL(t.action_details_manual, '-')),
-                            IF(t.root_cause_remarks IS NOT NULL, CONCAT(' (Cause: ', t.root_cause_remarks, ')'), '')
+                            IFNULL(act.action_name, IFNULL(tp.action_details_manual, '-')),
+                            IF(tp.root_cause_remarks IS NOT NULL, CONCAT(' (Cause: ', tp.root_cause_remarks, ')'), '')
                         ) AS ActionDetails,
+
                         t.created_at AS CreatedAt,
                         t.started_at AS StartedAt,
                         t.technician_finished_at AS FinishedAt,
@@ -72,10 +86,15 @@ namespace mtc_app.features.technician.data.repositories
                     JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN users op ON t.operator_id = op.user_id
                     LEFT JOIN users tech ON t.technician_id = tech.user_id
-                    LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
-                    LEFT JOIN failures f ON t.failure_id = f.failure_id
-                    LEFT JOIN actions act ON t.action_id = act.action_id
-                    WHERE t.ticket_id = @TicketId";
+                    
+                    -- JOIN KE TICKET_PROBLEMS
+                    LEFT JOIN ticket_problems tp ON t.ticket_id = tp.ticket_id
+                    LEFT JOIN problem_types pt ON tp.problem_type_id = pt.type_id
+                    LEFT JOIN failures f ON tp.failure_id = f.failure_id
+                    LEFT JOIN actions act ON tp.action_id = act.action_id
+                    
+                    WHERE t.ticket_id = @TicketId
+                    LIMIT 1"; // Pastikan hanya return 1 baris
 
                 return await connection.QueryFirstOrDefaultAsync<TechnicianTicketDetailDto>(sql, new { TicketId = ticketId });
             }
@@ -141,13 +160,11 @@ namespace mtc_app.features.technician.data.repositories
                     CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
                     COUNT(t.ticket_id) AS RepairCount,
                     
-                    -- Calculate durations in seconds
                     SUM(TIMESTAMPDIFF(SECOND, t.created_at, t.production_resumed_at)) AS TotalDowntimeSeconds,
                     SUM(TIMESTAMPDIFF(SECOND, t.created_at, t.started_at)) AS ResponseDurationSeconds,
                     SUM(TIMESTAMPDIFF(SECOND, t.started_at, t.technician_finished_at)) AS RepairDurationSeconds,
                     SUM(TIMESTAMPDIFF(SECOND, t.technician_finished_at, t.production_resumed_at)) AS OperatorWaitDurationSeconds,
 
-                    -- Subquery for total part wait time per machine
                     (SELECT COALESCE(SUM(TIMESTAMPDIFF(SECOND, pr.requested_at, pr.ready_at)), 0)
                      FROM part_requests pr 
                      JOIN tickets t_sub ON pr.ticket_id = t_sub.ticket_id
@@ -156,7 +173,7 @@ namespace mtc_app.features.technician.data.repositories
 
                 FROM machines m
                 JOIN tickets t ON m.machine_id = t.machine_id
-                WHERE t.status_id = 3 -- Only completed tickets
+                WHERE t.status_id = 3 
                   AND t.created_at BETWEEN @Start AND @End
                 GROUP BY m.machine_id, MachineName
                 ORDER BY TotalDowntimeSeconds DESC;
@@ -170,4 +187,3 @@ namespace mtc_app.features.technician.data.repositories
         }
     }
 }
-
