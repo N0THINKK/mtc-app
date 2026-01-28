@@ -168,13 +168,18 @@ namespace mtc_app.features.machine_history.presentation.screens
             // === Save Button ===
             btnSave = new AppButton 
             { 
-                Text = "Simpan & Panggil Teknisi", 
+                Text = "Panggil Teknisi", 
                 Type = AppButton.ButtonType.Primary, 
                 Height = 45,
-                Margin = new Padding(0, 10, 0, 50)
+                Dock = DockStyle.Fill,
+                Margin = new Padding(10)
             };
             btnSave.Click += SaveButton_Click;
-            mainLayout.Controls.Add(btnSave);
+            
+            // Add to Footer Panel instead of Main Layout
+            panelFooter.Controls.Clear();
+            panelFooter.Padding = new Padding(20, 10, 20, 10);
+            panelFooter.Controls.Add(btnSave);
 
             // Add initial problem
             AddProblemInput();
