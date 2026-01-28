@@ -94,10 +94,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                     string sql = @"
                         SELECT 
                             tp.problem_id,
-                            CONCAT(
-                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
-                                IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown'))
-                            ) AS ProblemInfo
+                            COALESCE(pt.type_name, tp.problem_type_remarks, '') AS ProblemType,
+                            COALESCE(f.failure_name, tp.failure_remarks, '') AS ProblemDetail
                         FROM ticket_problems tp
                         LEFT JOIN problem_types pt ON tp.problem_type_id = pt.type_id
                         LEFT JOIN failures f ON tp.failure_id = f.failure_id
@@ -107,7 +105,12 @@ namespace mtc_app.features.machine_history.presentation.screens
 
                     foreach (var p in problems)
                     {
-                        var control = new TechnicianProblemItemControl((long)p.problem_id, (string)p.ProblemInfo, _isVerified);
+                        var control = new TechnicianProblemItemControl(
+                            (long)p.problem_id, 
+                            (string)p.ProblemType, 
+                            (string)p.ProblemDetail, 
+                            _isVerified
+                        );
                         _problemControls.Add(control);
                         pnlProblems.Controls.Add(control);
                     }
@@ -375,7 +378,8 @@ namespace mtc_app.features.machine_history.presentation.screens
             
             foreach (var prob in _problemControls)
             {
-                if (!prob.InputCause.ValidateInput() || !prob.InputAction.ValidateInput())
+                if (!prob.InputProblemType.ValidateInput() || !prob.InputProblemDetail.ValidateInput() ||
+                    !prob.InputCause.ValidateInput() || !prob.InputAction.ValidateInput())
                 {
                     MessageBox.Show("Lengkapi semua detail perbaikan.", "Validasi");
                     return;
@@ -416,15 +420,27 @@ namespace mtc_app.features.machine_history.presentation.screens
                                 Id = _currentTicketId 
                             }, trans);
 
-                            // Update Problem Details
-                            string detailSql = "UPDATE ticket_problems SET root_cause_id = @CId, root_cause_remarks = @CRem, action_id = @AId, action_details_manual = @ARem WHERE problem_id = @PId";
+                            // Update Problem Details (including technician edits to problem type/detail)
+                            string detailSql = @"UPDATE ticket_problems SET 
+                                problem_type_id = @TId, problem_type_remarks = @TRem,
+                                failure_id = @FId, failure_remarks = @FRem,
+                                root_cause_id = @CId, root_cause_remarks = @CRem, 
+                                action_id = @AId, action_details_manual = @ARem 
+                                WHERE problem_id = @PId";
                             
                             foreach (var prob in _problemControls)
                             {
+                                // Resolve IDs or use remarks
+                                int? tId = conn.QueryFirstOrDefault<int?>("SELECT type_id FROM problem_types WHERE type_name = @N", new { N = prob.InputProblemType.InputValue }, trans);
+                                int? fId = conn.QueryFirstOrDefault<int?>("SELECT failure_id FROM failures WHERE failure_name = @N", new { N = prob.InputProblemDetail.InputValue }, trans);
                                 int? cId = conn.QueryFirstOrDefault<int?>("SELECT cause_id FROM failure_causes WHERE cause_name = @N", new { N = prob.InputCause.InputValue }, trans);
                                 int? aId = conn.QueryFirstOrDefault<int?>("SELECT action_id FROM actions WHERE action_name = @N", new { N = prob.InputAction.InputValue }, trans);
                                 
                                 conn.Execute(detailSql, new {
+                                    TId = tId,
+                                    TRem = (!tId.HasValue) ? prob.InputProblemType.InputValue : null,
+                                    FId = fId,
+                                    FRem = (!fId.HasValue) ? prob.InputProblemDetail.InputValue : null,
                                     CId = cId, 
                                     CRem = (!cId.HasValue) ? prob.InputCause.InputValue : null,
                                     AId = aId, 
