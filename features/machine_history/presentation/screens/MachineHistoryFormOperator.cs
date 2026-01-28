@@ -72,7 +72,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.TopDown,
-                Padding = new Padding(30, 20, 30, 20),
+                Padding = new Padding(30, 80, 30, 20),
                 AutoScroll = true,
                 WrapContents = false
             };
