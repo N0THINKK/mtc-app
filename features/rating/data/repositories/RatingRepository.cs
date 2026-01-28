@@ -10,15 +10,18 @@ namespace mtc_app.features.rating.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // Assuming a 'ratings' table exists or creating a generic one. 
-                // Since I don't know the Schema for 'ratings', I will assume a standard structure 
-                // derived from the DTO. If it doesn't exist, this will need a migration, 
-                // but for refactoring code, this is the standard implementation.
+                // PERBAIKAN LOGIKA:
+                // Alih-alih INSERT ke tabel 'ratings' (yang datanya tidak terbaca di dashboard),
+                // kita UPDATE kolom 'tech_rating_score' di tabel 'tickets'.
                 
                 string sql = @"
-                    INSERT INTO ratings (ticket_id, score, comment, rater_id, created_at)
-                    VALUES (@TicketId, @Score, @Comment, @RaterId, NOW())";
+                    UPDATE tickets 
+                    SET tech_rating_score = @Score, 
+                        tech_rating_note = @Comment
+                    WHERE ticket_id = @TicketId";
 
+                // Dapper akan otomatis mencocokkan parameter @Score, @Comment, @TicketId 
+                // dari properti yang ada di object 'rating' (RatingDto)
                 await connection.ExecuteAsync(sql, rating);
             }
         }
