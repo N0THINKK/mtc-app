@@ -165,6 +165,10 @@ namespace mtc_app.features.machine_history.presentation.screens
             btnAddProblem.Click += (s, e) => AddProblemInput();
             mainLayout.Controls.Add(btnAddProblem);
 
+            // Spacer to prevent footer from blocking content
+            var spacer = new Panel { Height = 150, Width = 10, BackColor = Color.Transparent };
+            mainLayout.Controls.Add(spacer);
+
             // === Save Button ===
             btnSave = new AppButton 
             { 
