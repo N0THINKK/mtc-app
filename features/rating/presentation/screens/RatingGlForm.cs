@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using mtc_app.features.group_leader.data.repositories;
@@ -251,9 +252,26 @@ namespace mtc_app.features.rating.presentation.screens
                     _lblMachineName.Text = data.MachineName;
                     _lblTechnicianName.Text = data.TechnicianName;
 
-                    // [UI-FIX] Format multi-problem strings into a vertical list
-                    _lblFailureDetails.Text = data.FailureDetails?.Replace(" | ", "\n") ?? "-";
-                    _lblActionDetails.Text = data.ActionDetails?.Replace(" | ", "\n") ?? "-";
+                    // [UI-FIX] Format multi-problem strings into a numbered list
+                    if (!string.IsNullOrEmpty(data.FailureDetails))
+                    {
+                        var problems = data.FailureDetails.Split(new[] { " | " }, StringSplitOptions.None);
+                        _lblFailureDetails.Text = string.Join(Environment.NewLine, problems.Select((p, i) => $"{i + 1}. {p}"));
+                    }
+                    else
+                    {
+                        _lblFailureDetails.Text = "-";
+                    }
+
+                    if (!string.IsNullOrEmpty(data.ActionDetails))
+                    {
+                        var actions = data.ActionDetails.Split(new[] { " | " }, StringSplitOptions.None);
+                        _lblActionDetails.Text = string.Join(Environment.NewLine, actions.Select((a, i) => $"{i + 1}. {a}"));
+                    }
+                    else
+                    {
+                        _lblActionDetails.Text = "-";
+                    }
 
                     // Calculate Durations
                     if (data.StartedAt.HasValue)
