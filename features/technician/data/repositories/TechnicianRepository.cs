@@ -22,7 +22,7 @@ namespace mtc_app.features.technician.data.repositories
                         
                         (SELECT GROUP_CONCAT(
                             CONCAT(
-                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                                IF(pt.type_name IS NOT NULL, CONCAT(pt.type_name, ': '), ''), 
                                 IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown')),
                                 IF(t.applicator_code IS NOT NULL AND t.applicator_code != '', CONCAT(' (App: ', t.applicator_code, ')'), '')
                             ) SEPARATOR ' | ')
@@ -63,7 +63,7 @@ namespace mtc_app.features.technician.data.repositories
                         -- [FIXED] Subquery FailureDetails (Multi-Problem Support)
                         (SELECT GROUP_CONCAT(
                             CONCAT(
-                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                                IF(pt.type_name IS NOT NULL, CONCAT(pt.type_name, ': '), ''), 
                                 IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown')),
                                 IF(t.applicator_code IS NOT NULL AND t.applicator_code != '', CONCAT(' (App: ', t.applicator_code, ')'), '')
                             ) SEPARATOR ' | ')
