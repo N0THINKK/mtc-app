@@ -275,7 +275,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             // Validate Header
             if (!inputNIK.ValidateInput() || !inputShift.ValidateInput() || !inputApplicator.ValidateInput())
             {
-                MessageBox.Show("Mohon lengkapi data header.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Mohon lengkapi semua data.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
