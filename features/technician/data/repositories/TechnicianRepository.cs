@@ -42,7 +42,7 @@ namespace mtc_app.features.technician.data.repositories
                     FROM tickets t
                     JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN users u ON t.technician_id = u.user_id
-                    WHERE t.status_id IN (1, 2)
+                    WHERE t.status_id >= 1
                     ORDER BY t.created_at DESC";
                 
                 return connection.Query<TicketDto>(sql);
