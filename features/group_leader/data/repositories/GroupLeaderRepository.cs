@@ -21,17 +21,17 @@ namespace mtc_app.features.group_leader.data.repositories
                         CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
                         u.full_name AS TechnicianName,
                         
-                        -- Subquery mengambil detail masalah dari ticket_problems
-                        (SELECT CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
-                            IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown')),
-                            IF(t.applicator_code IS NOT NULL AND t.applicator_code != '', CONCAT(' (App: ', t.applicator_code, ')'), '')
-                         )
+                        -- Subquery mengambil detail masalah dari ticket_problems (Multi-Problem Support)
+                        (SELECT GROUP_CONCAT(
+                            CONCAT(
+                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                                IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown')),
+                                IF(t.applicator_code IS NOT NULL AND t.applicator_code != '', CONCAT(' (App: ', t.applicator_code, ')'), '')
+                            ) SEPARATOR ' | ')
                          FROM ticket_problems tp
                          LEFT JOIN problem_types pt ON tp.problem_type_id = pt.type_id
                          LEFT JOIN failures f ON tp.failure_id = f.failure_id
                          WHERE tp.ticket_id = t.ticket_id
-                         LIMIT 1
                         ) AS FailureDetails,
 
                         t.gl_rating_score AS GlRatingScore,
@@ -60,27 +60,27 @@ namespace mtc_app.features.group_leader.data.repositories
                         tech.full_name AS TechnicianName,
                         op.full_name AS OperatorName,
                         
-                        -- Subquery FailureDetails
-                        (SELECT CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
-                            IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown'))
-                         )
+                        -- Subquery FailureDetails (Multi-Problem Support)
+                        (SELECT GROUP_CONCAT(
+                            CONCAT(
+                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                                IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown'))
+                            ) SEPARATOR ' | ')
                          FROM ticket_problems tp
                          LEFT JOIN problem_types pt ON tp.problem_type_id = pt.type_id
                          LEFT JOIN failures f ON tp.failure_id = f.failure_id
                          WHERE tp.ticket_id = t.ticket_id
-                         LIMIT 1
                         ) AS FailureDetails,
 
-                        -- Subquery ActionDetails (termasuk Root Cause)
-                        (SELECT CONCAT(
-                            IFNULL(act.action_name, IFNULL(tp.action_details_manual, '-')),
-                            IF(tp.root_cause_remarks IS NOT NULL, CONCAT(' (Cause: ', tp.root_cause_remarks, ')'), '')
-                         )
+                        -- Subquery ActionDetails (termasuk Root Cause) - Multi
+                        (SELECT GROUP_CONCAT(
+                            CONCAT(
+                                IFNULL(act.action_name, IFNULL(tp.action_details_manual, '-')),
+                                IF(tp.root_cause_remarks IS NOT NULL, CONCAT(' (Cause: ', tp.root_cause_remarks, ')'), '')
+                            ) SEPARATOR ' | ')
                          FROM ticket_problems tp
                          LEFT JOIN actions act ON tp.action_id = act.action_id
                          WHERE tp.ticket_id = t.ticket_id
-                         LIMIT 1
                         ) AS ActionDetails,
 
                         t.counter_stroke AS CounterStroke,

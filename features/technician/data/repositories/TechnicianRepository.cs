@@ -14,22 +14,22 @@ namespace mtc_app.features.technician.data.repositories
             using (var connection = DatabaseHelper.GetConnection())
             {
                 // PERBAIKAN: Mengambil data failure/masalah dari tabel ticket_problems
-                // Menggunakan subquery untuk memastikan 1 tiket tetap 1 baris meskipun ada multiple problems
+                // [FIX] Menggunakan GROUP_CONCAT untuk menampilkan SEMUA masalah.
                 string sql = @"
                     SELECT 
                         t.ticket_id AS TicketId,
                         CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
                         
-                        (SELECT CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
-                            IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown')),
-                            IF(t.applicator_code IS NOT NULL AND t.applicator_code != '', CONCAT(' (App: ', t.applicator_code, ')'), '')
-                         )
+                        (SELECT GROUP_CONCAT(
+                            CONCAT(
+                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                                IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown')),
+                                IF(t.applicator_code IS NOT NULL AND t.applicator_code != '', CONCAT(' (App: ', t.applicator_code, ')'), '')
+                            ) SEPARATOR ' | ')
                          FROM ticket_problems tp
                          LEFT JOIN problem_types pt ON tp.problem_type_id = pt.type_id
                          LEFT JOIN failures f ON tp.failure_id = f.failure_id
                          WHERE tp.ticket_id = t.ticket_id
-                         LIMIT 1
                         ) AS FailureDetails,
 
                         t.created_at AS CreatedAt,
@@ -53,10 +53,6 @@ namespace mtc_app.features.technician.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // PERBAIKAN: Join ke ticket_problems (tp) untuk mengambil detail masalah dan tindakan
-                // Menggunakan LIMIT 1 pada JOIN atau grouping logic agar tidak error jika ada multiple records
-                // Namun untuk detail, biasanya kita ingin melihat masalah utamanya.
-                
                 string sql = @"
                     SELECT 
                         t.ticket_id AS TicketId,
@@ -64,15 +60,28 @@ namespace mtc_app.features.technician.data.repositories
                         op.full_name AS OperatorName,
                         tech.full_name AS TechnicianName,
                         
-                        CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
-                            IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown')),
-                            IF(t.applicator_code IS NOT NULL AND t.applicator_code != '', CONCAT(' (App: ', t.applicator_code, ')'), '')
+                        -- [FIXED] Subquery FailureDetails (Multi-Problem Support)
+                        (SELECT GROUP_CONCAT(
+                            CONCAT(
+                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                                IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown')),
+                                IF(t.applicator_code IS NOT NULL AND t.applicator_code != '', CONCAT(' (App: ', t.applicator_code, ')'), '')
+                            ) SEPARATOR ' | ')
+                         FROM ticket_problems tp
+                         LEFT JOIN problem_types pt ON tp.problem_type_id = pt.type_id
+                         LEFT JOIN failures f ON tp.failure_id = f.failure_id
+                         WHERE tp.ticket_id = t.ticket_id
                         ) AS FailureDetails,
                         
-                        CONCAT(
-                            IFNULL(act.action_name, IFNULL(tp.action_details_manual, '-')),
-                            IF(tp.root_cause_remarks IS NOT NULL, CONCAT(' (Cause: ', tp.root_cause_remarks, ')'), '')
+                        -- [FIXED] Subquery ActionDetails (Multi-Action Support)
+                        (SELECT GROUP_CONCAT(
+                            CONCAT(
+                                IFNULL(act.action_name, IFNULL(tp.action_details_manual, '-')),
+                                IF(tp.root_cause_remarks IS NOT NULL, CONCAT(' (Cause: ', tp.root_cause_remarks, ')'), '')
+                            ) SEPARATOR ' | ')
+                         FROM ticket_problems tp
+                         LEFT JOIN actions act ON tp.action_id = act.action_id
+                         WHERE tp.ticket_id = t.ticket_id
                         ) AS ActionDetails,
 
                         t.created_at AS CreatedAt,
@@ -86,15 +95,7 @@ namespace mtc_app.features.technician.data.repositories
                     JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN users op ON t.operator_id = op.user_id
                     LEFT JOIN users tech ON t.technician_id = tech.user_id
-                    
-                    -- JOIN KE TICKET_PROBLEMS
-                    LEFT JOIN ticket_problems tp ON t.ticket_id = tp.ticket_id
-                    LEFT JOIN problem_types pt ON tp.problem_type_id = pt.type_id
-                    LEFT JOIN failures f ON tp.failure_id = f.failure_id
-                    LEFT JOIN actions act ON tp.action_id = act.action_id
-                    
-                    WHERE t.ticket_id = @TicketId
-                    LIMIT 1"; // Pastikan hanya return 1 baris
+                    WHERE t.ticket_id = @TicketId";
 
                 return await connection.QueryFirstOrDefaultAsync<TechnicianTicketDetailDto>(sql, new { TicketId = ticketId });
             }
