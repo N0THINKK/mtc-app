@@ -144,14 +144,11 @@ namespace mtc_app.features.admin.presentation.views
             {
                 var row = gridTickets.Rows[e.RowIndex];
                 
-                // Get values safely (handle nulls if necessary, though cells usually have values)
-                string shift = row.Cells["Shift"].Value?.ToString() ?? "-";
                 string waitPart = row.Cells["Waktu Tunggu Part"].Value?.ToString() ?? "-";
 
                 string detailMsg = 
-                    $"Kode Tiket: {row.Cells["Kode Tiket"].Value}\n" +
-                    $"Status: {row.Cells["Status"].Value}\n" +
-                    $"Shift: {shift}\n\n" +
+                    $"No Tiket: {row.Cells["No Tiket"].Value}\n" +
+                    $"Status: {row.Cells["Status"].Value}\n\n" +
                     $"Mesin: {row.Cells["Mesin"].Value}\n" +
                     $"Masalah: {row.Cells["Masalah"].Value}\n" +
                     $"Teknisi: {row.Cells["Teknisi"].Value}\n" +

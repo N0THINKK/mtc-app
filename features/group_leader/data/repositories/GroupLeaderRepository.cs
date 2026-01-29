@@ -24,7 +24,7 @@ namespace mtc_app.features.group_leader.data.repositories
                         -- Subquery mengambil detail masalah dari ticket_problems (Multi-Problem Support)
                         (SELECT GROUP_CONCAT(
                             CONCAT(
-                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                                IF(pt.type_name IS NOT NULL, CONCAT(pt.type_name, ': '), ''), 
                                 IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown')),
                                 IF(t.applicator_code IS NOT NULL AND t.applicator_code != '', CONCAT(' (App: ', t.applicator_code, ')'), '')
                             ) SEPARATOR ' | ')
@@ -63,7 +63,7 @@ namespace mtc_app.features.group_leader.data.repositories
                         -- Subquery FailureDetails (Multi-Problem Support)
                         (SELECT GROUP_CONCAT(
                             CONCAT(
-                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                                IF(pt.type_name IS NOT NULL, CONCAT(pt.type_name, ': '), ''), 
                                 IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown'))
                             ) SEPARATOR ' | ')
                          FROM ticket_problems tp
