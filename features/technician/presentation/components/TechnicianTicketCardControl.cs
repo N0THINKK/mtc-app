@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Linq;
 using System.Windows.Forms;
 using mtc_app.features.technician.data.dtos;
 using mtc_app.shared.presentation.components;
@@ -210,7 +211,25 @@ namespace mtc_app.features.technician.presentation.components
             _currentTicket = ticket;
 
             this.lblMachineName.Text = ticket.MachineName ?? "-";
-            this.lblProblem.Text = ticket.FailureDetails?.Replace(" | ", "\n") ?? "-";
+            
+            // [UI-FIX] Format multi-problem strings into a numbered list
+            if (!string.IsNullOrEmpty(ticket.FailureDetails))
+            {
+                var problems = ticket.FailureDetails.Split(new[] { " | " }, StringSplitOptions.None);
+                if (problems.Length > 1)
+                {
+                    var numberedProblems = problems.Select((problem, index) => $"{index + 1}. {problem}");
+                    this.lblProblem.Text = string.Join(Environment.NewLine, numberedProblems);
+                }
+                else
+                {
+                    this.lblProblem.Text = ticket.FailureDetails;
+                }
+            }
+            else
+            {
+                this.lblProblem.Text = "-";
+            }
             
             // Technician Name
              if (!string.IsNullOrEmpty(ticket.TechnicianName))
