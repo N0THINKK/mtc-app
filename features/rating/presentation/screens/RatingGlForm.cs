@@ -250,8 +250,10 @@ namespace mtc_app.features.rating.presentation.screens
                     _lblOperatorName.Text = data.OperatorName;
                     _lblMachineName.Text = data.MachineName;
                     _lblTechnicianName.Text = data.TechnicianName;
-                    _lblFailureDetails.Text = data.FailureDetails;
-                    _lblActionDetails.Text = data.ActionDetails;
+
+                    // [UI-FIX] Format multi-problem strings into a vertical list
+                    _lblFailureDetails.Text = data.FailureDetails?.Replace(" | ", "\n") ?? "-";
+                    _lblActionDetails.Text = data.ActionDetails?.Replace(" | ", "\n") ?? "-";
 
                     // Calculate Durations
                     if (data.StartedAt.HasValue)

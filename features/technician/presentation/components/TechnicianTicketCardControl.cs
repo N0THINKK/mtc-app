@@ -131,7 +131,6 @@ namespace mtc_app.features.technician.presentation.components
             this.lblProblem.ForeColor = AppColors.TextSecondary;
             this.lblProblem.AutoSize = true;
             this.lblProblem.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            this.lblProblem.AutoEllipsis = true; // IMPORTANT
             this.lblProblem.Margin = new Padding(0, 0, 20, 0);
             this.layoutTable.Controls.Add(this.lblProblem, 3, 0);
 
@@ -211,7 +210,7 @@ namespace mtc_app.features.technician.presentation.components
             _currentTicket = ticket;
 
             this.lblMachineName.Text = ticket.MachineName ?? "-";
-            this.lblProblem.Text = ticket.FailureDetails ?? "-"; // Shorten if needed? AutoEllipsis handles it
+            this.lblProblem.Text = ticket.FailureDetails?.Replace(" | ", "\n") ?? "-";
             
             // Technician Name
              if (!string.IsNullOrEmpty(ticket.TechnicianName))

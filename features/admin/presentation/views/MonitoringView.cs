@@ -88,17 +88,16 @@ namespace mtc_app.features.admin.presentation.views
                 AutoGenerateColumns = false // Disable auto-generation to prevent duplicates
             };
 
-            // Manual Column Definition
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Status", HeaderText = "Status", DataPropertyName = "Status", FillWeight = 80 });
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Shift", HeaderText = "Shift", DataPropertyName = "Shift", FillWeight = 60 });
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Mesin", HeaderText = "Mesin", DataPropertyName = "Mesin" });
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Masalah", HeaderText = "Masalah", DataPropertyName = "Masalah", FillWeight = 200 });
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Teknisi", HeaderText = "Teknisi", DataPropertyName = "Teknisi" });
+            // Manual Column Definition - MUST MATCH 'view_admin_report' aliases
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Status", HeaderText = "Status", DataPropertyName = "Status Terkini", FillWeight = 80 });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Mesin", HeaderText = "Mesin", DataPropertyName = "Nama Mesin" });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Masalah", HeaderText = "Masalah", DataPropertyName = "Detail Masalah", FillWeight = 200 });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Teknisi", HeaderText = "Teknisi", DataPropertyName = "Nama Teknisi" });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Total Downtime", HeaderText = "Total Downtime", DataPropertyName = "Total Downtime" });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Durasi Respon", HeaderText = "Durasi Respon", DataPropertyName = "Durasi Respon" });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Durasi Perbaikan", HeaderText = "Durasi Perbaikan", DataPropertyName = "Durasi Perbaikan" });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Waktu Tunggu Part", HeaderText = "Tunggu Part", DataPropertyName = "Waktu Tunggu Part" });
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Waktu Tunggu Operator", HeaderText = "Tunggu Operator", DataPropertyName = "Waktu Tunggu Operator" });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Waktu Tunggu Operator", HeaderText = "Tunggu Operator", DataPropertyName = "Durasi Trial Run" });
             
             // Action Button Column
             var btnCol = new DataGridViewButtonColumn
@@ -111,9 +110,9 @@ namespace mtc_app.features.admin.presentation.views
             };
             gridTickets.Columns.Add(btnCol);
 
-            // Hidden Columns for Detail Popup
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Kode Tiket", DataPropertyName = "Kode Tiket", Visible = false });
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Operator", DataPropertyName = "Operator", Visible = false });
+            // Hidden Columns for Detail Popup - MUST MATCH view_admin_report aliases
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "No Tiket", DataPropertyName = "No Tiket", Visible = false });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Operator", DataPropertyName = "Operator Pelapor", Visible = false });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Waktu Lapor", DataPropertyName = "Waktu Lapor", Visible = false });
 
             // Grid Styling
