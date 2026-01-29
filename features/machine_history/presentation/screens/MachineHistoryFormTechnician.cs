@@ -19,7 +19,6 @@ namespace mtc_app.features.machine_history.presentation.screens
         private Stopwatch _arrivalStopwatch;
         private Stopwatch _repairStopwatch;
         private Timer _timer;
-        private bool _needsPartStatusCheck = false;
 
         // UI Controls
         private AppInput inputNIK;
@@ -68,6 +67,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             _timer.Start();
         }
 
+        private int _tickCounter = 0;
         private void Timer_Tick(object sender, EventArgs e)
         {
             if (_arrivalStopwatch?.IsRunning == true)
@@ -76,10 +76,10 @@ namespace mtc_app.features.machine_history.presentation.screens
             if (_repairStopwatch?.IsRunning == true)
                 labelFinished.Text = _repairStopwatch.Elapsed.ToString(@"hh\:mm\:ss");
 
-            // Check part status every 3 seconds using a flag
-            if (_isVerified && _needsPartStatusCheck)
+            // [FIX] Poll for part status every 3 seconds (30 ticks * 100ms interval)
+            _tickCounter++;
+            if (_isVerified && _tickCounter % 30 == 0)
             {
-                _needsPartStatusCheck = false;
                 UpdatePartRequestStatus();
             }
         }
@@ -240,10 +240,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             inputNIK.Enabled = !enabled;
             btnVerify.Enabled = !enabled;
             btnVerify.Visible = !enabled;
-            
-            // Trigger part status check
-            if (enabled)
-                _needsPartStatusCheck = true;
         }
 
         private void UpdatePartRequestStatus()
