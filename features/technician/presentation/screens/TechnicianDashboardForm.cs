@@ -24,6 +24,8 @@ namespace mtc_app.features.technician.presentation.screens
         // Auto Switch Feature
         private Timer timerTabSwitch;
         private Button btnAutoSwitch;
+        private NumericUpDown nudInterval;
+        private Button btnSetInterval;
 
         // Date Filter Feature
         private DateTimePicker dtpStart;
@@ -137,12 +139,51 @@ namespace mtc_app.features.technician.presentation.screens
                 }
             };
 
+            // Interval Controls
+            var lblInterval = new Label 
+            { 
+                Text = "Interval (s):", 
+                AutoSize = true, 
+                Location = new Point(parent.Width - 390, 22), 
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Font = new Font("Segoe UI", 11F)
+            };
+
+            nudInterval = new NumericUpDown
+            {
+                Location = new Point(parent.Width - 300, 20),
+                Size = new Size(60, 28),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Minimum = 5,
+                Maximum = 3600,
+                Value = 60,
+                Font = new Font("Segoe UI", 11F)
+            };
+
+            btnSetInterval = new Button
+            {
+                Text = "Set",
+                Size = new Size(50, 30),
+                Location = new Point(parent.Width - 230, 19),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                BackColor = AppColors.Primary,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnSetInterval.Click += (s, e) =>
+            {
+                timerTabSwitch.Interval = (int)nudInterval.Value * 1000;
+                MessageBox.Show($"Auto switch interval set to {nudInterval.Value} seconds.", "Pengaturan Tersimpan", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            };
+
             // Button Setup
             btnAutoSwitch = new Button
             {
                 Text = "Auto Switch: OFF",
                 Size = new Size(160, 40),
-                Location = new Point(parent.Width - 180, 15), // Right aligned
+                Location = new Point(parent.Width - 170, 15), // Further right
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 BackColor = Color.WhiteSmoke,
                 ForeColor = Color.DimGray,
@@ -163,6 +204,8 @@ namespace mtc_app.features.technician.presentation.screens
                 }
                 else
                 {
+                    // Update interval before starting just in case
+                    timerTabSwitch.Interval = (int)nudInterval.Value * 1000;
                     timerTabSwitch.Start();
                     btnAutoSwitch.Text = "Auto Switch: ON";
                     btnAutoSwitch.BackColor = AppColors.Success; 
@@ -170,6 +213,9 @@ namespace mtc_app.features.technician.presentation.screens
                 }
             };
             
+            parent.Controls.Add(lblInterval);
+            parent.Controls.Add(nudInterval);
+            parent.Controls.Add(btnSetInterval);
             parent.Controls.Add(btnAutoSwitch);
         }
 
