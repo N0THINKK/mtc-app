@@ -276,6 +276,12 @@ namespace mtc_app.features.machine_history.presentation.screens
             inputNIK.Enabled = !enabled;
             btnVerify.Enabled = !enabled;
             btnVerify.Visible = !enabled;
+            
+            // [UI-FIX] Hide "Add Problem" button when technician is verified
+            if (btnAddProblem != null)
+            {
+                btnAddProblem.Visible = !enabled;
+            }
         }
 
         private void UpdatePartRequestStatus()
