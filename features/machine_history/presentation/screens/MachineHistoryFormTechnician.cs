@@ -165,7 +165,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             var panel4M = new Panel { AutoSize = true, Height = 50, Margin = new Padding(0, 15, 0, 5) };
             var lbl4M = new Label 
             { 
-                Text = "Apakah ada pergantian blade/dies?", 
+                Text = "Apakah ada pergantian blade/crimping dies?", 
                 Font = AppFonts.Subtitle, 
                 Location = new Point(0, 0), 
                 AutoSize = true 
