@@ -70,18 +70,18 @@ namespace mtc_app.features.stock.presentation.screens
                 IconType = StatIconType.Checklist,
                 AccentColor = AppColors.Warning,
                 Location = new Point(25, 25),
-                Size = new Size(290, 100), // Standard StatCard size
+                Size = new Size(300, 140), // Larger Size
             };
             pnlStatusCards.Controls.Add(cardPendingNew);
 
-            // Ready Card - Adjusted X position to avoid overlap (25 + 290 + 20 gap = 335)
+            // Ready Card - Adjusted X position to avoid overlap (25 + 300 + 20 gap = 345)
             cardReadyNew = new StatCard
             {
                 Title = "Barang Siap",
                 IconType = StatIconType.Trophy,
                 AccentColor = AppColors.Success,
-                Location = new Point(335, 25),
-                Size = new Size(290, 100),
+                Location = new Point(345, 25),
+                Size = new Size(300, 140),
             };
              pnlStatusCards.Controls.Add(cardReadyNew);
             
@@ -106,7 +106,7 @@ namespace mtc_app.features.stock.presentation.screens
             { 
                 Name = "No", 
                 HeaderText = "No", 
-                Width = 60, // Sedikit lebar utk font besar
+                Width = 80, // Sedikit lebar utk font besar
                 ReadOnly = true 
             });
 
@@ -165,9 +165,9 @@ namespace mtc_app.features.stock.presentation.screens
             });
             
             // --- Accessibility: Larger Fonts & Rows ---
-            gridRequests.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            gridRequests.DefaultCellStyle.Font = new Font("Segoe UI", 12F, FontStyle.Regular);
-            gridRequests.RowTemplate.Height = 60; // Lebih tinggi biar lega
+            gridRequests.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
+            gridRequests.DefaultCellStyle.Font = new Font("Segoe UI", 14F, FontStyle.Regular);
+            gridRequests.RowTemplate.Height = 80; // Lebih tinggi biar lega
             
             // Add Formatting Event for Status & No
             gridRequests.CellFormatting += GridRequests_CellFormatting;
