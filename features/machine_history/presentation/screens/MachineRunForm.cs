@@ -173,8 +173,9 @@ namespace mtc_app.features.machine_history.presentation.screens
                 stopwatch?.Stop();
                 timer?.Stop();
                 
-                // Exit current app entirely "like Alt + F4"
-                Application.Exit();
+                // Close this form and return OK result
+                this.DialogResult = DialogResult.OK;
+                this.Close();
             }
             catch (Exception ex)
             {
