@@ -56,16 +56,16 @@ namespace mtc_app.features.stock.presentation.screens
             this.pnlHeader.Location = new System.Drawing.Point(0, 0);
             this.pnlHeader.Name = "pnlHeader";
             this.pnlHeader.Padding = new System.Windows.Forms.Padding(25, 18, 25, 18);
-            this.pnlHeader.Size = new System.Drawing.Size(1200, 80);
+            this.pnlHeader.Size = new System.Drawing.Size(1200, 100);
             this.pnlHeader.TabIndex = 0;
             
             // 
             // lblLastUpdate
             // 
             this.lblLastUpdate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.lblLastUpdate.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
+            this.lblLastUpdate.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Regular);
             this.lblLastUpdate.ForeColor = System.Drawing.Color.White;
-            this.lblLastUpdate.Location = new System.Drawing.Point(880, 28);
+            this.lblLastUpdate.Location = new System.Drawing.Point(880, 38);
             this.lblLastUpdate.Name = "lblLastUpdate";
             this.lblLastUpdate.Size = new System.Drawing.Size(295, 24);
             this.lblLastUpdate.TabIndex = 1;
@@ -76,11 +76,11 @@ namespace mtc_app.features.stock.presentation.screens
             // labelTitle
             // 
             this.labelTitle.AutoSize = true;
-            this.labelTitle.Font = new System.Drawing.Font("Segoe UI", 20F, System.Drawing.FontStyle.Bold);
+            this.labelTitle.Font = new System.Drawing.Font("Segoe UI", 26F, System.Drawing.FontStyle.Bold);
             this.labelTitle.ForeColor = System.Drawing.Color.White;
-            this.labelTitle.Location = new System.Drawing.Point(20, 22);
+            this.labelTitle.Location = new System.Drawing.Point(20, 25);
             this.labelTitle.Name = "labelTitle";
-            this.labelTitle.Size = new System.Drawing.Size(380, 37);
+            this.labelTitle.Size = new System.Drawing.Size(380, 47);
             this.labelTitle.TabIndex = 0;
             this.labelTitle.Text = "📦 Kontrol Stok - Permintaan Part";
             
@@ -88,12 +88,11 @@ namespace mtc_app.features.stock.presentation.screens
             // pnlStatusCards
             // 
             this.pnlStatusCards.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(249)))), ((int)(((byte)(250)))));
-
             this.pnlStatusCards.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlStatusCards.Location = new System.Drawing.Point(0, 80);
+            this.pnlStatusCards.Location = new System.Drawing.Point(0, 100);
             this.pnlStatusCards.Name = "pnlStatusCards";
             this.pnlStatusCards.Padding = new System.Windows.Forms.Padding(20, 25, 20, 25);
-            this.pnlStatusCards.Size = new System.Drawing.Size(1200, 170);
+            this.pnlStatusCards.Size = new System.Drawing.Size(1200, 200);
             this.pnlStatusCards.TabIndex = 1;
             
 
@@ -111,19 +110,19 @@ namespace mtc_app.features.stock.presentation.screens
             this.pnlFilters.Controls.Add(this.btnFilterPending);
             this.pnlFilters.Controls.Add(this.lblFilterLabel);
             this.pnlFilters.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlFilters.Location = new System.Drawing.Point(0, 250);
+            this.pnlFilters.Location = new System.Drawing.Point(0, 300);
             this.pnlFilters.Name = "pnlFilters";
             this.pnlFilters.Padding = new System.Windows.Forms.Padding(20, 15, 20, 15);
-            this.pnlFilters.Size = new System.Drawing.Size(1200, 70);
+            this.pnlFilters.Size = new System.Drawing.Size(1200, 90);
             this.pnlFilters.TabIndex = 2;
             
             // 
             // lblFilterLabel
             // 
             this.lblFilterLabel.AutoSize = true;
-            this.lblFilterLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.lblFilterLabel.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
             this.lblFilterLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(73)))), ((int)(((byte)(80)))), ((int)(((byte)(87)))));
-            this.lblFilterLabel.Location = new System.Drawing.Point(20, 15);
+            this.lblFilterLabel.Location = new System.Drawing.Point(20, 25);
             this.lblFilterLabel.Name = "lblFilterLabel";
             this.lblFilterLabel.Size = new System.Drawing.Size(50, 19);
             this.lblFilterLabel.TabIndex = 0;
@@ -132,10 +131,10 @@ namespace mtc_app.features.stock.presentation.screens
             // 
             // btnFilterPending
             // 
-            this.btnFilterPending.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.btnFilterPending.Location = new System.Drawing.Point(80, 10);
+            this.btnFilterPending.Font = new System.Drawing.Font("Segoe UI", 11F);
+            this.btnFilterPending.Location = new System.Drawing.Point(80, 15);
             this.btnFilterPending.Name = "btnFilterPending";
-            this.btnFilterPending.Size = new System.Drawing.Size(130, 38);
+            this.btnFilterPending.Size = new System.Drawing.Size(130, 50);
             this.btnFilterPending.TabIndex = 1;
             this.btnFilterPending.Text = "⏳ Pending";
             this.btnFilterPending.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Primary;
@@ -144,10 +143,10 @@ namespace mtc_app.features.stock.presentation.screens
             // 
             // btnFilterReady
             // 
-            this.btnFilterReady.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.btnFilterReady.Location = new System.Drawing.Point(220, 10);
+            this.btnFilterReady.Font = new System.Drawing.Font("Segoe UI", 11F);
+            this.btnFilterReady.Location = new System.Drawing.Point(220, 15);
             this.btnFilterReady.Name = "btnFilterReady";
-            this.btnFilterReady.Size = new System.Drawing.Size(130, 38);
+            this.btnFilterReady.Size = new System.Drawing.Size(130, 50);
             this.btnFilterReady.TabIndex = 2;
             this.btnFilterReady.Text = "✓ Siap";
             this.btnFilterReady.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Secondary;
@@ -156,10 +155,10 @@ namespace mtc_app.features.stock.presentation.screens
             // 
             // btnFilterAll
             // 
-            this.btnFilterAll.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.btnFilterAll.Location = new System.Drawing.Point(360, 10);
+            this.btnFilterAll.Font = new System.Drawing.Font("Segoe UI", 11F);
+            this.btnFilterAll.Location = new System.Drawing.Point(360, 15);
             this.btnFilterAll.Name = "btnFilterAll";
-            this.btnFilterAll.Size = new System.Drawing.Size(130, 38);
+            this.btnFilterAll.Size = new System.Drawing.Size(130, 50);
             this.btnFilterAll.TabIndex = 3;
             this.btnFilterAll.Text = "📋 Semua";
             this.btnFilterAll.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Secondary;
@@ -170,9 +169,9 @@ namespace mtc_app.features.stock.presentation.screens
             // 
             this.lblSortLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.lblSortLabel.AutoSize = true;
-            this.lblSortLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.lblSortLabel.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
             this.lblSortLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(73)))), ((int)(((byte)(80)))), ((int)(((byte)(87)))));
-            this.lblSortLabel.Location = new System.Drawing.Point(850, 15);
+            this.lblSortLabel.Location = new System.Drawing.Point(850, 25);
             this.lblSortLabel.Name = "lblSortLabel";
             this.lblSortLabel.Size = new System.Drawing.Size(55, 19);
             this.lblSortLabel.TabIndex = 4;
@@ -182,10 +181,10 @@ namespace mtc_app.features.stock.presentation.screens
             // btnSortAsc
             // 
             this.btnSortAsc.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnSortAsc.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.btnSortAsc.Location = new System.Drawing.Point(915, 10);
+            this.btnSortAsc.Font = new System.Drawing.Font("Segoe UI", 11F);
+            this.btnSortAsc.Location = new System.Drawing.Point(915, 15);
             this.btnSortAsc.Name = "btnSortAsc";
-            this.btnSortAsc.Size = new System.Drawing.Size(120, 38);
+            this.btnSortAsc.Size = new System.Drawing.Size(120, 50);
             this.btnSortAsc.TabIndex = 5;
             this.btnSortAsc.Text = "↑ Terlama";
             this.btnSortAsc.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Secondary;
@@ -195,10 +194,10 @@ namespace mtc_app.features.stock.presentation.screens
             // btnSortDesc
             // 
             this.btnSortDesc.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnSortDesc.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.btnSortDesc.Location = new System.Drawing.Point(1045, 10);
+            this.btnSortDesc.Font = new System.Drawing.Font("Segoe UI", 11F);
+            this.btnSortDesc.Location = new System.Drawing.Point(1045, 15);
             this.btnSortDesc.Name = "btnSortDesc";
-            this.btnSortDesc.Size = new System.Drawing.Size(120, 38);
+            this.btnSortDesc.Size = new System.Drawing.Size(120, 50);
             this.btnSortDesc.TabIndex = 6;
             this.btnSortDesc.Text = "↓ Terbaru";
             this.btnSortDesc.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Primary;
@@ -211,7 +210,7 @@ namespace mtc_app.features.stock.presentation.screens
 
             this.pnlContent.Controls.Add(this.gridRequests);
             this.pnlContent.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pnlContent.Location = new System.Drawing.Point(0, 320);
+            this.pnlContent.Location = new System.Drawing.Point(0, 390);
             this.pnlContent.Name = "pnlContent";
             this.pnlContent.Padding = new System.Windows.Forms.Padding(25, 20, 25, 20);
             this.pnlContent.Size = new System.Drawing.Size(1200, 310);
@@ -247,19 +246,19 @@ namespace mtc_app.features.stock.presentation.screens
             this.pnlActions.Controls.Add(this.btnReady);
             this.pnlActions.Controls.Add(this.btnRefresh);
             this.pnlActions.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.pnlActions.Location = new System.Drawing.Point(0, 630);
+            this.pnlActions.Location = new System.Drawing.Point(0, 610);
             this.pnlActions.Name = "pnlActions";
             this.pnlActions.Padding = new System.Windows.Forms.Padding(25, 18, 25, 18);
-            this.pnlActions.Size = new System.Drawing.Size(1200, 70);
+            this.pnlActions.Size = new System.Drawing.Size(1200, 90);
             this.pnlActions.TabIndex = 4;
             
             // 
             // btnRefresh
             // 
-            this.btnRefresh.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
-            this.btnRefresh.Location = new System.Drawing.Point(25, 15);
+            this.btnRefresh.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular);
+            this.btnRefresh.Location = new System.Drawing.Point(25, 20);
             this.btnRefresh.Name = "btnRefresh";
-            this.btnRefresh.Size = new System.Drawing.Size(130, 40);
+            this.btnRefresh.Size = new System.Drawing.Size(130, 50);
             this.btnRefresh.TabIndex = 0;
             this.btnRefresh.Text = "🔄 Refresh";
             this.btnRefresh.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Secondary;
@@ -269,10 +268,10 @@ namespace mtc_app.features.stock.presentation.screens
             // btnReady
             // 
             this.btnReady.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnReady.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.btnReady.Location = new System.Drawing.Point(1015, 15);
+            this.btnReady.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.btnReady.Location = new System.Drawing.Point(1015, 20);
             this.btnReady.Name = "btnReady";
-            this.btnReady.Size = new System.Drawing.Size(160, 40);
+            this.btnReady.Size = new System.Drawing.Size(160, 50);
             this.btnReady.TabIndex = 1;
             this.btnReady.Text = "✓ TANDAI SIAP";
             this.btnReady.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Primary;

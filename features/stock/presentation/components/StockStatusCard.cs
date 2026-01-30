@@ -67,7 +67,7 @@ namespace mtc_app.features.stock.presentation.components
 
             // Main panel settings - modern flat design
             this.BackColor = Color.White;
-            this.Size = new Size(220, 120);
+            this.Size = new Size(300, 140);
             this.Padding = new Padding(0);
             this.BorderStyle = BorderStyle.None;
 
@@ -83,10 +83,10 @@ namespace mtc_app.features.stock.presentation.components
             lblTitle = new Label
             {
                 AutoSize = false,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                Font = new Font("Segoe UI", 12F, FontStyle.Regular),
                 ForeColor = Color.FromArgb(108, 117, 125),
-                Location = new Point(20, 18),
-                Size = new Size(180, 20),
+                Location = new Point(20, 20),
+                Size = new Size(260, 25),
                 Text = "Status"
             };
 
@@ -94,10 +94,10 @@ namespace mtc_app.features.stock.presentation.components
             lblValue = new Label
             {
                 AutoSize = false,
-                Font = new Font("Segoe UI", 28F, FontStyle.Bold),
+                Font = new Font("Segoe UI", 36F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(33, 37, 41),
-                Location = new Point(18, 38),
-                Size = new Size(180, 45),
+                Location = new Point(18, 50),
+                Size = new Size(260, 60),
                 Text = "0"
             };
 
@@ -105,10 +105,10 @@ namespace mtc_app.features.stock.presentation.components
             lblSubtext = new Label
             {
                 AutoSize = false,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
                 ForeColor = Color.FromArgb(108, 117, 125),
-                Location = new Point(20, 88),
-                Size = new Size(180, 20),
+                Location = new Point(20, 110),
+                Size = new Size(260, 25),
                 Text = "",
                 Visible = false
             };
