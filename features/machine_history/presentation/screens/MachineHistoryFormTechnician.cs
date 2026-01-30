@@ -495,7 +495,10 @@ namespace mtc_app.features.machine_history.presentation.screens
                             
                             var runForm = new MachineRunForm(_currentTicketId);
                             if (runForm.ShowDialog() == DialogResult.OK)
+                            {
+                                this.DialogResult = DialogResult.OK;
                                 this.Close();
+                            }
                         }
                         catch
                         {

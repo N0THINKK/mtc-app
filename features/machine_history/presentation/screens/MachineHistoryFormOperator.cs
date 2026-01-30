@@ -354,11 +354,21 @@ namespace mtc_app.features.machine_history.presentation.screens
                             AutoClosingMessageBox.Show($"Tiket Berhasil Dibuat!\nKode: {displayCode}", "Sukses", 2000);
                             
                             // Open Technician Form
-                            var techForm = new MachineHistoryFormTechnician(ticketId);
-                            this.Hide();
-                            techForm.FormClosed += (s, args) => this.Show();
-                            techForm.Show();
-                        }
+                            var technicianForm = new MachineHistoryFormTechnician(ticketId);
+                            this.Hide(); 
+                                                technicianForm.FormClosed += (s, args) => 
+                                                {
+                                                    // If run successful (OK), close this form too -> returns to Login
+                                                    if (technicianForm.DialogResult == DialogResult.OK)
+                                                    {
+                                                        this.Close();
+                                                    }
+                                                    else
+                                                    {
+                                                        this.Show();
+                                                    }
+                                                };
+                                                technicianForm.Show();                        }
                         catch
                         {
                             trans.Rollback();
