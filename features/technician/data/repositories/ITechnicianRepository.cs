@@ -11,6 +11,6 @@ namespace mtc_app.features.technician.data.repositories
         TechnicianStatsDto GetTechnicianStatistics(long technicianId);
         Task<TechnicianTicketDetailDto> GetTicketDetailAsync(long ticketId);
         Task<IEnumerable<TechnicianPerformanceDto>> GetLeaderboardAsync(DateTime start, DateTime end);
-        Task<IEnumerable<MachinePerformanceDto>> GetMachinePerformanceAsync(DateTime start, DateTime end);
+        Task<IEnumerable<MachinePerformanceDto>> GetMachinePerformanceAsync(DateTime start, DateTime end, string area = null);
     }
 }
