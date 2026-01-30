@@ -88,7 +88,11 @@ namespace mtc_app.features.technician.presentation.screens
             };
 
             var lblFrom = new Label { Text = "Periode:", AutoSize = true, Margin = new Padding(0, 5, 5, 0), Font = new Font("Segoe UI", 12F) };
-            dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 140, Font = new Font("Segoe UI", 12F), Value = DateTime.Now.AddDays(-7) };
+            
+            // [UI-FIX] Default start date = 1st of current month
+            DateTime firstDayOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 140, Font = new Font("Segoe UI", 12F), Value = firstDayOfMonth };
+            
             var lblTo = new Label { Text = "-", AutoSize = true, Margin = new Padding(5, 5, 5, 0), Font = new Font("Segoe UI", 12F) };
             dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 140, Font = new Font("Segoe UI", 12F), Value = DateTime.Now };
 
