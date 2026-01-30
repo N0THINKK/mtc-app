@@ -76,7 +76,7 @@ namespace mtc_app.features.technician.presentation.components
             panelHeader = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 100,
+                Height = 120,
                 BackColor = Color.White,
                 Padding = new Padding(30, 20, 30, 20)
             };
@@ -84,7 +84,7 @@ namespace mtc_app.features.technician.presentation.components
             lblTicketCount = new Label
             {
                 Text = "0 tiket",
-                Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold),
+                Font = new Font("Segoe UI Semibold", 13F, FontStyle.Bold),
                 ForeColor = AppColors.Primary,
                 Location = new Point(30, 35),
                 AutoSize = true
@@ -97,7 +97,7 @@ namespace mtc_app.features.technician.presentation.components
             panelStatusBar = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 40,
+                Height = 60,
                 BackColor = Color.FromArgb(240, 253, 244),
                 Padding = new Padding(30, 0, 30, 0)
             };
@@ -105,7 +105,7 @@ namespace mtc_app.features.technician.presentation.components
             picStatusIndicator = new PictureBox
             {
                 Size = new Size(12, 12),
-                Location = new Point(30, 14),
+                Location = new Point(30, 24), // Centered vertically in 60
                 BackColor = Color.Transparent
             };
             picStatusIndicator.Paint += (s, e) =>
@@ -118,18 +118,18 @@ namespace mtc_app.features.technician.presentation.components
             lblSystemStatus = new Label
             {
                 Text = "Sistem Aktif",
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(21, 128, 61),
-                Location = new Point(50, 12),
+                Location = new Point(50, 20),
                 AutoSize = true
             };
 
             lblLastUpdate = new Label
             {
                 Text = "Terakhir diperbarui: -",
-                Font = new Font("Segoe UI", 9F),
+                Font = new Font("Segoe UI", 10F),
                 ForeColor = Color.FromArgb(100, 116, 139),
-                Location = new Point(150, 12),
+                Location = new Point(180, 21),
                 AutoSize = true
             };
 
@@ -141,28 +141,28 @@ namespace mtc_app.features.technician.presentation.components
             panelFilters = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 50,
+                Height = 70,
                 BackColor = Color.White
             };
 
-            var lblFilterStatus = new Label { Text = "Filter:", Location = new Point(30, 16), AutoSize = true, Font = new Font("Segoe UI", 9F) };
+            var lblFilterStatus = new Label { Text = "Filter:", Location = new Point(30, 25), AutoSize = true, Font = new Font("Segoe UI", 11F) };
             cmbFilterStatus = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Location = new Point(80, 12),
-                Size = new Size(140, 23),
-                Font = new Font("Segoe UI", 9F)
+                Location = new Point(80, 22),
+                Size = new Size(160, 28),
+                Font = new Font("Segoe UI", 11F)
             };
             cmbFilterStatus.Items.AddRange(new object[] { "Semua", "Belum Ditangani", "Sedang Diperbaiki", "Selesai" });
             cmbFilterStatus.SelectedIndex = 0;
 
-            var lblSortBy = new Label { Text = "Urutkan:", Location = new Point(240, 16), AutoSize = true, Font = new Font("Segoe UI", 9F) };
+            var lblSortBy = new Label { Text = "Urutkan:", Location = new Point(260, 25), AutoSize = true, Font = new Font("Segoe UI", 11F) };
             cmbSortBy = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Location = new Point(305, 12),
-                Size = new Size(180, 23),
-                Font = new Font("Segoe UI", 9F)
+                Location = new Point(335, 22),
+                Size = new Size(200, 28),
+                Font = new Font("Segoe UI", 11F)
             };
             cmbSortBy.Items.AddRange(new object[] { "Default (Urgensi)", "Terbaru (Waktu)", "Terlama (Waktu)" });
             cmbSortBy.SelectedIndex = 0;
@@ -170,8 +170,8 @@ namespace mtc_app.features.technician.presentation.components
             btnClearFilters = new Button
             {
                 Text = "Reset",
-                Location = new Point(500, 11),
-                Size = new Size(70, 25),
+                Location = new Point(560, 21),
+                Size = new Size(90, 30),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(248, 250, 252),
                 ForeColor = AppColors.TextSecondary

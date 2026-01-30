@@ -53,7 +53,7 @@ namespace mtc_app.features.technician.presentation.screens
             var pnlToolbar = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 60,
+                Height = 80,
                 BackColor = Color.White,
                 Padding = new Padding(10)
             };
@@ -85,19 +85,19 @@ namespace mtc_app.features.technician.presentation.screens
                 Anchor = AnchorStyles.Top | AnchorStyles.Left
             };
 
-            var lblFrom = new Label { Text = "Periode:", AutoSize = true, Margin = new Padding(0, 5, 5, 0), Font = new Font("Segoe UI", 10F) };
-            dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110, Font = new Font("Segoe UI", 10F), Value = DateTime.Now.AddDays(-7) };
-            var lblTo = new Label { Text = "-", AutoSize = true, Margin = new Padding(5, 5, 5, 0) };
-            dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110, Font = new Font("Segoe UI", 10F), Value = DateTime.Now };
+            var lblFrom = new Label { Text = "Periode:", AutoSize = true, Margin = new Padding(0, 5, 5, 0), Font = new Font("Segoe UI", 12F) };
+            dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 140, Font = new Font("Segoe UI", 12F), Value = DateTime.Now.AddDays(-7) };
+            var lblTo = new Label { Text = "-", AutoSize = true, Margin = new Padding(5, 5, 5, 0), Font = new Font("Segoe UI", 12F) };
+            dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 140, Font = new Font("Segoe UI", 12F), Value = DateTime.Now };
 
             btnFilter = new Button 
             { 
                 Text = "Terapkan", 
-                Size = new Size(90, 27),
+                Size = new Size(110, 35),
                 BackColor = AppColors.Primary,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
                 Margin = new Padding(10, 0, 0, 0)
             };
@@ -141,13 +141,13 @@ namespace mtc_app.features.technician.presentation.screens
             btnAutoSwitch = new Button
             {
                 Text = "Auto Switch: OFF",
-                Size = new Size(140, 30),
-                Location = new Point(parent.Width - 160, 15), // Right aligned
+                Size = new Size(160, 40),
+                Location = new Point(parent.Width - 180, 15), // Right aligned
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 BackColor = Color.WhiteSmoke,
                 ForeColor = Color.DimGray,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             btnAutoSwitch.FlatAppearance.BorderColor = Color.LightGray;

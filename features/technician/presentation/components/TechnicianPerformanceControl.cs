@@ -97,7 +97,7 @@ namespace mtc_app.features.technician.presentation.components
             lblTitle = new Label
             {
                 Text = "Leaderboard Teknisi",
-                Font = new Font("Segoe UI Semibold", 14F, FontStyle.Bold),
+                Font = new Font("Segoe UI Semibold", 16F, FontStyle.Bold),
                 ForeColor = AppColors.TextPrimary,
                 Location = new Point(20, 15),
                 AutoSize = true
@@ -117,15 +117,15 @@ namespace mtc_app.features.technician.presentation.components
             // Filter Controls Row
             var filterRow = new Panel
             {
-                Location = new Point(20, 155),  // Moved down to accommodate taller stats
-                Size = new Size(600, 35),
+                Location = new Point(20, 180),  // Moved down to accommodate taller stats
+                Size = new Size(650, 40),
                 BackColor = Color.Transparent
             };
 
             var lblMetric = new Label
             {
                 Text = "Metrik:",
-                Font = new Font("Segoe UI", 10F),
+                Font = new Font("Segoe UI", 12F),
                 Location = new Point(0, 7),
                 AutoSize = true
             };
@@ -134,9 +134,9 @@ namespace mtc_app.features.technician.presentation.components
             cmbMetric = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Segoe UI", 10F),
-                Location = new Point(55, 3),
-                Size = new Size(180, 25)
+                Font = new Font("Segoe UI", 12F),
+                Location = new Point(70, 3),
+                Size = new Size(200, 28)
             };
             cmbMetric.Items.AddRange(new object[] { "Jumlah Perbaikan", "Rata-rata Rating", "Total Bintang" });
             cmbMetric.SelectedIndex = 0;
@@ -155,9 +155,9 @@ namespace mtc_app.features.technician.presentation.components
             btnSort = new Button
             {
                 Text = "↓ Tertinggi",
-                Font = new Font("Segoe UI", 9F),
-                Location = new Point(250, 2),
-                Size = new Size(100, 28),
+                Font = new Font("Segoe UI", 11F),
+                Location = new Point(300, 2),
+                Size = new Size(120, 32),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(248, 250, 252),
                 ForeColor = AppColors.TextPrimary
@@ -172,7 +172,7 @@ namespace mtc_app.features.technician.presentation.components
             filterRow.Controls.Add(btnSort);
 
             headerPanel.Controls.Add(filterRow);
-            headerPanel.Height = 205; // Increased height for header
+            headerPanel.Height = 230; // Increased height for header
 
             mainLayout.Controls.Add(headerPanel, 0, 0);
 
