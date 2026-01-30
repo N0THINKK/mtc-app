@@ -59,52 +59,54 @@
             // 
             this.labelFinished.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.labelFinished.AutoSize = true;
-            this.labelFinished.Font = new System.Drawing.Font("Consolas", 14F, System.Drawing.FontStyle.Bold);
+            this.labelFinished.Font = new System.Drawing.Font("Consolas", 26F, System.Drawing.FontStyle.Bold);
             this.labelFinished.ForeColor = System.Drawing.Color.White;
             this.labelFinished.Location = new System.Drawing.Point(280, 40);
             this.labelFinished.Name = "labelFinished";
-            this.labelFinished.Size = new System.Drawing.Size(100, 22);
+            this.labelFinished.Size = new System.Drawing.Size(160, 40);
             this.labelFinished.TabIndex = 3;
             this.labelFinished.Text = "00:00:00";
-            this.labelFinished.Type = mtc_app.shared.presentation.components.AppLabel.LabelType.Body;
+            this.labelFinished.Type = mtc_app.shared.presentation.components.AppLabel.LabelType.Header1;
             this.labelFinished.ForeColor = System.Drawing.Color.White;
             // 
             // labelFinishedTitle
             // 
             this.labelFinishedTitle.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.labelFinishedTitle.AutoSize = true;
+            this.labelFinishedTitle.Font = new System.Drawing.Font("Segoe UI", 12F);
             this.labelFinishedTitle.ForeColor = System.Drawing.Color.White;
-            this.labelFinishedTitle.Location = new System.Drawing.Point(280, 15);
+            this.labelFinishedTitle.Location = new System.Drawing.Point(280, 10);
             this.labelFinishedTitle.Name = "labelFinishedTitle";
-            this.labelFinishedTitle.Size = new System.Drawing.Size(104, 19);
+            this.labelFinishedTitle.Size = new System.Drawing.Size(140, 25);
             this.labelFinishedTitle.TabIndex = 2;
             this.labelFinishedTitle.Text = "Selesai Reparasi";
-            this.labelFinishedTitle.Type = mtc_app.shared.presentation.components.AppLabel.LabelType.BodySmall;
+            this.labelFinishedTitle.Type = mtc_app.shared.presentation.components.AppLabel.LabelType.Body;
             this.labelFinishedTitle.ForeColor = System.Drawing.Color.White;
             // 
             // labelArrival
             // 
             this.labelArrival.AutoSize = true;
-            this.labelArrival.Font = new System.Drawing.Font("Consolas", 14F, System.Drawing.FontStyle.Bold);
+            this.labelArrival.Font = new System.Drawing.Font("Consolas", 26F, System.Drawing.FontStyle.Bold);
             this.labelArrival.ForeColor = System.Drawing.Color.White;
             this.labelArrival.Location = new System.Drawing.Point(15, 40);
             this.labelArrival.Name = "labelArrival";
-            this.labelArrival.Size = new System.Drawing.Size(20, 22);
+            this.labelArrival.Size = new System.Drawing.Size(160, 40);
             this.labelArrival.TabIndex = 1;
             this.labelArrival.Text = "-";
-            this.labelArrival.Type = mtc_app.shared.presentation.components.AppLabel.LabelType.Body;
+            this.labelArrival.Type = mtc_app.shared.presentation.components.AppLabel.LabelType.Header1;
             this.labelArrival.ForeColor = System.Drawing.Color.White;
             // 
             // labelArrivalTitle
             // 
             this.labelArrivalTitle.AutoSize = true;
+            this.labelArrivalTitle.Font = new System.Drawing.Font("Segoe UI", 12F);
             this.labelArrivalTitle.ForeColor = System.Drawing.Color.White;
-            this.labelArrivalTitle.Location = new System.Drawing.Point(15, 15);
+            this.labelArrivalTitle.Location = new System.Drawing.Point(15, 10);
             this.labelArrivalTitle.Name = "labelArrivalTitle";
-            this.labelArrivalTitle.Size = new System.Drawing.Size(123, 19);
+            this.labelArrivalTitle.Size = new System.Drawing.Size(160, 25);
             this.labelArrivalTitle.TabIndex = 0;
             this.labelArrivalTitle.Text = "Kedatangan Teknisi";
-            this.labelArrivalTitle.Type = mtc_app.shared.presentation.components.AppLabel.LabelType.BodySmall;
+            this.labelArrivalTitle.Type = mtc_app.shared.presentation.components.AppLabel.LabelType.Body;
             this.labelArrivalTitle.ForeColor = System.Drawing.Color.White;
             // 
             // mainLayout
@@ -128,15 +130,15 @@
             this.panelFooter.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.panelFooter.Location = new System.Drawing.Point(0, 500);
             this.panelFooter.Name = "panelFooter";
-            this.panelFooter.Size = new System.Drawing.Size(450, 60);
+            this.panelFooter.Size = new System.Drawing.Size(500, 80);
             this.panelFooter.TabIndex = 2;
             this.panelFooter.Paint += new System.Windows.Forms.PaintEventHandler(this.PanelFooter_Paint);
             // 
             // buttonRequestSparepart
             // 
-            this.buttonRequestSparepart.Location = new System.Drawing.Point(20, 10);
+            this.buttonRequestSparepart.Location = new System.Drawing.Point(20, 15);
             this.buttonRequestSparepart.Name = "buttonRequestSparepart";
-            this.buttonRequestSparepart.Size = new System.Drawing.Size(200, 40);
+            this.buttonRequestSparepart.Size = new System.Drawing.Size(220, 50);
             this.buttonRequestSparepart.TabIndex = 1;
             this.buttonRequestSparepart.Text = "Kirimkan Permintaan Sparepart";
             this.buttonRequestSparepart.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Warning;
@@ -146,9 +148,9 @@
             // buttonRepairComplete
             // 
             this.buttonRepairComplete.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.buttonRepairComplete.Location = new System.Drawing.Point(280, 10);
+            this.buttonRepairComplete.Location = new System.Drawing.Point(320, 15);
             this.buttonRepairComplete.Name = "buttonRepairComplete";
-            this.buttonRepairComplete.Size = new System.Drawing.Size(150, 40);
+            this.buttonRepairComplete.Size = new System.Drawing.Size(160, 50);
             this.buttonRepairComplete.TabIndex = 0;
             this.buttonRepairComplete.Text = "Perbaikan Selesai";
             this.buttonRepairComplete.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Primary;
@@ -158,7 +160,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(450, 560);
+            this.ClientSize = new System.Drawing.Size(500, 600);
             this.Controls.Add(this.mainLayout);
             this.Controls.Add(this.panelFooter);
             this.Controls.Add(this.panelHeader);

@@ -174,7 +174,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             { 
                 Text = "Panggil Teknisi", 
                 Type = AppButton.ButtonType.Primary, 
-                Height = 45,
+                Height = 55,
                 Dock = DockStyle.Fill,
                 Margin = new Padding(10)
             };
