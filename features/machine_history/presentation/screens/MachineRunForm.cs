@@ -61,7 +61,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.lblTitle.TextAlign = ContentAlignment.BottomCenter;
             this.lblTitle.Font = new Font("Segoe UI", 36F, FontStyle.Bold);
             this.lblTitle.ForeColor = Color.White;
-            this.lblTitle.Text = "PERBAIKAN SELESAI";
+            this.lblTitle.Text = "PERBAIKAN SELESAI, MENUNGGU OPERATOR";
 
             // 
             // lblSubtitle
@@ -168,14 +168,13 @@ namespace mtc_app.features.machine_history.presentation.screens
                     connection.Execute(sqlMachine, new { MachineId = machineId });
                 }
 
-                MessageBox.Show("Mesin Running! Waktu produksi tercatat.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // MessageBox.Show("Mesin Running! Waktu produksi tercatat.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 
                 stopwatch?.Stop();
                 timer?.Stop();
                 
-                // Return OK result to parent form so it knows to close too
-                this.DialogResult = DialogResult.OK;
-                this.Close();
+                // Exit current app entirely "like Alt + F4"
+                Application.Exit();
             }
             catch (Exception ex)
             {
