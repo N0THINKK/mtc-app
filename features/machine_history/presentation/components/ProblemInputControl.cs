@@ -29,7 +29,7 @@ namespace mtc_app.features.machine_history.presentation.components
         private void InitializeComponent(int index)
         {
             this.AutoSize = false;
-            this.Height = 200;
+            this.Height = 250; // Increased height to fit larger inputs
             this.Margin = new Padding(0, 0, 0, 10);
             this.BackColor = Color.Transparent;
 
