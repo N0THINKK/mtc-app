@@ -25,7 +25,7 @@ namespace mtc_app.features.technician.presentation.components
         private Panel pnlTicketList;
         private Panel panelEmptyState;
         
-        private Label lblTicketCount;
+        private TechnicianWorkQueueStatsControl statsControl;
         private Label lblLastUpdate;
         private Label lblSystemStatus;
         private PictureBox picStatusIndicator;
@@ -81,15 +81,14 @@ namespace mtc_app.features.technician.presentation.components
                 Padding = new Padding(30, 20, 30, 20)
             };
 
-            lblTicketCount = new Label
+            // [UI-UPGRADE] Replace Label with Stats Control
+            statsControl = new TechnicianWorkQueueStatsControl
             {
-                Text = "0 tiket",
-                Font = new Font("Segoe UI Semibold", 13F, FontStyle.Bold),
-                ForeColor = AppColors.Primary,
-                Location = new Point(30, 35),
-                AutoSize = true
+                Location = new Point(20, 10),
+                Size = new Size(900, 100),
+                BackColor = Color.Transparent
             };
-            panelHeader.Controls.Add(lblTicketCount);
+            panelHeader.Controls.Add(statsControl);
 
 
 
@@ -223,11 +222,11 @@ namespace mtc_app.features.technician.presentation.components
             panelEmptyState.Controls.AddRange(new Control[] { picEmptyIcon, lblEmptyTitle, lblEmptyMessage });
             pnlTicketList.Controls.Add(panelEmptyState);
 
-            // Add all panels (order matters for Dock)
-            this.Controls.Add(pnlTicketList);
-            this.Controls.Add(panelFilters);
-            this.Controls.Add(panelStatusBar);
-            this.Controls.Add(panelHeader);
+            // Add all panels (Dock Order: Last Added = Topmost)
+            this.Controls.Add(pnlTicketList); // Fill (Bottom-most logically)
+            this.Controls.Add(panelFilters);  // Top (Below Header)
+            this.Controls.Add(panelHeader);   // Top (Below Status Bar)
+            this.Controls.Add(panelStatusBar);// Top (Very Top)
         }
 
         private void SetupEventHandlers()
@@ -260,7 +259,7 @@ namespace mtc_app.features.technician.presentation.components
                 int processCount = _allTickets.Count(t => t.StatusId == 2);
                 int doneCount = _allTickets.Count(t => t.StatusId == 3);
 
-                lblTicketCount.Text = $"Open: {openCount} | Sedang Diperbaiki: {processCount} | Selesai: {doneCount}";
+                statsControl.UpdateStats(openCount, processCount, doneCount);
                 lblLastUpdate.Text = $"Terakhir diperbarui: {DateTime.Now:HH:mm:ss}";
                 
                 RenderTickets();
