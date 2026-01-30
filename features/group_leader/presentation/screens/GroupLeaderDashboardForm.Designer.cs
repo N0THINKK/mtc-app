@@ -70,7 +70,7 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.panelHeader.Controls.Add(this.lblTicketStats);
             this.panelHeader.Controls.Add(this.labelTitle);
             this.panelHeader.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panelHeader.Height = 120;
+            this.panelHeader.Height = 140;
             this.panelHeader.Padding = new System.Windows.Forms.Padding(30, 20, 30, 20);
             this.panelHeader.Paint += (s, e) => {
                 e.Graphics.DrawLine(new Pen(Color.FromArgb(230, 230, 230)),
@@ -89,9 +89,9 @@ namespace mtc_app.features.group_leader.presentation.screens
             // 
             // lblTicketStats
             // 
-            this.lblTicketStats.Font = new System.Drawing.Font("Segoe UI Semibold", 10F, System.Drawing.FontStyle.Bold);
+            this.lblTicketStats.Font = new System.Drawing.Font("Segoe UI Semibold", 12F, System.Drawing.FontStyle.Bold);
             this.lblTicketStats.ForeColor = AppColors.Primary;
-            this.lblTicketStats.Location = new System.Drawing.Point(30, 70);
+            this.lblTicketStats.Location = new System.Drawing.Point(30, 80); // Adjusted Y
             this.lblTicketStats.AutoSize = true;
             this.lblTicketStats.Text = "Total: 0 | Direview: 0 | Belum: 0";
 
@@ -103,7 +103,7 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.panelStatusBar.Controls.Add(this.lblSystemStatus);
             this.panelStatusBar.Controls.Add(this.picStatusIndicator);
             this.panelStatusBar.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panelStatusBar.Height = 50;
+            this.panelStatusBar.Height = 60;
             this.panelStatusBar.Padding = new System.Windows.Forms.Padding(30, 0, 30, 0);
 
             // 
@@ -116,18 +116,18 @@ namespace mtc_app.features.group_leader.presentation.screens
             // 
             // lblSystemStatus
             // 
-            this.lblSystemStatus.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
+            this.lblSystemStatus.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.lblSystemStatus.ForeColor = System.Drawing.Color.FromArgb(21, 128, 61);
-            this.lblSystemStatus.Location = new System.Drawing.Point(50, 16);
+            this.lblSystemStatus.Location = new System.Drawing.Point(50, 20); // Adjusted Y center
             this.lblSystemStatus.AutoSize = true;
             this.lblSystemStatus.Text = "Sistem Aktif";
 
             // 
             // lblLastUpdate
             // 
-            this.lblLastUpdate.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblLastUpdate.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.lblLastUpdate.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-            this.lblLastUpdate.Location = new System.Drawing.Point(150, 17);
+            this.lblLastUpdate.Location = new System.Drawing.Point(180, 21); // Adjusted X/Y
             this.lblLastUpdate.AutoSize = true;
             this.lblLastUpdate.Text = "Terakhir diperbarui: -";
 
@@ -140,27 +140,27 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.panelFilters.Controls.Add(this.cmbSortTime);
             this.panelFilters.Controls.Add(this.lblSort);
             this.panelFilters.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panelFilters.Height = 80;
+            this.panelFilters.Height = 90;
             this.panelFilters.Padding = new System.Windows.Forms.Padding(30, 20, 30, 20);
 
             // 
             // lblSort
             // 
             this.lblSort.AutoSize = true;
-            this.lblSort.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.lblSort.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
             this.lblSort.ForeColor = AppColors.TextPrimary;
-            this.lblSort.Location = new System.Drawing.Point(30, 25);
+            this.lblSort.Location = new System.Drawing.Point(30, 30);
             this.lblSort.Text = "Urutkan:";
 
             // 
             // cmbSortTime
             // 
             this.cmbSortTime.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbSortTime.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.cmbSortTime.Font = new System.Drawing.Font("Segoe UI", 12F);
             this.cmbSortTime.FormattingEnabled = true;
             this.cmbSortTime.Items.AddRange(new object[] { "Terbaru", "Terlama" });
-            this.cmbSortTime.Location = new System.Drawing.Point(110, 22);
-            this.cmbSortTime.Width = 150;
+            this.cmbSortTime.Location = new System.Drawing.Point(120, 27);
+            this.cmbSortTime.Width = 180;
             this.cmbSortTime.SelectedIndex = 0;
             this.cmbSortTime.SelectedIndexChanged += new System.EventHandler(this.Filter_Changed);
 
@@ -168,20 +168,20 @@ namespace mtc_app.features.group_leader.presentation.screens
             // lblFilter
             // 
             this.lblFilter.AutoSize = true;
-            this.lblFilter.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.lblFilter.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
             this.lblFilter.ForeColor = AppColors.TextPrimary;
-            this.lblFilter.Location = new System.Drawing.Point(300, 25);
+            this.lblFilter.Location = new System.Drawing.Point(340, 30);
             this.lblFilter.Text = "Status:";
 
             // 
             // cmbFilterStatus
             // 
             this.cmbFilterStatus.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbFilterStatus.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.cmbFilterStatus.Font = new System.Drawing.Font("Segoe UI", 12F);
             this.cmbFilterStatus.FormattingEnabled = true;
             this.cmbFilterStatus.Items.AddRange(new object[] { "Semua", "Sudah Direview", "Belum Direview" });
-            this.cmbFilterStatus.Location = new System.Drawing.Point(365, 22);
-            this.cmbFilterStatus.Width = 180;
+            this.cmbFilterStatus.Location = new System.Drawing.Point(420, 27);
+            this.cmbFilterStatus.Width = 220;
             this.cmbFilterStatus.SelectedIndex = 0;
             this.cmbFilterStatus.SelectedIndexChanged += new System.EventHandler(this.Filter_Changed);
 
@@ -216,12 +216,12 @@ namespace mtc_app.features.group_leader.presentation.screens
             // 
             // lblEmptyMessage
             // 
-            this.lblEmptyMessage.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.lblEmptyMessage.Font = new System.Drawing.Font("Segoe UI", 12F);
             this.lblEmptyMessage.ForeColor = AppColors.TextSecondary;
             this.lblEmptyMessage.Text = "Belum ada tiket yang dapat ditampilkan.\nData akan muncul setelah teknisi menyelesaikan perbaikan.";
             this.lblEmptyMessage.TextAlign = System.Drawing.ContentAlignment.TopCenter;
-            this.lblEmptyMessage.Location = new System.Drawing.Point(50, 180);
-            this.lblEmptyMessage.Size = new System.Drawing.Size(300, 60);
+            this.lblEmptyMessage.Location = new System.Drawing.Point(40, 180); // Adjusted width
+            this.lblEmptyMessage.Size = new System.Drawing.Size(320, 80);
 
             // 
             // flowTickets
