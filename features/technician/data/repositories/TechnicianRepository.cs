@@ -154,9 +154,9 @@ namespace mtc_app.features.technician.data.repositories
             }
         }
 
-        public async Task<IEnumerable<MachinePerformanceDto>> GetMachinePerformanceAsync(DateTime start, DateTime end)
+        public async Task<IEnumerable<MachinePerformanceDto>> GetMachinePerformanceAsync(DateTime start, DateTime end, string area = null)
         {
-            const string sql = @"
+            string sql = @"
                 SELECT
                     CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
                     COUNT(t.ticket_id) AS RepairCount,
@@ -175,14 +175,20 @@ namespace mtc_app.features.technician.data.repositories
                 FROM machines m
                 JOIN tickets t ON m.machine_id = t.machine_id
                 WHERE t.status_id = 3 
-                  AND t.created_at BETWEEN @Start AND @End
+                  AND t.created_at BETWEEN @Start AND @End";
+
+            if (!string.IsNullOrEmpty(area) && area != "All")
+            {
+                sql += " AND m.machine_area = @Area";
+            }
+
+            sql += @"
                 GROUP BY m.machine_id, MachineName
-                ORDER BY TotalDowntimeSeconds DESC;
-            ";
+                ORDER BY TotalDowntimeSeconds DESC;";
 
             using (var connection = DatabaseHelper.GetConnection())
             {
-                var data = await connection.QueryAsync<MachinePerformanceDto>(sql, new { Start = start, End = end });
+                var data = await connection.QueryAsync<MachinePerformanceDto>(sql, new { Start = start, End = end, Area = area });
                 return data;
             }
         }

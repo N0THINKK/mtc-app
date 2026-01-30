@@ -5,6 +5,7 @@ using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Dapper;
 using mtc_app.features.technician.data.dtos;
 using mtc_app.features.technician.data.repositories;
 using mtc_app.shared.presentation.styles;
@@ -15,6 +16,8 @@ namespace mtc_app.features.technician.presentation.components
     {
         private readonly ITechnicianRepository _repository;
         private List<MachinePerformanceDto> _data = new List<MachinePerformanceDto>();
+        private DateTime _lastStart = DateTime.Now.AddDays(-7);
+        private DateTime _lastEnd = DateTime.Now;
         
         // Layout
         private TableLayoutPanel mainLayout;
@@ -22,19 +25,47 @@ namespace mtc_app.features.technician.presentation.components
         private Panel chartPanel;
         private Label lblTitle;
         private Label lblNoData;
-        private Button btnRefresh;
+        private ComboBox cmbArea;
 
         public MachinePerformanceControl(ITechnicianRepository repository)
         {
             _repository = repository;
             InitializeComponent();
+            LoadAreas();
         }
 
-        public async Task LoadDataAsync(DateTime start, DateTime end)
+        private async void LoadAreas()
         {
             try
             {
-                var result = await _repository.GetMachinePerformanceAsync(start, end);
+                cmbArea.Items.Add("All Areas");
+                cmbArea.SelectedIndex = 0;
+
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    var areas = await conn.QueryAsync<string>("SELECT DISTINCT machine_area FROM machines ORDER BY machine_area");
+                    foreach (var area in areas) cmbArea.Items.Add(area);
+                }
+            }
+            catch { /* Ignore */ }
+        }
+
+        public async Task LoadDataAsync(DateTime start, DateTime end, string areaOverride = null)
+        {
+            _lastStart = start;
+            _lastEnd = end;
+            
+            try
+            {
+                // Use combo box selection if no override provided (or if called from Dashboard refresh)
+                string area = areaOverride;
+                if (string.IsNullOrEmpty(area) && cmbArea != null && cmbArea.SelectedItem != null)
+                {
+                    area = cmbArea.SelectedItem.ToString();
+                    if (area == "All Areas") area = null;
+                }
+
+                var result = await _repository.GetMachinePerformanceAsync(start, end, area);
                 _data = result?.ToList() ?? new List<MachinePerformanceDto>();
                 chartPanel.Invalidate();
             }
@@ -71,17 +102,35 @@ namespace mtc_app.features.technician.presentation.components
             
             lblTitle = new Label
             {
-                Text = "Analisis Downtime Mesin (Stacked Chart)",
+                Text = "Analisis Downtime Mesin",
                 Font = new Font("Segoe UI Semibold", 14F, FontStyle.Bold),
                 Location = new Point(20, 15),
                 AutoSize = true
             };
             headerPanel.Controls.Add(lblTitle);
 
+            // Area Filter
+            var lblArea = new Label 
+            { 
+                Text = "Filter Area:", 
+                Font = new Font("Segoe UI", 10F), 
+                Location = new Point(400, 20), 
+                AutoSize = true 
+            };
+            headerPanel.Controls.Add(lblArea);
+
+            cmbArea = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 10F),
+                Location = new Point(480, 16),
+                Width = 120
+            };
+            cmbArea.SelectedIndexChanged += async (s, e) => await LoadDataAsync(_lastStart, _lastEnd);
+            headerPanel.Controls.Add(cmbArea);
+
             // Legend
             DrawLegend(headerPanel, 20, 50);
-
-            // Refresh Button removed (Handled by Dashboard Filter)
 
             mainLayout.Controls.Add(headerPanel, 0, 0);
 
