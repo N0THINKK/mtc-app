@@ -86,18 +86,18 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.panelFooter.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.panelFooter.Location = new System.Drawing.Point(0, 500);
             this.panelFooter.Name = "panelFooter";
-            this.panelFooter.Size = new System.Drawing.Size(450, 60);
+            // Footer 450x60 -> 500x80
+            this.panelFooter.Size = new System.Drawing.Size(500, 80);
             this.panelFooter.TabIndex = 2;
             this.panelFooter.Paint += new System.Windows.Forms.PaintEventHandler(this.PanelFooter_Paint);
-
-
 
             // 
             // MachineHistoryFormOperator
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(450, 560);
+            // Client size 450x560 -> 500x600
+            this.ClientSize = new System.Drawing.Size(500, 600);
             this.Controls.Add(this.mainLayout);
             this.Controls.Add(this.panelFooter);
             this.Controls.Add(this.panelHeader);

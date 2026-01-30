@@ -34,7 +34,8 @@ namespace mtc_app.shared.presentation.components
         {
             InitializeCustomComponents();
             this.Padding = new Padding(AppDimens.SpacingXS);
-            this.Size = new Size(300, 85); 
+            // Height = Title(25) + Control(45) + Error(20) + Spacing = ~100
+            this.Size = new Size(300, AppDimens.ControlHeight + 55); 
             this.BackColor = Color.Transparent;
         }
 
@@ -60,16 +61,16 @@ namespace mtc_app.shared.presentation.components
                 textInput.Multiline = value;
                 if (value)
                 {
-                    this.Height = 130;
-                    panelContainer.Height = 80;
-                    textInput.Height = 70;
+                    this.Height = 160;
+                    panelContainer.Height = 100;
+                    textInput.Height = 84;
                     textInput.ScrollBars = ScrollBars.Vertical;
                 }
                 else
                 {
-                    this.Height = 85; 
+                    this.Height = AppDimens.ControlHeight + 55; 
                     panelContainer.Height = AppDimens.ControlHeight;
-                    textInput.Height = 20;
+                    textInput.Height = 26; // Approx height for 12pt font
                     textInput.ScrollBars = ScrollBars.None;
                 }
             }
@@ -210,7 +211,8 @@ namespace mtc_app.shared.presentation.components
 
             // Container Panel
             panelContainer = new Panel();
-            panelContainer.Location = new Point(AppDimens.SpacingXS, 25);
+            // Y=32 to account for larger Title font + spacing
+            panelContainer.Location = new Point(AppDimens.SpacingXS, 32); 
             panelContainer.Size = new Size(this.Width - (AppDimens.SpacingXS * 2), AppDimens.ControlHeight);
             panelContainer.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             panelContainer.Paint += PanelContainer_Paint;
@@ -221,8 +223,9 @@ namespace mtc_app.shared.presentation.components
             textInput = new TextBox();
             textInput.BorderStyle = BorderStyle.None;
             textInput.Font = AppFonts.Body;
-            textInput.Location = new Point(10, 8);
-            textInput.Width = panelContainer.Width - 20;
+            // Centering text vertically in 45px height: (45 - 24)/2 approx 10
+            textInput.Location = new Point(12, 10);
+            textInput.Width = panelContainer.Width - 24;
             textInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             textInput.BackColor = AppColors.Surface;
             textInput.Enter += (s, e) => { _isFocused = true; panelContainer.Invalidate(); };
@@ -233,8 +236,8 @@ namespace mtc_app.shared.presentation.components
             comboInput = new ComboBox();
             comboInput.FlatStyle = FlatStyle.Flat;
             comboInput.Font = AppFonts.Body;
-            comboInput.Location = new Point(10, 6);
-            comboInput.Width = panelContainer.Width - 20;
+            comboInput.Location = new Point(12, 8); // Slightly higher than text
+            comboInput.Width = panelContainer.Width - 24;
             comboInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             comboInput.BackColor = AppColors.Surface;
             comboInput.DropDownStyle = ComboBoxStyle.DropDownList;
@@ -258,7 +261,8 @@ namespace mtc_app.shared.presentation.components
             labelError.AutoSize = true;
             labelError.Font = AppFonts.Caption;
             labelError.ForeColor = AppColors.Error;
-            labelError.Location = new Point(AppDimens.SpacingXS, 65);
+            // Position below container: 32 + ControlHeight + 4
+            labelError.Location = new Point(AppDimens.SpacingXS, 32 + AppDimens.ControlHeight + 4); 
             labelError.Visible = false;
             this.Controls.Add(labelError);
         }

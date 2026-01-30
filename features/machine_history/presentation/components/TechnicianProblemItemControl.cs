@@ -33,9 +33,13 @@ namespace mtc_app.features.machine_history.presentation.components
 
         private void InitializeComponent(string problemType, string problemDetail, bool isEnabled)
         {
+            int inputHeight = AppDimens.ControlHeight + 55;
+            int spacing = AppDimens.SpacingLarge; // 32
+
             this.AutoSize = false;
-            this.Height = 380; // Increased height for 4 inputs
-            this.Margin = new Padding(0, 0, 0, 20);
+            // Header(30) + 4 * (Input + Spacing)
+            this.Height = 30 + (4 * (inputHeight + spacing)); 
+            this.Margin = new Padding(0, 0, 0, AppDimens.SpacingLarge);
             this.BackColor = Color.Transparent;
 
             int yPos = 0;
@@ -50,7 +54,7 @@ namespace mtc_app.features.machine_history.presentation.components
                 Location = new Point(0, yPos)
             };
             this.Controls.Add(lblHeader);
-            yPos += 25;
+            yPos += 35; // Header height + gap
 
             // Problem Type Input (pre-filled, editable)
             InputProblemType = new AppInput 
@@ -63,7 +67,7 @@ namespace mtc_app.features.machine_history.presentation.components
                 Location = new Point(0, yPos)
             };
             this.Controls.Add(InputProblemType);
-            yPos += 85;
+            yPos += inputHeight + spacing;
 
             // Problem Detail Input (pre-filled, editable)
             InputProblemDetail = new AppInput 
@@ -76,7 +80,7 @@ namespace mtc_app.features.machine_history.presentation.components
                 Location = new Point(0, yPos)
             };
             this.Controls.Add(InputProblemDetail);
-            yPos += 90;
+            yPos += inputHeight + spacing;
 
             // Cause Input
             InputCause = new AppInput 
@@ -89,7 +93,7 @@ namespace mtc_app.features.machine_history.presentation.components
                 Location = new Point(0, yPos)
             };
             this.Controls.Add(InputCause);
-            yPos += 85;
+            yPos += inputHeight + spacing;
             
             // Action Input
             InputAction = new AppInput 
