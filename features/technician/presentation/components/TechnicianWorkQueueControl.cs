@@ -254,7 +254,13 @@ namespace mtc_app.features.technician.presentation.components
                 _allTickets = _repository.GetActiveTickets().ToList();
                 
                 pnlTicketList.SuspendLayout();
-                lblTicketCount.Text = $"{_allTickets.Count} tiket";
+                
+                // Calculate Stats
+                int openCount = _allTickets.Count(t => t.StatusId == 1);
+                int processCount = _allTickets.Count(t => t.StatusId == 2);
+                int doneCount = _allTickets.Count(t => t.StatusId == 3);
+
+                lblTicketCount.Text = $"Open: {openCount} | Sedang Diperbaiki: {processCount} | Selesai: {doneCount}";
                 lblLastUpdate.Text = $"Terakhir diperbarui: {DateTime.Now:HH:mm:ss}";
                 
                 RenderTickets();
