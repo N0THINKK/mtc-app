@@ -284,9 +284,9 @@ namespace mtc_app.features.technician.presentation.components
                     badgeText = "Open";
                     break;
                 case 2: // Repairing
-                    stripColor = Color.FromArgb(249, 115, 22);
-                    badgeBgColor = Color.FromArgb(255, 247, 237);
-                    badgeTextColor = Color.FromArgb(194, 65, 12);
+                    stripColor = Color.FromArgb(234, 179, 8); // Yellow/Gold
+                    badgeBgColor = Color.FromArgb(254, 252, 232); // Light Yellow
+                    badgeTextColor = Color.FromArgb(161, 98, 7); // Dark Yellow/Brown
                     badgeText = "Sedang Diperbaiki";
                     break;
                 case 3: // Done
