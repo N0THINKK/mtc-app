@@ -308,7 +308,13 @@ namespace mtc_app.features.machine_history.presentation.screens
                             // Resolve IDs
                             int operatorId = conn.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE nik = @Nik", new { Nik = inputNIK.InputValue }, trans) ?? 1;
                             int? shiftId = conn.QueryFirstOrDefault<int?>("SELECT shift_id FROM shifts WHERE shift_name = @Name", new { Name = inputShift.InputValue }, trans);
+                            
+                            // [FIX] Get Machine ID from Config (Dynamic)
                             int machineId = 1;
+                            if (int.TryParse(DatabaseHelper.GetMachineId(), out int configId))
+                            {
+                                machineId = configId;
+                            }
 
                             // Insert Ticket
                             string insertTicketSql = @"
