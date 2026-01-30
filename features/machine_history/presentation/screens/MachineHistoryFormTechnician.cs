@@ -26,6 +26,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         
         // Multi-Problem List
         private FlowLayoutPanel pnlProblems;
+        private Button btnAddProblem;
         private List<TechnicianProblemItemControl> _problemControls = new List<TechnicianProblemItemControl>();
 
         // Other Inputs
@@ -122,6 +123,24 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
+        private void BtnAddProblem_Click(object sender, EventArgs e)
+        {
+            var control = new TechnicianProblemItemControl(0, "", "", _isVerified); // ID 0 for new
+            _problemControls.Add(control);
+            pnlProblems.Controls.Add(control);
+            
+            // Re-apply enabled state logic (Cause/Action disabled if not verified)
+            control.SetEnabled(_isVerified);
+            
+            // Adjust width
+            if (mainLayout != null)
+            {
+                 int contentWidth = mainLayout.ClientSize.Width - 80;
+                 if (contentWidth < 400) contentWidth = 400;
+                 control.Width = contentWidth;
+            }
+        }
+
         private void SetupInputs()
         {
             // === Technician NIK ===
@@ -160,6 +179,23 @@ namespace mtc_app.features.machine_history.presentation.screens
                 WrapContents = false 
             };
             mainLayout.Controls.Add(pnlProblems);
+
+            // === Add Problem Button (Accessible by All) ===
+            btnAddProblem = new Button
+            {
+                Text = "+ Tambah Masalah Lain",
+                Size = new Size(200, 35),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.WhiteSmoke,
+                ForeColor = AppColors.Primary,
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 5, 0, 15)
+            };
+            btnAddProblem.FlatAppearance.BorderColor = AppColors.Primary;
+            btnAddProblem.FlatAppearance.BorderSize = 1;
+            btnAddProblem.Click += BtnAddProblem_Click;
+            mainLayout.Controls.Add(btnAddProblem);
 
             // === 4M Analysis ===
             var panel4M = new Panel { AutoSize = true, Height = 50, Margin = new Padding(0, 15, 0, 5) };
@@ -493,7 +529,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             
             foreach (Control c in mainLayout.Controls)
             {
-                if (c is AppInput || c is AppButton || c == pnlProblems || c is Panel)
+                if (c is AppInput || c is AppButton || c == pnlProblems || c is Panel || c == btnAddProblem)
                 {
                     c.Width = contentWidth;
                 }

@@ -126,8 +126,12 @@ namespace mtc_app.features.machine_history.presentation.components
 
         public void SetEnabled(bool enabled)
         {
-            InputProblemType.Enabled = enabled;
-            InputProblemDetail.Enabled = enabled;
+            // [MODIFIED] Problem Type and Detail are open for everyone (Operator/Technician)
+            // They don't require technician verification to edit.
+            InputProblemType.Enabled = true;
+            InputProblemDetail.Enabled = true;
+            
+            // Cause and Action strictly for Verified Technician
             InputCause.Enabled = enabled;
             InputAction.Enabled = enabled;
         }
