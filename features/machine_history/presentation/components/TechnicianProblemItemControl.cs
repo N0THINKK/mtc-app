@@ -37,8 +37,8 @@ namespace mtc_app.features.machine_history.presentation.components
             int spacing = AppDimens.SpacingLarge; // 32
 
             this.AutoSize = false;
-            // Header(30) + 4 * (Input + Spacing)
-            this.Height = 30 + (4 * (inputHeight + spacing)); 
+            // Header(30) + 4 * (Input + Spacing) + Extra Buffer
+            this.Height = 40 + (4 * (inputHeight + spacing)); 
             this.Margin = new Padding(0, 0, 0, AppDimens.SpacingLarge);
             this.BackColor = Color.Transparent;
 
@@ -80,7 +80,7 @@ namespace mtc_app.features.machine_history.presentation.components
                 Location = new Point(0, yPos)
             };
             this.Controls.Add(InputProblemDetail);
-            yPos += inputHeight + spacing;
+            yPos += inputHeight + spacing ;
 
             // Cause Input
             InputCause = new AppInput 

@@ -117,7 +117,9 @@
             this.mainLayout.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.mainLayout.Location = new System.Drawing.Point(0, 80);
             this.mainLayout.Name = "mainLayout";
-            this.mainLayout.Padding = new System.Windows.Forms.Padding(20);
+            // Padding: Left, Top (Clear Header?), Right, Bottom (Clear Footer 80 + Space)
+            // Even if Dock works, extra padding is safer/nicer.
+            this.mainLayout.Padding = new System.Windows.Forms.Padding(20, 10, 20, 100);
             this.mainLayout.Size = new System.Drawing.Size(450, 420);
             this.mainLayout.TabIndex = 1;
             this.mainLayout.WrapContents = false;

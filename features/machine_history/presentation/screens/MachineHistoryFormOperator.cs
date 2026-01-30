@@ -72,7 +72,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.TopDown,
-                Padding = new Padding(30, 80, 30, 20),
+                Padding = new Padding(30, 110, 30, 20),
                 AutoScroll = true,
                 WrapContents = false
             };
@@ -160,13 +160,14 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Text = "+ Tambah Masalah Lain",
                 Width = 200,
                 Type = AppButton.ButtonType.Secondary,
-                Margin = new Padding(0, 10, 0, 20)
+                Margin = new Padding(0, 10, 0, 190)
             };
             btnAddProblem.Click += (s, e) => AddProblemInput();
             mainLayout.Controls.Add(btnAddProblem);
 
             // Spacer to prevent footer from blocking content
-            var spacer = new Panel { Height = 150, Width = 10, BackColor = Color.Transparent };
+            // Spacer to prevent footer from blocking content
+            var spacer = new Panel { Height = 40, Width = 10, BackColor = Color.Transparent };
             mainLayout.Controls.Add(spacer);
 
             // === Save Button ===

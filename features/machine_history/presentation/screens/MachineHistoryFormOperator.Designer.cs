@@ -73,7 +73,8 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.mainLayout.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.mainLayout.Location = new System.Drawing.Point(0, 80);
             this.mainLayout.Name = "mainLayout";
-            this.mainLayout.Padding = new System.Windows.Forms.Padding(20);
+            // Padding: Left, Top, Right, Bottom (100 for Safe Area)
+            this.mainLayout.Padding = new System.Windows.Forms.Padding(20, 10, 20, 100);
             this.mainLayout.Size = new System.Drawing.Size(450, 420);
             this.mainLayout.TabIndex = 1;
             this.mainLayout.WrapContents = false;
