@@ -380,6 +380,18 @@ namespace mtc_app.features.stock.presentation.screens
             await LoadDataAsync();
         }
 
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            // [OPTIMIZATION] Stop Timers
+            timerRefresh?.Stop();
+            timerRefresh?.Dispose();
+            
+            _timerNotifSound?.Stop();
+            _timerNotifSound?.Dispose();
+            
+            base.OnFormClosing(e);
+        }
+
         private async void btnReady_Click(object sender, EventArgs e)
         {
             if (gridRequests.CurrentRow?.DataBoundItem is PartRequestDto request)
