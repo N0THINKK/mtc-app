@@ -193,6 +193,16 @@ namespace mtc_app.features.admin.presentation.views
             _timerRefresh.Stop();
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _timerRefresh?.Stop();
+                _timerRefresh?.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
         private async Task LoadDataAsync()
         {
             try

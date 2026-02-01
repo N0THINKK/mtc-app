@@ -68,35 +68,11 @@ namespace mtc_app.features.admin.presentation.views
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                string sql = @" 
-                    SELECT 
-                        t.ticket_display_code AS 'Kode Tiket',
-                        ts.status_name AS 'Status',
-                        CONCAT(m.machine_type, m.machine_area, m.machine_number) AS 'Mesin',
-                        u_op.full_name AS 'Operator',
-                        u_tech.full_name AS 'Teknisi',
-                        CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
-                            CASE 
-                                WHEN f.failure_name IS NOT NULL THEN f.failure_name
-                                WHEN t.failure_remarks IS NOT NULL THEN t.failure_remarks
-                                ELSE 'Belum Diisi'
-                            END,
-                            IF(t.applicator_code IS NOT NULL, CONCAT(' (App: ', t.applicator_code, ')'), '')
-                        ) AS 'Keluhan',
-                        t.created_at AS 'Waktu Lapor',
-                        t.started_at AS 'Mulai Perbaikan',
-                        t.technician_finished_at AS 'Selesai',
-                        TIMEDIFF(t.technician_finished_at, t.created_at) AS 'Total Downtime'
-                    FROM tickets t
-                    LEFT JOIN machines m ON t.machine_id = m.machine_id
-                    LEFT JOIN users u_op ON t.operator_id = u_op.user_id
-                    LEFT JOIN users u_tech ON t.technician_id = u_tech.user_id
-                    LEFT JOIN ticket_statuses ts ON t.status_id = ts.status_id
-                    LEFT JOIN problem_types pt ON t.problem_type_id = pt.type_id
-                    LEFT JOIN failures f ON t.failure_id = f.failure_id
-                    WHERE t.created_at BETWEEN @StartDate AND @EndDate
-                    ORDER BY t.created_at DESC";
+                // [FIX] Use the standardized view for consistency and completeness (Multi-problem, etc.)
+                string sql = @"
+                    SELECT * FROM view_admin_report 
+                    WHERE `Waktu Lapor` BETWEEN @StartDate AND @EndDate
+                    ORDER BY `Waktu Lapor` DESC";
                 
                 var reader = connection.ExecuteReader(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1) });
                 
