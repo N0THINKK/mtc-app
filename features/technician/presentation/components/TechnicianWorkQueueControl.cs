@@ -278,6 +278,15 @@ namespace mtc_app.features.technician.presentation.components
         private void RenderTickets()
         {
             pnlTicketList.SuspendLayout();
+            
+            // [OPTIMIZATION] Dispose old ticket cards to free memory
+            foreach (Control ctrl in pnlTicketList.Controls)
+            {
+                if (ctrl != panelEmptyState) // Don't dispose the empty state panel
+                {
+                    ctrl.Dispose();
+                }
+            }
             pnlTicketList.Controls.Clear();
 
             var filtered = _allTickets.AsEnumerable();
