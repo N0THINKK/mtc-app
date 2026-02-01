@@ -84,6 +84,12 @@ namespace mtc_app.features.group_leader.presentation.screens
         private void RenderTickets()
         {
             flowTickets.SuspendLayout();
+            
+            // [OPTIMIZATION] Dispose old controls to prevent memory leaks
+            foreach (Control ctrl in flowTickets.Controls)
+            {
+                ctrl.Dispose();
+            }
             flowTickets.Controls.Clear();
 
             var filtered = _allTickets.AsEnumerable();
@@ -171,25 +177,39 @@ namespace mtc_app.features.group_leader.presentation.screens
             picStatusIndicator.Invalidate();
         }
 
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            timerRefresh?.Stop();
+            timerRefresh?.Dispose();
+            base.OnFormClosing(e);
+        }
+
         private void SetupEventHandlers()
         {
             // Panel Header Border
             this.panelHeader.Paint += (s, e) => {
-                e.Graphics.DrawLine(new Pen(Color.FromArgb(230, 230, 230)),
-                    0, panelHeader.Height - 1, panelHeader.Width, panelHeader.Height - 1);
+                using (var pen = new Pen(Color.FromArgb(230, 230, 230)))
+                {
+                    e.Graphics.DrawLine(pen, 0, panelHeader.Height - 1, panelHeader.Width, panelHeader.Height - 1);
+                }
             };
 
             // Panel Filters Border
             this.panelFilters.Paint += (s, e) => {
-                e.Graphics.DrawLine(new Pen(Color.FromArgb(230, 230, 230)),
-                    0, panelFilters.Height - 1, panelFilters.Width, panelFilters.Height - 1);
+                using (var pen = new Pen(Color.FromArgb(230, 230, 230)))
+                {
+                    e.Graphics.DrawLine(pen, 0, panelFilters.Height - 1, panelFilters.Width, panelFilters.Height - 1);
+                }
             };
 
             // Status Indicator Paint
             this.picStatusIndicator.Paint += (s, e) => {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 Color color = _isSystemActive ? Color.FromArgb(34, 197, 94) : Color.FromArgb(239, 68, 68);
-                e.Graphics.FillEllipse(new SolidBrush(color), 0, 0, 12, 12);
+                using (var brush = new SolidBrush(color))
+                {
+                    e.Graphics.FillEllipse(brush, 0, 0, 12, 12);
+                }
             };
 
             // Empty State Icon (Ideally use AppEmptyState here)
