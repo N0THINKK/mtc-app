@@ -20,7 +20,7 @@ namespace mtc_app.features.admin.presentation.views
 
         // User Tab Controls
         private DataGridView gridUsers;
-        private AppInput txtUsername, txtPassword, txtFullName, comboRole;
+        private AppInput txtUsername, txtPassword, txtFullName, txtNik, comboRole;
         private AppButton btnAddUser, btnUpdateUser, btnDeleteUser;
         private Dictionary<string, int> _roleNameToIdMap = new Dictionary<string, int>();
         private int? _selectedUserId = null;
@@ -78,7 +78,7 @@ namespace mtc_app.features.admin.presentation.views
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    string sql = "SELECT u.user_id, u.username, u.full_name, r.role_name FROM users u JOIN roles r ON u.role_id = r.role_id ORDER BY u.user_id";
+                    string sql = "SELECT u.user_id, u.username, u.full_name, u.nik, r.role_name FROM users u JOIN roles r ON u.role_id = r.role_id ORDER BY u.user_id";
                     gridUsers.DataSource = connection.Query(sql).ToList();
                 }
             }
@@ -103,8 +103,14 @@ namespace mtc_app.features.admin.presentation.views
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    string sql = "INSERT INTO users (username, password, full_name, role_id) VALUES (@Username, @Password, @FullName, @RoleId)";
-                    connection.Execute(sql, new { Username = txtUsername.InputValue, Password = txtPassword.InputValue, FullName = txtFullName.InputValue, RoleId = roleId });
+                    string sql = "INSERT INTO users (username, password, full_name, nik, role_id) VALUES (@Username, @Password, @FullName, @Nik, @RoleId)";
+                    connection.Execute(sql, new { 
+                        Username = txtUsername.InputValue, 
+                        Password = txtPassword.InputValue, 
+                        FullName = txtFullName.InputValue, 
+                        Nik = txtNik.InputValue,
+                        RoleId = roleId 
+                    });
                     AutoClosingMessageBox.Show("User berhasil ditambahkan!", "Sukses", 1500);
                     LoadUsers();
                 }
@@ -134,7 +140,7 @@ namespace mtc_app.features.admin.presentation.views
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    string sql = "UPDATE users SET username = @Username, full_name = @FullName, role_id = @RoleId ";
+                    string sql = "UPDATE users SET username = @Username, full_name = @FullName, nik = @Nik, role_id = @RoleId ";
                     if (!string.IsNullOrWhiteSpace(txtPassword.InputValue))
                     {
                         sql += ", password = @Password ";
@@ -144,6 +150,7 @@ namespace mtc_app.features.admin.presentation.views
                     connection.Execute(sql, new { 
                         Username = txtUsername.InputValue, 
                         FullName = txtFullName.InputValue, 
+                        Nik = txtNik.InputValue,
                         RoleId = roleId, 
                         Password = txtPassword.InputValue,
                         UserId = _selectedUserId.Value 
@@ -190,6 +197,7 @@ namespace mtc_app.features.admin.presentation.views
 
                 txtUsername.InputValue = row.Cells["username"].Value.ToString();
                 txtFullName.InputValue = row.Cells["full_name"].Value?.ToString();
+                txtNik.InputValue = row.Cells["nik"].Value?.ToString();
                 comboRole.InputValue = row.Cells["role_name"].Value.ToString();
                 txtPassword.InputValue = "";
                 
@@ -204,6 +212,7 @@ namespace mtc_app.features.admin.presentation.views
             txtUsername.InputValue = "";
             txtPassword.InputValue = "";
             txtFullName.InputValue = "";
+            txtNik.InputValue = "";
             comboRole.InputValue = "";
             btnUpdateUser.Enabled = false;
             btnDeleteUser.Enabled = false;
@@ -448,8 +457,9 @@ namespace mtc_app.features.admin.presentation.views
             var pnlUserForm = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
             var flowUser = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoSize = true };
             this.txtUsername = new AppInput { LabelText = "Username", Width = 150 };
-            this.txtPassword = new AppInput { LabelText = "Password (kosongi jika tak diubah)", Width = 200 };
+            this.txtPassword = new AppInput { LabelText = "Password (kosongi jika sama)", Width = 200 };
             this.txtFullName = new AppInput { LabelText = "Nama Lengkap", Width = 200 };
+            this.txtNik = new AppInput { LabelText = "NIK / Inisial", Width = 100 };
             this.comboRole = new AppInput { LabelText = "Role", InputType = AppInput.InputTypeEnum.Dropdown, Width = 150 };
             this.btnAddUser = new AppButton { Text = "Tambah", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5) };
             this.btnUpdateUser = new AppButton { Text = "Update", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5), Enabled = false };
@@ -457,13 +467,14 @@ namespace mtc_app.features.admin.presentation.views
             this.btnAddUser.Click += BtnAddUser_Click;
             this.btnUpdateUser.Click += BtnUpdateUser_Click;
             this.btnDeleteUser.Click += BtnDeleteUser_Click;
-            flowUser.Controls.AddRange(new Control[] { txtUsername, txtPassword, txtFullName, comboRole, btnAddUser, btnUpdateUser, btnDeleteUser });
+            flowUser.Controls.AddRange(new Control[] { txtUsername, txtPassword, txtFullName, txtNik, comboRole, btnAddUser, btnUpdateUser, btnDeleteUser });
             pnlUserForm.Controls.Add(flowUser);
             
             this.gridUsers = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = Color.White, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect, AutoGenerateColumns = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
             this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "user_id", DataPropertyName = "user_id", Visible = false });
             this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "username", HeaderText = "Username", DataPropertyName = "username" });
             this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "full_name", HeaderText = "Nama Lengkap", DataPropertyName = "full_name" });
+            this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "nik", HeaderText = "NIK/Inisial", DataPropertyName = "nik" });
             this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "role_name", HeaderText = "Role", DataPropertyName = "role_name" });
             
             this.gridUsers.CellClick += GridUsers_CellClick;
