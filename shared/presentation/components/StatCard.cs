@@ -77,14 +77,14 @@ namespace mtc_app.shared.presentation.components
             // Main Control
             // 
             this.BackColor = Color.White;
-            this.Size = new Size(290, 100);
+            this.Size = new Size(290, 110);  // Increased height for larger fonts
             this.Padding = new Padding(0);
 
             // 
             // Icon
             // 
             this.iconBox.Size = new Size(48, 48);
-            this.iconBox.Location = new Point(20, 26);
+            this.iconBox.Location = new Point(AppDimens.PaddingLarge, 26);
             this.iconBox.BackColor = Color.Transparent;
             this.iconBox.Paint += IconBox_Paint;
 
@@ -93,7 +93,7 @@ namespace mtc_app.shared.presentation.components
             // 
             this.lblValue.Font = AppFonts.MetricMedium;
             this.lblValue.ForeColor = AppColors.TextPrimary;
-            this.lblValue.Location = new Point(85, 20);
+            this.lblValue.Location = new Point(85, 15);  // Move up slightly
             this.lblValue.AutoSize = true;
             this.lblValue.Text = "0";
 
@@ -102,7 +102,7 @@ namespace mtc_app.shared.presentation.components
             // 
             this.lblTitle.Font = AppFonts.BodySmall;
             this.lblTitle.ForeColor = AppColors.TextSecondary;
-            this.lblTitle.Location = new Point(85, 58);
+            this.lblTitle.Location = new Point(85, 65);  // Moved down for larger text
             this.lblTitle.AutoSize = true;
             this.lblTitle.Text = "Stat Title";
 

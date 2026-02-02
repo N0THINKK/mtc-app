@@ -63,7 +63,7 @@ namespace mtc_app.features.rating.presentation.screens
             mainLayout.Dock = DockStyle.Fill;
             mainLayout.FlowDirection = FlowDirection.TopDown;
             mainLayout.WrapContents = false;
-            mainLayout.Padding = new Padding(20);
+            mainLayout.Padding = new Padding(AppDimens.MarginLarge);
             mainLayout.AutoScroll = true;
             this.Controls.Add(mainLayout);
 
@@ -73,7 +73,7 @@ namespace mtc_app.features.rating.presentation.screens
                 Text = "Validasi & Rating Perbaikan", 
                 Type = AppLabel.LabelType.Header2,
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, 20)
+                Margin = new Padding(0, 0, 0, AppDimens.MarginLarge)
             });
 
             // 1. General Info
@@ -101,12 +101,12 @@ namespace mtc_app.features.rating.presentation.screens
                 Text = "Rating Operator:", 
                 Type = AppLabel.LabelType.Subtitle,
                 AutoSize = true,
-                Margin = new Padding(0, 5, 0, 2)
+                Margin = new Padding(0, AppDimens.MarginSmall, 0, AppDimens.MarginXS)
             });
 
             var techRating = new AppStarRating { IsReadOnly = true };
             _techRatingControl = techRating; // Store ref to populate later
-            techRating.Margin = new Padding(0, 0, 0, 10);
+            techRating.Margin = new Padding(0, 0, 0, AppDimens.GapStandard);
             mainLayout.Controls.Add(techRating);
 
             // Tech Note
@@ -114,7 +114,7 @@ namespace mtc_app.features.rating.presentation.screens
             { 
                 Text = "Catatan:", 
                 Type = AppLabel.LabelType.BodySmall, 
-                Margin = new Padding(0, 0, 0, 2)
+                Margin = new Padding(0, 0, 0, AppDimens.MarginXS)
             });
 
             _lblTechNote = new AppLabel 
@@ -123,7 +123,7 @@ namespace mtc_app.features.rating.presentation.screens
                 Type = AppLabel.LabelType.Body, 
                 AutoSize = true,
                 MaximumSize = new Size(440, 0),
-                Margin = new Padding(0, 0, 0, 20)
+                Margin = new Padding(0, 0, 0, AppDimens.MarginLarge)
             };
             mainLayout.Controls.Add(_lblTechNote);
 
@@ -140,7 +140,7 @@ namespace mtc_app.features.rating.presentation.screens
 
             _starRating = new AppStarRating();
             _starRating.Rating = 5; // Default
-            _starRating.Margin = new Padding(0, 0, 0, 15);
+            _starRating.Margin = new Padding(0, 0, 0, AppDimens.PaddingStandard);
             mainLayout.Controls.Add(_starRating);
 
             _inputNote = new AppInput
@@ -149,7 +149,7 @@ namespace mtc_app.features.rating.presentation.screens
                 InputType = AppInput.InputTypeEnum.Text,
                 Multiline = true,
                 Width = 440,
-                Margin = new Padding(0, 0, 0, 20)
+                Margin = new Padding(0, 0, 0, AppDimens.MarginLarge)
             };
             mainLayout.Controls.Add(_inputNote);
 
@@ -159,8 +159,8 @@ namespace mtc_app.features.rating.presentation.screens
                 Text = "Validasi Selesai",
                 Type = AppButton.ButtonType.Primary,
                 Width = 440,
-                Height = 45,
-                Margin = new Padding(0, 10, 0, 20)
+                Height = AppDimens.InputHeight,
+                Margin = new Padding(0, AppDimens.GapStandard, 0, AppDimens.MarginLarge)
             };
             _btnSubmit.Click += async (s, e) => await BtnSubmit_ClickAsync(s, e);
             mainLayout.Controls.Add(_btnSubmit);
@@ -173,7 +173,7 @@ namespace mtc_app.features.rating.presentation.screens
                 Text = text, 
                 Type = AppLabel.LabelType.Title,
                 AutoSize = true,
-                Margin = new Padding(0, 10, 0, 10)
+                Margin = new Padding(0, AppDimens.GapStandard, 0, AppDimens.GapStandard)
             });
             
             // Divider
@@ -182,7 +182,7 @@ namespace mtc_app.features.rating.presentation.screens
                 Height = 1,
                 Width = 440,
                 BackColor = AppColors.Separator,
-                Margin = new Padding(0, 0, 0, 10)
+                Margin = new Padding(0, 0, 0, AppDimens.GapStandard)
             };
             parent.Controls.Add(divider);
         }
@@ -195,7 +195,7 @@ namespace mtc_app.features.rating.presentation.screens
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
                 Width = 440,
-                Margin = new Padding(0, 0, 0, 5)
+                Margin = new Padding(0, 0, 0, AppDimens.MarginSmall)
             };
 
             row.Controls.Add(new AppLabel 

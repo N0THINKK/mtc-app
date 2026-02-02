@@ -55,9 +55,9 @@ namespace mtc_app.features.technician.presentation.screens
             var pnlToolbar = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 80,
+                Height = AppDimens.HeaderHeight,
                 BackColor = Color.White,
-                Padding = new Padding(10)
+                Padding = new Padding(AppDimens.PaddingSmall)
             };
             // Add Toolbar BEFORE Tabs so it docks to top
             this.Controls.Add(pnlToolbar);
@@ -87,13 +87,13 @@ namespace mtc_app.features.technician.presentation.screens
                 Anchor = AnchorStyles.Top | AnchorStyles.Left
             };
 
-            var lblFrom = new Label { Text = "Periode:", AutoSize = true, Margin = new Padding(0, 5, 5, 0), Font = AppFonts.Title };
+            var lblFrom = new Label { Text = "Periode:", AutoSize = true, Margin = new Padding(0, AppDimens.MarginSmall, AppDimens.MarginSmall, 0), Font = AppFonts.Title };
             
             // [UI-FIX] Default start date = 1st of current month
             DateTime firstDayOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
             dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 140, Font = AppFonts.Title, Value = firstDayOfMonth };
             
-            var lblTo = new Label { Text = "-", AutoSize = true, Margin = new Padding(5, 5, 5, 0), Font = AppFonts.Title };
+            var lblTo = new Label { Text = "-", AutoSize = true, Margin = new Padding(AppDimens.MarginSmall, AppDimens.MarginSmall, AppDimens.MarginSmall, 0), Font = AppFonts.Title };
             dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 140, Font = AppFonts.Title, Value = DateTime.Now };
 
             btnFilter = new Button 
@@ -105,7 +105,7 @@ namespace mtc_app.features.technician.presentation.screens
                 FlatStyle = FlatStyle.Flat,
                 Font = AppFonts.Button,
                 Cursor = Cursors.Hand,
-                Margin = new Padding(10, 0, 0, 0)
+                Margin = new Padding(AppDimens.GapStandard, 0, 0, 0)
             };
             btnFilter.FlatAppearance.BorderSize = 0;
             btnFilter.Click += (s, e) => LoadCurrentTabData();
@@ -148,14 +148,14 @@ namespace mtc_app.features.technician.presentation.screens
             { 
                 Text = "Interval (s):", 
                 AutoSize = true, 
-                Location = new Point(parent.Width - 390, 22), 
+                Location = new Point(parent.Width - 420, 22),  // Moved left for larger font
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Font = AppFonts.Body
             };
 
             nudInterval = new NumericUpDown
             {
-                Location = new Point(parent.Width - 300, 20),
+                Location = new Point(parent.Width - 310, 20),  // Adjusted for label spacing
                 Size = new Size(60, 28),
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Minimum = 5,
@@ -168,7 +168,7 @@ namespace mtc_app.features.technician.presentation.screens
             {
                 Text = "Set",
                 Size = new Size(50, 30),
-                Location = new Point(parent.Width - 230, 19),
+                Location = new Point(parent.Width - 240, 19),  // Adjusted for input spacing
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 BackColor = AppColors.Primary,
                 ForeColor = Color.White,

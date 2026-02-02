@@ -60,7 +60,7 @@ namespace mtc_app.features.technician.presentation.components
             this.AutoSize = true;
             this.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             this.Margin = new Padding(0);
-            this.Padding = new Padding(0, 0, 0, 10); // Spacing between cards
+            this.Padding = new Padding(0, 0, 0, AppDimens.GapStandard); // Spacing between cards
             this.Dock = DockStyle.Top;
 
             // 
@@ -84,7 +84,7 @@ namespace mtc_app.features.technician.presentation.components
             this.layoutTable.ColumnCount = 7;
             this.layoutTable.RowCount = 1;
             this.layoutTable.Dock = DockStyle.Top;
-            this.layoutTable.Padding = new Padding(15, 15, 15, 15); // Bigger padding
+            this.layoutTable.Padding = new Padding(AppDimens.PaddingStandard); // Bigger padding
             this.layoutTable.AutoSize = true;
             this.layoutTable.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             
@@ -116,7 +116,7 @@ namespace mtc_app.features.technician.presentation.components
             this.lblMachineName.ForeColor = AppColors.TextPrimary;
             this.lblMachineName.AutoSize = true;
             this.lblMachineName.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            this.lblMachineName.Margin = new Padding(0, 0, 20, 0); // Spacing
+            this.lblMachineName.Margin = new Padding(0, 0, AppDimens.MarginLarge, 0); // Spacing
             this.layoutTable.Controls.Add(this.lblMachineName, 1, 0);
 
             // 3. Technician Name
@@ -124,7 +124,7 @@ namespace mtc_app.features.technician.presentation.components
             this.lblTechnicianName.ForeColor = AppColors.TextPrimary; // Darker
             this.lblTechnicianName.AutoSize = true;
             this.lblTechnicianName.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            this.lblTechnicianName.Margin = new Padding(0, 0, 20, 0);
+            this.lblTechnicianName.Margin = new Padding(0, 0, AppDimens.MarginLarge, 0);
             this.layoutTable.Controls.Add(this.lblTechnicianName, 2, 0);
 
             // 4. Problem (Truncated if too long, fills middle)
@@ -132,14 +132,14 @@ namespace mtc_app.features.technician.presentation.components
             this.lblProblem.ForeColor = AppColors.TextSecondary;
             this.lblProblem.AutoSize = true;
             this.lblProblem.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            this.lblProblem.Margin = new Padding(0, 0, 20, 0);
+            this.lblProblem.Margin = new Padding(0, 0, AppDimens.MarginLarge, 0);
             this.layoutTable.Controls.Add(this.lblProblem, 3, 0);
 
             // 5. Star Rating
             this.starRating.IsReadOnly = true;
             this.starRating.Visible = false;
             this.starRating.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            this.starRating.Margin = new Padding(0, 0, 20, 0);
+            this.starRating.Margin = new Padding(0, 0, AppDimens.MarginLarge, 0);
             this.layoutTable.Controls.Add(this.starRating, 4, 0);
 
             // 6. Time (Icon + Text)
@@ -150,7 +150,7 @@ namespace mtc_app.features.technician.presentation.components
             
             this.lblTime.Font = AppFonts.Title;
             this.lblTime.ForeColor = AppColors.Danger;
-            this.lblTime.Location = new Point(20, 0);
+            this.lblTime.Location = new Point(AppDimens.MarginLarge, 0);
             this.lblTime.AutoSize = true;
             
             pnlTime.Controls.Add(this.iconClock);
@@ -160,7 +160,7 @@ namespace mtc_app.features.technician.presentation.components
             // 7. Status Badge
             this.lblStatusBadge.Font = AppFonts.Subtitle;
             this.lblStatusBadge.AutoSize = true;
-            this.lblStatusBadge.Padding = new Padding(15, 8, 15, 8); // Bigger badge
+            this.lblStatusBadge.Padding = new Padding(AppDimens.PaddingStandard, AppDimens.PaddingSmall, AppDimens.PaddingStandard, AppDimens.PaddingSmall); // Bigger badge
             this.lblStatusBadge.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             this.lblStatusBadge.TextAlign = ContentAlignment.MiddleCenter;
             // Set rounded corners? Standard label doesn't support it easily without paint, 

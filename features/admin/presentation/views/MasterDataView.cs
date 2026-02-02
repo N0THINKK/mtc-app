@@ -454,16 +454,16 @@ namespace mtc_app.features.admin.presentation.views
             this.Controls.Add(tabControl);
 
             // --- TAB 1: USERS ---
-            var pnlUserForm = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
+            var pnlUserForm = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(AppDimens.PaddingSmall) };
             var flowUser = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoSize = true };
             this.txtUsername = new AppInput { LabelText = "Username", Width = 150 };
             this.txtPassword = new AppInput { LabelText = "Password (kosongi jika sama)", Width = 200 };
             this.txtFullName = new AppInput { LabelText = "Nama Lengkap", Width = 200 };
             this.txtNik = new AppInput { LabelText = "NIK / Inisial", Width = 100 };
             this.comboRole = new AppInput { LabelText = "Role", InputType = AppInput.InputTypeEnum.Dropdown, Width = 150 };
-            this.btnAddUser = new AppButton { Text = "Tambah", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5) };
-            this.btnUpdateUser = new AppButton { Text = "Update", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5), Enabled = false };
-            this.btnDeleteUser = new AppButton { Text = "Hapus", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5), Enabled = false, Type = AppButton.ButtonType.Danger };
+            this.btnAddUser = new AppButton { Text = "Tambah", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall) };
+            this.btnUpdateUser = new AppButton { Text = "Update", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall), Enabled = false };
+            this.btnDeleteUser = new AppButton { Text = "Hapus", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall), Enabled = false, Type = AppButton.ButtonType.Danger };
             this.btnAddUser.Click += BtnAddUser_Click;
             this.btnUpdateUser.Click += BtnUpdateUser_Click;
             this.btnDeleteUser.Click += BtnDeleteUser_Click;
@@ -478,21 +478,21 @@ namespace mtc_app.features.admin.presentation.views
             this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "role_name", HeaderText = "Role", DataPropertyName = "role_name" });
             
             this.gridUsers.CellClick += GridUsers_CellClick;
-            var pnlGridUser = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
+            var pnlGridUser = new Panel { Dock = DockStyle.Fill, Padding = new Padding(AppDimens.PaddingSmall) };
             pnlGridUser.Controls.Add(gridUsers);
             this.tabUsers.Controls.AddRange(new Control[] { pnlGridUser, pnlUserForm });
 
             // --- TAB 2: MACHINES ---
-            var pnlMachineForm = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
+            var pnlMachineForm = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(AppDimens.PaddingSmall) };
             var flowMachine = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
             this.txtMachineCode = new AppInput { LabelText = "Kode Mesin", Width = 150 }; // Keeping UI input name for compatibility
             this.txtMachineType = new AppInput { LabelText = "Tipe Mesin", Width = 150 };
             this.txtMachineArea = new AppInput { LabelText = "Area", Width = 100 };
             this.txtMachineNumber = new AppInput { LabelText = "No. Mesin", Width = 100 };
             // txtLocation removed
-            this.btnAddMachine = new AppButton { Text = "Tambah", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5) };
-            this.btnUpdateMachine = new AppButton { Text = "Update", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5), Enabled = false };
-            this.btnDeleteMachine = new AppButton { Text = "Hapus", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5), Enabled = false, Type = AppButton.ButtonType.Danger };
+            this.btnAddMachine = new AppButton { Text = "Tambah", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall) };
+            this.btnUpdateMachine = new AppButton { Text = "Update", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall), Enabled = false };
+            this.btnDeleteMachine = new AppButton { Text = "Hapus", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall), Enabled = false, Type = AppButton.ButtonType.Danger };
             this.btnAddMachine.Click += BtnAddMachine_Click;
             this.btnUpdateMachine.Click += BtnUpdateMachine_Click;
             this.btnDeleteMachine.Click += BtnDeleteMachine_Click;
@@ -508,17 +508,17 @@ namespace mtc_app.features.admin.presentation.views
             // Location column removed
             
             this.gridMachines.CellClick += GridMachines_CellClick;
-            var pnlGridMachine = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
+            var pnlGridMachine = new Panel { Dock = DockStyle.Fill, Padding = new Padding(AppDimens.PaddingSmall) };
             pnlGridMachine.Controls.Add(gridMachines);
             this.tabMachines.Controls.AddRange(new Control[] { pnlGridMachine, pnlMachineForm });
             
             // --- TAB 3: FAILURES ---
-            var pnlFailureForm = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
+            var pnlFailureForm = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(AppDimens.PaddingSmall) };
             var flowFailure = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
             this.txtFailureName = new AppInput { LabelText = "Nama Masalah", Width = 300 };
-            this.btnAddFailure = new AppButton { Text = "Tambah", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5) };
-            this.btnUpdateFailure = new AppButton { Text = "Update", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5), Enabled = false };
-            this.btnDeleteFailure = new AppButton { Text = "Hapus", Width = 90, Height = 40, Margin = new Padding(5, 35, 5, 5), Enabled = false, Type = AppButton.ButtonType.Danger };
+            this.btnAddFailure = new AppButton { Text = "Tambah", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall) };
+            this.btnUpdateFailure = new AppButton { Text = "Update", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall), Enabled = false };
+            this.btnDeleteFailure = new AppButton { Text = "Hapus", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall), Enabled = false, Type = AppButton.ButtonType.Danger };
             this.btnAddFailure.Click += BtnAddFailure_Click;
             this.btnUpdateFailure.Click += BtnUpdateFailure_Click;
             this.btnDeleteFailure.Click += BtnDeleteFailure_Click;

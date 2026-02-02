@@ -68,7 +68,7 @@ namespace mtc_app.features.stock.presentation.components
 
             // Main panel settings - modern flat design
             this.BackColor = Color.White;
-            this.Size = new Size(300, 140);
+            this.Size = new Size(300, 160);  // Increased height for larger fonts
             this.Padding = new Padding(0);
             this.BorderStyle = BorderStyle.None;
 
@@ -97,8 +97,8 @@ namespace mtc_app.features.stock.presentation.components
                 AutoSize = false,
                 Font = AppFonts.MetricLarge,
                 ForeColor = AppColors.TextPrimary,
-                Location = new Point(18, 50),
-                Size = new Size(260, 60),
+                Location = new Point(18, 55),
+                Size = new Size(260, 65),  // Taller for larger font
                 Text = "0"
             };
 
@@ -108,7 +108,7 @@ namespace mtc_app.features.stock.presentation.components
                 AutoSize = false,
                 Font = AppFonts.BodySmall,
                 ForeColor = AppColors.TextSecondary,
-                Location = new Point(20, 110),
+                Location = new Point(20, 125),  // Moved down for taller card
                 Size = new Size(260, 25),
                 Text = "",
                 Visible = false

@@ -76,9 +76,9 @@ namespace mtc_app.features.technician.presentation.components
             panelHeader = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 120,
+                Height = AppDimens.HeaderHeightLarge,
                 BackColor = Color.White,
-                Padding = new Padding(30, 20, 30, 20)
+                Padding = new Padding(AppDimens.SpacingXL, AppDimens.MarginLarge, AppDimens.SpacingXL, AppDimens.MarginLarge)
             };
 
             // [UI-UPGRADE] Replace Label with Stats Control
@@ -98,7 +98,7 @@ namespace mtc_app.features.technician.presentation.components
                 Dock = DockStyle.Top,
                 Height = 60,
                 BackColor = Color.FromArgb(240, 253, 244),
-                Padding = new Padding(30, 0, 30, 0)
+                Padding = new Padding(AppDimens.SpacingXL, 0, AppDimens.SpacingXL, 0)
             };
 
             picStatusIndicator = new PictureBox
@@ -184,7 +184,7 @@ namespace mtc_app.features.technician.presentation.components
             {
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
-                Padding = new Padding(20),
+                Padding = new Padding(AppDimens.MarginLarge),
                 BackColor = Color.FromArgb(248, 250, 252)
             };
 

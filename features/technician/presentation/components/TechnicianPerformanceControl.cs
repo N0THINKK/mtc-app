@@ -85,7 +85,7 @@ namespace mtc_app.features.technician.presentation.components
                 Dock = DockStyle.Fill,
                 AutoSize = true,
                 BackColor = Color.White,
-                Padding = new Padding(20, 15, 20, 15)
+                Padding = new Padding(AppDimens.MarginLarge, AppDimens.PaddingStandard, AppDimens.MarginLarge, AppDimens.PaddingStandard)
             };
             headerPanel.Paint += (s, e) =>
             {
@@ -181,7 +181,7 @@ namespace mtc_app.features.technician.presentation.components
             {
                 Dock = DockStyle.Fill,
                 BackColor = Color.White,
-                Padding = new Padding(20)
+                Padding = new Padding(AppDimens.MarginLarge)
             };
             chartPanel.Paint += ChartPanel_Paint;
 
