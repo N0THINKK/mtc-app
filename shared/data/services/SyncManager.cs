@@ -1,0 +1,273 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Dapper;
+using mtc_app;
+using mtc_app.shared.data.local;
+
+namespace mtc_app.shared.data.services
+{
+    /// <summary>
+    /// Manages synchronization of offline queue items to the main database.
+    /// Listens to NetworkMonitor and processes queue when online.
+    /// </summary>
+    public class SyncManager : IDisposable
+    {
+        private readonly OfflineRepository _offlineRepo;
+        private readonly NetworkMonitor _networkMonitor;
+        private readonly Timer _syncTimer;
+        private readonly int _syncIntervalMs;
+        private bool _isSyncing;
+        private bool _disposed;
+
+        /// <summary>
+        /// Fired when sync status changes.
+        /// </summary>
+        public event EventHandler<SyncStatusEventArgs> OnSyncStatusChanged;
+
+        /// <summary>
+        /// Gets remaining items in queue.
+        /// </summary>
+        public int PendingCount => _offlineRepo.GetQueueCount();
+
+        /// <summary>
+        /// Creates a new SyncManager.
+        /// </summary>
+        /// <param name="offlineRepo">The offline repository instance.</param>
+        /// <param name="networkMonitor">The network monitor instance.</param>
+        /// <param name="syncIntervalMs">Interval between sync attempts (default: 30s)</param>
+        public SyncManager(OfflineRepository offlineRepo, NetworkMonitor networkMonitor, int syncIntervalMs = 30000)
+        {
+            _offlineRepo = offlineRepo;
+            _networkMonitor = networkMonitor;
+            _syncIntervalMs = syncIntervalMs;
+            _isSyncing = false;
+
+            // Subscribe to network status changes
+            _networkMonitor.OnStatusChanged += OnNetworkStatusChanged;
+
+            // Start periodic sync timer
+            _syncTimer = new Timer(TrySyncAsync, null, syncIntervalMs, syncIntervalMs);
+        }
+
+        private void OnNetworkStatusChanged(object sender, NetworkStatusEventArgs e)
+        {
+            if (e.IsOnline)
+            {
+                // Network came back online - trigger immediate sync
+                TrySyncAsync(null);
+            }
+        }
+
+        private void TrySyncAsync(object state)
+        {
+            // Prevent concurrent sync operations
+            if (_isSyncing || !_networkMonitor.IsOnline)
+                return;
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    _isSyncing = true;
+                    ProcessQueue();
+                }
+                finally
+                {
+                    _isSyncing = false;
+                }
+            });
+        }
+
+        private void ProcessQueue()
+        {
+            var items = _offlineRepo.GetPendingItems();
+            if (items.Count == 0)
+                return;
+
+            OnSyncStatusChanged?.Invoke(this, new SyncStatusEventArgs(
+                SyncStatus.Syncing, 
+                $"Syncing {items.Count} pending items..."
+            ));
+
+            int successCount = 0;
+            int failCount = 0;
+
+            foreach (var item in items)
+            {
+                try
+                {
+                    // TODO: Wire real sync logic here
+                    // For now, just log and mark as processed
+                    bool success = ProcessSyncItem(item);
+
+                    if (success)
+                    {
+                        _offlineRepo.RemoveFromQueue(item.Id);
+                        successCount++;
+                    }
+                    else
+                    {
+                        _offlineRepo.IncrementRetryCount(item.Id);
+                        failCount++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[SyncManager] Error processing item {item.Id}: {ex.Message}");
+                    _offlineRepo.IncrementRetryCount(item.Id);
+                    failCount++;
+                }
+            }
+
+            var remaining = _offlineRepo.GetQueueCount();
+            var status = remaining == 0 ? SyncStatus.Complete : SyncStatus.PartialComplete;
+            OnSyncStatusChanged?.Invoke(this, new SyncStatusEventArgs(
+                status,
+                $"Synced: {successCount}, Failed: {failCount}, Remaining: {remaining}"
+            ));
+        }
+
+        /// <summary>
+        /// Processes a single sync item by dispatching to appropriate handler.
+        /// </summary>
+        protected virtual bool ProcessSyncItem(SyncQueueItem item)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[SyncManager] Processing: {item.ActionType} on {item.TableName} (ID: {item.Id})"
+            );
+
+            try
+            {
+                // Dispatch based on table and action
+                switch (item.TableName)
+                {
+                    case "tickets":
+                        return ProcessTicketSync(item);
+                    
+                    case "part_requests":
+                        return ProcessPartRequestSync(item);
+                    
+                    default:
+                        System.Diagnostics.Debug.WriteLine($"[SyncManager] Unknown table: {item.TableName}");
+                        return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SyncManager] Sync error: {ex.Message}");
+                return false;
+            }
+        }
+
+        private bool ProcessTicketSync(SyncQueueItem item)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                // Determine payload type and execute appropriate SQL
+                var json = Newtonsoft.Json.Linq.JObject.Parse(item.PayloadJson);
+                
+                // Check if it's a ValidateTicketPayload (has TicketId as GUID and Rating)
+                if (json.ContainsKey("TicketId") && json.ContainsKey("Rating"))
+                {
+                    var ticketId = json["TicketId"].ToString();
+                    var rating = json["Rating"].ToObject<int>();
+                    var note = json["Note"]?.ToString();
+
+                    string sql = @"
+                        UPDATE tickets 
+                        SET gl_rating_score = @Rating, 
+                            gl_rating_note = @Note,
+                            gl_validated_at = NOW(),
+                            status_id = 3
+                        WHERE ticket_uuid = @TicketId";
+
+                    var affected = connection.Execute(sql, new { TicketId = ticketId, Rating = rating, Note = note });
+                    return affected > 0;
+                }
+                // Check if it's a RatingDto (has Score instead of Rating)
+                else if (json.ContainsKey("TicketId") && json.ContainsKey("Score"))
+                {
+                    var ticketId = json["TicketId"].ToObject<long>();
+                    var score = json["Score"].ToObject<int>();
+                    var comment = json["Comment"]?.ToString();
+
+                    string sql = @"
+                        UPDATE tickets 
+                        SET tech_rating_score = @Score, 
+                            tech_rating_note = @Comment
+                        WHERE ticket_id = @TicketId";
+
+                    var affected = connection.Execute(sql, new { TicketId = ticketId, Score = score, Comment = comment });
+                    return affected > 0;
+                }
+
+                return false;
+            }
+        }
+
+        private bool ProcessPartRequestSync(SyncQueueItem item)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                var json = Newtonsoft.Json.Linq.JObject.Parse(item.PayloadJson);
+                
+                if (json.ContainsKey("RequestId"))
+                {
+                    var requestId = json["RequestId"].ToObject<int>();
+
+                    string sql = @"
+                        UPDATE part_requests 
+                        SET status_id = 2, ready_at = NOW() 
+                        WHERE request_id = @Id";
+
+                    var affected = connection.Execute(sql, new { Id = requestId });
+                    return affected > 0;
+                }
+
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Forces an immediate sync attempt.
+        /// </summary>
+        public void SyncNow()
+        {
+            TrySyncAsync(null);
+        }
+
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                _disposed = true;
+                _networkMonitor.OnStatusChanged -= OnNetworkStatusChanged;
+                _syncTimer?.Dispose();
+            }
+        }
+    }
+
+    public enum SyncStatus
+    {
+        Idle,
+        Syncing,
+        Complete,
+        PartialComplete,
+        Failed
+    }
+
+    public class SyncStatusEventArgs : EventArgs
+    {
+        public SyncStatus Status { get; }
+        public string Message { get; }
+        public DateTime Timestamp { get; }
+
+        public SyncStatusEventArgs(SyncStatus status, string message)
+        {
+            Status = status;
+            Message = message;
+            Timestamp = DateTime.Now;
+        }
+    }
+}
