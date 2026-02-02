@@ -31,10 +31,10 @@ namespace mtc_app.features.technician.presentation.components
         {
             this.Dock = DockStyle.Fill;
             this.BackColor = Color.White;
-            this.Padding = new Padding(20);
+            this.Padding = new Padding(AppDimens.MarginLarge);
 
             // 1. Header Layout
-            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = 50 };
+            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = AppDimens.RowHeight };
             
             var lblTitle = new Label 
             { 

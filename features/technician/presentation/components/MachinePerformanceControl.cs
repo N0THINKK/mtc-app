@@ -95,9 +95,9 @@ namespace mtc_app.features.technician.presentation.components
             headerPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Height = 80, 
+                Height = AppDimens.HeaderHeight, 
                 BackColor = Color.White,
-                Padding = new Padding(20)
+                Padding = new Padding(AppDimens.MarginLarge)
             };
             
             lblTitle = new Label
@@ -139,7 +139,7 @@ namespace mtc_app.features.technician.presentation.components
             {
                 Dock = DockStyle.Fill,
                 BackColor = Color.White,
-                Padding = new Padding(20),
+                Padding = new Padding(AppDimens.MarginLarge),
                 AutoScroll = true 
             };
             chartPanel.Paint += ChartPanel_Paint;
@@ -192,7 +192,7 @@ namespace mtc_app.features.technician.presentation.components
             int labelWidth = 150; // Machine Name width
             int chartLeft = labelWidth + padding;
             int chartWidth = chartPanel.Width - chartLeft - padding - 120; // Increased right padding for Total Text
-            int rowHeight = 50;
+            int rowHeight = AppDimens.RowHeight;
 
             // Calculate Max Total Downtime for scaling
             double maxDowntime = _data.Max(m => m.TotalDowntimeSeconds);

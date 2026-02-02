@@ -3,13 +3,14 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using mtc_app.shared.presentation.styles;
 using mtc_app.shared.presentation.utils;
 
 namespace mtc_app.shared.presentation.components
 {
     public class AppCard : Panel
     {
-        private int _cornerRadius = 8;
+        private int _cornerRadius = AppDimens.CardCornerRadius;
         private bool _showShadow = false;
         private Color _borderColor = Color.FromArgb(230, 230, 230);
 
@@ -38,7 +39,7 @@ namespace mtc_app.shared.presentation.components
         {
             this.SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.ResizeRedraw, true);
             this.BackColor = Color.White;
-            this.Padding = new Padding(10);
+            this.Padding = new Padding(AppDimens.PaddingStandard);
         }
 
         protected override void OnPaint(PaintEventArgs e)

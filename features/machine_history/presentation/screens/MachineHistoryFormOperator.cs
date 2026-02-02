@@ -72,7 +72,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.TopDown,
-                Padding = new Padding(30, 110, 30, 20),
+                Padding = new Padding(30, 20, 30, 20),  // Normal padding, docking handles footer
                 AutoScroll = true,
                 WrapContents = false
             };
@@ -98,11 +98,15 @@ namespace mtc_app.features.machine_history.presentation.screens
             _historyControl.BringToFront();
             tabControl.TabPages.Add(tabHistory);
 
-            // Add TabControl to form
-            this.Controls.Add(tabControl);
+            // Remove all docked controls to rebuild z-order correctly
+            this.Controls.Remove(panelHeader);
+            this.Controls.Remove(panelFooter);
             
-            // Proper Z-Order: Tab control fills middle, header/footer stay on top
-            tabControl.SendToBack();
+            // Add in correct order: Fill control first, then docked edges
+            // In WinForms, controls added LATER have priority for docking
+            this.Controls.Add(tabControl);    // Fill - lowest priority
+            this.Controls.Add(panelFooter);   // Bottom - medium priority  
+            this.Controls.Add(panelHeader);   // Top - highest priority (docks first)
         }
 
         private void HandleKeyDown(object sender, KeyEventArgs e)
@@ -160,7 +164,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Text = "+ Tambah Masalah Lain",
                 Width = 200,
                 Type = AppButton.ButtonType.Secondary,
-                Margin = new Padding(0, 10, 0, 190)
+                Margin = new Padding(0, 10, 0, 20)  // Normal margin, layout padding handles footer
             };
             btnAddProblem.Click += (s, e) => AddProblemInput();
             mainLayout.Controls.Add(btnAddProblem);
