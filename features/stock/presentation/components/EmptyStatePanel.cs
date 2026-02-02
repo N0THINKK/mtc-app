@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.stock.presentation.components
 {
@@ -55,7 +56,7 @@ namespace mtc_app.features.stock.presentation.components
             lblTitle = new Label
             {
                 AutoSize = true,
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                Font = AppFonts.Header3,
                 ForeColor = Color.FromArgb(108, 117, 125),
                 Text = "No Pending Requests",
                 TextAlign = ContentAlignment.MiddleCenter
@@ -65,7 +66,7 @@ namespace mtc_app.features.stock.presentation.components
             lblDescription = new Label
             {
                 AutoSize = true,
-                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                Font = AppFonts.BodySmall,
                 ForeColor = Color.FromArgb(173, 181, 189),
                 Text = "All requests have been processed. The system is working correctly.",
                 TextAlign = ContentAlignment.MiddleCenter,

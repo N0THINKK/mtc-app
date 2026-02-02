@@ -33,7 +33,7 @@ namespace mtc_app.features.stock.presentation.components
             lblTitle = new AppLabel
             {
                 Text = "⚠️ ADA REQUEST BARU!",
-                Font = new Font("Segoe UI", 18F, FontStyle.Bold),
+                Font = AppFonts.Header2,
                 ForeColor = AppColors.Danger,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Dock = DockStyle.Top,
@@ -55,7 +55,7 @@ namespace mtc_app.features.stock.presentation.components
                 Text = "SIAP LAKSANAKAN (OK)",
                 Dock = DockStyle.Fill,
                 Type = AppButton.ButtonType.Primary,
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold)
+                Font = AppFonts.Header3
             };
             btnOk.Click += (s, e) => this.Close();
             pnlBottom.Controls.Add(btnOk);
@@ -64,7 +64,7 @@ namespace mtc_app.features.stock.presentation.components
             lblMessage = new AppLabel
             {
                 Text = "-",
-                Font = new Font("Segoe UI", 24F, FontStyle.Regular), // Huge Font
+                Font = AppFonts.MetricMedium, // Huge Font
                 ForeColor = AppColors.TextPrimary,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Dock = DockStyle.Fill

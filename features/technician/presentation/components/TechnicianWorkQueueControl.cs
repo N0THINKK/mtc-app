@@ -117,7 +117,7 @@ namespace mtc_app.features.technician.presentation.components
             lblSystemStatus = new Label
             {
                 Text = "Sistem Aktif",
-                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                Font = AppFonts.Subtitle,
                 ForeColor = Color.FromArgb(21, 128, 61),
                 Location = new Point(50, 20),
                 AutoSize = true
@@ -126,7 +126,7 @@ namespace mtc_app.features.technician.presentation.components
             lblLastUpdate = new Label
             {
                 Text = "Terakhir diperbarui: -",
-                Font = new Font("Segoe UI", 10F),
+                Font = AppFonts.BodySmall,
                 ForeColor = Color.FromArgb(100, 116, 139),
                 Location = new Point(180, 21),
                 AutoSize = true
@@ -144,24 +144,24 @@ namespace mtc_app.features.technician.presentation.components
                 BackColor = Color.White
             };
 
-            var lblFilterStatus = new Label { Text = "Filter:", Location = new Point(30, 25), AutoSize = true, Font = new Font("Segoe UI", 11F) };
+            var lblFilterStatus = new Label { Text = "Filter:", Location = new Point(30, 25), AutoSize = true, Font = AppFonts.Body };
             cmbFilterStatus = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Location = new Point(80, 22),
                 Size = new Size(160, 28),
-                Font = new Font("Segoe UI", 11F)
+                Font = AppFonts.Body
             };
             cmbFilterStatus.Items.AddRange(new object[] { "Semua", "Belum Ditangani", "Sedang Diperbaiki", "Selesai" });
             cmbFilterStatus.SelectedIndex = 0;
 
-            var lblSortBy = new Label { Text = "Urutkan:", Location = new Point(260, 25), AutoSize = true, Font = new Font("Segoe UI", 11F) };
+            var lblSortBy = new Label { Text = "Urutkan:", Location = new Point(260, 25), AutoSize = true, Font = AppFonts.Body };
             cmbSortBy = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Location = new Point(335, 22),
                 Size = new Size(200, 28),
-                Font = new Font("Segoe UI", 11F)
+                Font = AppFonts.Body
             };
             cmbSortBy.Items.AddRange(new object[] { "Default (Urgensi)", "Terbaru (Waktu)", "Terlama (Waktu)" });
             cmbSortBy.SelectedIndex = 0;
@@ -202,7 +202,7 @@ namespace mtc_app.features.technician.presentation.components
             lblEmptyTitle = new Label
             {
                 Text = "Tidak Ada Tiket",
-                Font = new Font("Segoe UI Semibold", 14F, FontStyle.Bold),
+                Font = AppFonts.Header3,
                 ForeColor = AppColors.TextPrimary,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Location = new Point(50, 90),
@@ -212,7 +212,7 @@ namespace mtc_app.features.technician.presentation.components
             lblEmptyMessage = new Label
             {
                 Text = "Semua tiket telah diproses.",
-                Font = new Font("Segoe UI", 10F),
+                Font = AppFonts.BodySmall,
                 ForeColor = AppColors.TextSecondary,
                 TextAlign = ContentAlignment.TopCenter,
                 Location = new Point(50, 120),

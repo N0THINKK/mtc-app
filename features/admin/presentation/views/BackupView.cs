@@ -100,14 +100,14 @@ namespace mtc_app.features.admin.presentation.views
 
             // Title
             this.lblTitle.AutoSize = true;
-            this.lblTitle.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
+            this.lblTitle.Font = AppFonts.Header3;
             this.lblTitle.ForeColor = AppColors.TextPrimary;
             this.lblTitle.Location = new Point(0, 0);
             this.lblTitle.Text = "Backup Database";
             
             // Description
             this.lblDescription.AutoSize = true;
-            this.lblDescription.Font = new Font("Segoe UI", 10F);
+            this.lblDescription.Font = AppFonts.BodySmall;
             this.lblDescription.ForeColor = AppColors.TextSecondary;
             this.lblDescription.Location = new Point(0, 35);
             this.lblDescription.MaximumSize = new Size(600, 0);

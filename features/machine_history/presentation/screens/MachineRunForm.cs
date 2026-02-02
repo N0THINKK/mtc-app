@@ -59,7 +59,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.lblTitle.Dock = DockStyle.Top;
             this.lblTitle.Height = 150;
             this.lblTitle.TextAlign = ContentAlignment.BottomCenter;
-            this.lblTitle.Font = new Font("Segoe UI", 36F, FontStyle.Bold);
+            this.lblTitle.Font = AppFonts.MetricLarge;
             this.lblTitle.ForeColor = Color.White;
             this.lblTitle.Text = "PERBAIKAN SELESAI, MENUNGGU OPERATOR";
 
@@ -70,7 +70,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.lblSubtitle.Dock = DockStyle.Top;
             this.lblSubtitle.Height = 100;
             this.lblSubtitle.TextAlign = ContentAlignment.TopCenter;
-            this.lblSubtitle.Font = new Font("Segoe UI", 18F, FontStyle.Regular);
+            this.lblSubtitle.Font = AppFonts.Header2;
             this.lblSubtitle.ForeColor = Color.LightGray;
             this.lblSubtitle.Text = "Silakan validasi kondisi mesin.\nJika mesin sudah siap produksi, tekan tombol di bawah.";
 
@@ -98,7 +98,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.btnRun.Text = "RUN MESIN (PRODUKSI)";
             this.btnRun.Type = AppButton.ButtonType.Primary;
             this.btnRun.BackColor = AppColors.Success; // Green for GO
-            this.btnRun.Font = new Font("Segoe UI", 24F, FontStyle.Bold);
+            this.btnRun.Font = AppFonts.MetricMedium;
             this.btnRun.Size = new Size(500, 120);
             this.btnRun.Click += BtnRun_Click;
             

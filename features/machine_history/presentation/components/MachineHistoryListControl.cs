@@ -41,12 +41,12 @@ namespace mtc_app.features.machine_history.presentation.components
             // Styling
             this._grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(248, 250, 252);
             this._grid.ColumnHeadersDefaultCellStyle.ForeColor = AppColors.TextSecondary;
-            this._grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            this._grid.ColumnHeadersDefaultCellStyle.Font = AppFonts.Caption;
             this._grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(10);
             this._grid.ColumnHeadersHeight = 50;
 
             this._grid.DefaultCellStyle.ForeColor = AppColors.TextPrimary;
-            this._grid.DefaultCellStyle.Font = new Font("Segoe UI", 9.5F);
+            this._grid.DefaultCellStyle.Font = AppFonts.BodySmall;
             this._grid.DefaultCellStyle.Padding = new Padding(10, 5, 10, 5);
             this._grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(241, 245, 249);
             this._grid.DefaultCellStyle.SelectionForeColor = AppColors.TextPrimary;

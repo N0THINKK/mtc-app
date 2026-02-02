@@ -449,7 +449,7 @@ namespace mtc_app.features.admin.presentation.views
             // Main Control
             this.Dock = DockStyle.Fill;
             this.tabControl.Dock = DockStyle.Fill;
-            this.tabControl.Font = new Font("Segoe UI", 10F);
+            this.tabControl.Font = AppFonts.BodySmall;
             this.tabControl.Controls.AddRange(new Control[] { this.tabUsers, this.tabMachines, this.tabFailures });
             this.Controls.Add(tabControl);
 

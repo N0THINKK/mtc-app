@@ -104,33 +104,33 @@ namespace mtc_app.features.admin.presentation.views
 
             // Title
             this.lblTitle.AutoSize = true;
-            this.lblTitle.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
+            this.lblTitle.Font = AppFonts.Header3;
             this.lblTitle.ForeColor = AppColors.TextPrimary;
             this.lblTitle.Location = new Point(0, 0);
             this.lblTitle.Text = "Buat Laporan Tiket (Excel)";
             
             // Date Start Label
             this.lblDateStart.AutoSize = true;
-            this.lblDateStart.Font = new Font("Segoe UI", 10F);
+            this.lblDateStart.Font = AppFonts.BodySmall;
             this.lblDateStart.Location = new Point(0, 50);
             this.lblDateStart.Text = "Tanggal Mulai:";
 
             // Date Start Picker
             this.dateStart.Location = new Point(0, 75);
             this.dateStart.Size = new Size(200, 25);
-            this.dateStart.Font = new Font("Segoe UI", 10F);
+            this.dateStart.Font = AppFonts.BodySmall;
             this.dateStart.Format = DateTimePickerFormat.Short;
 
             // Date End Label
             this.lblDateEnd.AutoSize = true;
-            this.lblDateEnd.Font = new Font("Segoe UI", 10F);
+            this.lblDateEnd.Font = AppFonts.BodySmall;
             this.lblDateEnd.Location = new Point(220, 50);
             this.lblDateEnd.Text = "Tanggal Akhir:";
 
             // Date End Picker
             this.dateEnd.Location = new Point(220, 75);
             this.dateEnd.Size = new Size(200, 25);
-            this.dateEnd.Font = new Font("Segoe UI", 10F);
+            this.dateEnd.Font = AppFonts.BodySmall;
             this.dateEnd.Format = DateTimePickerFormat.Short;
 
             // Export Button

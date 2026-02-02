@@ -188,7 +188,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.WhiteSmoke,
                 ForeColor = AppColors.Primary,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Font = AppFonts.BodySmall,
                 Cursor = Cursors.Hand,
                 Margin = new Padding(0, 5, 0, 15)
             };

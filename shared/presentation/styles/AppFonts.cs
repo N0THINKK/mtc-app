@@ -19,5 +19,10 @@ namespace mtc_app.shared.presentation.styles
         public static Font Caption => new Font(FontFamily, 9, FontStyle.Regular);
         
         public static Font Button => new Font(FontFamily, 11, FontStyle.Bold);
+        
+        // Metric/Stat Card Fonts
+        public static Font MetricLarge => new Font(FontFamily, 36, FontStyle.Bold);  // For large value displays
+        public static Font MetricMedium => new Font(FontFamily, 24, FontStyle.Bold); // For stat cards
+        public static Font MetricSmall => new Font(FontFamily, 16, FontStyle.Bold);  // For smaller metrics
     }
 }
