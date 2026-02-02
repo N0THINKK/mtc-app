@@ -91,7 +91,18 @@ namespace mtc_app.features.admin.presentation.views
             // Manual Column Definition - MUST MATCH 'view_admin_report' aliases
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Status", HeaderText = "Status", DataPropertyName = "Status Terkini", FillWeight = 80 });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Mesin", HeaderText = "Mesin", DataPropertyName = "Nama Mesin" });
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Masalah", HeaderText = "Masalah", DataPropertyName = "Detail Masalah", FillWeight = 200 });
+            
+            // [FIX] Explicitly enable WrapMode for Problem Column
+            var colMasalah = new DataGridViewTextBoxColumn 
+            { 
+                Name = "Masalah", 
+                HeaderText = "Masalah", 
+                DataPropertyName = "Detail Masalah", 
+                FillWeight = 200 
+            };
+            colMasalah.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
+            gridTickets.Columns.Add(colMasalah);
+
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Teknisi", HeaderText = "Teknisi", DataPropertyName = "Nama Teknisi" });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Total Downtime", HeaderText = "Total Downtime", DataPropertyName = "Total Downtime" });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Durasi Respon", HeaderText = "Durasi Respon", DataPropertyName = "Durasi Respon" });
@@ -126,15 +137,47 @@ namespace mtc_app.features.admin.presentation.views
             gridTickets.DefaultCellStyle.SelectionForeColor = AppColors.TextPrimary;
             gridTickets.DefaultCellStyle.Padding = new Padding(10);
             gridTickets.RowTemplate.Height = 50;
+            // [FIX] Auto Size Rows for Multiline Content
+            gridTickets.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             
             // Event for Formatting Status
             gridTickets.CellFormatting += GridTickets_CellFormatting;
             
             // Event for Button Click
             gridTickets.CellContentClick += GridTickets_CellContentClick;
+            
+            // [FIX] Custom Painting for Button to prevent stretching
+            gridTickets.CellPainting += GridTickets_CellPainting;
 
             this.Controls.Add(gridTickets);
             this.Controls.Add(pnlStats);
+        }
+
+        private void GridTickets_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex >= 0 && e.ColumnIndex >= 0 && gridTickets.Columns[e.ColumnIndex].Name == "Detail")
+            {
+                e.PaintBackground(e.CellBounds, true);
+
+                // Settings
+                int btnHeight = 28;
+                int paddingX = 10;
+                
+                // Calculate Centered Rectangle
+                int btnWidth = e.CellBounds.Width - (paddingX * 2);
+                int btnY = e.CellBounds.Y + (e.CellBounds.Height - btnHeight) / 2;
+                int btnX = e.CellBounds.X + paddingX;
+
+                Rectangle btnRect = new Rectangle(btnX, btnY, btnWidth, btnHeight);
+
+                // Draw Button
+                ButtonRenderer.DrawButton(e.Graphics, btnRect, System.Windows.Forms.VisualStyles.PushButtonState.Normal);
+
+                // Draw Text
+                TextRenderer.DrawText(e.Graphics, "Lihat", e.CellStyle.Font, btnRect, SystemColors.ControlText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+                e.Handled = true;
+            }
         }
 
         private void GridTickets_CellContentClick(object sender, DataGridViewCellEventArgs e)
@@ -245,6 +288,27 @@ namespace mtc_app.features.admin.presentation.views
             if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
 
             string colName = gridTickets.Columns[e.ColumnIndex].Name;
+
+            // [FIX] Multiline Problem Display with Numbering
+            if (colName == "Masalah" && e.Value != null)
+            {
+                string raw = e.Value.ToString();
+                // Split by common separators
+                string[] parts = raw.Split(new[] { " | ", "|" }, StringSplitOptions.RemoveEmptyEntries);
+                
+                if (parts.Length > 0)
+                {
+                    // Add numbering: "1. Problem A", "2. Problem B"
+                    for (int i = 0; i < parts.Length; i++)
+                    {
+                        parts[i] = $"{i + 1}. {parts[i].Trim()}";
+                    }
+                    
+                    e.Value = string.Join("\n", parts);
+                }
+                
+                e.CellStyle.WrapMode = DataGridViewTriState.True;
+            }
             
             // Status Column Formatting
             if (colName == "Status" && e.Value != null)
