@@ -38,7 +38,7 @@ namespace mtc_app.features.technician.presentation.components
             
             var lblTitle = new Label 
             { 
-                Text = "Monitoring Output Produksi (Live)", 
+                Text = "Monitoring Output Produksi", 
                 Font = AppFonts.MetricSmall,
                 AutoSize = true,
                 Location = new Point(0, 5)
