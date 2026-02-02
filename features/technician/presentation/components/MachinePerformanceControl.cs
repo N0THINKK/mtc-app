@@ -96,7 +96,7 @@ namespace mtc_app.features.technician.presentation.components
             {
                 Dock = DockStyle.Fill,
                 Height = AppDimens.HeaderHeight, 
-                BackColor = Color.White,
+                BackColor = AppColors.CardBackground,
                 Padding = new Padding(AppDimens.MarginLarge)
             };
             
@@ -138,7 +138,7 @@ namespace mtc_app.features.technician.presentation.components
             chartPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.White,
+                BackColor = AppColors.CardBackground,
                 Padding = new Padding(AppDimens.MarginLarge),
                 AutoScroll = true 
             };
@@ -212,7 +212,7 @@ namespace mtc_app.features.technician.presentation.components
                 if (string.IsNullOrEmpty(txt)) return;
 
                 using (var font = new Font("Segoe UI", 8F, FontStyle.Regular))
-                using (var brush = new SolidBrush(Color.White))
+                using (var brush = new SolidBrush(AppColors.CardBackground))
                 using (var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                 {
                     g.DrawString(txt, font, brush, new RectangleF(x, y, width, 30), format);

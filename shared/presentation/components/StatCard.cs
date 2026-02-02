@@ -76,7 +76,7 @@ namespace mtc_app.shared.presentation.components
             // 
             // Main Control
             // 
-            this.BackColor = Color.White;
+            this.BackColor = AppColors.CardBackground;
             this.Size = new Size(290, 110);  // Increased height for larger fonts
             this.Padding = new Padding(0);
 

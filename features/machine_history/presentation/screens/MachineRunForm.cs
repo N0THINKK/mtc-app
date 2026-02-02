@@ -60,7 +60,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.lblTitle.Height = 150;
             this.lblTitle.TextAlign = ContentAlignment.BottomCenter;
             this.lblTitle.Font = AppFonts.MetricLarge;
-            this.lblTitle.ForeColor = Color.White;
+            this.lblTitle.ForeColor = AppColors.TextInverse;
             this.lblTitle.Text = "PERBAIKAN SELESAI, MENUNGGU OPERATOR";
 
             // 

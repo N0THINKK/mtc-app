@@ -61,7 +61,7 @@ namespace mtc_app.features.group_leader.presentation.components
             this.Padding = new Padding(0, 0, 0, 10);
             this.Dock = DockStyle.Top;
 
-            this.pnlMain.BackColor = Color.White;
+            this.pnlMain.BackColor = AppColors.CardBackground;
             this.pnlMain.Dock = DockStyle.Fill;
             this.pnlMain.Padding = new Padding(0);
             this.pnlMain.AutoSize = true;
@@ -166,7 +166,7 @@ namespace mtc_app.features.group_leader.presentation.components
                 if (!this.pnlMain.ClientRectangle.Contains(p))
                 {
                     this.Cursor = Cursors.Default;
-                    this.pnlMain.BackColor = Color.White;
+                    this.pnlMain.BackColor = AppColors.CardBackground;
                 }
             };
             foreach (Control child in control.Controls) HookEvents(child);

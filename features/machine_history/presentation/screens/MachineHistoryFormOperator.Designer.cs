@@ -54,7 +54,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             // labelTitle
             // 
             this.labelTitle.AutoSize = true;
-            this.labelTitle.ForeColor = System.Drawing.Color.White;
+            this.labelTitle.ForeColor = mtc_app.shared.presentation.styles.AppColors.TextInverse;
             this.labelTitle.Location = new System.Drawing.Point(15, 25);
             this.labelTitle.Name = "labelTitle";
             this.labelTitle.Size = new System.Drawing.Size(155, 25);

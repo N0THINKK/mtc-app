@@ -26,7 +26,7 @@ namespace mtc_app.features.machine_history.presentation.components
             // _grid
             // 
             this._grid.Dock = DockStyle.Fill;
-            this._grid.BackgroundColor = Color.White;
+            this._grid.BackgroundColor = AppColors.CardBackground;
             this._grid.BorderStyle = BorderStyle.None;
             this._grid.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
             this._grid.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;

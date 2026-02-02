@@ -66,7 +66,7 @@ namespace mtc_app.features.group_leader.presentation.screens
             // 
             // panelHeader
             // 
-            this.panelHeader.BackColor = System.Drawing.Color.White;
+            this.panelHeader.BackColor = mtc_app.shared.presentation.styles.AppColors.CardBackground;
             this.panelHeader.Controls.Add(this.lblTicketStats);
             this.panelHeader.Controls.Add(this.labelTitle);
             this.panelHeader.Dock = System.Windows.Forms.DockStyle.Top;
@@ -134,7 +134,7 @@ namespace mtc_app.features.group_leader.presentation.screens
             // 
             // panelFilters
             // 
-            this.panelFilters.BackColor = System.Drawing.Color.White;
+            this.panelFilters.BackColor = mtc_app.shared.presentation.styles.AppColors.CardBackground;
             this.panelFilters.Controls.Add(this.cmbFilterStatus);
             this.panelFilters.Controls.Add(this.lblFilter);
             this.panelFilters.Controls.Add(this.cmbSortTime);

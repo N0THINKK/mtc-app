@@ -49,7 +49,7 @@ namespace mtc_app.shared.presentation.components
             {
                 case ButtonType.Primary:
                     this.BackColor = AppColors.Primary;
-                    this.ForeColor = Color.White;
+                    this.ForeColor = AppColors.TextInverse;
                     this.FlatAppearance.BorderSize = 0;
                     break;
                 case ButtonType.Secondary:
@@ -66,12 +66,12 @@ namespace mtc_app.shared.presentation.components
                     break;
                 case ButtonType.Danger:
                     this.BackColor = AppColors.Error;
-                    this.ForeColor = Color.White;
+                    this.ForeColor = AppColors.TextInverse;
                     this.FlatAppearance.BorderSize = 0;
                     break;
                 case ButtonType.Warning:
                     this.BackColor = AppColors.Warning;
-                    this.ForeColor = Color.White;
+                    this.ForeColor = AppColors.TextInverse;
                     this.FlatAppearance.BorderSize = 0;
                     break;
             }

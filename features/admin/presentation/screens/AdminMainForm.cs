@@ -68,7 +68,7 @@ namespace mtc_app.features.admin.presentation.screens
             {
                 Dock = DockStyle.Left,
                 Width = 250,
-                BackColor = Color.White
+                BackColor = AppColors.CardBackground
             };
             
             // Sidebar Header

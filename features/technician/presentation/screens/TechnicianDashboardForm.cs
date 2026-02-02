@@ -56,7 +56,7 @@ namespace mtc_app.features.technician.presentation.screens
             {
                 Dock = DockStyle.Top,
                 Height = AppDimens.HeaderHeight,
-                BackColor = Color.White,
+                BackColor = AppColors.CardBackground,
                 Padding = new Padding(AppDimens.PaddingSmall)
             };
             // Add Toolbar BEFORE Tabs so it docks to top
@@ -101,7 +101,7 @@ namespace mtc_app.features.technician.presentation.screens
                 Text = "Terapkan", 
                 Size = new Size(110, 35),
                 BackColor = AppColors.Primary,
-                ForeColor = Color.White,
+                ForeColor = AppColors.TextInverse,
                 FlatStyle = FlatStyle.Flat,
                 Font = AppFonts.Button,
                 Cursor = Cursors.Hand,
@@ -171,7 +171,7 @@ namespace mtc_app.features.technician.presentation.screens
                 Location = new Point(parent.Width - 240, 19),  // Adjusted for input spacing
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 BackColor = AppColors.Primary,
-                ForeColor = Color.White,
+                ForeColor = AppColors.TextInverse,
                 FlatStyle = FlatStyle.Flat,
                 Font = AppFonts.Caption,
                 Cursor = Cursors.Hand
@@ -189,13 +189,13 @@ namespace mtc_app.features.technician.presentation.screens
                 Size = new Size(160, 40),
                 Location = new Point(parent.Width - 170, 15), // Further right
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                BackColor = Color.WhiteSmoke,
-                ForeColor = Color.DimGray,
+                BackColor = AppColors.Surface,
+                ForeColor = AppColors.TextSecondary,
                 FlatStyle = FlatStyle.Flat,
                 Font = AppFonts.Button,
                 Cursor = Cursors.Hand
             };
-            btnAutoSwitch.FlatAppearance.BorderColor = Color.LightGray;
+            btnAutoSwitch.FlatAppearance.BorderColor = AppColors.Border;
             
             btnAutoSwitch.Click += (s, e) =>
             {
@@ -203,8 +203,8 @@ namespace mtc_app.features.technician.presentation.screens
                 {
                     timerTabSwitch.Stop();
                     btnAutoSwitch.Text = "Auto Switch: OFF";
-                    btnAutoSwitch.BackColor = Color.WhiteSmoke;
-                    btnAutoSwitch.ForeColor = Color.DimGray;
+                    btnAutoSwitch.BackColor = AppColors.Surface;
+                    btnAutoSwitch.ForeColor = AppColors.TextSecondary;
                 }
                 else
                 {
@@ -213,7 +213,7 @@ namespace mtc_app.features.technician.presentation.screens
                     timerTabSwitch.Start();
                     btnAutoSwitch.Text = "Auto Switch: ON";
                     btnAutoSwitch.BackColor = AppColors.Success; 
-                    btnAutoSwitch.ForeColor = Color.White;
+                    btnAutoSwitch.ForeColor = AppColors.TextInverse;
                 }
             };
             
@@ -281,7 +281,7 @@ namespace mtc_app.features.technician.presentation.screens
             // Tab 1: Work Queue
             var tabWorkQueue = new TabPage("Daftar Tunggu")
             {
-                BackColor = Color.White
+                BackColor = AppColors.CardBackground
             };
             
             workQueueControl = new TechnicianWorkQueueControl(_repository)
@@ -293,7 +293,7 @@ namespace mtc_app.features.technician.presentation.screens
             // Tab 2: Performance
             var tabPerformance = new TabPage("Performa")
             {
-                BackColor = Color.White
+                BackColor = AppColors.CardBackground
             };
             
             performanceControl = new TechnicianPerformanceControl(_repository)
@@ -306,7 +306,7 @@ namespace mtc_app.features.technician.presentation.screens
             // Tab 3: Machine Analysis (NEW)
             var tabMachine = new TabPage("Analisis Mesin")
             {
-                BackColor = Color.White
+                BackColor = AppColors.CardBackground
             };
             
             machinePerformanceControl = new MachinePerformanceControl(_repository)
@@ -318,7 +318,7 @@ namespace mtc_app.features.technician.presentation.screens
             // Tab 4: Machine Monitor (Real-time)
             var tabMonitor = new TabPage("Monitoring Mesin")
             {
-                BackColor = Color.White
+                BackColor = AppColors.CardBackground
             };
             
             machineMonitorControl = new MachineMonitorControl

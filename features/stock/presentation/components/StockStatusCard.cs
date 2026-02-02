@@ -67,7 +67,7 @@ namespace mtc_app.features.stock.presentation.components
             this.SuspendLayout();
 
             // Main panel settings - modern flat design
-            this.BackColor = Color.White;
+            this.BackColor = AppColors.CardBackground;
             this.Size = new Size(300, 160);  // Increased height for larger fonts
             this.Padding = new Padding(0);
             this.BorderStyle = BorderStyle.None;
@@ -173,7 +173,7 @@ namespace mtc_app.features.stock.presentation.components
         protected override void OnMouseLeave(EventArgs e)
         {
             base.OnMouseLeave(e);
-            this.BackColor = Color.White;
+            this.BackColor = AppColors.CardBackground;
         }
     }
 }

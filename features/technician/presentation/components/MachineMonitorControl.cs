@@ -30,7 +30,7 @@ namespace mtc_app.features.technician.presentation.components
         private void InitializeComponent()
         {
             this.Dock = DockStyle.Fill;
-            this.BackColor = Color.White;
+            this.BackColor = AppColors.CardBackground;
             this.Padding = new Padding(AppDimens.MarginLarge);
 
             // 1. Header Layout

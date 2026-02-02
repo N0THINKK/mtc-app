@@ -84,7 +84,7 @@ namespace mtc_app.features.technician.presentation.components
             int xPosition, string defaultValue, string labelText, Color accentColor, Color bgColor)
         {
             // Panel
-            panel.BackColor = Color.White;
+            panel.BackColor = AppColors.CardBackground;
             panel.Size = new Size(290, 100);
             panel.Location = new Point(xPosition, 0);
             panel.Paint += (s, e) => DrawStatCard(e.Graphics, panel.ClientRectangle, accentColor);
@@ -126,7 +126,7 @@ namespace mtc_app.features.technician.presentation.components
                 panel.Cursor = Cursors.Hand;
             };
             panel.MouseLeave += (s, e) => {
-                panel.BackColor = Color.White;
+                panel.BackColor = AppColors.CardBackground;
                 panel.Cursor = Cursors.Default;
             };
         }
@@ -138,7 +138,7 @@ namespace mtc_app.features.technician.presentation.components
             // Card background with rounded corners
             using (GraphicsPath path = GraphicsUtils.GetRoundedRectangle(new Rectangle(0, 0, bounds.Width - 1, bounds.Height - 1), 8))
             {
-                g.FillPath(new SolidBrush(Color.White), path);
+                g.FillPath(new SolidBrush(AppColors.CardBackground), path);
                 g.DrawPath(new Pen(Color.FromArgb(230, 230, 230), 1), path);
             }
 
