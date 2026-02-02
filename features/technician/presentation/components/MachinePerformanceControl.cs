@@ -122,7 +122,7 @@ namespace mtc_app.features.technician.presentation.components
             cmbArea = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = AppFonts.BodySmall,
+                Font = AppFonts.BodySmall, 
                 Location = new Point(480, 16),
                 Width = 120
             };
@@ -187,32 +187,53 @@ namespace mtc_app.features.technician.presentation.components
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            // Dimensions
-            int padding = 20;
-            int labelWidth = 150; // Machine Name width
-            int chartLeft = labelWidth + padding;
-            int chartWidth = chartPanel.Width - chartLeft - padding - 120; // Increased right padding for Total Text
+            // === 1. DEFINISI LAYOUT ===
+            int padding = 20;            // Margin Kiri/Atas
+            int paddingRight = 2;        // [MAXIMIZE] Margin Kanan hampir 0
+            int labelMachineWidth = 100;  // [OPTIMIZE] Dipersempit agar chart maju ke kiri
+            int textTotalWidth = 75;     // [MAXIMIZE] Lebar area text super ketat
+            int gap = 5;                 // [MAXIMIZE] Gap minimal
+
+            // Titik mulai Chart (kiri)
+            // [OPTIMIZE] Rapatkan chart ke nama mesin (jarak 5px)
+            int chartStartX = padding + labelMachineWidth + 5; 
+
+            // Titik mulai Text Total (kanan)
+            // Kita kunci ini di kanan panel agar rapi seperti kolom tabel
+            int textStartX = chartPanel.Width - paddingRight - textTotalWidth;
+
+            // Lebar Maksimal yang boleh dipakai oleh Bar
+            // Rumus: (Posisi Text) - (Gap) - (Posisi Awal Chart)
+            int maxAvailableBarWidth = textStartX - gap - chartStartX;
+
+            // Safety check jika window terlalu kecil
+            if (maxAvailableBarWidth < 10) maxAvailableBarWidth = 10;
+
             int rowHeight = AppDimens.RowHeight;
+            int minBarWidth = 4; // Lebar minimum visual
 
             // Calculate Max Total Downtime for scaling
             double maxDowntime = _data.Max(m => m.TotalDowntimeSeconds);
             if (maxDowntime == 0) maxDowntime = 1;
 
+            // Hitung Skala: 1 detik = berapa pixel?
+            float scaleFactor = (float)(maxAvailableBarWidth / maxDowntime);
+
             int y = padding;
 
-            // Helper to draw text inside bar
+            // Helper: Draw text inside bar
             void DrawBarLabel(float x, float width, double seconds)
             {
-                if (width < 30) return; 
+                if (width < 30) return; // Hanya gambar jika bar cukup lebar
                 TimeSpan t = TimeSpan.FromSeconds(seconds);
                 string txt = "";
                 if (t.TotalHours >= 1) txt = $"{(int)t.TotalHours}h";
                 else if (t.TotalMinutes >= 1) txt = $"{(int)t.TotalMinutes}m";
-                
+
                 if (string.IsNullOrEmpty(txt)) return;
 
                 using (var font = new Font("Segoe UI", 8F, FontStyle.Regular))
-                using (var brush = new SolidBrush(AppColors.CardBackground))
+                using (var brush = new SolidBrush(Color.White))
                 using (var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                 {
                     g.DrawString(txt, font, brush, new RectangleF(x, y, width, 30), format);
@@ -221,57 +242,89 @@ namespace mtc_app.features.technician.presentation.components
 
             foreach (var item in _data)
             {
-                // Machine Name
-                g.DrawString(item.MachineName, new Font("Segoe UI", 10F), Brushes.Black, padding, y + 10);
-
-                // Calculate Widths
-                float scale = (float)(chartWidth / maxDowntime);
+                // 1. Gambar Nama Mesin (Rata Kiri sesuai Legend)
+                string machineName = item.MachineName.Length > 18 ? item.MachineName.Substring(0, 15) + "..." : item.MachineName;
                 
-                float wResponse = (float)(item.ResponseDurationSeconds * scale);
-                float wRepair = (float)(item.RepairDurationSeconds * scale);
-                float wPart = (float)(item.PartWaitDurationSeconds * scale);
-                float wOp = (float)(item.OperatorWaitDurationSeconds * scale);
+                RectangleF nameRect = new RectangleF(padding, y + 5, labelMachineWidth, 30);
+                using (var formatName = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Near }) // Rata Kiri
+                {
+                    g.DrawString(machineName, new Font("Segoe UI", 10F), Brushes.Black, nameRect, formatName);
+                }
 
-                float currentX = chartLeft;
+                // 2. Hitung Lebar Bar (Visual Widths)
+                float wResponse = (float)(item.ResponseDurationSeconds * scaleFactor);
+                float wRepair = (float)(item.RepairDurationSeconds * scaleFactor);
+                float wPart = (float)(item.PartWaitDurationSeconds * scaleFactor);
+                float wOp = (float)(item.OperatorWaitDurationSeconds * scaleFactor);
 
-                // Draw Stacked Bars with Labels
+                // Terapkan MinBarWidth (hanya jika ada nilainya)
+                if (item.ResponseDurationSeconds > 0 && wResponse < minBarWidth) wResponse = minBarWidth;
+                if (item.RepairDurationSeconds > 0 && wRepair < minBarWidth) wRepair = minBarWidth;
+                if (item.PartWaitDurationSeconds > 0 && wPart < minBarWidth) wPart = minBarWidth;
+                if (item.OperatorWaitDurationSeconds > 0 && wOp < minBarWidth) wOp = minBarWidth;
+
+                // Total lebar visual yang akan digambar
+                float totalVisualWidth = wResponse + wRepair + wPart + wOp;
+
+                // 3. Scaling Down jika MinBarWidth membuat total melebihi batas area
+                // Ini mencegah bar menabrak teks di kanan
+                if (totalVisualWidth > maxAvailableBarWidth)
+                {
+                    float reductionRatio = maxAvailableBarWidth / totalVisualWidth;
+                    wResponse *= reductionRatio;
+                    wRepair *= reductionRatio;
+                    wPart *= reductionRatio;
+                    wOp *= reductionRatio;
+                }
+
+                float currentX = chartStartX;
+
+                // 4. Gambar Bar Segments
                 if (wResponse > 0)
                 {
-                    g.FillRectangle(new SolidBrush(AppColors.Danger), currentX, y, wResponse, 30);
+                    using (var brush = new SolidBrush(AppColors.Danger)) g.FillRectangle(brush, currentX, y, wResponse, 25);
                     DrawBarLabel(currentX, wResponse, item.ResponseDurationSeconds);
                     currentX += wResponse;
                 }
 
                 if (wRepair > 0)
                 {
-                    g.FillRectangle(new SolidBrush(AppColors.Warning), currentX, y, wRepair, 30);
+                    using (var brush = new SolidBrush(AppColors.Warning)) g.FillRectangle(brush, currentX, y, wRepair, 25);
                     DrawBarLabel(currentX, wRepair, item.RepairDurationSeconds);
                     currentX += wRepair;
                 }
 
                 if (wPart > 0)
                 {
-                    g.FillRectangle(new SolidBrush(AppColors.Success), currentX, y, wPart, 30);
+                    using (var brush = new SolidBrush(AppColors.Success)) g.FillRectangle(brush, currentX, y, wPart, 25);
                     DrawBarLabel(currentX, wPart, item.PartWaitDurationSeconds);
                     currentX += wPart;
                 }
 
                 if (wOp > 0)
                 {
-                    g.FillRectangle(new SolidBrush(AppColors.Primary), currentX, y, wOp, 30);
+                    using (var brush = new SolidBrush(AppColors.Primary)) g.FillRectangle(brush, currentX, y, wOp, 25);
                     DrawBarLabel(currentX, wOp, item.OperatorWaitDurationSeconds);
                     currentX += wOp;
                 }
 
-                // Draw Total Text
+                // 5. Gambar Teks Total Downtime (Di kolom kanan yang aman)
                 TimeSpan totalTime = TimeSpan.FromSeconds(item.TotalDowntimeSeconds);
                 string totalStr = $"{(int)totalTime.TotalHours}h {totalTime.Minutes}m";
-                g.DrawString(totalStr, new Font("Segoe UI", 9F, FontStyle.Bold), Brushes.Black, currentX + 10, y + 8);
+
+                // Menggunakan textStartX yang sudah kita kunci di awal
+                RectangleF textRect = new RectangleF(textStartX, y, textTotalWidth, 25);
+
+                using (var brush = new SolidBrush(Color.Black))
+                using (var format = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center })
+                {
+                    g.DrawString(totalStr, new Font("Segoe UI", 9F, FontStyle.Bold), brush, textRect, format);
+                }
 
                 y += rowHeight;
             }
-            
-            // Adjust panel height if scrolling needed (for AutoScroll)
+
+            // Adjust panel height if scrolling needed
             chartPanel.AutoScrollMinSize = new Size(0, y + padding);
         }
     }
