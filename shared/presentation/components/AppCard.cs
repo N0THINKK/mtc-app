@@ -12,7 +12,7 @@ namespace mtc_app.shared.presentation.components
     {
         private int _cornerRadius = AppDimens.CardCornerRadius;
         private bool _showShadow = false;
-        private Color _borderColor = Color.FromArgb(230, 230, 230);
+        private Color _borderColor = AppColors.Border;
 
         [Category("Appearance")]
         public int CornerRadius
@@ -38,7 +38,7 @@ namespace mtc_app.shared.presentation.components
         public AppCard()
         {
             this.SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.ResizeRedraw, true);
-            this.BackColor = Color.White;
+            this.BackColor = AppColors.CardBackground;
             this.Padding = new Padding(AppDimens.PaddingStandard);
         }
 

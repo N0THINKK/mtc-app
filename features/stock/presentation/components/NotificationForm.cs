@@ -26,7 +26,7 @@ namespace mtc_app.features.stock.presentation.components
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
-            this.BackColor = Color.White;
+            this.BackColor = AppColors.CardBackground;
             this.TopMost = true; // Always on top
 
             // Title

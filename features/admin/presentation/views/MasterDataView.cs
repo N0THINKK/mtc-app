@@ -470,7 +470,7 @@ namespace mtc_app.features.admin.presentation.views
             flowUser.Controls.AddRange(new Control[] { txtUsername, txtPassword, txtFullName, txtNik, comboRole, btnAddUser, btnUpdateUser, btnDeleteUser });
             pnlUserForm.Controls.Add(flowUser);
             
-            this.gridUsers = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = Color.White, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect, AutoGenerateColumns = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
+            this.gridUsers = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = AppColors.CardBackground, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect, AutoGenerateColumns = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
             this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "user_id", DataPropertyName = "user_id", Visible = false });
             this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "username", HeaderText = "Username", DataPropertyName = "username" });
             this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "full_name", HeaderText = "Nama Lengkap", DataPropertyName = "full_name" });
@@ -499,7 +499,7 @@ namespace mtc_app.features.admin.presentation.views
             flowMachine.Controls.AddRange(new Control[] { txtMachineCode, txtMachineType, txtMachineArea, txtMachineNumber, btnAddMachine, btnUpdateMachine, btnDeleteMachine });
             pnlMachineForm.Controls.Add(flowMachine);
             
-            this.gridMachines = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = Color.White, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect, AutoGenerateColumns = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
+            this.gridMachines = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = AppColors.CardBackground, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect, AutoGenerateColumns = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
             this.gridMachines.Columns.Add(new DataGridViewTextBoxColumn { Name = "machine_id", DataPropertyName = "machine_id", Visible = false });
             this.gridMachines.Columns.Add(new DataGridViewTextBoxColumn { Name = "machine_name", HeaderText = "Nama Mesin (Kode)", DataPropertyName = "machine_name" });
             this.gridMachines.Columns.Add(new DataGridViewTextBoxColumn { Name = "machine_type", HeaderText = "Tipe", DataPropertyName = "machine_type" });
@@ -525,7 +525,7 @@ namespace mtc_app.features.admin.presentation.views
             flowFailure.Controls.AddRange(new Control[] { txtFailureName, btnAddFailure, btnUpdateFailure, btnDeleteFailure });
             pnlFailureForm.Controls.Add(flowFailure);
             
-            this.gridFailures = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = Color.White, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect, AutoGenerateColumns = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
+            this.gridFailures = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = AppColors.CardBackground, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect, AutoGenerateColumns = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
             this.gridFailures.Columns.Add(new DataGridViewTextBoxColumn { Name = "failure_id", DataPropertyName = "failure_id", Visible = false });
             this.gridFailures.Columns.Add(new DataGridViewTextBoxColumn { Name = "failure_name", HeaderText = "Nama Masalah", DataPropertyName = "failure_name" });
             

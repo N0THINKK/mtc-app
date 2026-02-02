@@ -70,14 +70,14 @@ namespace mtc_app.features.technician.presentation.components
         private void InitializeComponent()
         {
             this.Dock = DockStyle.Fill;
-            this.BackColor = Color.FromArgb(248, 250, 252);
+            this.BackColor = AppColors.Surface;
 
             // Header Panel
             panelHeader = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = AppDimens.HeaderHeightLarge,
-                BackColor = Color.White,
+                BackColor = AppColors.CardBackground,
                 Padding = new Padding(AppDimens.SpacingXL, AppDimens.MarginLarge, AppDimens.SpacingXL, AppDimens.MarginLarge)
             };
 
@@ -127,7 +127,7 @@ namespace mtc_app.features.technician.presentation.components
             {
                 Text = "Terakhir diperbarui: -",
                 Font = AppFonts.BodySmall,
-                ForeColor = Color.FromArgb(100, 116, 139),
+                ForeColor = AppColors.TextSecondary,
                 Location = new Point(180, 21),
                 AutoSize = true
             };
@@ -141,7 +141,7 @@ namespace mtc_app.features.technician.presentation.components
             {
                 Dock = DockStyle.Top,
                 Height = 70,
-                BackColor = Color.White
+                BackColor = AppColors.CardBackground
             };
 
             var lblFilterStatus = new Label { Text = "Filter:", Location = new Point(30, 25), AutoSize = true, Font = AppFonts.Body };
@@ -172,10 +172,10 @@ namespace mtc_app.features.technician.presentation.components
                 Location = new Point(560, 21),
                 Size = new Size(90, 30),
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(248, 250, 252),
+                BackColor = AppColors.Surface,
                 ForeColor = AppColors.TextSecondary
             };
-            btnClearFilters.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            btnClearFilters.FlatAppearance.BorderColor = AppColors.Separator;
 
             panelFilters.Controls.AddRange(new Control[] { lblFilterStatus, cmbFilterStatus, lblSortBy, cmbSortBy, btnClearFilters });
 
@@ -185,7 +185,7 @@ namespace mtc_app.features.technician.presentation.components
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
                 Padding = new Padding(AppDimens.MarginLarge),
-                BackColor = Color.FromArgb(248, 250, 252)
+                BackColor = AppColors.Surface
             };
 
             // Empty State
@@ -237,12 +237,12 @@ namespace mtc_app.features.technician.presentation.components
             
             panelHeader.Paint += (s, e) =>
             {
-                e.Graphics.DrawLine(new Pen(Color.FromArgb(230, 230, 230)), 0, panelHeader.Height - 1, panelHeader.Width, panelHeader.Height - 1);
+                e.Graphics.DrawLine(new Pen(AppColors.Separator), 0, panelHeader.Height - 1, panelHeader.Width, panelHeader.Height - 1);
             };
             
             panelFilters.Paint += (s, e) =>
             {
-                e.Graphics.DrawLine(new Pen(Color.FromArgb(230, 230, 230)), 0, panelFilters.Height - 1, panelFilters.Width, panelFilters.Height - 1);
+                e.Graphics.DrawLine(new Pen(AppColors.Separator), 0, panelFilters.Height - 1, panelFilters.Width, panelFilters.Height - 1);
             };
         }
 

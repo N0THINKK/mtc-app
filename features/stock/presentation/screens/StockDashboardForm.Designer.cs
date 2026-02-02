@@ -64,7 +64,7 @@ namespace mtc_app.features.stock.presentation.screens
             // 
             this.lblLastUpdate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.lblLastUpdate.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Regular);
-            this.lblLastUpdate.ForeColor = System.Drawing.Color.White;
+            this.lblLastUpdate.ForeColor = mtc_app.shared.presentation.styles.AppColors.TextInverse;
             this.lblLastUpdate.Location = new System.Drawing.Point(880, 38);
             this.lblLastUpdate.Name = "lblLastUpdate";
             this.lblLastUpdate.Size = new System.Drawing.Size(295, 24);
@@ -77,7 +77,7 @@ namespace mtc_app.features.stock.presentation.screens
             // 
             this.labelTitle.AutoSize = true;
             this.labelTitle.Font = new System.Drawing.Font("Segoe UI", 26F, System.Drawing.FontStyle.Bold);
-            this.labelTitle.ForeColor = System.Drawing.Color.White;
+            this.labelTitle.ForeColor = mtc_app.shared.presentation.styles.AppColors.TextInverse;
             this.labelTitle.Location = new System.Drawing.Point(20, 25);
             this.labelTitle.Name = "labelTitle";
             this.labelTitle.Size = new System.Drawing.Size(380, 47);
@@ -100,7 +100,7 @@ namespace mtc_app.features.stock.presentation.screens
             // 
             // pnlFilters
             // 
-            this.pnlFilters.BackColor = System.Drawing.Color.White;
+            this.pnlFilters.BackColor = mtc_app.shared.presentation.styles.AppColors.CardBackground;
             this.pnlFilters.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pnlFilters.Controls.Add(this.btnSortDesc);
             this.pnlFilters.Controls.Add(this.btnSortAsc);
@@ -206,7 +206,7 @@ namespace mtc_app.features.stock.presentation.screens
             // 
             // pnlContent
             // 
-            this.pnlContent.BackColor = System.Drawing.Color.White;
+            this.pnlContent.BackColor = mtc_app.shared.presentation.styles.AppColors.CardBackground;
 
             this.pnlContent.Controls.Add(this.gridRequests);
             this.pnlContent.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -222,7 +222,7 @@ namespace mtc_app.features.stock.presentation.screens
             this.gridRequests.AllowUserToAddRows = false;
             this.gridRequests.AllowUserToDeleteRows = false;
             this.gridRequests.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
-            this.gridRequests.BackgroundColor = System.Drawing.Color.White;
+            this.gridRequests.BackgroundColor = mtc_app.shared.presentation.styles.AppColors.CardBackground;
             this.gridRequests.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.gridRequests.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.SingleHorizontal;
             this.gridRequests.ColumnHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
@@ -288,7 +288,7 @@ namespace mtc_app.features.stock.presentation.screens
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.BackColor = System.Drawing.Color.White;
+            this.BackColor = mtc_app.shared.presentation.styles.AppColors.CardBackground;
             this.ClientSize = new System.Drawing.Size(1200, 700);
             this.Controls.Add(this.pnlContent);
             this.Controls.Add(this.pnlFilters);

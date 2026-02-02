@@ -39,7 +39,7 @@ namespace mtc_app.features.stock.presentation.components
             this.SuspendLayout();
 
             // Main panel settings
-            this.BackColor = Color.White;
+            this.BackColor = AppColors.CardBackground;
             this.Dock = DockStyle.Fill;
 
             // Icon label (using emoji/symbol)

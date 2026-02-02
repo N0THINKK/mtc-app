@@ -44,7 +44,7 @@ namespace mtc_app.features.admin.presentation.views
                 Dock = DockStyle.Top,
                 Height = 160,
                 Padding = new Padding(20),
-                BackColor = Color.White
+                BackColor = AppColors.CardBackground
             };
             
             // Create Cards
@@ -75,7 +75,7 @@ namespace mtc_app.features.admin.presentation.views
             gridTickets = new DataGridView
             {
                 Dock = DockStyle.Fill,
-                BackgroundColor = Color.White,
+                BackgroundColor = AppColors.CardBackground,
                 BorderStyle = BorderStyle.None,
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
                 ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,

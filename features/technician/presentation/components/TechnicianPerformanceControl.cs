@@ -84,7 +84,7 @@ namespace mtc_app.features.technician.presentation.components
             {
                 Dock = DockStyle.Fill,
                 AutoSize = true,
-                BackColor = Color.White,
+                BackColor = AppColors.CardBackground,
                 Padding = new Padding(AppDimens.MarginLarge, AppDimens.PaddingStandard, AppDimens.MarginLarge, AppDimens.PaddingStandard)
             };
             headerPanel.Paint += (s, e) =>
@@ -180,7 +180,7 @@ namespace mtc_app.features.technician.presentation.components
             chartPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.White,
+                BackColor = AppColors.CardBackground,
                 Padding = new Padding(AppDimens.MarginLarge)
             };
             chartPanel.Paint += ChartPanel_Paint;
@@ -241,7 +241,7 @@ namespace mtc_app.features.technician.presentation.components
 
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.Clear(Color.White);
+            g.Clear(AppColors.CardBackground);
 
             int padding = 20;
             int labelWidth = 120; // Space for technician names

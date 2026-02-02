@@ -66,7 +66,7 @@ namespace mtc_app.features.technician.presentation.components
             // 
             // Main Panel
             // 
-            this.pnlMain.BackColor = Color.White;
+            this.pnlMain.BackColor = AppColors.CardBackground;
             this.pnlMain.Dock = DockStyle.Fill;
             this.pnlMain.Padding = new Padding(0);
             this.pnlMain.AutoSize = true;
@@ -185,14 +185,14 @@ namespace mtc_app.features.technician.presentation.components
             control.Click += (s, e) => HandleCardClick();
             control.MouseEnter += (s, e) => {
                 this.Cursor = Cursors.Hand;
-                this.pnlMain.BackColor = Color.FromArgb(248, 250, 252);
+                this.pnlMain.BackColor = AppColors.SurfaceHover;
             };
             control.MouseLeave += (s, e) => {
                 Point p = this.pnlMain.PointToClient(Cursor.Position);
                 if (!this.pnlMain.ClientRectangle.Contains(p))
                 {
                     this.Cursor = Cursors.Default;
-                    this.pnlMain.BackColor = Color.White;
+                    this.pnlMain.BackColor = AppColors.CardBackground;
                 }
             };
             foreach (Control child in control.Controls) HookEvents(child);
@@ -297,8 +297,8 @@ namespace mtc_app.features.technician.presentation.components
                     break;
                 default:
                     stripColor = AppColors.Primary;
-                    badgeBgColor = Color.LightGray;
-                    badgeTextColor = Color.Black;
+                    badgeBgColor = AppColors.Separator;
+                    badgeTextColor = AppColors.TextPrimary;
                     badgeText = "Unknown";
                     break;
             }
@@ -333,7 +333,7 @@ namespace mtc_app.features.technician.presentation.components
             using (GraphicsPath path = GraphicsUtils.GetRoundedRectangle(bounds, 8))
             {
                 g.FillPath(new SolidBrush(pnlMain.BackColor), path);
-                g.DrawPath(new Pen(Color.FromArgb(230, 230, 230), 1), path);
+                g.DrawPath(new Pen(AppColors.Border, 1), path);
             }
         }
 

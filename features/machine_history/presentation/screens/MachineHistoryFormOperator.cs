@@ -66,7 +66,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
 
             // === Tab 1: Report Tab ===
-            var tabReport = new TabPage("Lapor Kerusakan") { BackColor = Color.White };
+            var tabReport = new TabPage("Lapor Kerusakan") { BackColor = AppColors.CardBackground };
             
             var reportLayout = new FlowLayoutPanel
             {
@@ -81,7 +81,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             tabControl.TabPages.Add(tabReport);
 
             // === Tab 2: History Tab ===
-            var tabHistory = new TabPage("Riwayat Mesin") { BackColor = Color.White };
+            var tabHistory = new TabPage("Riwayat Mesin") { BackColor = AppColors.CardBackground };
             
             var pnlFilter = new Panel { Dock = DockStyle.Top, Height = 60, Padding = new Padding(10) };
             _dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 120, Top = 15, Left = 10 };
