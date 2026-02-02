@@ -165,8 +165,8 @@ namespace mtc_app.features.stock.presentation.screens
             });
             
             // --- Accessibility: Larger Fonts & Rows ---
-            gridRequests.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
-            gridRequests.DefaultCellStyle.Font = new Font("Segoe UI", 14F, FontStyle.Regular);
+            gridRequests.ColumnHeadersDefaultCellStyle.Font = AppFonts.Header3;
+            gridRequests.DefaultCellStyle.Font = AppFonts.Header3;
             gridRequests.RowTemplate.Height = 80; // Lebih tinggi biar lega
             
             // Add Formatting Event for Status & No

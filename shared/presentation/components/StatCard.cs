@@ -91,7 +91,7 @@ namespace mtc_app.shared.presentation.components
             // 
             // Value Label
             // 
-            this.lblValue.Font = new Font("Segoe UI", 24F, FontStyle.Bold);
+            this.lblValue.Font = AppFonts.MetricMedium;
             this.lblValue.ForeColor = AppColors.TextPrimary;
             this.lblValue.Location = new Point(85, 20);
             this.lblValue.AutoSize = true;
@@ -100,7 +100,7 @@ namespace mtc_app.shared.presentation.components
             // 
             // Title Label
             // 
-            this.lblTitle.Font = new Font("Segoe UI", 10F);
+            this.lblTitle.Font = AppFonts.BodySmall;
             this.lblTitle.ForeColor = AppColors.TextSecondary;
             this.lblTitle.Location = new Point(85, 58);
             this.lblTitle.AutoSize = true;

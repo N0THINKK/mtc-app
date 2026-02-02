@@ -112,7 +112,7 @@ namespace mtc_app.features.technician.presentation.components
             this.layoutTable.Controls.Add(this.iconMachine, 0, 0);
 
             // 2. Machine Name (Bigger Font)
-            this.lblMachineName.Font = new Font("Segoe UI", 16F, FontStyle.Bold); // Bigger
+            this.lblMachineName.Font = AppFonts.MetricSmall;
             this.lblMachineName.ForeColor = AppColors.TextPrimary;
             this.lblMachineName.AutoSize = true;
             this.lblMachineName.Anchor = AnchorStyles.Left | AnchorStyles.Right;
@@ -120,7 +120,7 @@ namespace mtc_app.features.technician.presentation.components
             this.layoutTable.Controls.Add(this.lblMachineName, 1, 0);
 
             // 3. Technician Name
-            this.lblTechnicianName.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
+            this.lblTechnicianName.Font = AppFonts.Header3;
             this.lblTechnicianName.ForeColor = AppColors.TextPrimary; // Darker
             this.lblTechnicianName.AutoSize = true;
             this.lblTechnicianName.Anchor = AnchorStyles.Left | AnchorStyles.Right;
@@ -128,7 +128,7 @@ namespace mtc_app.features.technician.presentation.components
             this.layoutTable.Controls.Add(this.lblTechnicianName, 2, 0);
 
             // 4. Problem (Truncated if too long, fills middle)
-            this.lblProblem.Font = new Font("Segoe UI", 12F);
+            this.lblProblem.Font = AppFonts.Title;
             this.lblProblem.ForeColor = AppColors.TextSecondary;
             this.lblProblem.AutoSize = true;
             this.lblProblem.Anchor = AnchorStyles.Left | AnchorStyles.Right;
@@ -148,7 +148,7 @@ namespace mtc_app.features.technician.presentation.components
             this.iconClock.Location = new Point(0, 4);
             this.iconClock.Paint += (s, e) => DrawClockIcon(e.Graphics);
             
-            this.lblTime.Font = new Font("Segoe UI", 12F, FontStyle.Regular); // Bigger date
+            this.lblTime.Font = AppFonts.Title;
             this.lblTime.ForeColor = AppColors.Danger;
             this.lblTime.Location = new Point(20, 0);
             this.lblTime.AutoSize = true;
@@ -158,7 +158,7 @@ namespace mtc_app.features.technician.presentation.components
             this.layoutTable.Controls.Add(pnlTime, 5, 0);
 
             // 7. Status Badge
-            this.lblStatusBadge.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
+            this.lblStatusBadge.Font = AppFonts.Subtitle;
             this.lblStatusBadge.AutoSize = true;
             this.lblStatusBadge.Padding = new Padding(15, 8, 15, 8); // Bigger badge
             this.lblStatusBadge.Anchor = AnchorStyles.Left | AnchorStyles.Right;

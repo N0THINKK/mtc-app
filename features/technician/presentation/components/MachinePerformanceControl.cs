@@ -113,7 +113,7 @@ namespace mtc_app.features.technician.presentation.components
             var lblArea = new Label 
             { 
                 Text = "Filter Area:", 
-                Font = new Font("Segoe UI", 10F), 
+                Font = AppFonts.BodySmall, 
                 Location = new Point(400, 20), 
                 AutoSize = true 
             };
@@ -122,7 +122,7 @@ namespace mtc_app.features.technician.presentation.components
             cmbArea = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Segoe UI", 10F),
+                Font = AppFonts.BodySmall,
                 Location = new Point(480, 16),
                 Width = 120
             };
@@ -147,7 +147,7 @@ namespace mtc_app.features.technician.presentation.components
             lblNoData = new Label
             {
                 Text = "Belum ada data downtime.",
-                Font = new Font("Segoe UI", 12F),
+                Font = AppFonts.Title,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Dock = DockStyle.Fill,
                 Visible = false
@@ -170,7 +170,7 @@ namespace mtc_app.features.technician.presentation.components
         private void CreateLegendItem(Panel panel, string text, Color color, int x, int y)
         {
             var pnlColor = new Panel { BackColor = color, Size = new Size(15, 15), Location = new Point(x, y + 3) };
-            var lblText = new Label { Text = text, Location = new Point(x + 20, y), AutoSize = true, Font = new Font("Segoe UI", 9F) };
+            var lblText = new Label { Text = text, Location = new Point(x + 20, y), AutoSize = true, Font = AppFonts.Caption };
             panel.Controls.Add(pnlColor);
             panel.Controls.Add(lblText);
         }

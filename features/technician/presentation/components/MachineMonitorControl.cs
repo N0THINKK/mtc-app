@@ -39,7 +39,7 @@ namespace mtc_app.features.technician.presentation.components
             var lblTitle = new Label 
             { 
                 Text = "Monitoring Output Produksi (Live)", 
-                Font = new Font("Segoe UI", 16, FontStyle.Bold),
+                Font = AppFonts.MetricSmall,
                 AutoSize = true,
                 Location = new Point(0, 5)
             };
@@ -47,7 +47,7 @@ namespace mtc_app.features.technician.presentation.components
             _lblStatus = new Label
             {
                 Text = "Loading...",
-                Font = new Font("Segoe UI", 10),
+                Font = AppFonts.BodySmall,
                 ForeColor = Color.Gray,
                 AutoSize = true,
                 Location = new Point(400, 12)

@@ -95,21 +95,21 @@ namespace mtc_app.features.group_leader.presentation.components
             this.iconMachine.Paint += (s, e) => DrawMachineIcon(e.Graphics);
             this.layoutTable.Controls.Add(this.iconMachine, 0, 0);
 
-            this.lblMachineName.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
+            this.lblMachineName.Font = AppFonts.Header3;
             this.lblMachineName.ForeColor = AppColors.TextPrimary;
             this.lblMachineName.AutoSize = true;
             this.lblMachineName.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             this.lblMachineName.Margin = new Padding(0, 0, 20, 0);
             this.layoutTable.Controls.Add(this.lblMachineName, 1, 0);
 
-            this.lblTechnicianName.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
+            this.lblTechnicianName.Font = AppFonts.Subtitle;
             this.lblTechnicianName.ForeColor = AppColors.TextPrimary;
             this.lblTechnicianName.AutoSize = true;
             this.lblTechnicianName.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             this.lblTechnicianName.Margin = new Padding(0, 0, 20, 0);
             this.layoutTable.Controls.Add(this.lblTechnicianName, 2, 0);
 
-            this.lblProblem.Font = new Font("Segoe UI", 10F);
+            this.lblProblem.Font = AppFonts.BodySmall;
             this.lblProblem.ForeColor = AppColors.TextSecondary;
             this.lblProblem.AutoSize = true;
             this.lblProblem.Anchor = AnchorStyles.Left | AnchorStyles.Right;
@@ -127,7 +127,7 @@ namespace mtc_app.features.group_leader.presentation.components
             this.iconClock.Location = new Point(0, 4);
             this.iconClock.Paint += (s, e) => DrawClockIcon(e.Graphics);
             
-            this.lblTime.Font = new Font("Segoe UI", 11F, FontStyle.Regular);
+            this.lblTime.Font = AppFonts.Body;
             this.lblTime.ForeColor = AppColors.Danger;
             this.lblTime.Location = new Point(20, 0);
             this.lblTime.AutoSize = true;
@@ -136,7 +136,7 @@ namespace mtc_app.features.group_leader.presentation.components
             pnlTime.Controls.Add(this.lblTime);
             this.layoutTable.Controls.Add(pnlTime, 5, 0);
 
-            this.lblStatusBadge.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            this.lblStatusBadge.Font = AppFonts.BodySmall;
             this.lblStatusBadge.AutoSize = true;
             this.lblStatusBadge.Padding = new Padding(15, 8, 15, 8);
             this.lblStatusBadge.Anchor = AnchorStyles.Left | AnchorStyles.Right;

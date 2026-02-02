@@ -87,14 +87,14 @@ namespace mtc_app.features.technician.presentation.screens
                 Anchor = AnchorStyles.Top | AnchorStyles.Left
             };
 
-            var lblFrom = new Label { Text = "Periode:", AutoSize = true, Margin = new Padding(0, 5, 5, 0), Font = new Font("Segoe UI", 12F) };
+            var lblFrom = new Label { Text = "Periode:", AutoSize = true, Margin = new Padding(0, 5, 5, 0), Font = AppFonts.Title };
             
             // [UI-FIX] Default start date = 1st of current month
             DateTime firstDayOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
-            dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 140, Font = new Font("Segoe UI", 12F), Value = firstDayOfMonth };
+            dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 140, Font = AppFonts.Title, Value = firstDayOfMonth };
             
-            var lblTo = new Label { Text = "-", AutoSize = true, Margin = new Padding(5, 5, 5, 0), Font = new Font("Segoe UI", 12F) };
-            dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 140, Font = new Font("Segoe UI", 12F), Value = DateTime.Now };
+            var lblTo = new Label { Text = "-", AutoSize = true, Margin = new Padding(5, 5, 5, 0), Font = AppFonts.Title };
+            dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 140, Font = AppFonts.Title, Value = DateTime.Now };
 
             btnFilter = new Button 
             { 
@@ -103,7 +103,7 @@ namespace mtc_app.features.technician.presentation.screens
                 BackColor = AppColors.Primary,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                Font = AppFonts.Button,
                 Cursor = Cursors.Hand,
                 Margin = new Padding(10, 0, 0, 0)
             };
@@ -150,7 +150,7 @@ namespace mtc_app.features.technician.presentation.screens
                 AutoSize = true, 
                 Location = new Point(parent.Width - 390, 22), 
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Font = new Font("Segoe UI", 11F)
+                Font = AppFonts.Body
             };
 
             nudInterval = new NumericUpDown
@@ -161,7 +161,7 @@ namespace mtc_app.features.technician.presentation.screens
                 Minimum = 5,
                 Maximum = 3600,
                 Value = 60,
-                Font = new Font("Segoe UI", 11F)
+                Font = AppFonts.Body
             };
 
             btnSetInterval = new Button
@@ -173,7 +173,7 @@ namespace mtc_app.features.technician.presentation.screens
                 BackColor = AppColors.Primary,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Font = AppFonts.Caption,
                 Cursor = Cursors.Hand
             };
             btnSetInterval.Click += (s, e) =>
@@ -192,7 +192,7 @@ namespace mtc_app.features.technician.presentation.screens
                 BackColor = Color.WhiteSmoke,
                 ForeColor = Color.DimGray,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                Font = AppFonts.Button,
                 Cursor = Cursors.Hand
             };
             btnAutoSwitch.FlatAppearance.BorderColor = Color.LightGray;
@@ -274,7 +274,7 @@ namespace mtc_app.features.technician.presentation.screens
             tabControl = new TabControl
             {
                 Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 10F),
+                Font = AppFonts.BodySmall,
                 Padding = new Point(15, 5)
             };
 

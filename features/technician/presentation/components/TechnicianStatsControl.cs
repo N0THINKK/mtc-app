@@ -110,14 +110,14 @@ namespace mtc_app.features.technician.presentation.components
                 icon.Paint += (s, e) => DrawTrophyIcon(e.Graphics, accentColor);
 
             // Value Label
-            valueLabel.Font = new Font("Segoe UI", 24F, FontStyle.Bold);
+            valueLabel.Font = AppFonts.MetricMedium;
             valueLabel.ForeColor = AppColors.TextPrimary;
             valueLabel.Location = new Point(85, 20);
             valueLabel.AutoSize = true;
             valueLabel.Text = defaultValue;
 
             // Text Label
-            textLabel.Font = new Font("Segoe UI", 10F);
+            textLabel.Font = AppFonts.BodySmall;
             textLabel.ForeColor = AppColors.TextSecondary;
             textLabel.Location = new Point(85, 58);
             textLabel.AutoSize = true;

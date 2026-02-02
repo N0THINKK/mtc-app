@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.stock.presentation.components
 {
@@ -83,8 +84,8 @@ namespace mtc_app.features.stock.presentation.components
             lblTitle = new Label
             {
                 AutoSize = false,
-                Font = new Font("Segoe UI", 12F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(108, 117, 125),
+                Font = AppFonts.Title,
+                ForeColor = AppColors.TextSecondary,
                 Location = new Point(20, 20),
                 Size = new Size(260, 25),
                 Text = "Status"
@@ -94,8 +95,8 @@ namespace mtc_app.features.stock.presentation.components
             lblValue = new Label
             {
                 AutoSize = false,
-                Font = new Font("Segoe UI", 36F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
+                Font = AppFonts.MetricLarge,
+                ForeColor = AppColors.TextPrimary,
                 Location = new Point(18, 50),
                 Size = new Size(260, 60),
                 Text = "0"
@@ -105,8 +106,8 @@ namespace mtc_app.features.stock.presentation.components
             lblSubtext = new Label
             {
                 AutoSize = false,
-                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(108, 117, 125),
+                Font = AppFonts.BodySmall,
+                ForeColor = AppColors.TextSecondary,
                 Location = new Point(20, 110),
                 Size = new Size(260, 25),
                 Text = "",
@@ -141,8 +142,8 @@ namespace mtc_app.features.stock.presentation.components
                     valueColor = mtc_app.shared.presentation.styles.AppColors.Primary;
                     break;
                 default:
-                    accentColor = Color.FromArgb(108, 117, 125);
-                    valueColor = Color.FromArgb(33, 37, 41);
+                    accentColor = AppColors.TextSecondary;
+                    valueColor = AppColors.TextPrimary;
                     break;
             }
 

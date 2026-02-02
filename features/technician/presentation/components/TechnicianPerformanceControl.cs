@@ -125,7 +125,7 @@ namespace mtc_app.features.technician.presentation.components
             var lblMetric = new Label
             {
                 Text = "Metrik:",
-                Font = new Font("Segoe UI", 12F),
+                Font = AppFonts.Title,
                 Location = new Point(0, 7),
                 AutoSize = true
             };
@@ -134,7 +134,7 @@ namespace mtc_app.features.technician.presentation.components
             cmbMetric = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Segoe UI", 12F),
+                Font = AppFonts.Title,
                 Location = new Point(70, 3),
                 Size = new Size(200, 28)
             };
@@ -155,7 +155,7 @@ namespace mtc_app.features.technician.presentation.components
             btnSort = new Button
             {
                 Text = "↓ Tertinggi",
-                Font = new Font("Segoe UI", 11F),
+                Font = AppFonts.Body,
                 Location = new Point(300, 2),
                 Size = new Size(120, 32),
                 FlatStyle = FlatStyle.Flat,
@@ -188,7 +188,7 @@ namespace mtc_app.features.technician.presentation.components
             lblNoData = new Label
             {
                 Text = "Tidak ada data leaderboard.",
-                Font = new Font("Segoe UI", 11F),
+                Font = AppFonts.Body,
                 ForeColor = AppColors.TextSecondary,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Dock = DockStyle.Fill,
