@@ -1,7 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.DataVisualization.Charting;
 using Dapper;
@@ -11,15 +15,24 @@ namespace mtc_app.features.technician.presentation.components
 {
     public class MachineMonitorControl : UserControl
     {
-        private const int REFRESH_RATE_MS = 5000; // Refresh dashboard every 5 seconds
+        private const int REFRESH_RATE_MS = 5000; 
 
         private Timer _timer;
         private Chart _chart;
+        private ComboBox _comboMetric;
         private Label _lblStatus;
-        private ComboBox _comboSort;
         
-        // Required for Designer support
         private System.ComponentModel.IContainer components = null;
+
+        // Data Structure to hold all metrics
+        private class MachineData
+        {
+            public string MachineName { get; set; }
+            public long ProducedLots { get; set; }
+            public long ProducedPieces { get; set; }
+            public double AutoTime { get; set; }
+            public double MonitorTime { get; set; }
+        }
 
         public MachineMonitorControl()
         {
@@ -33,12 +46,12 @@ namespace mtc_app.features.technician.presentation.components
             this.BackColor = AppColors.CardBackground;
             this.Padding = new Padding(AppDimens.MarginLarge);
 
-            // 1. Header Layout
+            // 1. Header
             var pnlHeader = new Panel { Dock = DockStyle.Top, Height = AppDimens.RowHeight };
             
             var lblTitle = new Label 
             { 
-                Text = "Monitoring Output Produksi", 
+                Text = "Monitoring Output Produksi (Realtime)", 
                 Font = AppFonts.MetricSmall,
                 AutoSize = true,
                 Location = new Point(0, 5)
@@ -46,45 +59,54 @@ namespace mtc_app.features.technician.presentation.components
 
             _lblStatus = new Label
             {
-                Text = "Loading...",
+                Text = "Scanning...",
                 Font = AppFonts.BodySmall,
                 ForeColor = Color.Gray,
                 AutoSize = true,
-                Location = new Point(400, 12)
+                Location = new Point(350, 12)
             };
 
-            _comboSort = new ComboBox
+            // Metric Filter
+            _comboMetric = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Width = 150,
-                Location = new Point(pnlHeader.Width - 160, 10),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
+                Width = 180,
+                Location = new Point(pnlHeader.Width - 200, 10),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Font = AppFonts.BodySmall
             };
-            _comboSort.Items.AddRange(new object[] { "Total Product", "Cutter Count", "Press A", "Press B" });
-            _comboSort.SelectedIndex = 0;
-            _comboSort.SelectedIndexChanged += (s, e) => LoadData();
+            // Only 2 Options for Grouped View
+            _comboMetric.Items.AddRange(new object[] { "Produksi (Output)", "Efisiensi (Waktu)" });
+            _comboMetric.SelectedIndex = 0;
+            _comboMetric.SelectedIndexChanged += async (s, e) => await LoadData();
 
             pnlHeader.Controls.Add(lblTitle);
             pnlHeader.Controls.Add(_lblStatus);
-            pnlHeader.Controls.Add(_comboSort);
+            pnlHeader.Controls.Add(_comboMetric);
             this.Controls.Add(pnlHeader);
 
-            // 2. Chart Control
+            // 2. Chart
             _chart = new Chart();
             _chart.Dock = DockStyle.Fill;
             _chart.BackColor = Color.White;
             
-            // Area
             var chartArea = new ChartArea("MainArea");
             chartArea.AxisX.Interval = 1;
-            chartArea.AxisX.LabelStyle.Angle = -45; // Miringkan label jika nama mesin panjang
+            chartArea.AxisX.LabelStyle.Angle = -45;
             chartArea.AxisX.MajorGrid.LineColor = Color.LightGray;
+            
+            // Primary Y Axis
             chartArea.AxisY.MajorGrid.LineColor = Color.LightGray;
+            
+            // Secondary Y Axis (For Pieces which have huge numbers)
+            chartArea.AxisY2.Enabled = AxisEnabled.Auto;
+            chartArea.AxisY2.MajorGrid.Enabled = false;
+            
             _chart.ChartAreas.Add(chartArea);
 
-            // Legend
             var legend = new Legend("MainLegend");
             legend.Docking = Docking.Top;
+            legend.Alignment = StringAlignment.Center;
             _chart.Legends.Add(legend);
 
             this.Controls.Add(_chart);
@@ -94,101 +116,208 @@ namespace mtc_app.features.technician.presentation.components
         {
             _timer = new Timer();
             _timer.Interval = REFRESH_RATE_MS;
-            _timer.Tick += (s, e) => LoadData();
+            _timer.Tick += async (s, e) => await LoadData();
         }
 
-        public void StartMonitoring()
-        {
-            LoadData();
-            _timer.Start();
-        }
+        public void StartMonitoring() { _ = LoadData(); _timer.Start(); }
+        public void StopMonitoring() { _timer.Stop(); }
 
-        public void StopMonitoring()
-        {
-            _timer.Stop();
-        }
-
-        private async void LoadData()
+        private async Task LoadData()
         {
             try
             {
+                // 1. Get List of Machines from DB
+                IEnumerable<dynamic> machines;
                 using (var conn = DatabaseHelper.GetConnection())
                 {
-                    string orderBy = "all_product";
-                    string label = "Total Product";
-                    
-                    switch (_comboSort.SelectedIndex)
+                    machines = await conn.QueryAsync("SELECT machine_type, machine_area, machine_number FROM machines ORDER BY machine_type, machine_area, machine_number");
+                }
+
+                // 2. Process each machine (Fetch ALL data)
+                var machineList = new List<MachineData>();
+                string selectedMetric = _comboMetric.SelectedItem?.ToString() ?? "Produksi (Output)";
+
+                foreach (var m in machines)
+                {
+                    var data = new MachineData { 
+                        MachineName = $"{m.machine_type}-{m.machine_area}.{m.machine_number}" 
+                    };
+                    string type = m.machine_type.ToString().ToUpper();
+
+                    // AC90
+                    if (type.Contains("AC90"))
                     {
-                        case 1: orderBy = "count_cutter"; label = "Cutter Count"; break;
-                        case 2: orderBy = "count_press_a"; label = "Press A"; break;
-                        case 3: orderBy = "count_press_b"; label = "Press B"; break;
+                        string pathProd = @"C:\AC90HMI\prg\INI\HmiProcess.ini";
+                        string pathEff = @"C:\AC90HMI\prg\INI\HmiProcess2.ini";
+                        
+                        if (File.Exists(pathProd)) {
+                            data.ProducedLots = ParseLineValue(pathProd, 2);
+                            data.ProducedPieces = ParseLineValue(pathProd, 3);
+                        }
+                        if (File.Exists(pathEff)) {
+                            data.AutoTime = ParseIniValue(pathEff, "AutoTime");
+                            data.MonitorTime = ParseIniValue(pathEff, "MonitorTime");
+                        }
+                    }
+                    // AC95
+                    else if (type.Contains("AC95"))
+                    {
+                        string path = @"D:\AC95\Product\Information.ini";
+                        if (File.Exists(path)) {
+                            data.ProducedLots = (long)ParseIniValue(path, "ProducedLots");
+                            data.ProducedPieces = (long)ParseIniValue(path, "ProducedPieces");
+                            data.AutoTime = ParseIniValue(path, "AutoTime");
+                            data.MonitorTime = ParseIniValue(path, "MonitorTime");
+                        }
+                    }
+                    // AC80/81
+                    else if (type.Contains("AC80") || type.Contains("AC81"))
+                    {
+                        string folder = type.Contains("81") ? "AC81" : "AC80";
+                        string path = $@"C:\{folder}HMI\{folder}\{folder}";
+                        
+                        if (!File.Exists(path) && File.Exists(path + ".ini")) path += ".ini";
+                        
+                        if (File.Exists(path)) {
+                            var vals = FindNumericValues(path, 2);
+                            if (vals.Count >= 1) data.ProducedLots = vals[0];
+                            if (vals.Count >= 2) data.ProducedPieces = vals[1];
+                        }
                     }
 
-                    string sql = $@"
-                        SELECT 
-                            m.machine_number, 
-                            m.machine_area,
-                            l.all_product,
-                            l.count_cutter,
-                            l.count_press_a,
-                            l.count_press_b,
-                            l.last_updated
-                        FROM machine_process_logs l
-                        JOIN machines m ON l.machine_id = m.machine_id
-                        ORDER BY l.{orderBy} DESC
-                        LIMIT 20"; // Show top 20 active machines
-
-                    var data = await conn.QueryAsync(sql);
-                    
-                    UpdateChart(data, label);
-                    
-                    _lblStatus.Text = $"Last updated: {DateTime.Now:HH:mm:ss}";
-                    _lblStatus.ForeColor = AppColors.Success;
+                    // Add to list (even if 0, to show machine exists, or filter out 0s)
+                    // Let's filter out completely dead machines to save chart space
+                    if (data.ProducedLots > 0 || data.ProducedPieces > 0 || data.AutoTime > 0)
+                    {
+                        machineList.Add(data);
+                    }
                 }
+
+                UpdateChart(machineList, selectedMetric);
+                _lblStatus.Text = $"Updated: {DateTime.Now:HH:mm:ss} | Active: {machineList.Count}";
             }
             catch (Exception ex)
             {
-                _lblStatus.Text = "Error loading data";
-                _lblStatus.ForeColor = AppColors.Error;
+                _lblStatus.Text = "Error: " + ex.Message;
             }
         }
 
-        private void UpdateChart(System.Collections.Generic.IEnumerable<dynamic> data, string seriesName)
+        private void UpdateChart(List<MachineData> data, string mode)
         {
             _chart.Series.Clear();
             
-            var series = new Series(seriesName);
-            series.ChartType = SeriesChartType.Column;
-            series.IsValueShownAsLabel = true;
-            series.Color = AppColors.Primary;
-
-            foreach (var row in data)
+            if (mode.Contains("Produksi"))
             {
-                // Machine Label: "TRX.01"
-                string machineLabel = $"{row.machine_area}.{row.machine_number}";
+                // Series 1: Lots (Primary Axis)
+                var sLots = new Series("Lots (Kiri)") { 
+                    ChartType = SeriesChartType.Column, 
+                    Color = AppColors.Primary 
+                };
                 
-                long val = 0;
-                if (seriesName == "Total Product") val = row.all_product;
-                else if (seriesName == "Cutter Count") val = row.count_cutter;
-                else if (seriesName == "Press A") val = row.count_press_a;
-                else if (seriesName == "Press B") val = row.count_press_b;
+                // Series 2: Pieces (Secondary Axis - Right)
+                var sPcs = new Series("Pieces (Kanan)") { 
+                    ChartType = SeriesChartType.Column, 
+                    Color = AppColors.Success, 
+                    YAxisType = AxisType.Secondary 
+                };
 
-                series.Points.AddXY(machineLabel, val);
+                foreach (var item in data)
+                {
+                    sLots.Points.AddXY(item.MachineName, item.ProducedLots);
+                    sPcs.Points.AddXY(item.MachineName, item.ProducedPieces);
+                }
+                _chart.Series.Add(sLots);
+                _chart.Series.Add(sPcs);
             }
+            else // Efisiensi
+            {
+                // Series 1: Auto Time
+                var sAuto = new Series("Auto Time") { 
+                    ChartType = SeriesChartType.Column, 
+                    Color = AppColors.Warning 
+                };
+                
+                // Series 2: Monitor Time
+                var sMon = new Series("Monitor Time") { 
+                    ChartType = SeriesChartType.Column, 
+                    Color = AppColors.Danger 
+                };
 
-            _chart.Series.Add(series);
+                foreach (var item in data)
+                {
+                    sAuto.Points.AddXY(item.MachineName, item.AutoTime);
+                    sMon.Points.AddXY(item.MachineName, item.MonitorTime);
+                }
+                _chart.Series.Add(sAuto);
+                _chart.Series.Add(sMon);
+            }
+        }
+
+        // --- Helpers ---
+
+        private double ParseIniValue(string path, string key)
+        {
+            try
+            {
+                var lines = File.ReadAllLines(path, Encoding.Default);
+                foreach (var line in lines)
+                {
+                    if (line.StartsWith(key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var parts = line.Split('=');
+                        if (parts.Length > 1 && double.TryParse(parts[1].Trim(), out double val)) return val;
+                    }
+                }
+            }
+            catch { }
+            return 0;
+        }
+
+        private long ParseLineValue(string path, int lineIndex)
+        {
+            try
+            {
+                var lines = File.ReadAllLines(path, Encoding.Default);
+                if (lineIndex < lines.Length)
+                {
+                    string line = lines[lineIndex];
+                    string valuePart = line.Contains("=") ? line.Split('=')[1].Trim() : line.Trim();
+                    if (long.TryParse(valuePart, out long val)) return val;
+                }
+            }
+            catch { }
+            return 0;
+        }
+
+        private List<long> FindNumericValues(string path, int count)
+        {
+            var results = new List<long>();
+            try
+            {
+                var lines = File.ReadAllLines(path, Encoding.Default);
+                foreach (var line in lines)
+                {
+                    if (line.Contains("="))
+                    {
+                        string valPart = line.Split('=')[1].Trim();
+                        if (long.TryParse(valPart, out long val) && val > 0) 
+                        {
+                            results.Add(val);
+                            if (results.Count >= count) break;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return results;
         }
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing)
             {
-                components.Dispose();
-            }
-            if (_timer != null)
-            {
-                _timer.Stop();
-                _timer.Dispose();
+                if (components != null) components.Dispose();
+                if (_timer != null) { _timer.Stop(); _timer.Dispose(); }
             }
             base.Dispose(disposing);
         }
