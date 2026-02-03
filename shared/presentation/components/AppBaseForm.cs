@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using mtc_app.shared.data.local;
 using mtc_app.shared.data.services;
+using mtc_app.shared.infrastructure;
 using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.shared.presentation.components
@@ -36,17 +37,15 @@ namespace mtc_app.shared.presentation.components
         }
 
         /// <summary>
-        /// Initializes shared offline services (singleton pattern).
+        /// Initializes shared offline services via ServiceLocator (singleton pattern).
         /// </summary>
         private void InitializeOfflineServices()
         {
-            if (!_servicesInitialized)
-            {
-                _offlineRepo = new OfflineRepository();
-                _networkMonitor = new NetworkMonitor();
-                _syncManager = new SyncManager(_offlineRepo, _networkMonitor);
-                _servicesInitialized = true;
-            }
+            // Access services through ServiceLocator to ensure single instances
+            _offlineRepo = ServiceLocator.OfflineRepo;
+            _networkMonitor = ServiceLocator.NetworkMonitor;
+            _syncManager = ServiceLocator.SyncManager;
+            _servicesInitialized = true;
         }
 
         /// <summary>

@@ -9,6 +9,7 @@ using mtc_app.features.stock.data.dtos;
 using mtc_app.features.stock.data.enums;
 using mtc_app.features.stock.data.repositories;
 using mtc_app.features.stock.presentation.components; // Import custom component
+using mtc_app.shared.infrastructure;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 
@@ -32,7 +33,7 @@ namespace mtc_app.features.stock.presentation.screens
         private StatCard cardReadyNew;
         private AppEmptyState emptyStateNew;
 
-        public StockDashboardForm() : this(new StockRepository())
+        public StockDashboardForm() : this(ServiceLocator.CreateStockRepository())
         {
         }
 
