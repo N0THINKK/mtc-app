@@ -2,10 +2,11 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using mtc_app.features.technician.data.repositories;
+using mtc_app.features.technician.logic; // [NEW] For Logger
 using mtc_app.features.technician.presentation.components;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.data.session;
-using mtc_app.shared.presentation.styles; // Fix AppColors
+using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.technician.presentation.screens
 {
@@ -31,6 +32,9 @@ namespace mtc_app.features.technician.presentation.screens
         private DateTimePicker dtpStart;
         private DateTimePicker dtpEnd;
         private Button btnFilter;
+
+        // Background Logger
+        private Timer timerLogger;
 
         public TechnicianDashboardForm() : this(new TechnicianRepository())
         {
@@ -61,7 +65,7 @@ namespace mtc_app.features.technician.presentation.screens
             };
             // Add Toolbar BEFORE Tabs so it docks to top
             this.Controls.Add(pnlToolbar);
-            pnlToolbar.BringToFront(); // Ensure it's below header but above content if z-order matters
+            pnlToolbar.BringToFront(); 
 
             // 2. Initialize Features into Toolbar
             InitializeDateFilter(pnlToolbar);
@@ -69,11 +73,15 @@ namespace mtc_app.features.technician.presentation.screens
             
             // 3. Initialize Tabs (Dock=Fill will take remaining space)
             InitializeTabs();
-            tabControl.BringToFront(); // Tabs should be main content
-            pnlToolbar.SendToBack(); // Push toolbar up? No, Dock order matters.
-            // Dock Order: Last Added is First in Dock hierarchy usually? No, it's z-order.
-            // To be safe: Add Toolbar, Then Add Tabs.
-            // Since InitializeTabs adds tabControl, let's ensure tabControl is added AFTER toolbar.
+            tabControl.BringToFront(); 
+
+            // 4. Start Background Logger (Every 5 Mins)
+            timerLogger = new Timer { Interval = 300000 }; // 5 Minutes
+            timerLogger.Tick += async (s, e) => { await new MachineDataLogger().LogMachineDataAsync(); };
+            timerLogger.Start();
+            
+            // Initial Log on Startup
+            _ = new MachineDataLogger().LogMachineDataAsync();
         }
 
         private void InitializeDateFilter(Panel parent)
@@ -361,6 +369,10 @@ namespace mtc_app.features.technician.presentation.screens
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             workQueueControl?.StopAutoRefresh();
+            
+            timerLogger?.Stop();
+            timerLogger?.Dispose();
+            
             base.OnFormClosing(e);
         }
     }
