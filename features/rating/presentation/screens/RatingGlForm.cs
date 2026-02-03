@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using mtc_app.features.group_leader.data.repositories;
+using mtc_app.shared.infrastructure;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 
@@ -31,7 +32,7 @@ namespace mtc_app.features.rating.presentation.screens
         private AppLabel _lblTechNote;
 
         // Default constructor for Designer if needed (though DI preferred)
-        public RatingGlForm(long ticketId) : this(new GroupLeaderRepository(), Guid.Empty) 
+        public RatingGlForm(long ticketId) : this(ServiceLocator.CreateGroupLeaderRepository(), Guid.Empty) 
         {
             // Legacy signature support if callers still pass long - throw or handle?
             // Ideally we change callers. But for now, let's assume we might need to fetch Guid by long ID if forced.
@@ -39,7 +40,7 @@ namespace mtc_app.features.rating.presentation.screens
             throw new NotSupportedException("This form now requires a Guid TicketId. use RatingGlForm(Guid ticketId)");
         }
 
-        public RatingGlForm(Guid ticketId) : this(new GroupLeaderRepository(), ticketId) 
+        public RatingGlForm(Guid ticketId) : this(ServiceLocator.CreateGroupLeaderRepository(), ticketId) 
         {
         }
 

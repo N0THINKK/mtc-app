@@ -9,6 +9,7 @@ using mtc_app.features.group_leader.data.dtos;
 using mtc_app.features.group_leader.data.repositories;
 using mtc_app.features.group_leader.presentation.components;
 using mtc_app.features.rating.presentation.screens;
+using mtc_app.shared.infrastructure;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 
@@ -21,8 +22,8 @@ namespace mtc_app.features.group_leader.presentation.screens
         private bool _isSystemActive = true;
         private Timer timerRefresh;
 
-        // Composition Root: Default constructor instantiates Repository
-        public GroupLeaderDashboardForm() : this(new GroupLeaderRepository())
+        // Composition Root: Default constructor uses ServiceLocator for offline support
+        public GroupLeaderDashboardForm() : this(ServiceLocator.CreateGroupLeaderRepository())
         {
         }
 
