@@ -1,3 +1,5 @@
+using mtc_app.features.authentication.data.decorators;
+using mtc_app.features.authentication.data.repositories;
 using mtc_app.features.group_leader.data.decorators;
 using mtc_app.features.group_leader.data.repositories;
 using mtc_app.features.machine_history.data.decorators;
@@ -156,6 +158,19 @@ namespace mtc_app.shared.infrastructure
             EnsureServicesInitialized();
             return new OfflineMachineHistoryRepository(
                 new MachineHistoryRepository(),
+                _offlineRepo,
+                _networkMonitor
+            );
+        }
+
+        /// <summary>
+        /// Creates an offline-aware AuthRepository with offline login fallback.
+        /// </summary>
+        public static IAuthRepository CreateAuthRepository()
+        {
+            EnsureServicesInitialized();
+            return new OfflineAuthRepository(
+                new AuthRepository(),
                 _offlineRepo,
                 _networkMonitor
             );

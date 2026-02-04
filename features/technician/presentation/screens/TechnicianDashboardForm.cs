@@ -7,6 +7,7 @@ using mtc_app.features.technician.presentation.components;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.data.session;
 using mtc_app.shared.presentation.styles;
+using mtc_app.shared.infrastructure;
 
 namespace mtc_app.features.technician.presentation.screens
 {
@@ -36,7 +37,7 @@ namespace mtc_app.features.technician.presentation.screens
         // Background Logger
         private Timer timerLogger;
 
-        public TechnicianDashboardForm() : this(new TechnicianRepository())
+        public TechnicianDashboardForm() : this(ServiceLocator.CreateTechnicianRepository())
         {
         }
 

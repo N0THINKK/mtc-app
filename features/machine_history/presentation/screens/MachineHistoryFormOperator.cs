@@ -10,6 +10,7 @@ using mtc_app.features.machine_history.data.repositories;
 using mtc_app.features.machine_history.presentation.components;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
+using mtc_app.shared.infrastructure;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
@@ -34,7 +35,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private DateTimePicker _dtpEnd;
         private AppButton _btnFilter;
 
-        public MachineHistoryFormOperator() : this(new MachineHistoryRepository()) { }
+        public MachineHistoryFormOperator() : this(ServiceLocator.CreateMachineHistoryRepository()) { }
 
         public MachineHistoryFormOperator(IMachineHistoryRepository repository)
         {
