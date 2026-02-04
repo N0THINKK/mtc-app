@@ -103,6 +103,20 @@ namespace mtc_app.shared.data.local
                             FinishedAt TEXT,
                             CachedAt TEXT NOT NULL
                         );");
+                    
+                    // CachedUsers table (for offline authentication)
+                    ExecuteNonQuery(connection, @"
+                        CREATE TABLE IF NOT EXISTS CachedUsers (
+                            UserId INTEGER PRIMARY KEY,
+                            Username TEXT NOT NULL UNIQUE,
+                            PasswordHash TEXT NOT NULL,
+                            FullName TEXT,
+                            Nik TEXT,
+                            RoleId INTEGER,
+                            RoleName TEXT,
+                            IsActive INTEGER DEFAULT 1,
+                            LastSyncedAt TEXT NOT NULL
+                        );");
                 }
             }
         }
@@ -473,6 +487,131 @@ namespace mtc_app.shared.data.local
                 }
                 
                 return null;
+            }
+        }
+
+        #endregion
+
+        #region User Cache Operations
+
+        /// <summary>
+        /// Saves users to local cache for offline authentication.
+        /// </summary>
+        public void SaveUsersToCache<T>(IEnumerable<T> users, 
+            Func<T, long> userIdSelector,
+            Func<T, string> usernameSelector,
+            Func<T, string> passwordSelector,
+            Func<T, string> fullNameSelector,
+            Func<T, string> nikSelector,
+            Func<T, int> roleIdSelector,
+            Func<T, string> roleNameSelector,
+            Func<T, bool> isActiveSelector)
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    
+                    foreach (var user in users)
+                    {
+                        string sql = @"
+                            INSERT OR REPLACE INTO CachedUsers 
+                            (UserId, Username, PasswordHash, FullName, Nik, RoleId, RoleName, IsActive, LastSyncedAt)
+                            VALUES (@UserId, @Username, @Password, @FullName, @Nik, @RoleId, @RoleName, @IsActive, @SyncedAt);";
+                        
+                        using (var cmd = new SQLiteCommand(sql, connection))
+                        {
+                            cmd.Parameters.AddWithValue("@UserId", userIdSelector(user));
+                            cmd.Parameters.AddWithValue("@Username", usernameSelector(user) ?? "");
+                            cmd.Parameters.AddWithValue("@Password", passwordSelector(user) ?? "");
+                            cmd.Parameters.AddWithValue("@FullName", fullNameSelector(user) ?? "");
+                            cmd.Parameters.AddWithValue("@Nik", nikSelector(user) ?? "");
+                            cmd.Parameters.AddWithValue("@RoleId", roleIdSelector(user));
+                            cmd.Parameters.AddWithValue("@RoleName", roleNameSelector(user) ?? "");
+                            cmd.Parameters.AddWithValue("@IsActive", isActiveSelector(user) ? 1 : 0);
+                            cmd.Parameters.AddWithValue("@SyncedAt", DateTime.UtcNow.ToString("o"));
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Validates user credentials against local cache for offline login.
+        /// Returns UserDto with IsOfflineLogin=true if valid, null otherwise.
+        /// </summary>
+        public mtc_app.shared.data.dtos.UserDto ValidateOfflineLogin(string username, string password)
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    
+                    string sql = @"
+                        SELECT UserId, Username, PasswordHash, FullName, Nik, RoleId, RoleName, IsActive
+                        FROM CachedUsers
+                        WHERE Username = @Username;";
+                    
+                    using (var cmd = new SQLiteCommand(sql, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@Username", username);
+                        
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                // Check if user is active
+                                int isActive = Convert.ToInt32(reader["IsActive"]);
+                                if (isActive != 1)
+                                {
+                                    return null; // User is not active
+                                }
+                                
+                                // Verify password (plain-text comparison to match current DB)
+                                string storedPassword = reader["PasswordHash"]?.ToString() ?? "";
+                                if (storedPassword != password)
+                                {
+                                    return null; // Password mismatch
+                                }
+                                
+                                // Return user with offline flag
+                                return new mtc_app.shared.data.dtos.UserDto
+                                {
+                                    UserId = Convert.ToInt64(reader["UserId"]),
+                                    Username = reader["Username"]?.ToString(),
+                                    FullName = reader["FullName"]?.ToString(),
+                                    Nik = reader["Nik"]?.ToString(),
+                                    RoleId = Convert.ToInt32(reader["RoleId"]),
+                                    RoleName = reader["RoleName"]?.ToString(),
+                                    IsOfflineLogin = true
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return null; // User not found
+        }
+
+        /// <summary>
+        /// Gets count of cached users.
+        /// </summary>
+        public int GetCachedUserCount()
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    using (var cmd = new SQLiteCommand("SELECT COUNT(*) FROM CachedUsers;", connection))
+                    {
+                        return Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                }
             }
         }
 

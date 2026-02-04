@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using mtc_app.features.authentication.data.repositories;
 using mtc_app.shared.data.dtos;
 using mtc_app.shared.data.session;
+using mtc_app.shared.infrastructure;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.navigation;
 
@@ -16,7 +17,7 @@ namespace mtc_app.features.authentication.presentation.screens
 
         // Composition Root Pattern: Default constructor initializes the implementation.
         // This keeps Program.cs simple while allowing DI for testing if needed via overload.
-        public LoginForm() : this(new AuthRepository())
+        public LoginForm() : this(ServiceLocator.CreateAuthRepository())
         {
         }
 
@@ -78,6 +79,12 @@ namespace mtc_app.features.authentication.presentation.screens
 
                 if (user != null)
                 {
+                    // Show offline login toast if applicable
+                    if (user.IsOfflineLogin)
+                    {
+                        ToastNotification.ShowWarning("Login Offline - synced data only", 4000);
+                    }
+                    
                     // Success
                     HandleLoginSuccess(user);
                 }

@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapper;
 using mtc_app.features.machine_history.data.dtos;
 using mtc_app.features.machine_history.data.repositories;
 using mtc_app.features.technician.data.dtos;
 using mtc_app.features.technician.data.repositories;
 using mtc_app.shared.data.local;
+using mtc_app.shared.data.dtos;
 
 namespace mtc_app.shared.data.services
 {
@@ -83,8 +85,9 @@ namespace mtc_app.shared.data.services
 
                     int ticketsCached = await WarmTicketCacheAsync();
                     int historyCached = await WarmHistoryCacheAsync();
+                    int usersCached = await SyncUsersAsync();
 
-                    System.Diagnostics.Debug.WriteLine($"[CacheWarmer] Complete: {ticketsCached} tickets, {historyCached} history records");
+                    System.Diagnostics.Debug.WriteLine($"[CacheWarmer] Complete: {ticketsCached} tickets, {historyCached} history, {usersCached} users");
 
                     OnCacheWarmCompleted?.Invoke(this, new CacheWarmEventArgs(ticketsCached, historyCached));
                 }
@@ -157,6 +160,58 @@ namespace mtc_app.shared.data.services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[CacheWarmer] History cache error: {ex.Message}");
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Syncs all users from remote DB to local cache for offline authentication.
+        /// </summary>
+        private async Task<int> SyncUsersAsync()
+        {
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Open();
+                    
+                    string sql = @"
+                        SELECT 
+                            u.user_id AS UserId,
+                            u.username AS Username,
+                            u.password AS Password,
+                            u.full_name AS FullName,
+                            u.nik AS Nik,
+                            u.role_id AS RoleId,
+                            r.role_name AS RoleName,
+                            COALESCE(u.is_active, 1) AS IsActive
+                        FROM users u
+                        LEFT JOIN roles r ON u.role_id = r.role_id";
+                    
+                    var users = await conn.QueryAsync<CachedUserDto>(sql);
+                    var userList = users?.ToList() ?? new List<CachedUserDto>();
+                    
+                    if (userList.Count > 0)
+                    {
+                        _offlineRepo.SaveUsersToCache(
+                            userList,
+                            u => u.UserId,
+                            u => u.Username,
+                            u => u.Password,
+                            u => u.FullName,
+                            u => u.Nik,
+                            u => u.RoleId,
+                            u => u.RoleName,
+                            u => u.IsActive
+                        );
+                    }
+                    
+                    return userList.Count;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CacheWarmer] User sync error: {ex.Message}");
                 return 0;
             }
         }
