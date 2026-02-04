@@ -36,7 +36,8 @@ namespace mtc_app.features.group_leader.data.repositories
 
                         t.gl_rating_score AS GlRatingScore,
                         t.created_at AS CreatedAt,
-                        t.gl_validated_at AS GlValidatedAt
+                        t.gl_validated_at AS GlValidatedAt,
+                        t.status_id AS StatusId
                     FROM tickets t
                     LEFT JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN users u ON t.technician_id = u.user_id

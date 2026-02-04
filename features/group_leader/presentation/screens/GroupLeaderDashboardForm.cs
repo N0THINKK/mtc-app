@@ -48,11 +48,16 @@ namespace mtc_app.features.group_leader.presentation.screens
 
         private async Task LoadDataAsync()
         {
+            if (this.IsDisposed) return;
+
             try
             {
                 // We fetch all relevant tickets. Filters are applied in memory for smooth UX (unless dataset is huge)
                 // Repo method 'GetTicketsAsync' loads tickets with status >= 2 (Repairing or Done)
                 var tickets = await _repository.GetTicketsAsync();
+                
+                if (this.IsDisposed) return;
+
                 _allTickets = tickets.ToList();
 
                 UpdateStats();
@@ -61,6 +66,8 @@ namespace mtc_app.features.group_leader.presentation.screens
             }
             catch (Exception ex)
             {
+                if (this.IsDisposed) return;
+
                 timerRefresh.Stop(); // Stop refreshing if error persists
                 UpdateStatusIndicator(false);
                 MessageBox.Show($"Gagal memuat data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -69,6 +76,8 @@ namespace mtc_app.features.group_leader.presentation.screens
 
         private void UpdateStats()
         {
+            if (this.IsDisposed) return;
+
             int totalTickets = _allTickets.Count;
             int reviewedTickets = _allTickets.Count(t => t.GlValidatedAt.HasValue || (t.GlRatingScore.HasValue && t.GlRatingScore > 0));
             int pendingTickets = totalTickets - reviewedTickets;
@@ -84,12 +93,18 @@ namespace mtc_app.features.group_leader.presentation.screens
 
         private void RenderTickets()
         {
+            if (this.IsDisposed) return;
+
             flowTickets.SuspendLayout();
             
             // [OPTIMIZATION] Dispose old controls to prevent memory leaks
+            // [FIX] Do NOT dispose panelEmptyState as it is a persistent form component
             foreach (Control ctrl in flowTickets.Controls)
             {
-                ctrl.Dispose();
+                if (ctrl != panelEmptyState) 
+                {
+                    ctrl.Dispose();
+                }
             }
             flowTickets.Controls.Clear();
 

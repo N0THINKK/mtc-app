@@ -21,6 +21,7 @@ namespace mtc_app.features.machine_history.data.repositories
                 string sql = @"
                     SELECT 
                         t.ticket_id AS TicketId,
+                        t.ticket_uuid AS TicketUuid,
                         t.ticket_display_code AS TicketCode,
                         IFNULL(CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number), 'Unknown') AS MachineName,
                         IFNULL(tech.full_name, '-') AS TechnicianName,
@@ -57,7 +58,16 @@ namespace mtc_app.features.machine_history.data.repositories
                             WHEN t.status_id = 2 THEN 'Repairing'
                             WHEN t.status_id = 3 THEN 'Done'
                             ELSE 'Unknown'
-                        END AS StatusName
+                        END AS StatusName,
+
+                        -- Added for Offline GL Detail
+                        t.started_at AS StartedAt,
+                        t.production_resumed_at AS ProductionResumedAt,
+                        t.counter_stroke AS CounterStroke,
+                        t.tech_rating_score AS TechRatingScore,
+                        t.tech_rating_note AS TechRatingNote,
+                        t.gl_rating_score AS GlRatingScore,
+                        t.gl_rating_note AS GlRatingNote
                     FROM tickets t
                     LEFT JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN users tech ON t.technician_id = tech.user_id

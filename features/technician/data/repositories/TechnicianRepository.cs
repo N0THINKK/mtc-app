@@ -18,6 +18,7 @@ namespace mtc_app.features.technician.data.repositories
                 string sql = @"
                     SELECT 
                         t.ticket_id AS TicketId,
+                        t.ticket_uuid AS TicketUuid,
                         CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
                         
                         (SELECT GROUP_CONCAT(
