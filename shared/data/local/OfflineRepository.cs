@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.IO;
+using mtc_app.shared.data.dtos;
 using Newtonsoft.Json;
 
 namespace mtc_app.shared.data.local
@@ -116,6 +117,42 @@ namespace mtc_app.shared.data.local
                             RoleName TEXT,
                             IsActive INTEGER DEFAULT 1,
                             LastSyncedAt TEXT NOT NULL
+                        );");
+                    
+                    // CachedMachines table (for offline dropdowns)
+                    ExecuteNonQuery(connection, @"
+                        CREATE TABLE IF NOT EXISTS CachedMachines (
+                            MachineId INTEGER PRIMARY KEY,
+                            Code TEXT NOT NULL,
+                            MachineType TEXT,
+                            MachineArea TEXT,
+                            MachineNumber TEXT,
+                            StatusId INTEGER DEFAULT 1,
+                            CachedAt TEXT NOT NULL
+                        );");
+                    
+                    // CachedShifts table (for offline dropdowns)
+                    ExecuteNonQuery(connection, @"
+                        CREATE TABLE IF NOT EXISTS CachedShifts (
+                            ShiftId INTEGER PRIMARY KEY,
+                            ShiftName TEXT NOT NULL,
+                            CachedAt TEXT NOT NULL
+                        );");
+                    
+                    // CachedProblemTypes table (for offline dropdowns)
+                    ExecuteNonQuery(connection, @"
+                        CREATE TABLE IF NOT EXISTS CachedProblemTypes (
+                            TypeId INTEGER PRIMARY KEY,
+                            TypeName TEXT NOT NULL,
+                            CachedAt TEXT NOT NULL
+                        );");
+                        
+                     // CachedFailures table (for offline dropdowns)
+                    ExecuteNonQuery(connection, @"
+                        CREATE TABLE IF NOT EXISTS CachedFailures (
+                            FailureId INTEGER PRIMARY KEY,
+                            FailureName TEXT NOT NULL,
+                            CachedAt TEXT NOT NULL
                         );");
                 }
             }
@@ -597,6 +634,30 @@ namespace mtc_app.shared.data.local
             return null; // User not found
         }
 
+        public List<string> GetUsersByRole(int roleId)
+        {
+            var result = new List<string>();
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    using (var cmd = new SQLiteCommand("SELECT Nik FROM CachedUsers WHERE RoleId = @RoleId AND Nik IS NOT NULL ORDER BY Nik;", connection))
+                    {
+                        cmd.Parameters.AddWithValue("@RoleId", roleId);
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                result.Add(reader["Nik"].ToString());
+                            }
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
         /// <summary>
         /// Gets count of cached users.
         /// </summary>
@@ -613,6 +674,242 @@ namespace mtc_app.shared.data.local
                     }
                 }
             }
+        }
+
+        #endregion
+
+        #region Master Data Cache Operations
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Machines
+        // ─────────────────────────────────────────────────────────────────────
+
+        public void SaveMachinesToCache(IEnumerable<dynamic> machines)
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    
+                    foreach (var m in machines)
+                    {
+                        string sql = @"
+                            INSERT OR REPLACE INTO CachedMachines 
+                            (MachineId, Code, MachineType, MachineArea, MachineNumber, StatusId, CachedAt)
+                            VALUES (@MachineId, @Code, @Type, @Area, @Number, @StatusId, @CachedAt);";
+                        
+                        using (var cmd = new SQLiteCommand(sql, connection))
+                        {
+                            cmd.Parameters.AddWithValue("@MachineId", (int)m.MachineId);
+                            cmd.Parameters.AddWithValue("@Code", $"{m.MachineType}-{m.MachineArea}-{m.MachineNumber}");
+                            cmd.Parameters.AddWithValue("@Type", m.MachineType ?? "");
+                            cmd.Parameters.AddWithValue("@Area", m.MachineArea ?? "");
+                            cmd.Parameters.AddWithValue("@Number", m.MachineNumber ?? "");
+                            cmd.Parameters.AddWithValue("@StatusId", (int)(m.StatusId ?? 1));
+                            cmd.Parameters.AddWithValue("@CachedAt", DateTime.UtcNow.ToString("o"));
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                }
+            }
+        }
+
+        public List<CachedMachineDto> GetMachinesFromCache()
+        {
+            var result = new List<CachedMachineDto>();
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    using (var cmd = new SQLiteCommand("SELECT * FROM CachedMachines;", connection))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            result.Add(new CachedMachineDto
+                            {
+                                MachineId = Convert.ToInt32(reader["MachineId"]),
+                                Code = reader["Code"]?.ToString(),
+                                MachineType = reader["MachineType"]?.ToString(),
+                                MachineArea = reader["MachineArea"]?.ToString(),
+                                MachineNumber = reader["MachineNumber"]?.ToString(),
+                                StatusId = Convert.ToInt32(reader["StatusId"])
+                            });
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Shifts
+        // ─────────────────────────────────────────────────────────────────────
+
+        public void SaveShiftsToCache(IEnumerable<dynamic> shifts)
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    
+                    foreach (var s in shifts)
+                    {
+                        string sql = @"
+                            INSERT OR REPLACE INTO CachedShifts 
+                            (ShiftId, ShiftName, CachedAt)
+                            VALUES (@ShiftId, @ShiftName, @CachedAt);";
+                        
+                        using (var cmd = new SQLiteCommand(sql, connection))
+                        {
+                            cmd.Parameters.AddWithValue("@ShiftId", (int)s.ShiftId);
+                            cmd.Parameters.AddWithValue("@ShiftName", s.ShiftName ?? "");
+                            cmd.Parameters.AddWithValue("@CachedAt", DateTime.UtcNow.ToString("o"));
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                }
+            }
+        }
+
+        public List<CachedShiftDto> GetShiftsFromCache()
+        {
+            var result = new List<CachedShiftDto>();
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    using (var cmd = new SQLiteCommand("SELECT * FROM CachedShifts;", connection))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            result.Add(new CachedShiftDto
+                            {
+                                ShiftId = Convert.ToInt32(reader["ShiftId"]),
+                                ShiftName = reader["ShiftName"]?.ToString()
+                            });
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Problem Types
+        // ─────────────────────────────────────────────────────────────────────
+
+        public void SaveProblemTypesToCache(IEnumerable<dynamic> types)
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    
+                    foreach (var t in types)
+                    {
+                        string sql = @"
+                            INSERT OR REPLACE INTO CachedProblemTypes 
+                            (TypeId, TypeName, CachedAt)
+                            VALUES (@TypeId, @TypeName, @CachedAt);";
+                        
+                        using (var cmd = new SQLiteCommand(sql, connection))
+                        {
+                            cmd.Parameters.AddWithValue("@TypeId", (int)t.TypeId);
+                            cmd.Parameters.AddWithValue("@TypeName", t.TypeName ?? "");
+                            cmd.Parameters.AddWithValue("@CachedAt", DateTime.UtcNow.ToString("o"));
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                }
+            }
+        }
+
+        public List<CachedProblemTypeDto> GetProblemTypesFromCache()
+        {
+            var result = new List<CachedProblemTypeDto>();
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    using (var cmd = new SQLiteCommand("SELECT * FROM CachedProblemTypes;", connection))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            result.Add(new CachedProblemTypeDto
+                            {
+                                TypeId = Convert.ToInt32(reader["TypeId"]),
+                                TypeName = reader["TypeName"]?.ToString()
+                            });
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Failures
+        // ─────────────────────────────────────────────────────────────────────
+
+        public void SaveFailuresToCache(IEnumerable<dynamic> failures)
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    
+                    foreach (var f in failures)
+                    {
+                        string sql = @"
+                            INSERT OR REPLACE INTO CachedFailures 
+                            (FailureId, FailureName, CachedAt)
+                            VALUES (@FailureId, @FailureName, @CachedAt);";
+                        
+                        using (var cmd = new SQLiteCommand(sql, connection))
+                        {
+                            cmd.Parameters.AddWithValue("@FailureId", (int)f.FailureId);
+                            cmd.Parameters.AddWithValue("@FailureName", f.FailureName ?? "");
+                            cmd.Parameters.AddWithValue("@CachedAt", DateTime.UtcNow.ToString("o"));
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                }
+            }
+        }
+
+        public List<CachedFailureDto> GetFailuresFromCache()
+        {
+            var result = new List<CachedFailureDto>();
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    using (var cmd = new SQLiteCommand("SELECT * FROM CachedFailures;", connection))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            result.Add(new CachedFailureDto
+                            {
+                                FailureId = Convert.ToInt32(reader["FailureId"]),
+                                FailureName = reader["FailureName"]?.ToString()
+                            });
+                        }
+                    }
+                }
+            }
+            return result;
         }
 
         #endregion
