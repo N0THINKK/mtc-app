@@ -76,7 +76,30 @@ namespace mtc_app.features.technician.data.decorators
         {
             if (!_networkMonitor.IsOnline)
             {
-                // Could potentially find in cached list, but for now return null
+                // Offline: Fetch from Cached Machine History
+                var cachedHistory = _offlineRepo.GetHistoryFromCache<mtc_app.features.machine_history.data.dtos.MachineHistoryDto>();
+                var historyItem = cachedHistory.FirstOrDefault(h => h.TicketId == ticketId);
+
+                if (historyItem != null)
+                {
+                    return new TechnicianTicketDetailDto
+                    {
+                        TicketId = historyItem.TicketId,
+                        MachineName = historyItem.MachineName,
+                        OperatorName = historyItem.OperatorName,
+                        TechnicianName = historyItem.TechnicianName,
+                        FailureDetails = historyItem.Issue,
+                        ActionDetails = historyItem.Resolution,
+                        CreatedAt = historyItem.CreatedAt,
+                        StartedAt = historyItem.StartedAt,
+                        FinishedAt = historyItem.FinishedAt,
+                        
+                        TechRatingScore = historyItem.TechRatingScore,
+                        TechRatingNote = historyItem.TechRatingNote,
+                        GlRatingScore = historyItem.GlRatingScore,
+                        GlRatingNote = historyItem.GlRatingNote
+                    };
+                }
                 return null;
             }
 
@@ -86,8 +109,56 @@ namespace mtc_app.features.technician.data.decorators
             }
             catch (Exception ex) when (IsNetworkException(ex))
             {
+                // Fallback to cache on network error
+                var cachedHistory = _offlineRepo.GetHistoryFromCache<mtc_app.features.machine_history.data.dtos.MachineHistoryDto>();
+                var historyItem = cachedHistory.FirstOrDefault(h => h.TicketId == ticketId);
+                
+                if (historyItem != null)
+                {
+                    return new TechnicianTicketDetailDto
+                    {
+                        TicketId = historyItem.TicketId,
+                        MachineName = historyItem.MachineName,
+                        OperatorName = historyItem.OperatorName,
+                        TechnicianName = historyItem.TechnicianName,
+                        FailureDetails = historyItem.Issue,
+                        ActionDetails = historyItem.Resolution,
+                        CreatedAt = historyItem.CreatedAt,
+                        StartedAt = historyItem.StartedAt,
+                        FinishedAt = historyItem.FinishedAt,
+                        
+                        TechRatingScore = historyItem.TechRatingScore,
+                        TechRatingNote = historyItem.TechRatingNote,
+                        GlRatingScore = historyItem.GlRatingScore,
+                        GlRatingNote = historyItem.GlRatingNote
+                    };
+                }
                 return null;
             }
+        }
+
+        public async Task UpdateOperatorRatingAsync(long ticketId, int rating, string note)
+        {
+            var payload = new TechnicianRatingPayload
+            {
+                TicketId = ticketId,
+                Score = rating,
+                Comment = note
+            };
+
+            await ExecuteWithOfflineFallbackAsync(
+                () => _innerRepository.UpdateOperatorRatingAsync(ticketId, rating, note),
+                "UPDATE",
+                "tickets",
+                payload
+            );
+        }
+
+        private class TechnicianRatingPayload
+        {
+            public long TicketId { get; set; }
+            public int Score { get; set; }
+            public string Comment { get; set; }
         }
 
         /// <summary>

@@ -6,12 +6,13 @@ using System.Windows.Forms;
 using mtc_app.features.technician.data.repositories;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
+using mtc_app.shared.infrastructure;
 
 namespace mtc_app.features.rating.presentation.screens
 {
     public class RatingTechnicianForm : AppBaseForm
     {
-        private readonly TechnicianRepository _repository;
+        private readonly ITechnicianRepository _repository; // Changed to Interface
         private long _ticketId;
         
         // Input Components
@@ -34,7 +35,7 @@ namespace mtc_app.features.rating.presentation.screens
 
         public RatingTechnicianForm(long ticketId)
         {
-            _repository = new TechnicianRepository();
+            _repository = ServiceLocator.CreateTechnicianRepository(); // Use Factory for Offline Support
             _ticketId = ticketId;
             
             InitializeCustomComponent();
@@ -231,6 +232,8 @@ namespace mtc_app.features.rating.presentation.screens
             try
             {
                 var data = await _repository.GetTicketDetailAsync(_ticketId);
+
+                if (this.IsDisposed) return;
 
                 if (data != null)
                 {
