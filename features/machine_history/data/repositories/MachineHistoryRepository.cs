@@ -76,5 +76,84 @@ namespace mtc_app.features.machine_history.data.repositories
                 return await connection.QueryAsync<MachineHistoryDto>(sql, new { Start = start, End = end, Machine = machineFilter });
             }
         }
+
+        public async Task<(long TicketId, string TicketCode)> CreateTicketAsync(CreateTicketRequest request)
+        {
+            using (var conn = DatabaseHelper.GetConnection())
+            {
+                conn.Open();
+                using (var trans = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        // 1. Generate Code
+                        // Format: TKT-yyMMdd-XXX (Daily Sequence)
+                        string uuid = Guid.NewGuid().ToString();
+                        string dateCode = DateTime.Now.ToString("yyMMdd");
+                        int dailyCount = conn.ExecuteScalar<int>("SELECT COUNT(*) FROM tickets WHERE DATE(created_at) = CURDATE()", transaction: trans);
+                        string displayCode = $"TKT-{dateCode}-{(dailyCount + 1):D3}";
+
+                        // 2. Resolve IDs (Validation)
+                        int operatorId = conn.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE nik = @Nik", new { Nik = request.OperatorNik }, trans) ?? 1;
+                        int? shiftId = conn.QueryFirstOrDefault<int?>("SELECT shift_id FROM shifts WHERE shift_name = @Name", new { Name = request.ShiftName }, trans);
+
+                        // Resolve Technician (if synced from offline verification)
+                        int? techId = null;
+                        if (!string.IsNullOrEmpty(request.TechnicianNik))
+                        {
+                            techId = conn.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE nik = @Nik", new { Nik = request.TechnicianNik }, trans);
+                        }
+
+                        // 3. Insert Ticket (Full State)
+                        string insertTicketSql = @"
+                            INSERT INTO tickets (ticket_uuid, ticket_display_code, machine_id, shift_id, operator_id, applicator_code, status_id, technician_id, started_at, created_at)
+                            VALUES (@Uuid, @Code, @MachineId, @ShiftId, @OpId, @AppCode, @StatusId, @TechId, @Started, NOW());
+                            SELECT LAST_INSERT_ID();";
+
+                        long ticketId = conn.ExecuteScalar<long>(insertTicketSql, new {
+                            Uuid = uuid, 
+                            Code = displayCode, 
+                            MachineId = request.MachineId, 
+                            ShiftId = shiftId, 
+                            OpId = operatorId, 
+                            AppCode = request.ApplicatorCode,
+                            StatusId = request.StatusId,
+                            TechId = techId,
+                            Started = request.StartedAt
+                        }, trans);
+
+                        // 4. Insert Problems
+                        string insertProblemSql = @"
+                            INSERT INTO ticket_problems (ticket_id, problem_type_id, problem_type_remarks, failure_id, failure_remarks)
+                            VALUES (@TicketId, @TypeId, @TypeRem, @FailId, @FailRem)";
+
+                        foreach (var prob in request.Problems)
+                        {
+                            int? typeId = conn.QueryFirstOrDefault<int?>("SELECT type_id FROM problem_types WHERE type_name = @N", new { N = prob.ProblemTypeName }, trans);
+                            int? failId = conn.QueryFirstOrDefault<int?>("SELECT failure_id FROM failures WHERE failure_name = @N", new { N = prob.FailureName }, trans);
+
+                            conn.Execute(insertProblemSql, new {
+                                TicketId = ticketId,
+                                TypeId = typeId,
+                                TypeRem = (!typeId.HasValue) ? prob.ProblemTypeName : null,
+                                FailId = failId,
+                                FailRem = (!failId.HasValue) ? prob.FailureName : null
+                            }, trans);
+                        }
+
+                        // 5. Update Machine Status (2 = Down/Repairing)
+                        conn.Execute("UPDATE machines SET current_status_id = 2 WHERE machine_id = @Id", new { Id = request.MachineId }, trans);
+
+                        trans.Commit();
+                        return (ticketId, displayCode);
+                    }
+                    catch
+                    {
+                        trans.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
     }
 }

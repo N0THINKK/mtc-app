@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using Dapper;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
+using System.Linq;
 
 namespace mtc_app.features.machine_history.presentation.components
 {
@@ -140,26 +141,66 @@ namespace mtc_app.features.machine_history.presentation.components
         {
             try
             {
-                using (var conn = DatabaseHelper.GetConnection())
+                // [FIX] Use OfflineRepository fallback (Direct ServiceLocator usage for UI component)
+                // In a perfect world, we'd inject IMasterDataRepository, but this is a quick offline fix.
+                
+                // Problem Types
+                var types = mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.GetProblemTypesFromCache();
+                string[] typeNames;
+                if (types.Count == 0)
                 {
-                    // Problem Types
-                    var types = conn.Query<string>("SELECT type_name FROM problem_types ORDER BY type_name");
-                    InputProblemType.SetDropdownItems(types.AsList().ToArray());
-
-                    // Failures/Details
-                    var failures = conn.Query<string>("SELECT failure_name FROM failures ORDER BY failure_name");
-                    InputProblemDetail.SetDropdownItems(failures.AsList().ToArray());
-
-                    // Causes
-                    var causes = conn.Query<string>("SELECT cause_name FROM failure_causes ORDER BY cause_name");
-                    InputCause.SetDropdownItems(causes.AsList().ToArray());
-
-                    // Actions
-                    var actions = conn.Query<string>("SELECT action_name FROM actions ORDER BY action_name");
-                    InputAction.SetDropdownItems(actions.AsList().ToArray());
+                    using (var conn = DatabaseHelper.GetConnection())
+                        typeNames = conn.Query<string>("SELECT type_name FROM problem_types ORDER BY type_name").ToArray();
                 }
+                else
+                {
+                    typeNames = types.Select(x => x.TypeName).ToArray();
+                }
+                InputProblemType.SetDropdownItems(typeNames);
+
+                // Failures
+                var failures = mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.GetFailuresFromCache();
+                string[] failureNames;
+                if (failures.Count == 0)
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                        failureNames = conn.Query<string>("SELECT failure_name FROM failures ORDER BY failure_name").ToArray();
+                }
+                else
+                {
+                    failureNames = failures.Select(x => x.FailureName).ToArray();
+                }
+                InputProblemDetail.SetDropdownItems(failureNames);
+
+                // Causes
+                var causes = mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.GetCausesFromCache();
+                string[] causeNames;
+                if (causes.Count == 0)
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                        causeNames = conn.Query<string>("SELECT cause_name FROM failure_causes ORDER BY cause_name").ToArray();
+                }
+                else
+                {
+                    causeNames = causes.Select(x => x.CauseName).ToArray();
+                }
+                InputCause.SetDropdownItems(causeNames);
+
+                // Actions
+                var actions = mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.GetActionsFromCache();
+                string[] actionNames;
+                if (actions.Count == 0)
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                        actionNames = conn.Query<string>("SELECT action_name FROM actions ORDER BY action_name").ToArray();
+                }
+                else
+                {
+                    actionNames = actions.Select(x => x.ActionName).ToArray();
+                }
+                InputAction.SetDropdownItems(actionNames);
             }
-            catch { /* Ignore DB errors on load */ }
+            catch { /* Ignore */ }
         }
     }
 }

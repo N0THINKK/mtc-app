@@ -87,8 +87,11 @@ namespace mtc_app.shared.data.services
                     int historyCached = await WarmHistoryCacheAsync();
                     int usersCached = await SyncUsersAsync();
                     var masterDataCounts = await SyncMasterDataAsync();
+                    
+                    // Push pending tickets
+                    int ticketsSynced = await SyncPendingTicketsAsync();
 
-                    System.Diagnostics.Debug.WriteLine($"[CacheWarmer] Complete: {ticketsCached} tickets, {historyCached} history, {usersCached} users, {masterDataCounts.machines} machines, {masterDataCounts.shifts} shifts, {masterDataCounts.problemTypes} types, {masterDataCounts.failures} failures");
+                    System.Diagnostics.Debug.WriteLine($"[CacheWarmer] Complete: {ticketsCached} tickets, {historyCached} history, {usersCached} users, {ticketsSynced} synced");
 
                     OnCacheWarmCompleted?.Invoke(this, new CacheWarmEventArgs(ticketsCached, historyCached));
                 }
@@ -223,6 +226,7 @@ namespace mtc_app.shared.data.services
         private async Task<(int machines, int shifts, int problemTypes, int failures)> SyncMasterDataAsync()
         {
             int machineCount = 0, shiftCount = 0, problemTypeCount = 0, failureCount = 0;
+            int causeCount = 0, actionCount = 0; // [FIX] Defined missing variables
             
             try
             {
@@ -264,13 +268,30 @@ namespace mtc_app.shared.data.services
                     }
 
                     // Sync Failures
-                    var failures = await conn.QueryAsync(
-                        @"SELECT failure_id AS FailureId, failure_name AS FailureName FROM failures");
+                    var failures = await conn.QueryAsync("SELECT failure_id, failure_name FROM failures");
                     var failureList = failures?.ToList();
                     if (failureList?.Count > 0)
                     {
                         _offlineRepo.SaveFailuresToCache(failureList);
                         failureCount = failureList.Count;
+                    }
+
+                    // Sync Causes (NEW)
+                    var causes = await conn.QueryAsync("SELECT cause_id, cause_name FROM failure_causes");
+                    var causeList = causes?.ToList();
+                    if (causeList?.Count > 0)
+                    {
+                        _offlineRepo.SaveCausesToCache(causeList);
+                        causeCount = causeList.Count;
+                    }
+
+                    // Sync Actions (NEW)
+                    var actions = await conn.QueryAsync("SELECT action_id, action_name FROM actions");
+                    var actionList = actions?.ToList();
+                    if (actionList?.Count > 0)
+                    {
+                        _offlineRepo.SaveActionsToCache(actionList);
+                        actionCount = actionList.Count;
                     }
                 }
             }
@@ -280,6 +301,48 @@ namespace mtc_app.shared.data.services
             }
             
             return (machineCount, shiftCount, problemTypeCount, failureCount);
+        }
+
+        /// <summary>
+        /// Pushes pending offline tickets to the remote server.
+        /// </summary>
+        private async Task<int> SyncPendingTicketsAsync()
+        {
+            try
+            {
+                var pending = _offlineRepo.GetPendingTickets();
+                if (pending.Count == 0) return 0;
+
+                int syncedCount = 0;
+                var repo = new MachineHistoryRepository();
+
+                foreach (var item in pending)
+                {
+                    try
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Sync] Pushing ticket {item.Id}...");
+                        await repo.CreateTicketAsync(item.Request);
+                        
+                        // If successful, remove from local buffer
+                        _offlineRepo.DeletePendingTicket(item.Id);
+                        syncedCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Sync] Failed to sync ticket {item.Id}: {ex.Message}");
+                    }
+                }
+                
+                if (syncedCount > 0)
+                    System.Diagnostics.Debug.WriteLine($"[Sync] Successfully pushed {syncedCount} pending tickets.");
+
+                return syncedCount;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sync] Error during pending ticket sync: {ex.Message}");
+                return 0;
+            }
         }
 
         /// <summary>

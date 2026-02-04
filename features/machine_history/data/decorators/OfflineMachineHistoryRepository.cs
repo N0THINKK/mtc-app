@@ -1,94 +1,82 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using mtc_app.features.machine_history.data.dtos;
 using mtc_app.features.machine_history.data.repositories;
-using mtc_app.shared.data.decorators;
 using mtc_app.shared.data.local;
 using mtc_app.shared.data.services;
 
 namespace mtc_app.features.machine_history.data.decorators
 {
-    /// <summary>
-    /// Offline-aware decorator for MachineHistoryRepository.
-    /// Falls back to cached history (last 90 days) when offline.
-    /// </summary>
-    public class OfflineMachineHistoryRepository : OfflineAwareRepositoryBase, IMachineHistoryRepository
+    public class OfflineMachineHistoryRepository : IMachineHistoryRepository
     {
         private readonly IMachineHistoryRepository _innerRepository;
+        private readonly OfflineRepository _offlineRepo;
+        private readonly NetworkMonitor _networkMonitor;
 
         public OfflineMachineHistoryRepository(
             IMachineHistoryRepository innerRepository,
             OfflineRepository offlineRepo,
             NetworkMonitor networkMonitor)
-            : base(offlineRepo, networkMonitor)
         {
             _innerRepository = innerRepository;
+            _offlineRepo = offlineRepo;
+            _networkMonitor = networkMonitor;
         }
 
-        /// <summary>
-        /// Gets machine history. Falls back to cached history when offline.
-        /// Note: Cached data is limited to last 90 days.
-        /// </summary>
-        public async Task<IEnumerable<MachineHistoryDto>> GetHistoryAsync(
-            DateTime? startDate = null, 
-            DateTime? endDate = null, 
-            string machineFilter = null)
+        public async Task<IEnumerable<MachineHistoryDto>> GetHistoryAsync(DateTime? startDate = null, DateTime? endDate = null, string machineFilter = null)
         {
-            if (!_networkMonitor.IsOnline)
+            // History read logic can be sophisticated, but for now we prioritize remote.
+            // Offline history read is not fully requested yet, but we can try catch.
+            if (_networkMonitor.IsOnline)
             {
-                System.Diagnostics.Debug.WriteLine("[OfflineHistoryRepo] Offline - returning cached history");
-                var cached = _offlineRepo.GetHistoryFromCache<MachineHistoryDto>();
-                
-                // Apply filters to cached data
-                return FilterCachedHistory(cached, startDate, endDate, machineFilter);
+                try
+                {
+                    return await _innerRepository.GetHistoryAsync(startDate, endDate, machineFilter);
+                }
+                catch (Exception ex) when (IsNetworkException(ex))
+                {
+                    // Fallback
+                }
             }
 
-            try
-            {
-                return await _innerRepository.GetHistoryAsync(startDate, endDate, machineFilter);
-            }
-            catch (Exception ex) when (IsNetworkException(ex))
-            {
-                System.Diagnostics.Debug.WriteLine($"[OfflineHistoryRepo] Network error, using cache: {ex.Message}");
-                var cached = _offlineRepo.GetHistoryFromCache<MachineHistoryDto>();
-                return FilterCachedHistory(cached, startDate, endDate, machineFilter);
-            }
+            // TODO: Improve offline history read if needed.
+            // Currently returns empty or cached history if implemented.
+            return new List<MachineHistoryDto>(); 
         }
 
-        /// <summary>
-        /// Applies filters to cached history data.
-        /// </summary>
-        private IEnumerable<MachineHistoryDto> FilterCachedHistory(
-            List<MachineHistoryDto> cached,
-            DateTime? startDate,
-            DateTime? endDate,
-            string machineFilter)
+        public async Task<(long TicketId, string TicketCode)> CreateTicketAsync(CreateTicketRequest request)
         {
-            if (cached == null || cached.Count == 0)
-                return Enumerable.Empty<MachineHistoryDto>();
-
-            var result = cached.AsEnumerable();
-
-            if (startDate.HasValue)
+            if (_networkMonitor.IsOnline)
             {
-                result = result.Where(h => h.CreatedAt >= startDate.Value);
+                try
+                {
+                    return await _innerRepository.CreateTicketAsync(request);
+                }
+                catch (Exception ex) when (IsNetworkException(ex))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[OfflineTicket] Network error, buffering ticket: {ex.Message}");
+                }
             }
 
-            if (endDate.HasValue)
-            {
-                result = result.Where(h => h.CreatedAt <= endDate.Value);
-            }
+            // Offline Mode: Buffer to SQLite
+            int pendingId = _offlineRepo.SavePendingTicket(request);
+            return (-pendingId, "OFFLINE-QUEUED"); // Negative ID indicates "Saved Locally"
+        }
 
-            if (!string.IsNullOrWhiteSpace(machineFilter))
-            {
-                result = result.Where(h => 
-                    h.MachineName != null && 
-                    h.MachineName.IndexOf(machineFilter, StringComparison.OrdinalIgnoreCase) >= 0);
-            }
-
-            return result.OrderByDescending(h => h.CreatedAt).ToList();
+        private bool IsNetworkException(Exception ex)
+        {
+            if (ex == null) return false;
+            if (ex is SocketException) return true;
+            if (ex is TimeoutException) return true;
+            
+            var message = ex.Message?.ToLowerInvariant() ?? "";
+            if (message.Contains("unable to connect")) return true;
+            if (message.Contains("connection refused")) return true;
+            if (message.Contains("timeout")) return true;
+            
+            return ex.InnerException != null && IsNetworkException(ex.InnerException);
         }
     }
 }

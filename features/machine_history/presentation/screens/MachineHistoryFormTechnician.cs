@@ -2,11 +2,15 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
+using System.Threading.Tasks; // [FIX] Added for Task.Rundows.Forms;
 using System.Windows.Forms;
 using Dapper;
 using mtc_app.features.machine_history.presentation.components;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
+using mtc_app.shared.infrastructure;
+using mtc_app.features.machine_history.data.dtos;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
@@ -44,6 +48,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             SetupStopwatch();
             SetupInputs();
             LoadTicketProblems();
+            LoadOfflineTicketState();
             UpdateUIState();
             
             this.StartPosition = FormStartPosition.CenterScreen;
@@ -78,10 +83,11 @@ namespace mtc_app.features.machine_history.presentation.screens
                 labelFinished.Text = _repairStopwatch.Elapsed.ToString(@"hh\:mm\:ss");
 
             // [FIX] Poll for part status every 3 seconds (30 ticks * 100ms interval)
+            // Run in background to prevent UI freeze, and only for online tickets
             _tickCounter++;
-            if (_isVerified && _tickCounter % 30 == 0)
+            if (_isVerified && _tickCounter % 30 == 0 && _currentTicketId > 0)
             {
-                UpdatePartRequestStatus();
+                Task.Run(() => UpdatePartRequestStatus());
             }
         }
 
@@ -89,6 +95,30 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             try
             {
+                if (_currentTicketId < 0)
+                {
+                    // Offline Mode: Load from SQLite Pending Tickets
+                    int pendingId = (int)Math.Abs(_currentTicketId);
+                    var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+                    
+                    if (request != null)
+                    {
+                        foreach (var prob in request.Problems)
+                        {
+                            var control = new TechnicianProblemItemControl(
+                                0, // Dummy ID for offline
+                                prob.ProblemTypeName ?? "", 
+                                prob.FailureName ?? "", 
+                                _isVerified
+                            );
+                            _problemControls.Add(control);
+                            pnlProblems.Controls.Add(control);
+                        }
+                    }
+                    return;
+                }
+
+                // Online Mode
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
@@ -120,6 +150,30 @@ namespace mtc_app.features.machine_history.presentation.screens
             catch (Exception ex)
             {
                 MessageBox.Show($"Gagal memuat masalah: {ex.Message}", "Error");
+            }
+        }
+
+        private void LoadOfflineTicketState()
+        {
+            if (_currentTicketId < 0)
+            {
+                try 
+                {
+                    int pendingId = (int)Math.Abs(_currentTicketId);
+                    var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+                    if (request != null && !string.IsNullOrEmpty(request.TechnicianNik))
+                    {
+                        _isVerified = true;
+                        inputNIK.InputValue = request.TechnicianNik;
+                        
+                        if (request.StartedAt.HasValue)
+                        {
+                            _arrivalStopwatch.Stop();
+                            _repairStopwatch.Start();
+                        }
+                    }
+                }
+                catch { /* Ignore */ }
             }
         }
 
@@ -291,21 +345,28 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     var request = conn.QueryFirstOrDefault("SELECT status_id FROM part_requests WHERE ticket_id = @Id ORDER BY requested_at DESC", new { Id = _currentTicketId });
-                    if (request != null)
+                    
+                    if (this.IsHandleCreated && !this.IsDisposed)
                     {
-                        inputSparepart.Enabled = false;
-                        buttonRequestSparepart.Enabled = false;
-                        
-                        int statusId = (int)request.status_id;
-                        if (statusId == 1) { buttonRequestSparepart.Text = "PERMINTAAN DIPROSES"; buttonRequestSparepart.BackColor = Color.Gray; }
-                        else if (statusId == 2) { buttonRequestSparepart.Text = "BARANG SIAP DI GUDANG"; buttonRequestSparepart.BackColor = AppColors.Success; }
-                        else { buttonRequestSparepart.Text = "REQUEST DITUTUP"; buttonRequestSparepart.BackColor = Color.DarkGray; }
-                    }
-                    else
-                    {
-                        inputSparepart.Enabled = _isVerified;
-                        buttonRequestSparepart.Enabled = _isVerified;
-                        buttonRequestSparepart.Text = "Request Sparepart";
+                        this.Invoke((MethodInvoker)delegate 
+                        {
+                            if (request != null)
+                            {
+                                inputSparepart.Enabled = false;
+                                buttonRequestSparepart.Enabled = false;
+                                
+                                int statusId = (int)request.status_id;
+                                if (statusId == 1) { buttonRequestSparepart.Text = "PERMINTAAN DIPROSES"; buttonRequestSparepart.BackColor = Color.Gray; }
+                                else if (statusId == 2) { buttonRequestSparepart.Text = "BARANG SIAP DI GUDANG"; buttonRequestSparepart.BackColor = AppColors.Success; }
+                                else { buttonRequestSparepart.Text = "REQUEST DITUTUP"; buttonRequestSparepart.BackColor = Color.DarkGray; }
+                            }
+                            else
+                            {
+                                inputSparepart.Enabled = _isVerified;
+                                buttonRequestSparepart.Enabled = _isVerified;
+                                buttonRequestSparepart.Text = "Request Sparepart";
+                            }
+                        });
                     }
                 }
             }
@@ -318,6 +379,38 @@ namespace mtc_app.features.machine_history.presentation.screens
             if (string.IsNullOrWhiteSpace(nik))
             {
                 MessageBox.Show("Masukkan Inisial Teknisi.", "Validasi");
+                return;
+            }
+
+            if (_currentTicketId < 0)
+            {
+                // Offline Logic
+                var user = ServiceLocator.OfflineRepo.GetUserByNik(nik);
+                if (user != null)
+                {
+                    int pendingId = (int)Math.Abs(_currentTicketId);
+                    var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+                    if (request != null)
+                    {
+                        // Update Local State
+                        request.TechnicianNik = nik;
+                        request.StartedAt = DateTime.Now;
+                        request.StatusId = 2; // In Progress
+                        
+                        ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
+
+                        _isVerified = true;
+                        _arrivalStopwatch.Stop();
+                        _repairStopwatch.Start();
+
+                        AutoClosingMessageBox.Show($"Verifikasi Berhasil (Offline)!\nSelamat bekerja, {user.FullName}.", "Sukses", 2000);
+                        UpdateUIState();
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Inisial tidak ditemukan di database offline.", "Gagal Validasi");
+                }
                 return;
             }
 
