@@ -57,4 +57,13 @@ namespace mtc_app.shared.data.dtos
         public int ActionId { get; set; }
         public string ActionName { get; set; }
     }
+    /// <summary>
+    /// Cached part data for offline dropdowns.
+    /// </summary>
+    public class CachedPartDto
+    {
+        public int PartId { get; set; }
+        public string PartCode { get; set; }
+        public string PartName { get; set; }
+    }
 }

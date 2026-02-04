@@ -137,70 +137,33 @@ namespace mtc_app.features.machine_history.presentation.components
             InputAction.Enabled = enabled;
         }
 
-        private void LoadDropdownData()
+        private async void LoadDropdownData()
         {
             try
             {
-                // [FIX] Use OfflineRepository fallback (Direct ServiceLocator usage for UI component)
-                // In a perfect world, we'd inject IMasterDataRepository, but this is a quick offline fix.
-                
+                var repo = mtc_app.shared.infrastructure.ServiceLocator.CreateMasterDataRepository();
+
                 // Problem Types
-                var types = mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.GetProblemTypesFromCache();
-                string[] typeNames;
-                if (types.Count == 0)
-                {
-                    using (var conn = DatabaseHelper.GetConnection())
-                        typeNames = conn.Query<string>("SELECT type_name FROM problem_types ORDER BY type_name").ToArray();
-                }
-                else
-                {
-                    typeNames = types.Select(x => x.TypeName).ToArray();
-                }
-                InputProblemType.SetDropdownItems(typeNames);
+                var types = await repo.GetProblemTypesAsync();
+                InputProblemType.SetDropdownItems(types.Select(x => x.TypeName).ToArray());
 
                 // Failures
-                var failures = mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.GetFailuresFromCache();
-                string[] failureNames;
-                if (failures.Count == 0)
-                {
-                    using (var conn = DatabaseHelper.GetConnection())
-                        failureNames = conn.Query<string>("SELECT failure_name FROM failures ORDER BY failure_name").ToArray();
-                }
-                else
-                {
-                    failureNames = failures.Select(x => x.FailureName).ToArray();
-                }
-                InputProblemDetail.SetDropdownItems(failureNames);
+                var failures = await repo.GetFailuresAsync();
+                InputProblemDetail.SetDropdownItems(failures.Select(x => x.FailureName).ToArray());
 
                 // Causes
-                var causes = mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.GetCausesFromCache();
-                string[] causeNames;
-                if (causes.Count == 0)
-                {
-                    using (var conn = DatabaseHelper.GetConnection())
-                        causeNames = conn.Query<string>("SELECT cause_name FROM failure_causes ORDER BY cause_name").ToArray();
-                }
-                else
-                {
-                    causeNames = causes.Select(x => x.CauseName).ToArray();
-                }
-                InputCause.SetDropdownItems(causeNames);
+                var causes = await repo.GetCausesAsync();
+                InputCause.SetDropdownItems(causes.Select(x => x.CauseName).ToArray());
 
                 // Actions
-                var actions = mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.GetActionsFromCache();
-                string[] actionNames;
-                if (actions.Count == 0)
-                {
-                    using (var conn = DatabaseHelper.GetConnection())
-                        actionNames = conn.Query<string>("SELECT action_name FROM actions ORDER BY action_name").ToArray();
-                }
-                else
-                {
-                    actionNames = actions.Select(x => x.ActionName).ToArray();
-                }
-                InputAction.SetDropdownItems(actionNames);
+                var actions = await repo.GetActionsAsync();
+                InputAction.SetDropdownItems(actions.Select(x => x.ActionName).ToArray());
             }
-            catch { /* Ignore */ }
+            catch (Exception ex) 
+            {
+                // Last resort fallback or log
+                System.Diagnostics.Debug.WriteLine($"[TechnicianProblemItem] Error loading dropdowns: {ex.Message}");
+            }
         }
     }
 }

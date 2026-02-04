@@ -173,6 +173,15 @@ namespace mtc_app.shared.data.local
                             CachedAt TEXT NOT NULL
                         );");
 
+                    // CachedParts table (NEW)
+                    ExecuteNonQuery(connection, @"
+                        CREATE TABLE IF NOT EXISTS CachedParts (
+                            PartId INTEGER PRIMARY KEY,
+                            PartCode TEXT,
+                            PartName TEXT NOT NULL,
+                            CachedAt TEXT NOT NULL
+                        );");
+
                      // PendingTickets table (for offline writes)
                     ExecuteNonQuery(connection, @"
                         CREATE TABLE IF NOT EXISTS PendingTickets (
@@ -1033,6 +1042,63 @@ namespace mtc_app.shared.data.local
                             {
                                 ActionId = Convert.ToInt32(reader["ActionId"]),
                                 ActionName = reader["ActionName"]?.ToString()
+                            });
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Parts (NEW)
+        // ─────────────────────────────────────────────────────────────────────
+
+        public void SavePartsToCache(IEnumerable<dynamic> parts)
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    using (var transaction = connection.BeginTransaction())
+                    {
+                        foreach (var p in parts)
+                        {
+                            string sql = @"INSERT OR REPLACE INTO CachedParts (PartId, PartCode, PartName, CachedAt) VALUES (@Id, @Code, @Name, @Date);";
+                            using (var cmd = new SQLiteCommand(sql, connection, transaction))
+                            {
+                                cmd.Parameters.AddWithValue("@Id", (int)p.part_id);
+                                cmd.Parameters.AddWithValue("@Code", (string)p.part_code);
+                                cmd.Parameters.AddWithValue("@Name", (string)p.part_name);
+                                cmd.Parameters.AddWithValue("@Date", DateTime.UtcNow.ToString("o"));
+                                cmd.ExecuteNonQuery();
+                            }
+                        }
+                        transaction.Commit();
+                    }
+                }
+            }
+        }
+
+        public List<CachedPartDto> GetPartsFromCache()
+        {
+            var result = new List<CachedPartDto>();
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    using (var cmd = new SQLiteCommand("SELECT PartId, PartCode, PartName FROM CachedParts ORDER BY PartName;", connection))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            result.Add(new CachedPartDto
+                            {
+                                PartId = Convert.ToInt32(reader["PartId"]),
+                                PartCode = reader["PartCode"]?.ToString(),
+                                PartName = reader["PartName"]?.ToString()
                             });
                         }
                     }
