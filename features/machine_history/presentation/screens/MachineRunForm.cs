@@ -150,6 +150,39 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void BtnRun_Click(object sender, EventArgs e)
         {
+            // ═══════════════════════════════════════════════════════════════════
+            // OFFLINE MODE: Save production resumed locally
+            // ═══════════════════════════════════════════════════════════════════
+            if (_ticketId < 0)
+            {
+                try
+                {
+                    int pendingId = (int)Math.Abs(_ticketId);
+                    var request = mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+                    
+                    if (request != null)
+                    {
+                        request.StatusId = 4; // Production Resumed
+                        request.ProductionResumedAt = DateTime.Now;
+                        mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
+                    }
+                    
+                    stopwatch?.Stop();
+                    timer?.Stop();
+                    
+                    this.DialogResult = DialogResult.OK;
+                    this.Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error menyimpan offline: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                return;
+            }
+
+            // ═══════════════════════════════════════════════════════════════════
+            // ONLINE MODE: Save directly to database
+            // ═══════════════════════════════════════════════════════════════════
             try
             {
                 using (var connection = DatabaseHelper.GetConnection())

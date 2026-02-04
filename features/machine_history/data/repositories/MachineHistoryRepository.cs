@@ -104,10 +104,18 @@ namespace mtc_app.features.machine_history.data.repositories
                             techId = conn.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE nik = @Nik", new { Nik = request.TechnicianNik }, trans);
                         }
 
-                        // 3. Insert Ticket (Full State)
+                        // 3. Insert Ticket (Full State with ALL technician fields)
                         string insertTicketSql = @"
-                            INSERT INTO tickets (ticket_uuid, ticket_display_code, machine_id, shift_id, operator_id, applicator_code, status_id, technician_id, started_at, created_at)
-                            VALUES (@Uuid, @Code, @MachineId, @ShiftId, @OpId, @AppCode, @StatusId, @TechId, @Started, NOW());
+                            INSERT INTO tickets (
+                                ticket_uuid, ticket_display_code, machine_id, shift_id, operator_id, applicator_code, 
+                                status_id, technician_id, started_at, technician_finished_at, production_resumed_at,
+                                counter_stroke, is_4m, tech_rating_score, tech_rating_note, created_at
+                            )
+                            VALUES (
+                                @Uuid, @Code, @MachineId, @ShiftId, @OpId, @AppCode, 
+                                @StatusId, @TechId, @Started, @Finished, @Resumed,
+                                @Counter, @Is4M, @Rating, @RatingNote, NOW()
+                            );
                             SELECT LAST_INSERT_ID();";
 
                         long ticketId = conn.ExecuteScalar<long>(insertTicketSql, new {
@@ -119,30 +127,67 @@ namespace mtc_app.features.machine_history.data.repositories
                             AppCode = request.ApplicatorCode,
                             StatusId = request.StatusId,
                             TechId = techId,
-                            Started = request.StartedAt
+                            Started = request.StartedAt,
+                            Finished = request.FinishedAt,
+                            Resumed = request.ProductionResumedAt,
+                            Counter = request.CounterStroke,
+                            Is4M = request.Is4M ? 1 : 0,
+                            Rating = request.TechRatingScore,
+                            RatingNote = request.TechRatingNote
                         }, trans);
 
-                        // 4. Insert Problems
+                        // 4. Insert Problems (with Cause and Action)
                         string insertProblemSql = @"
-                            INSERT INTO ticket_problems (ticket_id, problem_type_id, problem_type_remarks, failure_id, failure_remarks)
-                            VALUES (@TicketId, @TypeId, @TypeRem, @FailId, @FailRem)";
+                            INSERT INTO ticket_problems (ticket_id, problem_type_id, problem_type_remarks, failure_id, failure_remarks, root_cause_id, root_cause_remarks, action_id, action_details_manual)
+                            VALUES (@TicketId, @TypeId, @TypeRem, @FailId, @FailRem, @CauseId, @CauseRem, @ActionId, @ActionRem)";
 
                         foreach (var prob in request.Problems)
                         {
                             int? typeId = conn.QueryFirstOrDefault<int?>("SELECT type_id FROM problem_types WHERE type_name = @N", new { N = prob.ProblemTypeName }, trans);
                             int? failId = conn.QueryFirstOrDefault<int?>("SELECT failure_id FROM failures WHERE failure_name = @N", new { N = prob.FailureName }, trans);
+                            int? causeId = conn.QueryFirstOrDefault<int?>("SELECT cause_id FROM failure_causes WHERE cause_name = @N", new { N = prob.CauseName }, trans);
+                            int? actionId = conn.QueryFirstOrDefault<int?>("SELECT action_id FROM actions WHERE action_name = @N", new { N = prob.ActionName }, trans);
 
                             conn.Execute(insertProblemSql, new {
                                 TicketId = ticketId,
                                 TypeId = typeId,
-                                TypeRem = (!typeId.HasValue) ? prob.ProblemTypeName : null,
+                                TypeRem = (!typeId.HasValue && !string.IsNullOrEmpty(prob.ProblemTypeName)) ? prob.ProblemTypeName : null,
                                 FailId = failId,
-                                FailRem = (!failId.HasValue) ? prob.FailureName : null
+                                FailRem = (!failId.HasValue && !string.IsNullOrEmpty(prob.FailureName)) ? prob.FailureName : null,
+                                CauseId = causeId,
+                                CauseRem = (!causeId.HasValue && !string.IsNullOrEmpty(prob.CauseName)) ? prob.CauseName : null,
+                                ActionId = actionId,
+                                ActionRem = (!actionId.HasValue && !string.IsNullOrEmpty(prob.ActionName)) ? prob.ActionName : null
                             }, trans);
                         }
 
-                        // 5. Update Machine Status (2 = Down/Repairing)
-                        conn.Execute("UPDATE machines SET current_status_id = 2 WHERE machine_id = @Id", new { Id = request.MachineId }, trans);
+                        // 5. Insert Sparepart Requests (if any)
+                        if (request.SparepartRequests != null && request.SparepartRequests.Count > 0)
+                        {
+                            string insertPartSql = @"INSERT INTO part_requests (ticket_id, part_id, part_name_manual, qty, status_id, requested_at) VALUES (@TId, @PId, @Name, 1, 1, NOW())";
+                            
+                            foreach (var partName in request.SparepartRequests)
+                            {
+                                int? partId = null;
+                                if (partName.Contains(" - "))
+                                {
+                                    var parts = partName.Split(new[] { " - " }, StringSplitOptions.RemoveEmptyEntries);
+                                    if (parts.Length > 0)
+                                        partId = conn.QueryFirstOrDefault<int?>("SELECT part_id FROM parts WHERE part_code = @C", new { C = parts[0].Trim() }, trans);
+                                }
+                                if (partId == null)
+                                    partId = conn.QueryFirstOrDefault<int?>("SELECT part_id FROM parts WHERE part_name = @N", new { N = partName }, trans);
+                                
+                                conn.Execute(insertPartSql, new { TId = ticketId, PId = partId, Name = partName }, trans);
+                            }
+                        }
+
+                        // 6. Update Machine Status based on final ticket status
+                        int machineStatus = 2; // Default: Down/Repairing
+                        if (request.StatusId >= 4) machineStatus = 1; // Production Resumed -> Running
+                        else if (request.StatusId == 3) machineStatus = 3; // Completed -> Waiting validation
+                        
+                        conn.Execute("UPDATE machines SET current_status_id = @Status WHERE machine_id = @Id", new { Status = machineStatus, Id = request.MachineId }, trans);
 
                         trans.Commit();
                         return (ticketId, displayCode);
