@@ -177,12 +177,18 @@ namespace mtc_app.shared.data.services
                 // Determine payload type and execute appropriate SQL
                 var json = Newtonsoft.Json.Linq.JObject.Parse(item.PayloadJson);
                 
-                // Check if it's a ValidateTicketPayload (has TicketId as GUID and Rating)
-                if (json.ContainsKey("TicketId") && json.ContainsKey("Rating"))
+                // Case-insensitive key check helper
+                bool HasKey(string key) => json.GetValue(key, StringComparison.OrdinalIgnoreCase) != null;
+
+                // Check if it's a ValidateTicketPayload (has TicketId and Rating)
+                if (HasKey("TicketId") && HasKey("Rating"))
                 {
-                    var ticketId = json["TicketId"].ToString();
-                    var rating = json["Rating"].ToObject<int>();
-                    var note = json["Note"]?.ToString();
+                    // Normalize UUID to string ensuring standard format
+                    var ticketUuidStr = json.GetValue("TicketId", StringComparison.OrdinalIgnoreCase).ToObject<Guid>().ToString();
+                    var rating = json.GetValue("Rating", StringComparison.OrdinalIgnoreCase).ToObject<int>();
+                    var note = json.GetValue("Note", StringComparison.OrdinalIgnoreCase)?.ToString();
+
+                    System.Diagnostics.Debug.WriteLine($"[SyncManager] Syncing Validation: ID={ticketUuidStr}, Rating={rating}");
 
                     string sql = @"
                         UPDATE tickets 
@@ -192,15 +198,30 @@ namespace mtc_app.shared.data.services
                             status_id = 3
                         WHERE ticket_uuid = @TicketId";
 
-                    var affected = connection.Execute(sql, new { TicketId = ticketId, Rating = rating, Note = note });
-                    return affected > 0;
+                    try 
+                    {
+                        var affected = connection.Execute(sql, new { TicketId = ticketUuidStr, Rating = rating, Note = note });
+                        if (affected == 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[SyncManager] Validation Sync Failed: Ticket {ticketUuidStr} not found in DB.");
+                            // Consider retrying or checking if ticket exists by ID?
+                        }
+                        return affected > 0;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[SyncManager] SQL Error in Validation Sync: {ex.Message}");
+                        throw; // Let ProcessQueue handle retry
+                    }
                 }
-                // Check if it's a RatingDto (has Score instead of Rating)
-                else if (json.ContainsKey("TicketId") && json.ContainsKey("Score"))
+                // Check if it's a RatingDto (has TicketId and Score - Technician Rating)
+                else if (HasKey("TicketId") && HasKey("Score"))
                 {
-                    var ticketId = json["TicketId"].ToObject<long>();
-                    var score = json["Score"].ToObject<int>();
-                    var comment = json["Comment"]?.ToString();
+                    var ticketId = json.GetValue("TicketId", StringComparison.OrdinalIgnoreCase).ToObject<long>();
+                    var score = json.GetValue("Score", StringComparison.OrdinalIgnoreCase).ToObject<int>();
+                    var comment = json.GetValue("Comment", StringComparison.OrdinalIgnoreCase)?.ToString();
+
+                    System.Diagnostics.Debug.WriteLine($"[SyncManager] Syncing Tech Rating: ID={ticketId}, Score={score}");
 
                     string sql = @"
                         UPDATE tickets 
@@ -208,10 +229,19 @@ namespace mtc_app.shared.data.services
                             tech_rating_note = @Comment
                         WHERE ticket_id = @TicketId";
 
-                    var affected = connection.Execute(sql, new { TicketId = ticketId, Score = score, Comment = comment });
-                    return affected > 0;
+                    try
+                    {
+                        var affected = connection.Execute(sql, new { TicketId = ticketId, Score = score, Comment = comment });
+                        return affected > 0;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[SyncManager] SQL Error in Tech Rating Sync: {ex.Message}");
+                        throw;
+                    }
                 }
 
+                System.Diagnostics.Debug.WriteLine($"[SyncManager] Unknown payload structure for tickets table: {item.PayloadJson}");
                 return false;
             }
         }

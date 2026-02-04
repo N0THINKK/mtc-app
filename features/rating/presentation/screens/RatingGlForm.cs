@@ -305,8 +305,25 @@ namespace mtc_app.features.rating.presentation.screens
                 }
                 else
                 {
-                    MessageBox.Show("Data tiket tidak ditemukan!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    this.Close();
+                    // Ticket detail not available (offline or not found)
+                    MessageBox.Show("Data tiket tidak ditemukan!\n\nFitur ini memerlukan koneksi internet.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    
+                    // Close properly using BeginInvoke to avoid ObjectDisposedException
+                    if (this.IsHandleCreated)
+                    {
+                        this.BeginInvoke((MethodInvoker)delegate {
+                            this.DialogResult = DialogResult.Cancel;
+                            this.Close();
+                        });
+                    }
+                    else
+                    {
+                        // If handle not created yet, defer closure to Shown event
+                        this.Shown += (s, e) => {
+                            this.DialogResult = DialogResult.Cancel;
+                            this.Close();
+                        };
+                    }
                 }
             }
             catch (Exception ex)

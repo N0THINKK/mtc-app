@@ -11,6 +11,7 @@ namespace mtc_app.features.group_leader.data.dtos
         public int? GlRatingScore { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? GlValidatedAt { get; set; }
+        public int StatusId { get; set; } // Added for Offline Filtering
         public string FailureDetails { get; set; }
     }
 }

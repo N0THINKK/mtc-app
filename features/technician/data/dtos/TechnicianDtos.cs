@@ -5,6 +5,7 @@ namespace mtc_app.features.technician.data.dtos
     public class TicketDto
     {
         public long TicketId { get; set; }
+        public Guid TicketUuid { get; set; } // Added for offline sync matching
         public string MachineName { get; set; }
         public string FailureDetails { get; set; }
         public DateTime CreatedAt { get; set; }
