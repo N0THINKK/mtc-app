@@ -1,22 +1,25 @@
 using System;
 using System.Windows.Forms;
-using mtc_app.features.authentication.presentation.screens;
-using mtc_app.shared.data.services;
+using mtc_app.features.authentication.presentation.screens; // Correct Namespace
+using mtc_app.shared.data.utils; // For DatabaseHelper
 
 namespace mtc_app
 {
     static class Program
     {
-        public static MachineMonitorService MonitorService { get; private set; }
+        // Global Services - UserSession is static, no need to declare here.
 
         /// <summary>
-        ///  The main entry point for the application.
+        /// The main entry point for the application.
         /// </summary>
         [STAThread]
         static void Main()
         {
+            // WinForms Setup
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+
+            // UserSession is static, no initialization needed.
 
             // Check if Machine is configured
             string machineIdStr = DatabaseHelper.GetMachineId();
@@ -30,22 +33,10 @@ namespace mtc_app
                     // If user cancels setup, exit app
                     return;
                 }
-                // Refresh after setup
-                machineIdStr = DatabaseHelper.GetMachineId();
             }
 
-            // Start Monitoring Service if Machine ID is valid
-            if (int.TryParse(machineIdStr, out int machineId) && machineId > 0)
-            {
-                MonitorService = new MachineMonitorService();
-                MonitorService.Initialize(machineId);
-            }
-
-            // Continue to Login
+            // Run Main Form (Login)
             Application.Run(new LoginForm());
-            
-            // Cleanup on exit
-            MonitorService?.Stop();
-        }    
+        }
     }
 }

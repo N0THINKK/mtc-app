@@ -83,9 +83,7 @@ namespace mtc_app.features.authentication.presentation.screens
                         
                         machineId = await conn.QuerySingleAsync<int>(sqlInsert, new { Type = type, Area = area, Number = number });
                         
-                        // Buat juga row log kosong agar grafik bisa baca
-                        string sqlLog = @"INSERT IGNORE INTO machine_process_logs (machine_id, last_updated) VALUES (@Id, NOW())";
-                        await conn.ExecuteAsync(sqlLog, new { Id = machineId });
+                        // [FIX] Removed deprecated log insert
                     }
 
                     // 3. Simpan ID ke Config
