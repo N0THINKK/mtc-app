@@ -346,6 +346,21 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void UpdatePartRequestStatus()
         {
+            // Skip DB check for offline tickets - just enable sparepart input
+            if (_currentTicketId < 0)
+            {
+                if (this.IsHandleCreated && !this.IsDisposed)
+                {
+                    this.Invoke((MethodInvoker)delegate 
+                    {
+                        inputSparepart.Enabled = _isVerified;
+                        buttonRequestSparepart.Enabled = _isVerified;
+                        buttonRequestSparepart.Text = "Kirimkan Permintaan Sparepart";
+                    });
+                }
+                return;
+            }
+
             try
             {
                 using (var conn = DatabaseHelper.GetConnection())
@@ -465,6 +480,42 @@ namespace mtc_app.features.machine_history.presentation.screens
             if (MessageBox.Show("Lanjutkan request sparepart?", "Konfirmasi", MessageBoxButtons.YesNo) != DialogResult.Yes)
                 return;
 
+            // ═══════════════════════════════════════════════════════════════════
+            // OFFLINE MODE: Save sparepart request locally
+            // ═══════════════════════════════════════════════════════════════════
+            if (_currentTicketId < 0)
+            {
+                try
+                {
+                    int pendingId = (int)Math.Abs(_currentTicketId);
+                    var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+                    
+                    if (request != null)
+                    {
+                        // Add sparepart request to pending ticket data
+                        if (request.SparepartRequests == null)
+                            request.SparepartRequests = new List<string>();
+                        request.SparepartRequests.Add(val);
+                        
+                        ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
+                        
+                        inputSparepart.Enabled = false;
+                        buttonRequestSparepart.Enabled = false;
+                        buttonRequestSparepart.BackColor = Color.Gray;
+                        
+                        AutoClosingMessageBox.Show("Request tersimpan (Offline).\nAkan dikirim saat online.", "Sukses", 2000);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error menyimpan offline: {ex.Message}", "Error");
+                }
+                return;
+            }
+
+            // ═══════════════════════════════════════════════════════════════════
+            // ONLINE MODE: Send directly to database
+            // ═══════════════════════════════════════════════════════════════════
             try
             {
                 using (var conn = DatabaseHelper.GetConnection())
@@ -535,6 +586,67 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
+            // ═══════════════════════════════════════════════════════════════════
+            // OFFLINE MODE: Save completion data locally
+            // ═══════════════════════════════════════════════════════════════════
+            if (_currentTicketId < 0)
+            {
+                try
+                {
+                    int pendingId = (int)Math.Abs(_currentTicketId);
+                    var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+                    
+                    if (request != null)
+                    {
+                        // Update Ticket Completion Info
+                        request.StatusId = 3; // Completed
+                        request.FinishedAt = DateTime.Now;
+                        request.CounterStroke = int.TryParse(inputCounter.InputValue, out int cnt) ? cnt : 0;
+                        request.Is4M = chk4M.Checked;
+                        request.TechRatingScore = ratingOperator.Rating;
+                        request.TechRatingNote = inputOperatorNote.InputValue;
+                        
+                        // Update Problem Details with Cause/Action
+                        for (int i = 0; i < _problemControls.Count && i < request.Problems.Count; i++)
+                        {
+                            request.Problems[i].CauseName = _problemControls[i].InputCause.InputValue;
+                            request.Problems[i].ActionName = _problemControls[i].InputAction.InputValue;
+                            request.Problems[i].ProblemTypeName = _problemControls[i].InputProblemType.InputValue;
+                            request.Problems[i].FailureName = _problemControls[i].InputProblemDetail.InputValue;
+                        }
+                        
+                        ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
+                        
+                        _repairStopwatch.Stop();
+                        _timer.Stop();
+                        
+                        AutoClosingMessageBox.Show(
+                            $"Perbaikan Selesai (Offline)!\nDurasi: {_repairStopwatch.Elapsed:hh\\:mm\\:ss}\n\nData akan disinkronkan saat online.",
+                            "Sukses", 2000);
+                        
+                        // Continue to MachineRunForm (same as online flow)
+                        var runForm = new MachineRunForm(_currentTicketId);
+                        if (runForm.ShowDialog() == DialogResult.OK)
+                        {
+                            this.DialogResult = DialogResult.OK;
+                            this.Close();
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Data tiket tidak ditemukan.", "Error");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error menyimpan offline: {ex.Message}", "Error");
+                }
+                return;
+            }
+
+            // ═══════════════════════════════════════════════════════════════════
+            // ONLINE MODE: Save directly to database
+            // ═══════════════════════════════════════════════════════════════════
             try
             {
                 using (var conn = DatabaseHelper.GetConnection())
