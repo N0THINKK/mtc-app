@@ -10,7 +10,9 @@ using mtc_app.features.stock.data.decorators;
 using mtc_app.features.stock.data.repositories;
 using mtc_app.features.technician.data.decorators;
 using mtc_app.features.technician.data.repositories;
+using mtc_app.shared.data.decorators;
 using mtc_app.shared.data.local;
+using mtc_app.shared.data.repositories;
 using mtc_app.shared.data.services;
 
 namespace mtc_app.shared.infrastructure
@@ -171,6 +173,19 @@ namespace mtc_app.shared.infrastructure
             EnsureServicesInitialized();
             return new OfflineAuthRepository(
                 new AuthRepository(),
+                _offlineRepo,
+                _networkMonitor
+            );
+        }
+
+        /// <summary>
+        /// Creates an offline-aware MasterDataRepository with cache fallback.
+        /// </summary>
+        public static IMasterDataRepository CreateMasterDataRepository()
+        {
+            EnsureServicesInitialized();
+            return new OfflineMasterDataRepository(
+                new MasterDataRepository(),
                 _offlineRepo,
                 _networkMonitor
             );

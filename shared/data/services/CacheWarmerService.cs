@@ -86,8 +86,9 @@ namespace mtc_app.shared.data.services
                     int ticketsCached = await WarmTicketCacheAsync();
                     int historyCached = await WarmHistoryCacheAsync();
                     int usersCached = await SyncUsersAsync();
+                    var masterDataCounts = await SyncMasterDataAsync();
 
-                    System.Diagnostics.Debug.WriteLine($"[CacheWarmer] Complete: {ticketsCached} tickets, {historyCached} history, {usersCached} users");
+                    System.Diagnostics.Debug.WriteLine($"[CacheWarmer] Complete: {ticketsCached} tickets, {historyCached} history, {usersCached} users, {masterDataCounts.machines} machines, {masterDataCounts.shifts} shifts, {masterDataCounts.problemTypes} types, {masterDataCounts.failures} failures");
 
                     OnCacheWarmCompleted?.Invoke(this, new CacheWarmEventArgs(ticketsCached, historyCached));
                 }
@@ -214,6 +215,71 @@ namespace mtc_app.shared.data.services
                 System.Diagnostics.Debug.WriteLine($"[CacheWarmer] User sync error: {ex.Message}");
                 return 0;
             }
+        }
+
+        /// <summary>
+        /// Syncs master data (machines, shifts, problem types, failures) for offline form dropdowns.
+        /// </summary>
+        private async Task<(int machines, int shifts, int problemTypes, int failures)> SyncMasterDataAsync()
+        {
+            int machineCount = 0, shiftCount = 0, problemTypeCount = 0, failureCount = 0;
+            
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Open();
+                    
+                    // Sync Machines
+                    var machines = await conn.QueryAsync(
+                        @"SELECT machine_id AS MachineId, machine_type AS MachineType, 
+                                 machine_area AS MachineArea, machine_number AS MachineNumber,
+                                 current_status_id AS StatusId
+                          FROM machines");
+                    var machineList = machines?.ToList();
+                    if (machineList?.Count > 0)
+                    {
+                        _offlineRepo.SaveMachinesToCache(machineList);
+                        machineCount = machineList.Count;
+                    }
+                    
+                    // Sync Shifts
+                    var shifts = await conn.QueryAsync(
+                        @"SELECT shift_id AS ShiftId, shift_name AS ShiftName FROM shifts");
+                    var shiftList = shifts?.ToList();
+                    if (shiftList?.Count > 0)
+                    {
+                        _offlineRepo.SaveShiftsToCache(shiftList);
+                        shiftCount = shiftList.Count;
+                    }
+                    
+                    // Sync Problem Types
+                    var problemTypes = await conn.QueryAsync(
+                        @"SELECT type_id AS TypeId, type_name AS TypeName FROM problem_types");
+                    var problemTypeList = problemTypes?.ToList();
+                    if (problemTypeList?.Count > 0)
+                    {
+                        _offlineRepo.SaveProblemTypesToCache(problemTypeList);
+                        problemTypeCount = problemTypeList.Count;
+                    }
+
+                    // Sync Failures
+                    var failures = await conn.QueryAsync(
+                        @"SELECT failure_id AS FailureId, failure_name AS FailureName FROM failures");
+                    var failureList = failures?.ToList();
+                    if (failureList?.Count > 0)
+                    {
+                        _offlineRepo.SaveFailuresToCache(failureList);
+                        failureCount = failureList.Count;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CacheWarmer] Master data sync error: {ex.Message}");
+            }
+            
+            return (machineCount, shiftCount, problemTypeCount, failureCount);
         }
 
         /// <summary>

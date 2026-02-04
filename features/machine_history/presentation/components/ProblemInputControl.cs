@@ -2,8 +2,12 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using Dapper;
+using System.Threading.Tasks;
+using System.Linq;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
+using mtc_app.shared.infrastructure;
+using mtc_app.shared.data.repositories;
 
 namespace mtc_app.features.machine_history.presentation.components
 {
@@ -103,20 +107,31 @@ namespace mtc_app.features.machine_history.presentation.components
             if (InputFailure != null) InputFailure.Width = inputWidth;
         }
 
-        private void LoadData()
+        private async void LoadData()
         {
+            // 1. Load Problem Types (Support Offline)
             try
             {
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    var types = conn.Query<string>("SELECT type_name FROM problem_types ORDER BY type_name");
-                    InputType.SetDropdownItems(types.AsList().ToArray());
-
-                    var failures = conn.Query<string>("SELECT failure_name FROM failures ORDER BY failure_name");
-                    InputFailure.SetDropdownItems(failures.AsList().ToArray());
-                }
+                var repo = ServiceLocator.CreateMasterDataRepository();
+                var types = await repo.GetProblemTypesAsync();
+                InputType.SetDropdownItems(types.Select(t => t.TypeName).ToArray());
             }
-            catch { /* Ignore DB errors on load */ }
+            catch (Exception ex) 
+            {
+                System.Diagnostics.Debug.WriteLine($"[ProblemInput] Error loading types: {ex.Message}");
+            }
+
+            // 2. Load Failures (Support Offline)
+            try
+            {
+                var repo = ServiceLocator.CreateMasterDataRepository();
+                var failures = await repo.GetFailuresAsync();
+                InputFailure.SetDropdownItems(failures.Select(f => f.FailureName).ToArray());
+            }
+            catch (Exception ex)
+            { 
+               System.Diagnostics.Debug.WriteLine($"[ProblemInput] Error loading failures: {ex.Message}");
+            }
         }
     }
 }

@@ -11,12 +11,14 @@ using mtc_app.features.machine_history.presentation.components;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 using mtc_app.shared.infrastructure;
+using mtc_app.shared.data.repositories;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
     public partial class MachineHistoryFormOperator : AppBaseForm
     {
         private readonly IMachineHistoryRepository _repository;
+        private readonly IMasterDataRepository _masterDataRepository;
         
         // Header Inputs
         private AppInput inputNIK;
@@ -40,6 +42,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         public MachineHistoryFormOperator(IMachineHistoryRepository repository)
         {
             _repository = repository;
+            _masterDataRepository = ServiceLocator.CreateMasterDataRepository();
             InitializeComponent();
             InitializeCustomTabs();
             SetupInputs();
@@ -237,28 +240,22 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        private void LoadOperatorsFromDB()
+        private async void LoadOperatorsFromDB()
         {
             try
             {
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    var niks = conn.Query<string>("SELECT nik FROM users WHERE role_id = 1 AND nik IS NOT NULL ORDER BY nik");
-                    inputNIK.SetDropdownItems(niks.AsList().ToArray());
-                }
+                var niks = await _masterDataRepository.GetOperatorsAsync();
+                inputNIK.SetDropdownItems(niks.ToArray());
             }
             catch { /* Ignore */ }
         }
 
-        private void LoadShiftsFromDB()
+        private async void LoadShiftsFromDB()
         {
             try
             {
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    var shifts = conn.Query<string>("SELECT shift_name FROM shifts ORDER BY shift_name");
-                    inputShift.SetDropdownItems(shifts.AsList().ToArray());
-                }
+                var shifts = await _masterDataRepository.GetShiftsAsync();
+                inputShift.SetDropdownItems(shifts.Select(s => s.ShiftName).ToArray());
             }
             catch { /* Ignore */ }
         }
