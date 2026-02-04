@@ -298,17 +298,23 @@ namespace mtc_app.features.machine_history.presentation.screens
             mainLayout.Controls.Add(spacer);
         }
 
-        private void LoadParts()
+        private async void LoadParts()
         {
             try
             {
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    var parts = conn.Query<string>("SELECT CONCAT(IFNULL(part_code, 'N/A'), ' - ', part_name) FROM parts ORDER BY part_name");
-                    inputSparepart.SetDropdownItems(parts.AsList().ToArray());
-                }
+                var repo = mtc_app.shared.infrastructure.ServiceLocator.CreateMasterDataRepository();
+                var parts = await repo.GetPartsAsync();
+                
+                var dropdownItems = parts
+                    .Select(p => $"{(string.IsNullOrEmpty(p.PartCode) ? "N/A" : p.PartCode)} - {p.PartName}")
+                    .ToArray();
+                    
+                inputSparepart.SetDropdownItems(dropdownItems);
             }
-            catch { /* Ignore */ }
+            catch (Exception ex) 
+            {
+                System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error loading parts: {ex.Message}");
+            }
         }
 
         private void UpdateUIState()

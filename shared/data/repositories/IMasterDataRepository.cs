@@ -14,5 +14,8 @@ namespace mtc_app.shared.data.repositories
         Task<List<CachedProblemTypeDto>> GetProblemTypesAsync();
         Task<List<string>> GetOperatorsAsync();
         Task<List<CachedFailureDto>> GetFailuresAsync();
+        Task<List<CachedCauseDto>> GetCausesAsync();
+        Task<List<CachedActionDto>> GetActionsAsync();
+        Task<List<CachedPartDto>> GetPartsAsync();
     }
 }

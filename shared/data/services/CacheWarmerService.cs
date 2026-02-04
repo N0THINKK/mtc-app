@@ -223,10 +223,10 @@ namespace mtc_app.shared.data.services
         /// <summary>
         /// Syncs master data (machines, shifts, problem types, failures) for offline form dropdowns.
         /// </summary>
-        private async Task<(int machines, int shifts, int problemTypes, int failures)> SyncMasterDataAsync()
+        private async Task<(int machines, int shifts, int problemTypes, int failures, int parts)> SyncMasterDataAsync()
         {
             int machineCount = 0, shiftCount = 0, problemTypeCount = 0, failureCount = 0;
-            int causeCount = 0, actionCount = 0; // [FIX] Defined missing variables
+            int causeCount = 0, actionCount = 0, partCount = 0; // [FIX] Added partCount
             
             try
             {
@@ -293,6 +293,15 @@ namespace mtc_app.shared.data.services
                         _offlineRepo.SaveActionsToCache(actionList);
                         actionCount = actionList.Count;
                     }
+
+                    // Sync Parts (NEW)
+                    var parts = await conn.QueryAsync("SELECT part_id, part_code, part_name FROM parts");
+                    var partList = parts?.ToList();
+                    if (partList?.Count > 0)
+                    {
+                        _offlineRepo.SavePartsToCache(partList);
+                        partCount = partList.Count;
+                    }
                 }
             }
             catch (Exception ex)
@@ -300,7 +309,7 @@ namespace mtc_app.shared.data.services
                 System.Diagnostics.Debug.WriteLine($"[CacheWarmer] Master data sync error: {ex.Message}");
             }
             
-            return (machineCount, shiftCount, problemTypeCount, failureCount);
+            return (machineCount, shiftCount, problemTypeCount, failureCount, partCount);
         }
 
         /// <summary>
