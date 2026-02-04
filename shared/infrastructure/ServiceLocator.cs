@@ -1,9 +1,13 @@
 using mtc_app.features.group_leader.data.decorators;
 using mtc_app.features.group_leader.data.repositories;
+using mtc_app.features.machine_history.data.decorators;
+using mtc_app.features.machine_history.data.repositories;
 using mtc_app.features.rating.data.decorators;
 using mtc_app.features.rating.data.repositories;
 using mtc_app.features.stock.data.decorators;
 using mtc_app.features.stock.data.repositories;
+using mtc_app.features.technician.data.decorators;
+using mtc_app.features.technician.data.repositories;
 using mtc_app.shared.data.local;
 using mtc_app.shared.data.services;
 
@@ -19,6 +23,7 @@ namespace mtc_app.shared.infrastructure
         private static OfflineRepository _offlineRepo;
         private static NetworkMonitor _networkMonitor;
         private static SyncManager _syncManager;
+        private static CacheWarmerService _cacheWarmer;
         private static readonly object _lock = new object();
 
         /// <summary>
@@ -57,6 +62,18 @@ namespace mtc_app.shared.infrastructure
             }
         }
 
+        /// <summary>
+        /// Gets the shared CacheWarmerService instance.
+        /// </summary>
+        public static CacheWarmerService CacheWarmer
+        {
+            get
+            {
+                EnsureServicesInitialized();
+                return _cacheWarmer;
+            }
+        }
+
         private static void EnsureServicesInitialized()
         {
             if (_offlineRepo == null)
@@ -68,6 +85,8 @@ namespace mtc_app.shared.infrastructure
                         _offlineRepo = new OfflineRepository();
                         _networkMonitor = new NetworkMonitor();
                         _syncManager = new SyncManager(_offlineRepo, _networkMonitor);
+                        _cacheWarmer = new CacheWarmerService(_offlineRepo, _networkMonitor);
+                        _cacheWarmer.Start(); // Start cache warming on app start
                     }
                 }
             }
@@ -111,6 +130,32 @@ namespace mtc_app.shared.infrastructure
             EnsureServicesInitialized();
             return new OfflineRatingRepository(
                 new RatingRepository(),
+                _offlineRepo,
+                _networkMonitor
+            );
+        }
+
+        /// <summary>
+        /// Creates an offline-aware TechnicianRepository with cached read fallback.
+        /// </summary>
+        public static ITechnicianRepository CreateTechnicianRepository()
+        {
+            EnsureServicesInitialized();
+            return new OfflineTechnicianRepository(
+                new TechnicianRepository(),
+                _offlineRepo,
+                _networkMonitor
+            );
+        }
+
+        /// <summary>
+        /// Creates an offline-aware MachineHistoryRepository with cached read fallback.
+        /// </summary>
+        public static IMachineHistoryRepository CreateMachineHistoryRepository()
+        {
+            EnsureServicesInitialized();
+            return new OfflineMachineHistoryRepository(
+                new MachineHistoryRepository(),
                 _offlineRepo,
                 _networkMonitor
             );

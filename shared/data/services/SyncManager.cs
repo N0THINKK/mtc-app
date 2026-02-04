@@ -26,9 +26,19 @@ namespace mtc_app.shared.data.services
         public event EventHandler<SyncStatusEventArgs> OnSyncStatusChanged;
 
         /// <summary>
+        /// Fired when an item is moved to dead letter queue.
+        /// </summary>
+        public event EventHandler<DeadLetterEventArgs> OnDeadLetterMoved;
+
+        /// <summary>
         /// Gets remaining items in queue.
         /// </summary>
         public int PendingCount => _offlineRepo.GetQueueCount();
+
+        /// <summary>
+        /// Gets count of items in dead letter queue.
+        /// </summary>
+        public int DeadLetterCount => _offlineRepo.GetDeadLetterCount();
 
         /// <summary>
         /// Creates a new SyncManager.
@@ -108,14 +118,14 @@ namespace mtc_app.shared.data.services
                     }
                     else
                     {
-                        _offlineRepo.IncrementRetryCount(item.Id);
+                        HandleFailedItem(item, "Sync returned false");
                         failCount++;
                     }
                 }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"[SyncManager] Error processing item {item.Id}: {ex.Message}");
-                    _offlineRepo.IncrementRetryCount(item.Id);
+                    HandleFailedItem(item, ex.Message);
                     failCount++;
                 }
             }
@@ -230,6 +240,30 @@ namespace mtc_app.shared.data.services
         }
 
         /// <summary>
+        /// Handles a failed sync item - either increment retry or move to dead letter.
+        /// </summary>
+        private void HandleFailedItem(SyncQueueItem item, string errorMessage)
+        {
+            // Check if we've exceeded max retries
+            if (item.RetryCount >= OfflineRepository.MAX_RETRY_COUNT)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SyncManager] Max retries exceeded for item {item.Id}, moving to dead letter");
+                _offlineRepo.MoveToDeadLetter(item, errorMessage);
+                
+                // Fire event for UI notification
+                OnDeadLetterMoved?.Invoke(this, new DeadLetterEventArgs(
+                    item.TableName, 
+                    item.ActionType, 
+                    $"Failed after {OfflineRepository.MAX_RETRY_COUNT} attempts: {errorMessage}"
+                ));
+            }
+            else
+            {
+                _offlineRepo.IncrementRetryCount(item.Id);
+            }
+        }
+
+        /// <summary>
         /// Forces an immediate sync attempt.
         /// </summary>
         public void SyncNow()
@@ -267,6 +301,22 @@ namespace mtc_app.shared.data.services
         {
             Status = status;
             Message = message;
+            Timestamp = DateTime.Now;
+        }
+    }
+
+    public class DeadLetterEventArgs : EventArgs
+    {
+        public string TableName { get; }
+        public string ActionType { get; }
+        public string ErrorMessage { get; }
+        public DateTime Timestamp { get; }
+
+        public DeadLetterEventArgs(string tableName, string actionType, string errorMessage)
+        {
+            TableName = tableName;
+            ActionType = actionType;
+            ErrorMessage = errorMessage;
             Timestamp = DateTime.Now;
         }
     }
