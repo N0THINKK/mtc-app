@@ -1,18 +1,21 @@
 using System;
-using System.Net.NetworkInformation;
+using System.Net.Sockets;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace mtc_app.shared.data.services
 {
     /// <summary>
-    /// Monitors network connectivity to the database server.
-    /// Uses actual ping to verify real connectivity, not just local network status.
+    /// Monitors network connectivity to the MariaDB server.
+    /// Uses TcpClient to verify actual database reachability (intranet-safe).
     /// </summary>
     public class NetworkMonitor : IDisposable
     {
-        private readonly string _targetHost;
+        private readonly string _dbHost;
+        private readonly int _dbPort;
         private readonly int _checkIntervalMs;
+        private readonly int _connectionTimeoutMs;
         private readonly Timer _checkTimer;
         private bool _isOnline;
         private bool _disposed;
@@ -28,27 +31,51 @@ namespace mtc_app.shared.data.services
         public bool IsOnline => _isOnline;
 
         /// <summary>
-        /// Creates a new NetworkMonitor.
+        /// Creates a new NetworkMonitor that checks DB connectivity.
+        /// Parses host/port from the connection string.
         /// </summary>
-        /// <param name="targetHost">Host to ping (default: Google DNS 8.8.8.8)</param>
-        /// <param name="checkIntervalMs">Interval between checks in milliseconds (default: 10s)</param>
-        public NetworkMonitor(string targetHost = "8.8.8.8", int checkIntervalMs = 10000)
+        /// <param name="checkIntervalMs">Interval between checks (default: 10s)</param>
+        /// <param name="connectionTimeoutMs">TCP connect timeout (default: 3s)</param>
+        public NetworkMonitor(int checkIntervalMs = 10000, int connectionTimeoutMs = 3000)
         {
-            _targetHost = targetHost;
             _checkIntervalMs = checkIntervalMs;
+            _connectionTimeoutMs = connectionTimeoutMs;
             _isOnline = false;
-            
-            // Subscribe to system network changes for immediate detection
-            NetworkChange.NetworkAvailabilityChanged += OnNetworkAvailabilityChanged;
-            
-            // Start periodic check timer for more reliable detection
+
+            // Parse host and port from DatabaseHelper connection string
+            (_dbHost, _dbPort) = ParseConnectionString(DatabaseHelper.ConnectionString);
+
+            System.Diagnostics.Debug.WriteLine($"[NetworkMonitor] Target: {_dbHost}:{_dbPort}");
+
+            // Start periodic check timer
             _checkTimer = new Timer(CheckConnectivity, null, 0, _checkIntervalMs);
         }
 
-        private void OnNetworkAvailabilityChanged(object sender, NetworkAvailabilityEventArgs e)
+        /// <summary>
+        /// Parses Server and Port from MySQL connection string.
+        /// Format: "Server=localhost;Port=3306;Database=...;User=...;Password=..."
+        /// </summary>
+        private (string host, int port) ParseConnectionString(string connectionString)
         {
-            // Trigger an immediate check when network status changes
-            CheckConnectivity(null);
+            string host = "localhost";
+            int port = 3306; // Default MySQL/MariaDB port
+
+            if (string.IsNullOrEmpty(connectionString))
+                return (host, port);
+
+            // Extract Server/Host
+            var serverMatch = Regex.Match(connectionString, @"Server\s*=\s*([^;]+)", RegexOptions.IgnoreCase);
+            if (!serverMatch.Success)
+                serverMatch = Regex.Match(connectionString, @"Host\s*=\s*([^;]+)", RegexOptions.IgnoreCase);
+            if (serverMatch.Success)
+                host = serverMatch.Groups[1].Value.Trim();
+
+            // Extract Port
+            var portMatch = Regex.Match(connectionString, @"Port\s*=\s*(\d+)", RegexOptions.IgnoreCase);
+            if (portMatch.Success)
+                int.TryParse(portMatch.Groups[1].Value, out port);
+
+            return (host, port);
         }
 
         private void CheckConnectivity(object state)
@@ -56,27 +83,36 @@ namespace mtc_app.shared.data.services
             Task.Run(() =>
             {
                 bool wasOnline = _isOnline;
-                _isOnline = PingHost(_targetHost);
-                
+                _isOnline = TryConnect(_dbHost, _dbPort);
+
                 if (wasOnline != _isOnline)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[NetworkMonitor] Status changed: {(wasOnline ? "Online" : "Offline")} -> {(_isOnline ? "Online" : "Offline")}");
                     OnStatusChanged?.Invoke(this, new NetworkStatusEventArgs(_isOnline));
                 }
             });
         }
 
-        private bool PingHost(string host)
+        /// <summary>
+        /// Attempts TCP connection to the specified host:port.
+        /// </summary>
+        private bool TryConnect(string host, int port)
         {
             try
             {
-                using (var ping = new Ping())
+                using (var client = new TcpClient())
                 {
-                    var reply = ping.Send(host, 3000); // 3 second timeout
-                    return reply?.Status == IPStatus.Success;
+                    var connectTask = client.ConnectAsync(host, port);
+                    if (connectTask.Wait(_connectionTimeoutMs))
+                    {
+                        return client.Connected;
+                    }
+                    return false; // Timeout
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[NetworkMonitor] Connection failed: {ex.Message}");
                 return false;
             }
         }
@@ -86,7 +122,14 @@ namespace mtc_app.shared.data.services
         /// </summary>
         public bool CheckNow()
         {
-            _isOnline = PingHost(_targetHost);
+            bool wasOnline = _isOnline;
+            _isOnline = TryConnect(_dbHost, _dbPort);
+
+            if (wasOnline != _isOnline)
+            {
+                OnStatusChanged?.Invoke(this, new NetworkStatusEventArgs(_isOnline));
+            }
+
             return _isOnline;
         }
 
@@ -95,7 +138,6 @@ namespace mtc_app.shared.data.services
             if (!_disposed)
             {
                 _disposed = true;
-                NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
                 _checkTimer?.Dispose();
             }
         }

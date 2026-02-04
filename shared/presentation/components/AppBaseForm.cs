@@ -19,6 +19,7 @@ namespace mtc_app.shared.presentation.components
         private static NetworkMonitor _networkMonitor;
         private static SyncManager _syncManager;
         private static bool _servicesInitialized = false;
+        private static bool? _lastOnlineState = null; // Track state for toast notifications
 
         // UI Components
         protected StatusStrip statusStrip;
@@ -93,6 +94,7 @@ namespace mtc_app.shared.presentation.components
         {
             _networkMonitor.OnStatusChanged += NetworkMonitor_OnStatusChanged;
             _syncManager.OnSyncStatusChanged += SyncManager_OnSyncStatusChanged;
+            _syncManager.OnDeadLetterMoved += SyncManager_OnDeadLetterMoved;
         }
 
         private void NetworkMonitor_OnStatusChanged(object sender, NetworkStatusEventArgs e)
@@ -122,6 +124,20 @@ namespace mtc_app.shared.presentation.components
 
         private void UpdateConnectionStatus(bool isOnline)
         {
+            // Show toast on state change
+            if (_lastOnlineState.HasValue && _lastOnlineState.Value != isOnline)
+            {
+                if (isOnline)
+                {
+                    ToastNotification.ShowSuccess("Connection Restored - Syncing...");
+                }
+                else
+                {
+                    ToastNotification.ShowWarning("Connection Lost - Switched to Offline Mode");
+                }
+            }
+            _lastOnlineState = isOnline;
+
             if (isOnline)
             {
                 lblConnectionStatus.Text = "● Online";
@@ -157,6 +173,7 @@ namespace mtc_app.shared.presentation.components
                 case SyncStatus.Complete:
                     lblPendingSync.Text = "All synced ✓";
                     lblPendingSync.ForeColor = AppColors.Success;
+                    ToastNotification.ShowSuccess("Sync Complete!");
                     break;
                 case SyncStatus.PartialComplete:
                 case SyncStatus.Failed:
@@ -167,6 +184,23 @@ namespace mtc_app.shared.presentation.components
                     lblPendingSync.Text = "";
                     break;
             }
+        }
+
+        private void SyncManager_OnDeadLetterMoved(object sender, DeadLetterEventArgs e)
+        {
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action(() => ShowDeadLetterWarning(e)));
+            }
+            else
+            {
+                ShowDeadLetterWarning(e);
+            }
+        }
+
+        private void ShowDeadLetterWarning(DeadLetterEventArgs e)
+        {
+            ToastNotification.ShowError($"Sync failed for {e.TableName}: {e.ErrorMessage}");
         }
 
         /// <summary>
@@ -190,7 +224,10 @@ namespace mtc_app.shared.presentation.components
             if (_networkMonitor != null)
                 _networkMonitor.OnStatusChanged -= NetworkMonitor_OnStatusChanged;
             if (_syncManager != null)
+            {
                 _syncManager.OnSyncStatusChanged -= SyncManager_OnSyncStatusChanged;
+                _syncManager.OnDeadLetterMoved -= SyncManager_OnDeadLetterMoved;
+            }
 
             base.OnFormClosed(e);
         }
