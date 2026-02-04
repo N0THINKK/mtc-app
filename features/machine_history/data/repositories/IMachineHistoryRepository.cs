@@ -16,5 +16,12 @@ namespace mtc_app.features.machine_history.data.repositories
         /// <param name="machineFilter">Optional search by machine name.</param>
         /// <returns>List of history records.</returns>
         Task<IEnumerable<MachineHistoryDto>> GetHistoryAsync(DateTime? startDate = null, DateTime? endDate = null, string machineFilter = null);
+
+        /// <summary>
+        /// Creates a new ticket.
+        /// </summary>
+        /// <param name="request">Ticket creation details.</param>
+        /// <returns>Created ticket details (ID and Display Code).</returns>
+        Task<(long TicketId, string TicketCode)> CreateTicketAsync(CreateTicketRequest request);
     }
 }

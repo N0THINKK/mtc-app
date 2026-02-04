@@ -11,6 +11,7 @@ using mtc_app.features.machine_history.presentation.components;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 using mtc_app.shared.infrastructure;
+using mtc_app.shared.infrastructure;
 using mtc_app.shared.data.repositories;
 
 namespace mtc_app.features.machine_history.presentation.screens
@@ -273,7 +274,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        private void SaveButton_Click(object sender, EventArgs e)
+        private async void SaveButton_Click(object sender, EventArgs e)
         {
             // Validate Header
             if (!inputNIK.ValidateInput() || !inputShift.ValidateInput() || !inputApplicator.ValidateInput())
@@ -294,90 +295,51 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             try 
             {
-                using (var conn = DatabaseHelper.GetConnection())
+                // [FIX] Get Machine ID from Config (Dynamic)
+                int machineId = 1;
+                if (int.TryParse(DatabaseHelper.GetMachineId(), out int configId))
                 {
-                    conn.Open();
-                    using (var trans = conn.BeginTransaction())
-                    {
-                        try
-                        {
-                            // Generate ticket code
-                            string uuid = Guid.NewGuid().ToString();
-                            string dateCode = DateTime.Now.ToString("yyMMdd");
-                            int dailyCount = conn.ExecuteScalar<int>("SELECT COUNT(*) FROM tickets WHERE DATE(created_at) = CURDATE()", transaction: trans);
-                            string displayCode = $"TKT-{dateCode}-{(dailyCount + 1):D3}";
-
-                            // Resolve IDs
-                            int operatorId = conn.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE nik = @Nik", new { Nik = inputNIK.InputValue }, trans) ?? 1;
-                            int? shiftId = conn.QueryFirstOrDefault<int?>("SELECT shift_id FROM shifts WHERE shift_name = @Name", new { Name = inputShift.InputValue }, trans);
-                            
-                            // [FIX] Get Machine ID from Config (Dynamic)
-                            int machineId = 1;
-                            if (int.TryParse(DatabaseHelper.GetMachineId(), out int configId))
-                            {
-                                machineId = configId;
-                            }
-
-                            // Insert Ticket
-                            string insertTicketSql = @"
-                                INSERT INTO tickets (ticket_uuid, ticket_display_code, machine_id, shift_id, operator_id, applicator_code, status_id, created_at)
-                                VALUES (@Uuid, @Code, @MachineId, @ShiftId, @OpId, @AppCode, 1, NOW());
-                                SELECT LAST_INSERT_ID();";
-
-                            long ticketId = conn.ExecuteScalar<long>(insertTicketSql, new {
-                                Uuid = uuid, Code = displayCode, MachineId = machineId, ShiftId = shiftId, 
-                                OpId = operatorId, AppCode = inputApplicator.InputValue
-                            }, trans);
-
-                            // Insert Problems
-                            string insertProblemSql = @"
-                                INSERT INTO ticket_problems (ticket_id, problem_type_id, problem_type_remarks, failure_id, failure_remarks)
-                                VALUES (@TicketId, @TypeId, @TypeRem, @FailId, @FailRem)";
-
-                            foreach (var prob in _problemControls)
-                            {
-                                int? typeId = conn.QueryFirstOrDefault<int?>("SELECT type_id FROM problem_types WHERE type_name = @N", new { N = prob.InputType.InputValue }, trans);
-                                int? failId = conn.QueryFirstOrDefault<int?>("SELECT failure_id FROM failures WHERE failure_name = @N", new { N = prob.InputFailure.InputValue }, trans);
-
-                                conn.Execute(insertProblemSql, new {
-                                    TicketId = ticketId,
-                                    TypeId = typeId,
-                                    TypeRem = (!typeId.HasValue) ? prob.InputType.InputValue : null,
-                                    FailId = failId,
-                                    FailRem = (!failId.HasValue) ? prob.InputFailure.InputValue : null
-                                }, trans);
-                            }
-
-                            // Update machine status
-                            conn.Execute("UPDATE machines SET current_status_id = 2 WHERE machine_id = @Id", new { Id = machineId }, trans);
-
-                            trans.Commit();
-
-                            AutoClosingMessageBox.Show($"Tiket Berhasil Dibuat!\nKode: {displayCode}", "Sukses", 2000);
-                            
-                            // Open Technician Form
-                            var technicianForm = new MachineHistoryFormTechnician(ticketId);
-                            this.Hide(); 
-                                                technicianForm.FormClosed += (s, args) => 
-                                                {
-                                                    // If run successful (OK), close this form too -> returns to Login
-                                                    if (technicianForm.DialogResult == DialogResult.OK)
-                                                    {
-                                                        this.Close();
-                                                    }
-                                                    else
-                                                    {
-                                                        this.Show();
-                                                    }
-                                                };
-                                                technicianForm.Show();                        }
-                        catch
-                        {
-                            trans.Rollback();
-                            throw;
-                        }
-                    }
+                    machineId = configId;
                 }
+
+                var request = new CreateTicketRequest
+                {
+                    OperatorNik = inputNIK.InputValue,
+                    ShiftName = inputShift.InputValue,
+                    ApplicatorCode = inputApplicator.InputValue,
+                    MachineId = machineId,
+                    Problems = _problemControls.Select(p => new TicketProblemRequest 
+                    { 
+                        ProblemTypeName = p.InputType.InputValue,
+                        FailureName = p.InputFailure.InputValue 
+                    }).ToList()
+                };
+
+                // Use Repository (supports offline buffer)
+                var result = await _repository.CreateTicketAsync(request);
+
+                // Both Online (>0) and Offline (<0) tickets proceed to Technician Form
+                string successMsg = (result.TicketId < 0) 
+                    ? "Tiket Disimpan Offline.\nMenunggu Sinkronisasi." 
+                    : $"Tiket Berhasil Dibuat!\nKode: {result.TicketCode}";
+
+                AutoClosingMessageBox.Show(successMsg, "Sukses", 2000);
+
+                // Open Technician Form
+                var technicianForm = new MachineHistoryFormTechnician(result.TicketId);
+                this.Hide(); 
+                technicianForm.FormClosed += (s, args) => 
+                {
+                    if (technicianForm.DialogResult == DialogResult.OK)
+                    {
+                        this.Close();
+                    }
+                    else
+                    {
+                        this.Show();
+                    }
+                };
+                technicianForm.Show();
             }
             catch (Exception ex)
             {
@@ -386,6 +348,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                 MessageBox.Show($"Gagal menyimpan: {msg}", "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
+
 
         private void PanelFooter_Paint(object sender, PaintEventArgs e)
         {

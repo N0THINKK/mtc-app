@@ -39,4 +39,22 @@ namespace mtc_app.shared.data.dtos
         public int FailureId { get; set; }
         public string FailureName { get; set; }
     }
+
+    /// <summary>
+    /// Cached cause data for offline dropdowns.
+    /// </summary>
+    public class CachedCauseDto
+    {
+        public int CauseId { get; set; }
+        public string CauseName { get; set; }
+    }
+
+    /// <summary>
+    /// Cached action data for offline dropdowns.
+    /// </summary>
+    public class CachedActionDto
+    {
+        public int ActionId { get; set; }
+        public string ActionName { get; set; }
+    }
 }

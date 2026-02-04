@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using Dapper;
 using System.IO;
+using mtc_app.features.machine_history.data.dtos;
 using mtc_app.shared.data.dtos;
 using Newtonsoft.Json;
 
@@ -153,6 +155,31 @@ namespace mtc_app.shared.data.local
                             FailureId INTEGER PRIMARY KEY,
                             FailureName TEXT NOT NULL,
                             CachedAt TEXT NOT NULL
+                        );");
+
+                    // CachedCauses table (NEW)
+                    ExecuteNonQuery(connection, @"
+                        CREATE TABLE IF NOT EXISTS CachedCauses (
+                            CauseId INTEGER PRIMARY KEY,
+                            CauseName TEXT NOT NULL,
+                            CachedAt TEXT NOT NULL
+                        );");
+
+                    // CachedActions table (NEW)
+                    ExecuteNonQuery(connection, @"
+                        CREATE TABLE IF NOT EXISTS CachedActions (
+                            ActionId INTEGER PRIMARY KEY,
+                            ActionName TEXT NOT NULL,
+                            CachedAt TEXT NOT NULL
+                        );");
+
+                     // PendingTickets table (for offline writes)
+                    ExecuteNonQuery(connection, @"
+                        CREATE TABLE IF NOT EXISTS PendingTickets (
+                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            TicketData TEXT NOT NULL,
+                            CreatedAt TEXT NOT NULL,
+                            IsSynced INTEGER DEFAULT 0
                         );");
                 }
             }
@@ -895,7 +922,7 @@ namespace mtc_app.shared.data.local
                 using (var connection = new SQLiteConnection(_connectionString))
                 {
                     connection.Open();
-                    using (var cmd = new SQLiteCommand("SELECT * FROM CachedFailures;", connection))
+                    using (var cmd = new SQLiteCommand("SELECT FailureId, FailureName FROM CachedFailures ORDER BY FailureName;", connection))
                     using (var reader = cmd.ExecuteReader())
                     {
                         while (reader.Read())
@@ -910,6 +937,231 @@ namespace mtc_app.shared.data.local
                 }
             }
             return result;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Causes (NEW)
+        // ─────────────────────────────────────────────────────────────────────
+
+        public void SaveCausesToCache(IEnumerable<dynamic> causes)
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    foreach (var c in causes)
+                    {
+                        string sql = @"INSERT OR REPLACE INTO CachedCauses (CauseId, CauseName, CachedAt) VALUES (@Id, @Name, @Date);";
+                        using (var cmd = new SQLiteCommand(sql, connection))
+                        {
+                            cmd.Parameters.AddWithValue("@Id", (int)c.cause_id);
+                            cmd.Parameters.AddWithValue("@Name", (string)c.cause_name);
+                            cmd.Parameters.AddWithValue("@Date", DateTime.UtcNow.ToString("o"));
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                }
+            }
+        }
+
+        public List<CachedCauseDto> GetCausesFromCache()
+        {
+            var result = new List<CachedCauseDto>();
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    using (var cmd = new SQLiteCommand("SELECT CauseId, CauseName FROM CachedCauses ORDER BY CauseName;", connection))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            result.Add(new CachedCauseDto
+                            {
+                                CauseId = Convert.ToInt32(reader["CauseId"]),
+                                CauseName = reader["CauseName"]?.ToString()
+                            });
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Actions (NEW)
+        // ─────────────────────────────────────────────────────────────────────
+
+        public void SaveActionsToCache(IEnumerable<dynamic> actions)
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    foreach (var a in actions)
+                    {
+                        string sql = @"INSERT OR REPLACE INTO CachedActions (ActionId, ActionName, CachedAt) VALUES (@Id, @Name, @Date);";
+                        using (var cmd = new SQLiteCommand(sql, connection))
+                        {
+                            cmd.Parameters.AddWithValue("@Id", (int)a.action_id);
+                            cmd.Parameters.AddWithValue("@Name", (string)a.action_name);
+                            cmd.Parameters.AddWithValue("@Date", DateTime.UtcNow.ToString("o"));
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                }
+            }
+        }
+
+        public List<CachedActionDto> GetActionsFromCache()
+        {
+            var result = new List<CachedActionDto>();
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    using (var cmd = new SQLiteCommand("SELECT ActionId, ActionName FROM CachedActions ORDER BY ActionName;", connection))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            result.Add(new CachedActionDto
+                            {
+                                ActionId = Convert.ToInt32(reader["ActionId"]),
+                                ActionName = reader["ActionName"]?.ToString()
+                            });
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Pending Tickets (Queue)
+        // ─────────────────────────────────────────────────────────────────────
+
+        public int SavePendingTicket(CreateTicketRequest request)
+        {
+            int newId = 0;
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    string json = JsonConvert.SerializeObject(request);
+                    
+                    string sql = @"
+                        INSERT INTO PendingTickets (TicketData, CreatedAt, IsSynced)
+                        VALUES (@Data, @Date, 0);
+                        SELECT last_insert_rowid();";
+
+                    using (var cmd = new SQLiteCommand(sql, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@Data", json);
+                        cmd.Parameters.AddWithValue("@Date", DateTime.UtcNow.ToString("o"));
+                        newId = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                }
+            }
+            return newId;
+        }
+
+        public CreateTicketRequest GetPendingTicketById(int id)
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    using (var cmd = new SQLiteCommand("SELECT TicketData FROM PendingTickets WHERE Id = @Id;", connection))
+                    {
+                        cmd.Parameters.AddWithValue("@Id", id);
+                        var json = cmd.ExecuteScalar()?.ToString();
+                        if (string.IsNullOrEmpty(json)) return null;
+                        return JsonConvert.DeserializeObject<CreateTicketRequest>(json);
+                    }
+                }
+            }
+        }
+
+        public void UpdatePendingTicket(int id, CreateTicketRequest request)
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    string json = JsonConvert.SerializeObject(request);
+                    string sql = "UPDATE PendingTickets SET TicketData = @Data WHERE Id = @Id";
+                    using (var cmd = new SQLiteCommand(sql, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@Data", json);
+                        cmd.Parameters.AddWithValue("@Id", id);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
+        }
+
+        public CachedUserDto GetUserByNik(string nik)
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    string sql = "SELECT * FROM CachedUsers WHERE Nik = @Nik LIMIT 1";
+                    return connection.QueryFirstOrDefault<CachedUserDto>(sql, new { Nik = nik });
+                }
+            }
+        }
+
+        public List<(int Id, CreateTicketRequest Request)> GetPendingTickets()
+        {
+            var result = new List<(int Id, CreateTicketRequest Request)>();
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    using (var cmd = new SQLiteCommand("SELECT Id, TicketData FROM PendingTickets WHERE IsSynced = 0 ORDER BY Id;", connection))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            int id = Convert.ToInt32(reader["Id"]);
+                            string json = reader["TicketData"].ToString();
+                            var request = JsonConvert.DeserializeObject<CreateTicketRequest>(json);
+                            if (request != null)
+                            {
+                                result.Add((id, request));
+                            }
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        public void DeletePendingTicket(int id)
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    using (var cmd = new SQLiteCommand("DELETE FROM PendingTickets WHERE Id = @Id;", connection))
+                    {
+                        cmd.Parameters.AddWithValue("@Id", id);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
         }
 
         #endregion

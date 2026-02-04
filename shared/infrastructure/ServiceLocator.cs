@@ -184,11 +184,8 @@ namespace mtc_app.shared.infrastructure
         public static IMasterDataRepository CreateMasterDataRepository()
         {
             EnsureServicesInitialized();
-            return new OfflineMasterDataRepository(
-                new MasterDataRepository(),
-                _offlineRepo,
-                _networkMonitor
-            );
+            var inner = new MasterDataRepository();
+            return new OfflineMasterDataRepository(inner, OfflineRepo, NetworkMonitor);
         }
     }
 }
