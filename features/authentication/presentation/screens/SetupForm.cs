@@ -1,17 +1,19 @@
 using System;
-using System.Data;
 using System.Linq;
 using System.Windows.Forms;
-using Dapper;
+using mtc_app.features.authentication.data.repositories;
 using mtc_app.shared.presentation.components;
 
 namespace mtc_app.features.authentication.presentation.screens
 {
     public partial class SetupForm : AppBaseForm
     {
+        private readonly ISetupRepository _repository;
+
         public SetupForm()
         {
             InitializeComponent();
+            _repository = new SetupRepository(); // In a full DI setup, this would be injected
             LoadDropdownData();
         }
 
@@ -19,25 +21,17 @@ namespace mtc_app.features.authentication.presentation.screens
         {
             try
             {
-                // Restore UI Visibility (in case hidden by previous edits)
+                // Restore UI Visibility
                 comboMachineType.Visible = true;
                 comboMachineArea.Visible = true;
                 txtMachineNumber.Visible = true;
                 
-                // Clear existing items (if any dummy data)
-                comboMachineType.SetDropdownItems(new string[] { });
-                comboMachineArea.SetDropdownItems(new string[] { });
+                // Fetch Data via Repository
+                var types = await _repository.GetMachineTypesAsync();
+                var areas = await _repository.GetMachineAreasAsync();
 
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    // 1. Fetch Distinct Types
-                    var types = await conn.QueryAsync<string>("SELECT DISTINCT machine_type FROM machines ORDER BY machine_type");
-                    comboMachineType.SetDropdownItems(types.ToArray());
-
-                    // 2. Fetch Distinct Areas
-                    var areas = await conn.QueryAsync<string>("SELECT DISTINCT machine_area FROM machines ORDER BY machine_area");
-                    comboMachineArea.SetDropdownItems(areas.ToArray());
-                }
+                comboMachineType.SetDropdownItems(types.ToArray());
+                comboMachineArea.SetDropdownItems(areas.ToArray());
 
                 // Re-bind Save Button Logic
                 btnSave.Click -= btnSave_Click;
@@ -45,7 +39,7 @@ namespace mtc_app.features.authentication.presentation.screens
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Gagal memuat data Tipe/Area dari database: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Gagal memuat data: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -63,38 +57,17 @@ namespace mtc_app.features.authentication.presentation.screens
 
             try
             {
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    // 1. Cek apakah kombinasi mesin ini sudah ada di DB?
-                    string sqlCheck = @"SELECT machine_id FROM machines 
-                                      WHERE machine_type = @Type 
-                                      AND machine_area = @Area 
-                                      AND machine_number = @Number";
-                    
-                    var machineId = await conn.QueryFirstOrDefaultAsync<int?>(sqlCheck, new { Type = type, Area = area, Number = number });
+                // Register Machine via Repository
+                int machineId = await _repository.RegisterMachineAsync(type, area, number);
 
-                    if (machineId == null || machineId == 0)
-                    {
-                        // 2. Jika belum ada, BUAT BARU (Insert)
-                        // Karena nomor mesin dinamis dan user baru input sekarang
-                        string sqlInsert = @"INSERT INTO machines (machine_type, machine_area, machine_number, current_status_id) 
-                                           VALUES (@Type, @Area, @Number, 1);
-                                           SELECT LAST_INSERT_ID();";
-                        
-                        machineId = await conn.QuerySingleAsync<int>(sqlInsert, new { Type = type, Area = area, Number = number });
-                        
-                        // [FIX] Removed deprecated log insert
-                    }
+                // Save Config
+                DatabaseHelper.UpdateMachineConfig(machineId.ToString());
 
-                    // 3. Simpan ID ke Config
-                    DatabaseHelper.UpdateMachineConfig(machineId.ToString());
-
-                    string machineCode = $"{type}-{area}.{number}";
-                    MessageBox.Show($"Setup Berhasil!\nIdentitas Mesin: {machineCode}", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    
-                    this.DialogResult = DialogResult.OK;
-                    this.Close();
-                }
+                string machineCode = $"{type}-{area}.{number}";
+                MessageBox.Show($"Setup Berhasil!\nIdentitas Mesin: {machineCode}", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                
+                this.DialogResult = DialogResult.OK;
+                this.Close();
             }
             catch (Exception ex)
             {

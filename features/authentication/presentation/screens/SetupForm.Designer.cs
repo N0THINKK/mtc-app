@@ -46,8 +46,8 @@ namespace mtc_app.features.authentication.presentation.screens
             this.pnlMain.Controls.Add(this.comboMachineArea);
             this.pnlMain.Controls.Add(this.txtMachineNumber);
             this.pnlMain.Controls.Add(this.btnSave);
-            this.pnlMain.Location = new System.Drawing.Point(100, 50); // Adjusted position
-            this.pnlMain.Size = new System.Drawing.Size(600, 450); // Increased size
+            this.pnlMain.Location = new System.Drawing.Point(100, 30); 
+            this.pnlMain.Size = new System.Drawing.Size(600, 500); 
             this.pnlMain.Name = "pnlMain";
 
             // 
@@ -68,7 +68,7 @@ namespace mtc_app.features.authentication.presentation.screens
             this.comboMachineType.LabelText = "Tipe Mesin (Kode):";
             this.comboMachineType.Location = new System.Drawing.Point(50, 70);
             this.comboMachineType.Name = "comboMachineType";
-            this.comboMachineType.Size = new System.Drawing.Size(500, 55);
+            this.comboMachineType.Size = new System.Drawing.Size(500, 85);
             this.comboMachineType.TabIndex = 1;
             this.comboMachineType.InputType = AppInput.InputTypeEnum.Dropdown;
 
@@ -76,9 +76,9 @@ namespace mtc_app.features.authentication.presentation.screens
             // comboMachineArea
             // 
             this.comboMachineArea.LabelText = "Area Mesin:";
-            this.comboMachineArea.Location = new System.Drawing.Point(50, 140);
+            this.comboMachineArea.Location = new System.Drawing.Point(50, 165); 
             this.comboMachineArea.Name = "comboMachineArea";
-            this.comboMachineArea.Size = new System.Drawing.Size(500, 55);
+            this.comboMachineArea.Size = new System.Drawing.Size(500, 85);
             this.comboMachineArea.TabIndex = 2;
             this.comboMachineArea.InputType = AppInput.InputTypeEnum.Dropdown;
 
@@ -86,17 +86,17 @@ namespace mtc_app.features.authentication.presentation.screens
             // txtMachineNumber
             // 
             this.txtMachineNumber.LabelText = "Nomor Urut (Contoh: 01):";
-            this.txtMachineNumber.Location = new System.Drawing.Point(50, 210);
+            this.txtMachineNumber.Location = new System.Drawing.Point(50, 260); 
             this.txtMachineNumber.Name = "txtMachineNumber";
-            this.txtMachineNumber.Size = new System.Drawing.Size(500, 55);
+            this.txtMachineNumber.Size = new System.Drawing.Size(500, 85);
             this.txtMachineNumber.TabIndex = 3;
 
             // 
             // btnSave
             // 
-            this.btnSave.Location = new System.Drawing.Point(50, 290); // Moved up
+            this.btnSave.Location = new System.Drawing.Point(50, 365); 
             this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(500, 45);
+            this.btnSave.Size = new System.Drawing.Size(500, 50);
             this.btnSave.TabIndex = 4;
             this.btnSave.Text = "SIMPAN & LANJUTKAN";
             this.btnSave.Type = AppButton.ButtonType.Primary;
@@ -106,7 +106,7 @@ namespace mtc_app.features.authentication.presentation.screens
             // SetupForm
             // 
             this.AutoScaleMode = AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
+            this.ClientSize = new System.Drawing.Size(800, 600);
             this.Controls.Add(this.pnlMain);
             this.FormBorderStyle = FormBorderStyle.None;
             this.Name = "SetupForm";
