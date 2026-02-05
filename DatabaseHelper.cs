@@ -26,9 +26,19 @@ namespace mtc_app
 
         public static string ConnectionString => _configuration.GetConnectionString("DefaultConnection");
 
+        /// <summary>
+        /// Gets a database connection with a short timeout (3 seconds) for responsive UI.
+        /// </summary>
         public static IDbConnection GetConnection()
         {
-            return new MySqlConnection(ConnectionString);
+            // Append short connection timeout if not already specified
+            var connStr = ConnectionString;
+            if (!connStr.Contains("ConnectionTimeout", StringComparison.OrdinalIgnoreCase) 
+                && !connStr.Contains("Connect Timeout", StringComparison.OrdinalIgnoreCase))
+            {
+                connStr += ";ConnectionTimeout=3";
+            }
+            return new MySqlConnection(connStr);
         }
 
         public static string GetMachineId()

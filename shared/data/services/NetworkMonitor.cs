@@ -35,8 +35,8 @@ namespace mtc_app.shared.data.services
         /// Parses host/port from the connection string.
         /// </summary>
         /// <param name="checkIntervalMs">Interval between checks (default: 10s)</param>
-        /// <param name="connectionTimeoutMs">TCP connect timeout (default: 3s)</param>
-        public NetworkMonitor(int checkIntervalMs = 10000, int connectionTimeoutMs = 3000)
+        /// <param name="connectionTimeoutMs">TCP connect timeout (default: 1.5s for responsive UI)</param>
+        public NetworkMonitor(int checkIntervalMs = 10000, int connectionTimeoutMs = 1500)
         {
             _checkIntervalMs = checkIntervalMs;
             _connectionTimeoutMs = connectionTimeoutMs;
@@ -80,34 +80,47 @@ namespace mtc_app.shared.data.services
 
         private void CheckConnectivity(object state)
         {
-            Task.Run(() =>
-            {
-                bool wasOnline = _isOnline;
-                _isOnline = TryConnect(_dbHost, _dbPort);
-
-                if (wasOnline != _isOnline)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[NetworkMonitor] Status changed: {(wasOnline ? "Online" : "Offline")} -> {(_isOnline ? "Online" : "Offline")}");
-                    OnStatusChanged?.Invoke(this, new NetworkStatusEventArgs(_isOnline));
-                }
-            });
+            // Run on background thread, non-blocking to UI
+            _ = CheckConnectivityAsync();
         }
 
         /// <summary>
-        /// Attempts TCP connection to the specified host:port.
+        /// Async connectivity check with short timeout.
         /// </summary>
-        private bool TryConnect(string host, int port)
+        private async Task CheckConnectivityAsync()
+        {
+            bool wasOnline = _isOnline;
+            _isOnline = await TryConnectAsync(_dbHost, _dbPort);
+
+            if (wasOnline != _isOnline)
+            {
+                System.Diagnostics.Debug.WriteLine($"[NetworkMonitor] Status changed: {(wasOnline ? "Online" : "Offline")} -> {(_isOnline ? "Online" : "Offline")}");
+                OnStatusChanged?.Invoke(this, new NetworkStatusEventArgs(_isOnline));
+            }
+        }
+
+        /// <summary>
+        /// Attempts TCP connection with strict timeout using Task.WhenAny pattern.
+        /// This is completely non-blocking and respects the timeout strictly.
+        /// </summary>
+        private async Task<bool> TryConnectAsync(string host, int port)
         {
             try
             {
                 using (var client = new TcpClient())
                 {
                     var connectTask = client.ConnectAsync(host, port);
-                    if (connectTask.Wait(_connectionTimeoutMs))
+                    var timeoutTask = Task.Delay(_connectionTimeoutMs);
+                    
+                    // Wait for connection OR timeout - whichever happens first
+                    var completedTask = await Task.WhenAny(connectTask, timeoutTask);
+                    
+                    if (completedTask == connectTask && client.Connected)
                     {
-                        return client.Connected;
+                        return true; // Connected successfully
                     }
-                    return false; // Timeout
+                    
+                    return false; // Timeout or failed
                 }
             }
             catch (Exception ex)
@@ -118,12 +131,24 @@ namespace mtc_app.shared.data.services
         }
 
         /// <summary>
-        /// Forces an immediate connectivity check.
+        /// Returns the CACHED status instantly (non-blocking).
+        /// Use this for UI decisions. The background timer keeps it updated.
         /// </summary>
         public bool CheckNow()
         {
+            // Return cached value immediately - no blocking!
+            // The background timer will update _isOnline periodically.
+            return _isOnline;
+        }
+
+        /// <summary>
+        /// Forces an immediate async connectivity check.
+        /// Call this if you need fresh status and can await.
+        /// </summary>
+        public async Task<bool> CheckNowAsync()
+        {
             bool wasOnline = _isOnline;
-            _isOnline = TryConnect(_dbHost, _dbPort);
+            _isOnline = await TryConnectAsync(_dbHost, _dbPort);
 
             if (wasOnline != _isOnline)
             {
