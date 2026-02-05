@@ -53,7 +53,8 @@ namespace mtc_app.features.technician.presentation.components
                 _comboArea.SelectedIndex = 0;
                 using (var conn = DatabaseHelper.GetConnection())
                 {
-                    var areas = await conn.QueryAsync<string>("SELECT DISTINCT machine_area FROM machines ORDER BY machine_area");
+                    // New Schema
+                    var areas = await conn.QueryAsync<string>("SELECT area_name FROM machine_areas ORDER BY area_name");
                     foreach (var area in areas) _comboArea.Items.Add(area);
                 }
             }
@@ -67,7 +68,7 @@ namespace mtc_app.features.technician.presentation.components
             this.Padding = new Padding(AppDimens.MarginLarge);
 
             // 1. Header
-            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = AppDimens.RowHeight }; // [FIX] Standard height
+            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = AppDimens.RowHeight }; 
             
             var lblTitle = new Label 
             { 
@@ -83,7 +84,7 @@ namespace mtc_app.features.technician.presentation.components
                 Font = AppFonts.BodySmall,
                 ForeColor = Color.Gray,
                 AutoSize = true,
-                Location = new Point(300, 12) // [FIX] Beside Title
+                Location = new Point(300, 12)
             };
 
             // Area Filter (Right Aligned)
@@ -108,7 +109,6 @@ namespace mtc_app.features.technician.presentation.components
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Font = AppFonts.BodySmall
             };
-            // [FIX] Restore Items
             _comboMetric.Items.AddRange(new object[] { "Produksi (Output)", "Efisiensi (Waktu)" });
             _comboMetric.SelectedIndex = 0;
             _comboMetric.SelectedIndexChanged += async (s, e) => await LoadData();
@@ -126,7 +126,6 @@ namespace mtc_app.features.technician.presentation.components
 
             // 3. Chart
             _chart = new Chart();
-            // _chart.Dock = DockStyle.Fill; // [CHANGE] Don't fill, we manage width manually
             _chart.Dock = DockStyle.Left;  // Align left to allow scrolling
             _chart.BackColor = Color.White;
             _chart.Height = _pnlChartContainer.Height - 20; // Fit container height
@@ -171,18 +170,26 @@ namespace mtc_app.features.technician.presentation.components
                 // 1. Get List of Machines from DB (With Area Filter)
                 IEnumerable<dynamic> machines;
                 string selectedArea = _comboArea.SelectedItem?.ToString();
-                string sql = "SELECT machine_id, machine_type, machine_area, machine_number FROM machines";
+                
+                // New Schema: JOIN tables to get Type/Area names
+                string sql = @"SELECT m.machine_id, 
+                                      COALESCE(t.type_name, 'UNK') AS machine_type, 
+                                      COALESCE(a.area_name, 'UNK') AS machine_area, 
+                                      m.machine_number 
+                               FROM machines m
+                               LEFT JOIN machine_types t ON m.type_id = t.type_id
+                               LEFT JOIN machine_areas a ON m.area_id = a.area_id";
                 
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     if (!string.IsNullOrEmpty(selectedArea) && selectedArea != "Semua Area")
                     {
-                        sql += " WHERE machine_area = @Area";
+                        sql += " WHERE a.area_name = @Area";
                         machines = await conn.QueryAsync(sql, new { Area = selectedArea });
                     }
                     else
                     {
-                        machines = await conn.QueryAsync(sql + " ORDER BY machine_type, machine_area, machine_number");
+                        machines = await conn.QueryAsync(sql + " ORDER BY t.type_name, a.area_name, m.machine_number");
                     }
                     
                     // History Query (Keep simplified for now or add Area filter there too if optimized)
