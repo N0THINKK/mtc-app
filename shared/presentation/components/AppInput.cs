@@ -17,7 +17,6 @@ namespace mtc_app.shared.presentation.components
         private TextBox textInput;
         private ComboBox comboInput;
         private Label labelError;
-        private Panel panelContainer;
 
         private InputTypeEnum _inputType = InputTypeEnum.Text;
         private bool _isRequired = false;
@@ -26,17 +25,38 @@ namespace mtc_app.shared.presentation.components
         // Custom AutoComplete & Cache
         private List<string> _originalItems;
         private bool _isFiltering = false;
-        private string _cachedText = ""; // Cache to handle ComboBox state issues
+        private string _cachedText = ""; 
 
         public event EventHandler DropdownOpened;
+
+        // Visual Constants
+        private int _inputAreaTop => labelTitle.Height + 6; // Dynamic: Use Height not Bottom to handle Font scaling
+        private int _inputHeight => Math.Max(AppDimens.ControlHeight, textInput.Height + 16); // Dynamic: Scale with TextBox
 
         public AppInput()
         {
             InitializeCustomComponents();
-            this.Padding = new Padding(AppDimens.SpacingXS);
-            // Height = Title(25) + Control(45) + Error(20) + Spacing = ~100
-            this.Size = new Size(300, AppDimens.ControlHeight + 55); 
-            this.BackColor = Color.Transparent;
+            
+            this.DoubleBuffered = true;
+            this.SetStyle(ControlStyles.ResizeRedraw, true);
+            this.SetStyle(ControlStyles.UserPaint, true);
+            this.SetStyle(ControlStyles.AllPaintingInWmPaint, true);
+            this.SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
+            this.SetStyle(ControlStyles.SupportsTransparentBackColor, true);
+
+            this.BackColor = Color.Transparent; // Important for rounded corners
+            
+            // Calculate Initial Size
+            this.Size = new Size(300, 90); 
+        }
+
+        protected override void OnFontChanged(EventArgs e)
+        {
+            base.OnFontChanged(e);
+            if (labelTitle != null) labelTitle.Font = AppFonts.Subtitle;
+            if (textInput != null) textInput.Font = AppFonts.Body;
+            if (comboInput != null) comboInput.Font = AppFonts.Body;
+            RepositionControls();
         }
 
         [Category("App Properties")]
@@ -62,17 +82,17 @@ namespace mtc_app.shared.presentation.components
                 if (value)
                 {
                     this.Height = 160;
-                    panelContainer.Height = 100;
                     textInput.Height = 84;
                     textInput.ScrollBars = ScrollBars.Vertical;
                 }
                 else
                 {
-                    this.Height = AppDimens.ControlHeight + 55; 
-                    panelContainer.Height = AppDimens.ControlHeight;
-                    textInput.Height = 26; // Approx height for 12pt font
+                    this.Height = 90;
+                    textInput.Height = 24; 
                     textInput.ScrollBars = ScrollBars.None;
                 }
+                RepositionControls();
+                this.Invalidate();
             }
         }
 
@@ -80,7 +100,11 @@ namespace mtc_app.shared.presentation.components
         public string LabelText
         {
             get { return labelTitle.Text; }
-            set { labelTitle.Text = value; }
+            set 
+            { 
+                labelTitle.Text = value; 
+                RepositionControls(); // Label height might change? unlikely for single line
+            }
         }
 
         [Category("App Properties")]
@@ -92,21 +116,9 @@ namespace mtc_app.shared.presentation.components
                 {
                     try
                     {
-                        // Try to get live text
-                        string val = comboInput.Text;
-                        // Update cache if successful
-                        _cachedText = val ?? "";
-                        return _cachedText;
+                        return comboInput.Text ?? _cachedText;
                     }
-                    catch (ArgumentOutOfRangeException)
-                    {
-                        // Fallback to cache if ComboBox is in invalid state
-                        return _cachedText;
-                    }
-                    catch
-                    {
-                        return _cachedText;
-                    }
+                    catch { return _cachedText; }
                 }
                 return textInput.Text ?? "";
             }
@@ -114,7 +126,7 @@ namespace mtc_app.shared.presentation.components
             {
                 try
                 {
-                    _cachedText = value ?? ""; // Update cache
+                    _cachedText = value ?? "";
                     
                     if (_inputType == InputTypeEnum.Dropdown)
                     {
@@ -130,10 +142,7 @@ namespace mtc_app.shared.presentation.components
                         textInput.Text = value ?? "";
                     }
                 }
-                catch
-                {
-                    _isFiltering = false;
-                }
+                catch { _isFiltering = false; }
             }
         }
 
@@ -169,7 +178,8 @@ namespace mtc_app.shared.presentation.components
             {
                 _originalItems = new List<string>(items);
                 comboInput.Items.AddRange(items);
-            } else 
+            } 
+            else 
             {
                 _originalItems = new List<string>();
             }
@@ -178,25 +188,29 @@ namespace mtc_app.shared.presentation.components
         public bool ValidateInput()
         {
             labelError.Visible = false;
-            
-            // Allow checking InputValue which handles exception
             string val = InputValue; 
             
-            if (_isRequired && string.IsNullOrWhiteSpace(val))
+            if (_isValidRequired(val))
             {
-                SetError($"{LabelText} is required.");
-                return false;
+               this.Invalidate(); // Refresh border color
+               return true;
             }
+            
+            SetError($"{LabelText} wajib diisi.");
+            return false;
+        }
 
-            panelContainer.Invalidate();
-            return true;
+        private bool _isValidRequired(string val)
+        {
+            if (!_isRequired) return true;
+            return !string.IsNullOrWhiteSpace(val);
         }
 
         public void SetError(string message)
         {
             labelError.Text = message;
             labelError.Visible = true;
-            panelContainer.Invalidate();
+            this.Invalidate();
         }
 
         private void InitializeCustomComponents()
@@ -206,184 +220,105 @@ namespace mtc_app.shared.presentation.components
             labelTitle.AutoSize = true;
             labelTitle.Font = AppFonts.Subtitle;
             labelTitle.ForeColor = AppColors.TextPrimary;
-            labelTitle.Location = new Point(AppDimens.SpacingXS, 0);
+            labelTitle.Location = new Point(0, 0);
+            labelTitle.SizeChanged += (s, e) => { RepositionControls(); this.Invalidate(); };
             this.Controls.Add(labelTitle);
-
-            // Container Panel
-            panelContainer = new Panel();
-            // Y=32 to account for larger Title font + spacing
-            panelContainer.Location = new Point(AppDimens.SpacingXS, 32); 
-            panelContainer.Size = new Size(this.Width - (AppDimens.SpacingXS * 2), AppDimens.ControlHeight);
-            panelContainer.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            panelContainer.Paint += PanelContainer_Paint;
-            panelContainer.BackColor = AppColors.Surface;
-            this.Controls.Add(panelContainer);
 
             // TextBox
             textInput = new TextBox();
             textInput.BorderStyle = BorderStyle.None;
             textInput.Font = AppFonts.Body;
-            // Centering text vertically in 45px height: (45 - 24)/2 approx 10
-            textInput.Location = new Point(12, 10);
-            textInput.Width = panelContainer.Width - 24;
-            textInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            textInput.BackColor = AppColors.Surface;
-            textInput.Enter += (s, e) => { _isFocused = true; panelContainer.Invalidate(); };
-            textInput.Leave += (s, e) => { _isFocused = false; panelContainer.Invalidate(); };
-            panelContainer.Controls.Add(textInput);
+            textInput.BackColor = AppColors.Surface; 
+            textInput.Enter += (s, e) => { _isFocused = true; this.Invalidate(); };
+            textInput.Leave += (s, e) => { _isFocused = false; this.Invalidate(); };
+            textInput.SizeChanged += (s, e) => { RepositionControls(); this.Invalidate(); };
+            this.Controls.Add(textInput);
 
             // ComboBox
             comboInput = new ComboBox();
             comboInput.FlatStyle = FlatStyle.Flat;
             comboInput.Font = AppFonts.Body;
-            comboInput.Location = new Point(12, 8); // Slightly higher than text
-            comboInput.Width = panelContainer.Width - 24;
-            comboInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             comboInput.BackColor = AppColors.Surface;
             comboInput.DropDownStyle = ComboBoxStyle.DropDownList;
-            comboInput.Enter += (s, e) => { _isFocused = true; panelContainer.Invalidate(); };
-            comboInput.Leave += (s, e) => { _isFocused = false; panelContainer.Invalidate(); };
+            comboInput.Enter += (s, e) => { _isFocused = true; this.Invalidate(); };
+            comboInput.Leave += (s, e) => { _isFocused = false; this.Invalidate(); };
             
-            // Update cache whenever text changes (safely)
-            comboInput.TextChanged += (s, e) => 
-            {
-                 // Only update cache if we can safely read Text
-                 try { _cachedText = comboInput.Text; } catch { }
-            };
-            
+            comboInput.TextChanged += (s, e) => { try { _cachedText = comboInput.Text; } catch { } };
+            // Simple filtering logic embedded
             comboInput.TextChanged += ComboInput_TextChanged; 
             comboInput.DropDown += (s, e) => DropdownOpened?.Invoke(this, EventArgs.Empty);
             comboInput.Visible = false;
-            panelContainer.Controls.Add(comboInput);
+            comboInput.SizeChanged += (s, e) => { RepositionControls(); this.Invalidate(); };
+            this.Controls.Add(comboInput);
 
             // Error Label
             labelError = new Label();
             labelError.AutoSize = true;
             labelError.Font = AppFonts.Caption;
             labelError.ForeColor = AppColors.Error;
-            // Position below container: 32 + ControlHeight + 4
-            labelError.Location = new Point(AppDimens.SpacingXS, 32 + AppDimens.ControlHeight + 4); 
             labelError.Visible = false;
             this.Controls.Add(labelError);
+
+            RepositionControls();
         }
 
-        private void ComboInput_TextChanged(object sender, EventArgs e)
+        private void RepositionControls()
         {
-            if (_isFiltering || !AllowCustomText) return;
+            // Input Box Rect (Visual Only) is calculated in OnPaint:
+            // Y = _inputAreaTop, Height = _inputHeight
+            if (textInput == null || comboInput == null) return;
 
-            _isFiltering = true;
-
-            try
-            {
-                string typedText = comboInput.Text ?? "";
-                _cachedText = typedText; // Ensure cache is up to date with typing
-
-                int cursorPos = 0;
-                try { cursorPos = comboInput.SelectionStart; } catch { cursorPos = typedText.Length; }
-
-                int selectionStart = Math.Max(0, Math.Min(cursorPos, typedText.Length));
-
-                comboInput.BeginUpdate();
-                try
-                {
-                    comboInput.Items.Clear();
-
-                    if (string.IsNullOrEmpty(typedText) || _originalItems == null)
-                    {
-                        if (_originalItems != null)
-                            comboInput.Items.AddRange(_originalItems.ToArray());
-                    }
-                    else
-                    {
-                        var filteredItems = _originalItems
-                            .Where(item => item.IndexOf(typedText, StringComparison.OrdinalIgnoreCase) >= 0)
-                            .ToArray();
-
-                        if (filteredItems.Length > 0)
-                        {
-                            comboInput.Items.AddRange(filteredItems);
-                        }
-                    }
-                }
-                finally
-                {
-                    comboInput.EndUpdate();
-                }
-
-                try
-                {
-                    comboInput.Text = typedText;
-                    // Fix cursor and selection
-                    int safePosition = Math.Max(0, Math.Min(selectionStart, comboInput.Text.Length));
-                    comboInput.SelectionStart = safePosition;
-                }
-                catch (ArgumentOutOfRangeException)
-                {
-                    // If reset fails, at least we have _cachedText
-                    try { comboInput.SelectionStart = comboInput.Text.Length; } catch { }
-                }
-
-                try
-                {
-                    if (comboInput.Items.Count > 0 && this.ContainsFocus && !string.IsNullOrEmpty(typedText))
-                    {
-                        comboInput.DroppedDown = true;
-                    }
-                }
-                catch { }
-
-                Cursor.Current = Cursors.Default;
-            }
-            catch { }
-            finally
-            {
-                _isFiltering = false;
-            }
-        }
-
-        private void UpdateInputVisibility()
-        {
-            if (_inputType == InputTypeEnum.Password)
-            {
-                textInput.Visible = true;
-                textInput.UseSystemPasswordChar = true;
-                comboInput.Visible = false;
-            }
-            else if (_inputType == InputTypeEnum.Text)
-            {
-                textInput.Visible = true;
-                textInput.UseSystemPasswordChar = false;
-                comboInput.Visible = false;
-            }
-            else 
-            {
-                textInput.Visible = false;
-                comboInput.Visible = true;
-            }
-        }
-
-        private void PanelContainer_Paint(object sender, PaintEventArgs e)
-        {
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            // Center Controls vertically inside the _inputHeight area
+            int inputMiddleY = _inputAreaTop + (_inputHeight / 2);
             
-            Rectangle rect = panelContainer.ClientRectangle;
-            rect.Width -= 1;
-            rect.Height -= 1;
+            // TextBox
+            // Height is usually 20-23 (or scaled). Center it.
+            int textY = inputMiddleY - (textInput.Height / 2);
+            textInput.Location = new Point(10, textY); 
+            textInput.Width = this.Width - 20;
 
-            Color borderColor;
-            if (labelError.Visible)
-                borderColor = AppColors.Error;
-            else if (_isFocused)
-                borderColor = AppColors.BorderFocus;
-            else
-                borderColor = AppColors.Border;
+            // ComboBox
+            int comboY = inputMiddleY - (comboInput.Height / 2);
+            comboInput.Location = new Point(10, comboY);
+            comboInput.Width = this.Width - 20;
+
+            // Error Label
+            labelError.Location = new Point(0, _inputAreaTop + _inputHeight + 4);
+        }
+
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            RepositionControls();
+            this.Invalidate();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+            // Define the visual Input Area
+            Rectangle inputRect = new Rectangle(0, _inputAreaTop, this.Width - 1, _inputHeight);
+            
+            // Background
+            using (var brush = new SolidBrush(AppColors.Surface))
+            {
+                e.Graphics.FillPath(brush, GetRoundedPath(inputRect, AppDimens.CornerRadius));
+            }
+
+            // Border
+            Color borderColor = _isFocused ? AppColors.BorderFocus : AppColors.Border;
+            if (labelError.Visible) borderColor = AppColors.Error;
 
             int penWidth = _isFocused ? 2 : 1;
+            
+            // Inset DrawRect for Border to prevent clipping
+            if (_isFocused) inputRect.Inflate(-1, -1);
 
-            using (GraphicsPath path = GetRoundedPath(rect, AppDimens.CornerRadius))
-            using (Pen pen = new Pen(borderColor, penWidth))
+            using (var pen = new Pen(borderColor, penWidth))
             {
-                e.Graphics.DrawPath(pen, path);
+                e.Graphics.DrawPath(pen, GetRoundedPath(inputRect, AppDimens.CornerRadius));
             }
         }
 
@@ -399,6 +334,56 @@ namespace mtc_app.shared.presentation.components
             path.CloseFigure();
 
             return path;
+        }
+
+        // ... ComboBox Filtering Logic (Kept mostly same but cleaner) ...
+        private void ComboInput_TextChanged(object sender, EventArgs e)
+        {
+            if (_isFiltering || !AllowCustomText) return;
+            _isFiltering = true;
+            try
+            {
+                string typedText = comboInput.Text ?? "";
+                _cachedText = typedText;
+                
+                // Perform simple filter if original items exist
+                if (_originalItems != null && _originalItems.Count > 0)
+                {
+                    var filtered = _originalItems.Where(x => x.IndexOf(typedText, StringComparison.OrdinalIgnoreCase) >= 0).ToArray();
+                    
+                    comboInput.BeginUpdate();
+                    comboInput.Items.Clear();
+                    if (string.IsNullOrEmpty(typedText))
+                        comboInput.Items.AddRange(_originalItems.ToArray());
+                    else if (filtered.Length > 0)
+                        comboInput.Items.AddRange(filtered);
+                    comboInput.EndUpdate();
+
+                    // Restore text and cursor
+                    comboInput.Text = typedText;
+                    comboInput.SelectionStart = typedText.Length;
+                    
+                    if (comboInput.Items.Count > 0 && this.ContainsFocus && !string.IsNullOrEmpty(typedText))
+                         comboInput.DroppedDown = true;
+                }
+            }
+            catch { }
+            finally { _isFiltering = false; Cursor.Current = Cursors.Default; }
+        }
+
+        private void UpdateInputVisibility()
+        {
+            if (_inputType == InputTypeEnum.Text || _inputType == InputTypeEnum.Password)
+            {
+                textInput.Visible = true;
+                comboInput.Visible = false;
+                textInput.UseSystemPasswordChar = (_inputType == InputTypeEnum.Password);
+            }
+            else
+            {
+                textInput.Visible = false;
+                comboInput.Visible = true;
+            }
         }
     }
 }
