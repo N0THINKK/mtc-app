@@ -27,14 +27,17 @@ namespace mtc_app.features.stock.data.repositories
                     u.full_name AS TechnicianName,
                     pr.qty AS Qty,
                     rs.status_name AS StatusName,
+                    rs.status_name AS StatusName,
                     pr.status_id AS StatusId,
-                    CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName
+                    CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) AS MachineName
                 FROM part_requests pr
                 LEFT JOIN parts p ON pr.part_id = p.part_id
                 LEFT JOIN tickets t ON pr.ticket_id = t.ticket_id
                 LEFT JOIN users u ON t.technician_id = u.user_id
                 LEFT JOIN request_statuses rs ON pr.status_id = rs.status_id
-                LEFT JOIN machines m ON t.machine_id = m.machine_id";
+                LEFT JOIN machines m ON t.machine_id = m.machine_id
+                LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                LEFT JOIN machine_areas ma ON m.area_id = ma.area_id";
 
                 var parameters = new DynamicParameters();
 

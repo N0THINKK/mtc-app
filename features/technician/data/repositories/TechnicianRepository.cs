@@ -19,7 +19,7 @@ namespace mtc_app.features.technician.data.repositories
                     SELECT 
                         t.ticket_id AS TicketId,
                         t.ticket_uuid AS TicketUuid,
-                        CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
+                        CONCAT(m_type.type_name, '.', m_area.area_name, '-', m.machine_number) AS MachineName,
                         
                         (SELECT GROUP_CONCAT(
                             CONCAT(
@@ -42,6 +42,8 @@ namespace mtc_app.features.technician.data.repositories
                         u.full_name AS TechnicianName
                     FROM tickets t
                     JOIN machines m ON t.machine_id = m.machine_id
+                    LEFT JOIN machine_types m_type ON m.type_id = m_type.type_id
+                    LEFT JOIN machine_areas m_area ON m.area_id = m_area.area_id
                     LEFT JOIN users u ON t.technician_id = u.user_id
                     WHERE t.status_id >= 1
                     ORDER BY t.created_at DESC";
@@ -57,7 +59,7 @@ namespace mtc_app.features.technician.data.repositories
                 string sql = @"
                     SELECT 
                         t.ticket_id AS TicketId,
-                        CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
+                        CONCAT(m_type.type_name, '.', m_area.area_name, '-', m.machine_number) AS MachineName,
                         op.full_name AS OperatorName,
                         tech.full_name AS TechnicianName,
                         
@@ -94,6 +96,8 @@ namespace mtc_app.features.technician.data.repositories
                         t.gl_rating_note AS GlRatingNote
                     FROM tickets t
                     JOIN machines m ON t.machine_id = m.machine_id
+                    LEFT JOIN machine_types m_type ON m.type_id = m_type.type_id
+                    LEFT JOIN machine_areas m_area ON m.area_id = m_area.area_id
                     LEFT JOIN users op ON t.operator_id = op.user_id
                     LEFT JOIN users tech ON t.technician_id = tech.user_id
                     WHERE t.ticket_id = @TicketId";
@@ -159,7 +163,7 @@ namespace mtc_app.features.technician.data.repositories
         {
             string sql = @"
                 SELECT
-                    CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
+                    CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) AS MachineName,
                     COUNT(t.ticket_id) AS RepairCount,
                     
                     SUM(TIMESTAMPDIFF(SECOND, t.created_at, t.production_resumed_at)) AS TotalDowntimeSeconds,
@@ -174,13 +178,15 @@ namespace mtc_app.features.technician.data.repositories
                     ) AS PartWaitDurationSeconds
 
                 FROM machines m
+                JOIN machine_types mt ON m.type_id = mt.type_id
+                JOIN machine_areas ma ON m.area_id = ma.area_id
                 JOIN tickets t ON m.machine_id = t.machine_id
                 WHERE t.status_id = 3 
                   AND t.created_at BETWEEN @Start AND @End";
 
             if (!string.IsNullOrEmpty(area) && area != "All")
             {
-                sql += " AND m.machine_area = @Area";
+                sql += " AND ma.area_name = @Area";
             }
 
             sql += @"

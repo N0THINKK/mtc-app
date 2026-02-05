@@ -62,7 +62,10 @@ namespace mtc_app.features.technician.logic
                 
                 using (var conn = DatabaseHelper.GetConnection())
                 {
-                    var machines = await conn.QueryAsync("SELECT machine_id, machine_type FROM machines");
+                    var machines = await conn.QueryAsync(@"
+                        SELECT m.machine_id, t.type_name as machine_type 
+                        FROM machines m 
+                        LEFT JOIN machine_types t ON m.type_id = t.type_id");
 
                     foreach (var m in machines)
                     {

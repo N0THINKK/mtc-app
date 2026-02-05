@@ -228,15 +228,18 @@ namespace mtc_app.features.admin.presentation.views
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    // Select individual columns to populate inputs on selection
+                    // Select individual columns to populate inputs on selection - JOINING tables
                     gridMachines.DataSource = connection.Query(@"
                         SELECT 
-                            machine_id, 
-                            machine_type,
-                            machine_area,
-                            machine_number,
-                            CONCAT(machine_type, '-', machine_area, '.', machine_number) AS machine_name
-                        FROM machines ORDER BY machine_id").ToList();
+                            m.machine_id, 
+                            COALESCE(t.type_name, 'UNK') as machine_type,
+                            COALESCE(a.area_name, 'UNK') as machine_area,
+                            m.machine_number,
+                            CONCAT(COALESCE(t.type_name, 'UNK'), '-', COALESCE(a.area_name, 'UNK'), '.', m.machine_number) AS machine_name
+                        FROM machines m
+                        LEFT JOIN machine_types t ON m.type_id = t.type_id
+                        LEFT JOIN machine_areas a ON m.area_id = a.area_id
+                        ORDER BY m.machine_id").ToList();
                 }
             }
             catch (Exception ex) { MessageBox.Show($"Gagal memuat data mesin: {ex.Message}"); }
@@ -254,10 +257,15 @@ namespace mtc_app.features.admin.presentation.views
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    string sql = "INSERT INTO machines (machine_type, machine_area, machine_number) VALUES (@Type, @Area, @Number)";
+                    // 1. Get/Create IDs
+                    int typeId = GetOrCreateLookupId(connection, "machine_types", "type_id", "type_name", txtMachineType.InputValue);
+                    int areaId = GetOrCreateLookupId(connection, "machine_areas", "area_id", "area_name", txtMachineArea.InputValue);
+
+                    // 2. Insert
+                    string sql = "INSERT INTO machines (type_id, area_id, machine_number) VALUES (@TypeId, @AreaId, @Number)";
                     connection.Execute(sql, new { 
-                        Type = txtMachineType.InputValue,
-                        Area = txtMachineArea.InputValue,
+                        TypeId = typeId,
+                        AreaId = areaId,
                         Number = txtMachineNumber.InputValue
                     });
                     AutoClosingMessageBox.Show("Mesin berhasil ditambahkan!", "Sukses", 1500);
@@ -279,14 +287,19 @@ namespace mtc_app.features.admin.presentation.views
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
+                    // 1. Get/Create IDs
+                    int typeId = GetOrCreateLookupId(connection, "machine_types", "type_id", "type_name", txtMachineType.InputValue);
+                    int areaId = GetOrCreateLookupId(connection, "machine_areas", "area_id", "area_name", txtMachineArea.InputValue);
+
+                    // 2. Update
                     string sql = @"UPDATE machines 
-                                   SET machine_type = @Type,
-                                       machine_area = @Area,
+                                   SET type_id = @TypeId,
+                                       area_id = @AreaId,
                                        machine_number = @Number
                                    WHERE machine_id = @Id";
                     connection.Execute(sql, new { 
-                        Type = txtMachineType.InputValue,
-                        Area = txtMachineArea.InputValue,
+                        TypeId = typeId,
+                        AreaId = areaId,
                         Number = txtMachineNumber.InputValue,
                         Id = _selectedMachineId.Value 
                     });
@@ -295,6 +308,18 @@ namespace mtc_app.features.admin.presentation.views
                 }
             }
             catch (Exception ex) { MessageBox.Show($"Gagal mengupdate mesin: {ex.Message}"); }
+        }
+
+        private int GetOrCreateLookupId(System.Data.IDbConnection conn, string tableName, string idCol, string nameCol, string value)
+        {
+             // Synchronous wrapper (Dapper allows blocking)
+            string sqlFind = $"SELECT {idCol} FROM {tableName} WHERE {nameCol} = @Value";
+            var id = conn.QueryFirstOrDefault<int?>(sqlFind, new { Value = value });
+
+            if (id.HasValue) return id.Value;
+
+            string sqlInsert = $"INSERT INTO {tableName} ({nameCol}) VALUES (@Value); SELECT LAST_INSERT_ID();";
+            return conn.QuerySingle<int>(sqlInsert, new { Value = value });
         }
 
         private void BtnDeleteMachine_Click(object sender, EventArgs e)

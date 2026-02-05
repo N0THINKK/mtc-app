@@ -236,10 +236,14 @@ namespace mtc_app.shared.data.services
                     
                     // Sync Machines
                     var machines = await conn.QueryAsync(
-                        @"SELECT machine_id AS MachineId, machine_type AS MachineType, 
-                                 machine_area AS MachineArea, machine_number AS MachineNumber,
-                                 current_status_id AS StatusId
-                          FROM machines");
+                        @"SELECT m.machine_id AS MachineId, 
+                                 COALESCE(t.type_name, 'UNK') AS MachineType, 
+                                 COALESCE(a.area_name, 'UNK') AS MachineArea, 
+                                 m.machine_number AS MachineNumber,
+                                 m.current_status_id AS StatusId
+                          FROM machines m
+                          LEFT JOIN machine_types t ON m.type_id = t.type_id
+                          LEFT JOIN machine_areas a ON m.area_id = a.area_id");
                     var machineList = machines?.ToList();
                     if (machineList?.Count > 0)
                     {

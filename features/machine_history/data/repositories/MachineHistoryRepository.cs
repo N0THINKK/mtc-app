@@ -23,7 +23,7 @@ namespace mtc_app.features.machine_history.data.repositories
                         t.ticket_id AS TicketId,
                         t.ticket_uuid AS TicketUuid,
                         t.ticket_display_code AS TicketCode,
-                        IFNULL(CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number), 'Unknown') AS MachineName,
+                        IFNULL(CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number), 'Unknown') AS MachineName,
                         IFNULL(tech.full_name, '-') AS TechnicianName,
                         IFNULL(op.full_name, '-') AS OperatorName,
                         
@@ -70,6 +70,8 @@ namespace mtc_app.features.machine_history.data.repositories
                         t.gl_rating_note AS GlRatingNote
                     FROM tickets t
                     LEFT JOIN machines m ON t.machine_id = m.machine_id
+                    LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                    LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
                     LEFT JOIN users tech ON t.technician_id = tech.user_id
                     LEFT JOIN users op ON t.operator_id = op.user_id
                     -- Note: Join ke failures/actions dihapus dari sini karena sudah pindah ke subquery
@@ -77,7 +79,7 @@ namespace mtc_app.features.machine_history.data.repositories
 
                 if (!string.IsNullOrEmpty(machineFilter))
                 {
-                    sql += " AND CONCAT(m.machine_type, m.machine_area, m.machine_number) LIKE @Machine";
+                    sql += " AND CONCAT(mt.type_name, ma.area_name, m.machine_number) LIKE @Machine";
                     machineFilter = $"%{machineFilter}%";
                 }
 

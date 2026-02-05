@@ -18,7 +18,7 @@ namespace mtc_app.features.group_leader.data.repositories
                     SELECT 
                         t.ticket_uuid AS TicketUuid,
                         t.ticket_id AS TicketId,
-                        CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
+                        CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) AS MachineName,
                         u.full_name AS TechnicianName,
                         
                         -- Subquery mengambil detail masalah dari ticket_problems (Multi-Problem Support)
@@ -40,6 +40,8 @@ namespace mtc_app.features.group_leader.data.repositories
                         t.status_id AS StatusId
                     FROM tickets t
                     LEFT JOIN machines m ON t.machine_id = m.machine_id
+                    LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                    LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
                     LEFT JOIN users u ON t.technician_id = u.user_id
                     WHERE t.status_id >= 2
                     ORDER BY t.created_at DESC";
@@ -57,7 +59,7 @@ namespace mtc_app.features.group_leader.data.repositories
                     SELECT 
                         t.ticket_uuid AS TicketId, 
                         t.ticket_display_code AS TicketCode,
-                        CONCAT(m.machine_type, '.', m.machine_area, '-', m.machine_number) AS MachineName,
+                        CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) AS MachineName,
                         tech.full_name AS TechnicianName,
                         op.full_name AS OperatorName,
                         
@@ -94,6 +96,8 @@ namespace mtc_app.features.group_leader.data.repositories
                         t.tech_rating_note AS TechRatingNote
                     FROM tickets t
                     LEFT JOIN machines m ON t.machine_id = m.machine_id
+                    LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                    LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
                     LEFT JOIN users tech ON t.technician_id = tech.user_id
                     LEFT JOIN users op ON t.operator_id = op.user_id
                     -- Join ke failures/actions dihapus dari query utama
