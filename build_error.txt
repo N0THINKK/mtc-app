@@ -1,7 +1,0 @@
-G:\Me Not\Kuliah\Semester 6\JAI\mtc-app\mtc-app\mtc-app\shared\presentation\components\AppStarRating.cs(132,21): error CS0102: The type 'AppStarRating' already contains a definition for 'IsReadOnly' [G:\Me Not\Kuliah\Semester 6\JAI\mtc-app\mtc-app\mtc-app\mtc-app.csproj]
-
-Build FAILED.
-    0 Warning(s)
-    1 Error(s)
-
-Time Elapsed 00:00:04.21
