@@ -26,8 +26,14 @@ namespace mtc_app.features.machine_history.presentation.screens
         private int _arrivalSeconds = 0;  // Loaded from DB, incremented while form open
         private int _repairSeconds = 0;   // Loaded from DB, incremented while form open
         private Timer _timer;
+        
+        // Session Tracking (for multi-technician support)
+        private long _currentSessionId = 0;
+        private int _currentTechnicianId = 0;
+        private int _sessionElapsedSeconds = 0;
 
         // UI Controls
+        private Label _lblPreviousTechnicians; // Shows previous technician sessions
         private AppInput inputNIK;
         private AppButton btnVerify;
         
@@ -90,11 +96,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                         _arrivalSeconds = (int)ticket.ArrivalSeconds;
                         _repairSeconds = (int)ticket.RepairSeconds;
                         
-                        // If Status 2 (already verified), set verified state immediately
-                        if (_ticketStatus == 2)
-                        {
-                            _isVerified = true;
-                        }
+                        // NOTE: Do NOT auto-set _isVerified for Status 2
+                        // The new technician must verify themselves to create a session
                     }
                 }
             }
@@ -125,6 +128,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             else
             {
                 _repairSeconds++;
+                _sessionElapsedSeconds++; // Track per-session time
             }
 
             UpdateTimerDisplay();
@@ -166,6 +170,150 @@ namespace mtc_app.features.machine_history.presentation.screens
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error saving timer: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Create a new technician session when technician verifies.
+        /// </summary>
+        private void CreateSession(int technicianId)
+        {
+            if (_currentTicketId <= 0) return; // Skip for offline tickets
+            
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Open();
+                    
+                    // Insert new session (shift_id set to NULL for now)
+                    conn.Execute(@"
+                        INSERT INTO ticket_technician_sessions 
+                        (ticket_id, technician_id, shift_id, started_at, elapsed_seconds, is_completing_session)
+                        VALUES (@TicketId, @TechId, NULL, NOW(), 0, 0)",
+                        new { TicketId = _currentTicketId, TechId = technicianId });
+                    
+                    // Get inserted session ID
+                    _currentSessionId = conn.QueryFirstOrDefault<long>("SELECT LAST_INSERT_ID()");
+                    _currentTechnicianId = technicianId;
+                    _sessionElapsedSeconds = 0;
+                    
+                    System.Diagnostics.Debug.WriteLine($"[FormTechnician] Created session {_currentSessionId} for technician {technicianId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error creating session: {ex.Message}");
+                MessageBox.Show($"Error creating session: {ex.Message}", "Debug");
+            }
+        }
+
+        /// <summary>
+        /// Save current session elapsed time to database.
+        /// Called on form close.
+        /// </summary>
+        private void SaveSession()
+        {
+            if (_currentSessionId <= 0) return;
+            
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Open();
+                    conn.Execute(@"
+                        UPDATE ticket_technician_sessions 
+                        SET elapsed_seconds = @Elapsed, ended_at = NOW()
+                        WHERE session_id = @Id",
+                        new { Elapsed = _sessionElapsedSeconds, Id = _currentSessionId });
+                    
+                    System.Diagnostics.Debug.WriteLine($"[FormTechnician] Saved session {_currentSessionId} with {_sessionElapsedSeconds}s");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error saving session: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// End current session and mark as completing session.
+        /// Called when technician completes the repair.
+        /// </summary>
+        private void EndSessionAsCompleted()
+        {
+            if (_currentSessionId <= 0) return;
+            
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Open();
+                    conn.Execute(@"
+                        UPDATE ticket_technician_sessions 
+                        SET elapsed_seconds = @Elapsed, ended_at = NOW(), is_completing_session = 1
+                        WHERE session_id = @Id",
+                        new { Elapsed = _sessionElapsedSeconds, Id = _currentSessionId });
+                    
+                    System.Diagnostics.Debug.WriteLine($"[FormTechnician] Completed session {_currentSessionId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error completing session: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Load and display previous technician sessions for this ticket.
+        /// </summary>
+        private void LoadPreviousSessions()
+        {
+            if (_currentTicketId <= 0) return;
+            
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Open();
+                    var sessions = conn.Query(@"
+                        SELECT u.full_name AS TechName, 
+                               tts.elapsed_seconds AS Elapsed,
+                               tts.is_completing_session AS IsCompleting
+                        FROM ticket_technician_sessions tts
+                        JOIN users u ON tts.technician_id = u.user_id
+                        WHERE tts.ticket_id = @Id
+                        ORDER BY tts.started_at ASC",
+                        new { Id = _currentTicketId });
+                    
+                    if (sessions.Any())
+                    {
+                        var lines = new List<string>();
+                        lines.Add("⚠️ Teknisi Sebelumnya:");
+                        
+                        foreach (var s in sessions)
+                        {
+                            string name = (string)s.TechName;
+                            int elapsed = (int)s.Elapsed;
+                            bool isCompleting = ((int)s.IsCompleting) == 1;
+                            
+                            var ts = TimeSpan.FromSeconds(elapsed);
+                            string duration = ts.TotalMinutes >= 1 
+                                ? $"{(int)ts.TotalMinutes} menit" 
+                                : $"{elapsed} detik";
+                            
+                            string marker = isCompleting ? " ✅" : "";
+                            lines.Add($"  • {name}: {duration}{marker}");
+                        }
+                        
+                        _lblPreviousTechnicians.Text = string.Join("\n", lines);
+                        _lblPreviousTechnicians.Visible = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error loading sessions: {ex.Message}");
             }
         }
 
@@ -275,6 +423,19 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void SetupInputs()
         {
+            // === Previous Technicians (if any) ===
+            _lblPreviousTechnicians = new Label
+            {
+                Text = "",
+                Font = AppFonts.BodySmall,
+                ForeColor = Color.DarkOrange,
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, 10),
+                Visible = false
+            };
+            mainLayout.Controls.Add(_lblPreviousTechnicians);
+            LoadPreviousSessions(); // Load and display previous technician sessions
+            
             // === Technician NIK ===
             inputNIK = new AppInput 
             { 
@@ -529,6 +690,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                         _ticketStatus = 2;
                         
                         SaveTimerToDatabase(); // Save arrival time before switching to repair
+                        CreateSession((int)tech.user_id); // Start tracking session for this technician
                         
                         AutoClosingMessageBox.Show($"Verifikasi Berhasil!\nSelamat bekerja, {tech.full_name}.", "Sukses", 2000);
                         UpdateUIState();
@@ -780,6 +942,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                             trans.Commit();
                             _timer.Stop();
                             SaveTimerToDatabase(); // Final save before closing
+                            EndSessionAsCompleted(); // Mark session as completing
                             
                             TimeSpan repairDuration = TimeSpan.FromSeconds(_repairSeconds);
                             
@@ -816,6 +979,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             _timer?.Stop();
             SaveTimerToDatabase(); // Persist timer on close
+            SaveSession(); // Save session elapsed time
             _timer?.Dispose();
             base.OnFormClosing(e);
         }
