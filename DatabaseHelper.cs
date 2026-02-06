@@ -33,8 +33,9 @@ namespace mtc_app
         {
             // Append short connection timeout if not already specified
             var connStr = ConnectionString;
-            if (!connStr.Contains("ConnectionTimeout", StringComparison.OrdinalIgnoreCase) 
-                && !connStr.Contains("Connect Timeout", StringComparison.OrdinalIgnoreCase))
+            // [FIX] .NET 4.8 Compatibility: Use IndexOf instead of Contains(string, comparison)
+            if (connStr.IndexOf("ConnectionTimeout", StringComparison.OrdinalIgnoreCase) < 0 
+                && connStr.IndexOf("Connect Timeout", StringComparison.OrdinalIgnoreCase) < 0)
             {
                 connStr += ";ConnectionTimeout=3";
             }
