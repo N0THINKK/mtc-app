@@ -23,5 +23,13 @@ namespace mtc_app.features.machine_history.data.repositories
         /// <param name="request">Ticket creation details.</param>
         /// <returns>Created ticket details (ID and Display Code).</returns>
         Task<(long TicketId, string TicketCode)> CreateTicketAsync(CreateTicketRequest request);
+
+        /// <summary>
+        /// Gets the active (pending) ticket for a specific machine.
+        /// Returns null if no active ticket exists.
+        /// </summary>
+        /// <param name="machineId">The machine ID to check.</param>
+        /// <returns>The active ticket or null.</returns>
+        Task<MachineHistoryDto> GetActiveTicketForMachineAsync(int machineId);
     }
 }

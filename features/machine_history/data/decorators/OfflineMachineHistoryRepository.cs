@@ -78,5 +78,24 @@ namespace mtc_app.features.machine_history.data.decorators
             
             return ex.InnerException != null && IsNetworkException(ex.InnerException);
         }
+
+        public async Task<MachineHistoryDto> GetActiveTicketForMachineAsync(int machineId)
+        {
+            if (_networkMonitor.IsOnline)
+            {
+                try
+                {
+                    return await _innerRepository.GetActiveTicketForMachineAsync(machineId);
+                }
+                catch (Exception ex) when (IsNetworkException(ex))
+                {
+                    // Fallback to offline check
+                }
+            }
+
+            // Offline: Check SQLite for pending tickets on this machine
+            // For now, return null (offline tickets are not yet supported for this check)
+            return null;
+        }
     }
 }

@@ -38,6 +38,11 @@ namespace mtc_app.features.machine_history.presentation.screens
         private DateTimePicker _dtpEnd;
         private AppButton _btnFilter;
 
+        // Pending Ticket Indicator
+        private TabControl _tabControl;
+        private LinkLabel _lnkPendingTicket;
+        private MachineHistoryDto _pendingTicket;
+
         public MachineHistoryFormOperator() : this(ServiceLocator.CreateMachineHistoryRepository()) { }
 
         public MachineHistoryFormOperator(IMachineHistoryRepository repository)
@@ -53,22 +58,24 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.KeyDown += HandleKeyDown;
         }
 
-        protected override void OnLoad(EventArgs e)
+        protected override async void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
             this.OnResize(EventArgs.Empty);
+            await CheckForPendingTicketAsync();
         }
 
         private void InitializeCustomTabs()
         {
             this.Controls.Remove(this.mainLayout);
 
-            var tabControl = new TabControl
+            _tabControl = new TabControl
             {
                 Dock = DockStyle.Fill,
                 Font = AppFonts.Body,
                 Padding = new Point(10, 5)
             };
+            var tabControl = _tabControl;
 
             // === Tab 1: Report Tab ===
             var tabReport = new TabPage("Lapor Kerusakan") { BackColor = AppColors.CardBackground };
@@ -99,6 +106,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             tabHistory.Controls.Add(pnlFilter);
 
             _historyControl = new MachineHistoryListControl { Dock = DockStyle.Fill };
+            _historyControl.ItemClicked += HistoryControl_ItemClicked;
             tabHistory.Controls.Add(_historyControl);
             _historyControl.BringToFront();
             tabControl.TabPages.Add(tabHistory);
@@ -106,6 +114,22 @@ namespace mtc_app.features.machine_history.presentation.screens
             // Remove all docked controls to rebuild z-order correctly
             this.Controls.Remove(panelHeader);
             this.Controls.Remove(panelFooter);
+
+            // Add Pending Ticket Indicator to Header
+            _lnkPendingTicket = new LinkLabel
+            {
+                Text = "⚠️ Ticket Aktif",
+                Font = AppFonts.BodySmall,
+                LinkColor = Color.DarkOrange,
+                ActiveLinkColor = Color.OrangeRed,
+                AutoSize = true,
+                Visible = false,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Cursor = Cursors.Hand
+            };
+            _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
+            _lnkPendingTicket.LinkClicked += LnkPendingTicket_LinkClicked;
+            panelHeader.Controls.Add(_lnkPendingTicket);
             
             // Add in correct order: Fill control first, then docked edges
             // In WinForms, controls added LATER have priority for docking
@@ -384,6 +408,84 @@ namespace mtc_app.features.machine_history.presentation.screens
                     child.Width = contentWidth;
                 }
             }
+
+            // Reposition pending indicator
+            if (_lnkPendingTicket != null && _lnkPendingTicket.Visible)
+            {
+                _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
+            }
+        }
+
+        private async Task CheckForPendingTicketAsync()
+        {
+            try
+            {
+                int machineId = 1;
+                if (int.TryParse(DatabaseHelper.GetMachineId(), out int configId))
+                {
+                    machineId = configId;
+                }
+
+                _pendingTicket = await _repository.GetActiveTicketForMachineAsync(machineId);
+                
+                if (_pendingTicket != null)
+                {
+                    _lnkPendingTicket.Text = $"⚠️ Ticket Aktif: {_pendingTicket.StatusName}";
+                    _lnkPendingTicket.Visible = true;
+                    _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
+                }
+                else
+                {
+                    _lnkPendingTicket.Visible = false;
+                }
+            }
+            catch
+            {
+                _lnkPendingTicket.Visible = false;
+            }
+        }
+
+        private async void LnkPendingTicket_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            if (_pendingTicket == null) return;
+
+            // Switch to History tab
+            _tabControl.SelectedIndex = 1;
+
+            // Reload history
+            await LoadHistoryAsync();
+
+            // Open Technician Form to continue workflow
+            OpenTechnicianForm(_pendingTicket.TicketId);
+        }
+
+        private void HistoryControl_ItemClicked(object sender, MachineHistoryDto item)
+        {
+            // Only open Technician Form for Status 1 (Waiting) or 2 (Repairing)
+            if (item.StatusId == 1 || item.StatusId == 2)
+            {
+                OpenTechnicianForm(item.TicketId);
+            }
+        }
+
+        private void OpenTechnicianForm(long ticketId)
+        {
+            var technicianForm = new MachineHistoryFormTechnician(ticketId);
+            this.Hide();
+            technicianForm.FormClosed += async (s, args) =>
+            {
+                if (technicianForm.DialogResult == DialogResult.OK)
+                {
+                    this.Close();
+                }
+                else
+                {
+                    this.Show();
+                    await CheckForPendingTicketAsync();
+                    await LoadHistoryAsync();
+                }
+            };
+            technicianForm.Show();
         }
     }
 }
