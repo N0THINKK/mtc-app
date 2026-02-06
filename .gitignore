@@ -45,3 +45,6 @@ Desktop.ini
 .env.local
 
 appsettings.json
+
+# antigravity rules
+.agent/

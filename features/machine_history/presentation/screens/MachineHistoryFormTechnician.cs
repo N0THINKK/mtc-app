@@ -19,9 +19,12 @@ namespace mtc_app.features.machine_history.presentation.screens
         private readonly long _currentTicketId;
         private bool _isVerified = false;
         
-        // Stopwatch
-        private Stopwatch _arrivalStopwatch;
-        private Stopwatch _repairStopwatch;
+        // Ticket State (for resume workflow)
+        private int _ticketStatus = 1;
+        
+        // Accumulated Timer (DB-persisted, counts only while form is open)
+        private int _arrivalSeconds = 0;  // Loaded from DB, incremented while form open
+        private int _repairSeconds = 0;   // Loaded from DB, incremented while form open
         private Timer _timer;
 
         // UI Controls
@@ -45,7 +48,8 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             _currentTicketId = ticketId;
             InitializeComponent();
-            SetupStopwatch();
+            LoadTicketStatus(); // MUST be first to get status/timestamps
+            SetupTimer();
             SetupInputs();
             LoadTicketProblems();
             LoadOfflineTicketState();
@@ -61,33 +65,107 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.OnResize(EventArgs.Empty);
         }
 
-        private void SetupStopwatch()
+        /// <summary>
+        /// Load ticket status and accumulated timer values from database.
+        /// </summary>
+        private void LoadTicketStatus()
         {
-            _arrivalStopwatch = new Stopwatch();
-            _arrivalStopwatch.Start();
-
-            _repairStopwatch = new Stopwatch();
+            if (_currentTicketId <= 0) return; // Skip for offline tickets
             
-            _timer = new Timer { Interval = 100 };
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Open();
+                    var ticket = conn.QueryFirstOrDefault(@"
+                        SELECT status_id AS StatusId, 
+                               IFNULL(arrival_elapsed_seconds, 0) AS ArrivalSeconds,
+                               IFNULL(repair_elapsed_seconds, 0) AS RepairSeconds
+                        FROM tickets WHERE ticket_id = @Id",
+                        new { Id = _currentTicketId });
+                    
+                    if (ticket != null)
+                    {
+                        _ticketStatus = (int)ticket.StatusId;
+                        _arrivalSeconds = (int)ticket.ArrivalSeconds;
+                        _repairSeconds = (int)ticket.RepairSeconds;
+                        
+                        // If Status 2 (already verified), set verified state immediately
+                        if (_ticketStatus == 2)
+                        {
+                            _isVerified = true;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error loading status: {ex.Message}");
+            }
+        }
+
+        private void SetupTimer()
+        {
+            _timer = new Timer { Interval = 1000 }; // 1 second interval
             _timer.Tick += Timer_Tick;
             _timer.Start();
+            
+            // Initial display
+            UpdateTimerDisplay();
         }
 
         private int _tickCounter = 0;
         private void Timer_Tick(object sender, EventArgs e)
         {
-            if (_arrivalStopwatch?.IsRunning == true)
-                labelArrival.Text = _arrivalStopwatch.Elapsed.ToString(@"hh\:mm\:ss");
+            // INCREMENT accumulated timer (counts only while form is open)
+            if (!_isVerified)
+            {
+                _arrivalSeconds++;
+            }
+            else
+            {
+                _repairSeconds++;
+            }
 
-            if (_repairStopwatch?.IsRunning == true)
-                labelFinished.Text = _repairStopwatch.Elapsed.ToString(@"hh\:mm\:ss");
+            UpdateTimerDisplay();
 
-            // [FIX] Poll for part status every 3 seconds (30 ticks * 100ms interval)
-            // Run in background to prevent UI freeze, and only for online tickets
+            // Poll for part status every 3 seconds
             _tickCounter++;
-            if (_isVerified && _tickCounter % 30 == 0 && _currentTicketId > 0)
+            if (_isVerified && _tickCounter % 3 == 0 && _currentTicketId > 0)
             {
                 Task.Run(() => UpdatePartRequestStatus());
+            }
+        }
+
+        private void UpdateTimerDisplay()
+        {
+            labelArrival.Text = TimeSpan.FromSeconds(_arrivalSeconds).ToString(@"hh\:mm\:ss");
+            labelFinished.Text = TimeSpan.FromSeconds(_repairSeconds).ToString(@"hh\:mm\:ss");
+        }
+
+        /// <summary>
+        /// Save accumulated timer values to database.
+        /// Called on form close and on verify/complete.
+        /// </summary>
+        private void SaveTimerToDatabase()
+        {
+            if (_currentTicketId <= 0) return; // Skip for offline tickets
+            
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Open();
+                    conn.Execute(@"
+                        UPDATE tickets 
+                        SET arrival_elapsed_seconds = @Arrival, repair_elapsed_seconds = @Repair 
+                        WHERE ticket_id = @Id",
+                        new { Arrival = _arrivalSeconds, Repair = _repairSeconds, Id = _currentTicketId });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error saving timer: {ex.Message}");
             }
         }
 
@@ -168,9 +246,9 @@ namespace mtc_app.features.machine_history.presentation.screens
                         
                         if (request.StartedAt.HasValue)
                         {
-                            _arrivalStopwatch.Stop();
-                            _repairStopwatch.Start();
+                            _ticketStatus = 2;
                         }
+
                     }
                 }
                 catch { /* Ignore */ }
@@ -421,8 +499,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                         ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
 
                         _isVerified = true;
-                        _arrivalStopwatch.Stop();
-                        _repairStopwatch.Start();
+                        _ticketStatus = 2;
+                        // Note: For offline, timer values are stored locally until sync
 
                         AutoClosingMessageBox.Show($"Verifikasi Berhasil (Offline)!\nSelamat bekerja, {user.FullName}.", "Sukses", 2000);
                         UpdateUIState();
@@ -448,8 +526,9 @@ namespace mtc_app.features.machine_history.presentation.screens
                             new { Id = tech.user_id, TId = _currentTicketId });
                         
                         _isVerified = true;
-                        _arrivalStopwatch.Stop();
-                        _repairStopwatch.Start();
+                        _ticketStatus = 2;
+                        
+                        SaveTimerToDatabase(); // Save arrival time before switching to repair
                         
                         AutoClosingMessageBox.Show($"Verifikasi Berhasil!\nSelamat bekerja, {tech.full_name}.", "Sukses", 2000);
                         UpdateUIState();
@@ -617,11 +696,11 @@ namespace mtc_app.features.machine_history.presentation.screens
                         
                         ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
                         
-                        _repairStopwatch.Stop();
                         _timer.Stop();
+                        TimeSpan repairDuration = TimeSpan.FromSeconds(_repairSeconds);
                         
                         AutoClosingMessageBox.Show(
-                            $"Perbaikan Selesai (Offline)!\nDurasi: {_repairStopwatch.Elapsed:hh\\:mm\\:ss}\n\nData akan disinkronkan saat online.",
+                            $"Perbaikan Selesai (Offline)!\nDurasi: {repairDuration:hh\\:mm\\:ss}\n\nData akan disinkronkan saat online.",
                             "Sukses", 2000);
                         
                         // Continue to MachineRunForm (same as online flow)
@@ -699,10 +778,12 @@ namespace mtc_app.features.machine_history.presentation.screens
                             }
                             
                             trans.Commit();
-                            _repairStopwatch.Stop();
                             _timer.Stop();
+                            SaveTimerToDatabase(); // Final save before closing
                             
-                            AutoClosingMessageBox.Show($"Perbaikan Selesai!\nDurasi: {_repairStopwatch.Elapsed:hh\\:mm\\:ss}", "Sukses", 2000);
+                            TimeSpan repairDuration = TimeSpan.FromSeconds(_repairSeconds);
+                            
+                            AutoClosingMessageBox.Show($"Perbaikan Selesai!\nDurasi: {repairDuration:hh\\:mm\\:ss}", "Sukses", 2000);
                             
                             var runForm = new MachineRunForm(_currentTicketId);
                             if (runForm.ShowDialog() == DialogResult.OK)
@@ -734,6 +815,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             _timer?.Stop();
+            SaveTimerToDatabase(); // Persist timer on close
             _timer?.Dispose();
             base.OnFormClosing(e);
         }

@@ -212,5 +212,52 @@ namespace mtc_app.features.machine_history.data.repositories
                 }
             }
         }
+
+        public async Task<MachineHistoryDto> GetActiveTicketForMachineAsync(int machineId)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        t.ticket_id AS TicketId,
+                        t.ticket_uuid AS TicketUuid,
+                        t.ticket_display_code AS TicketCode,
+                        IFNULL(CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number), 'Unknown') AS MachineName,
+                        IFNULL(tech.full_name, '-') AS TechnicianName,
+                        IFNULL(op.full_name, '-') AS OperatorName,
+                        
+                        (SELECT CONCAT(
+                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                            IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown'))
+                         )
+                         FROM ticket_problems tp
+                         LEFT JOIN problem_types pt ON tp.problem_type_id = pt.type_id
+                         LEFT JOIN failures f ON tp.failure_id = f.failure_id
+                         WHERE tp.ticket_id = t.ticket_id
+                         LIMIT 1
+                        ) AS Issue,
+
+                        t.created_at AS CreatedAt,
+                        t.started_at AS StartedAt,
+                        t.technician_finished_at AS FinishedAt,
+                        t.status_id AS StatusId,
+                        CASE 
+                            WHEN t.status_id = 1 THEN 'Menunggu Teknisi'
+                            WHEN t.status_id = 2 THEN 'Sedang Diperbaiki'
+                            ELSE 'Unknown'
+                        END AS StatusName
+                    FROM tickets t
+                    LEFT JOIN machines m ON t.machine_id = m.machine_id
+                    LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                    LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
+                    LEFT JOIN users tech ON t.technician_id = tech.user_id
+                    LEFT JOIN users op ON t.operator_id = op.user_id
+                    WHERE t.machine_id = @MachineId AND t.status_id IN (1, 2)
+                    ORDER BY t.created_at DESC
+                    LIMIT 1";
+
+                return await connection.QueryFirstOrDefaultAsync<MachineHistoryDto>(sql, new { MachineId = machineId });
+            }
+        }
     }
 }
