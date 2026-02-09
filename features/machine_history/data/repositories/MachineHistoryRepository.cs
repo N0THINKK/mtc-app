@@ -10,14 +10,11 @@ namespace mtc_app.features.machine_history.data.repositories
     {
         public async Task<IEnumerable<MachineHistoryDto>> GetHistoryAsync(DateTime? startDate = null, DateTime? endDate = null, string machineFilter = null)
         {
-            // Default to last 30 days if not specified
             DateTime start = startDate ?? DateTime.Now.AddDays(-30);
-            DateTime end = endDate ?? DateTime.Now.AddDays(1); // Add 1 day to cover the full end date
+            DateTime end = endDate ?? DateTime.Now.AddDays(1); 
 
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // PERBAIKAN: Menggunakan Subquery ke tabel ticket_problems (tp)
-                // untuk mengambil detail Issue dan Resolution agar tidak error "Unknown Column"
                 string sql = @"
                     SELECT 
                         t.ticket_id AS TicketId,
@@ -27,7 +24,6 @@ namespace mtc_app.features.machine_history.data.repositories
                         IFNULL(tech.full_name, '-') AS TechnicianName,
                         IFNULL(op.full_name, '-') AS OperatorName,
                         
-                        -- Subquery untuk mengambil 'Issue' dari ticket_problems
                         (SELECT CONCAT(
                             IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
                             IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown'))
@@ -39,7 +35,6 @@ namespace mtc_app.features.machine_history.data.repositories
                          LIMIT 1
                         ) AS Issue,
 
-                        -- Subquery untuk mengambil 'Resolution' dari ticket_problems
                         (SELECT CONCAT(
                             IFNULL(act.action_name, IFNULL(tp.action_details_manual, '-')),
                             IF(tp.root_cause_remarks IS NOT NULL, CONCAT(' (Cause: ', tp.root_cause_remarks, ')'), '')
@@ -53,14 +48,16 @@ namespace mtc_app.features.machine_history.data.repositories
                         t.created_at AS CreatedAt,
                         t.technician_finished_at AS FinishedAt,
                         t.status_id AS StatusId,
-                        CASE 
-                            WHEN t.status_id = 1 THEN 'Open'
-                            WHEN t.status_id = 2 THEN 'Repairing'
-                            WHEN t.status_id = 3 THEN 'Done'
-                            ELSE 'Unknown'
-                        END AS StatusName,
+                        -- [FIX] Mengambil status name dari tabel referensi (join ts di bawah) atau fallback manual jika perlu
+                        IFNULL(ts.status_name, 
+                             CASE 
+                                WHEN t.status_id = 1 THEN 'Open'
+                                WHEN t.status_id = 2 THEN 'Repairing'
+                                WHEN t.status_id = 3 THEN 'Done'
+                                ELSE 'Unknown'
+                             END
+                        ) AS StatusName,
 
-                        -- Added for Offline GL Detail
                         t.started_at AS StartedAt,
                         t.production_resumed_at AS ProductionResumedAt,
                         t.counter_stroke AS CounterStroke,
@@ -74,7 +71,7 @@ namespace mtc_app.features.machine_history.data.repositories
                     LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
                     LEFT JOIN users tech ON t.technician_id = tech.user_id
                     LEFT JOIN users op ON t.operator_id = op.user_id
-                    -- Note: Join ke failures/actions dihapus dari sini karena sudah pindah ke subquery
+                    LEFT JOIN ticket_statuses ts ON t.status_id = ts.status_id
                     WHERE t.created_at >= @Start AND t.created_at < @End";
 
                 if (!string.IsNullOrEmpty(machineFilter))
@@ -98,25 +95,20 @@ namespace mtc_app.features.machine_history.data.repositories
                 {
                     try
                     {
-                        // 1. Generate Code
-                        // Format: TKT-yyMMdd-XXX (Daily Sequence)
                         string uuid = Guid.NewGuid().ToString();
                         string dateCode = DateTime.Now.ToString("yyMMdd");
                         int dailyCount = conn.ExecuteScalar<int>("SELECT COUNT(*) FROM tickets WHERE DATE(created_at) = CURDATE()", transaction: trans);
                         string displayCode = $"TKT-{dateCode}-{(dailyCount + 1):D3}";
 
-                        // 2. Resolve IDs (Validation)
                         int operatorId = conn.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE nik = @Nik", new { Nik = request.OperatorNik }, trans) ?? 1;
                         int? shiftId = conn.QueryFirstOrDefault<int?>("SELECT shift_id FROM shifts WHERE shift_name = @Name", new { Name = request.ShiftName }, trans);
 
-                        // Resolve Technician (if synced from offline verification)
                         int? techId = null;
                         if (!string.IsNullOrEmpty(request.TechnicianNik))
                         {
                             techId = conn.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE nik = @Nik", new { Nik = request.TechnicianNik }, trans);
                         }
 
-                        // 3. Insert Ticket (Full State with ALL technician fields)
                         string insertTicketSql = @"
                             INSERT INTO tickets (
                                 ticket_uuid, ticket_display_code, machine_id, shift_id, operator_id, applicator_code, 
@@ -148,7 +140,6 @@ namespace mtc_app.features.machine_history.data.repositories
                             RatingNote = request.TechRatingNote
                         }, trans);
 
-                        // 4. Insert Problems (with Cause and Action)
                         string insertProblemSql = @"
                             INSERT INTO ticket_problems (ticket_id, problem_type_id, problem_type_remarks, failure_id, failure_remarks, root_cause_id, root_cause_remarks, action_id, action_details_manual)
                             VALUES (@TicketId, @TypeId, @TypeRem, @FailId, @FailRem, @CauseId, @CauseRem, @ActionId, @ActionRem)";
@@ -173,7 +164,6 @@ namespace mtc_app.features.machine_history.data.repositories
                             }, trans);
                         }
 
-                        // 5. Insert Sparepart Requests (if any)
                         if (request.SparepartRequests != null && request.SparepartRequests.Count > 0)
                         {
                             string insertPartSql = @"INSERT INTO part_requests (ticket_id, part_id, part_name_manual, qty, status_id, requested_at) VALUES (@TId, @PId, @Name, 1, 1, NOW())";
@@ -194,10 +184,9 @@ namespace mtc_app.features.machine_history.data.repositories
                             }
                         }
 
-                        // 6. Update Machine Status based on final ticket status
-                        int machineStatus = 2; // Default: Down/Repairing
-                        if (request.StatusId >= 4) machineStatus = 1; // Production Resumed -> Running
-                        else if (request.StatusId == 3) machineStatus = 3; // Completed -> Waiting validation
+                        int machineStatus = 2; 
+                        if (request.StatusId >= 4) machineStatus = 1; 
+                        else if (request.StatusId == 3) machineStatus = 3; 
                         
                         conn.Execute("UPDATE machines SET current_status_id = @Status WHERE machine_id = @Id", new { Status = machineStatus, Id = request.MachineId }, trans);
 
@@ -217,6 +206,7 @@ namespace mtc_app.features.machine_history.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
+                // [FIX] Menggunakan JOIN ticket_statuses untuk mendapatkan nama status yang akurat
                 string sql = @"
                     SELECT 
                         t.ticket_id AS TicketId,
@@ -241,17 +231,14 @@ namespace mtc_app.features.machine_history.data.repositories
                         t.started_at AS StartedAt,
                         t.technician_finished_at AS FinishedAt,
                         t.status_id AS StatusId,
-                        CASE 
-                            WHEN t.status_id = 1 THEN 'Menunggu Teknisi'
-                            WHEN t.status_id = 2 THEN 'Sedang Diperbaiki'
-                            ELSE 'Unknown'
-                        END AS StatusName
+                        IFNULL(ts.status_name, 'Unknown') AS StatusName
                     FROM tickets t
                     LEFT JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN machine_types mt ON m.type_id = mt.type_id
                     LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
                     LEFT JOIN users tech ON t.technician_id = tech.user_id
                     LEFT JOIN users op ON t.operator_id = op.user_id
+                    LEFT JOIN ticket_statuses ts ON t.status_id = ts.status_id
                     WHERE t.machine_id = @MachineId AND t.status_id IN (1, 2)
                     ORDER BY t.created_at DESC
                     LIMIT 1";

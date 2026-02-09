@@ -27,7 +27,6 @@ namespace mtc_app.features.stock.data.repositories
                     u.full_name AS TechnicianName,
                     pr.qty AS Qty,
                     rs.status_name AS StatusName,
-                    rs.status_name AS StatusName,
                     pr.status_id AS StatusId,
                     CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) AS MachineName
                 FROM part_requests pr

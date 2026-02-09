@@ -19,13 +19,15 @@ namespace mtc_app.shared.data.repositories
                 var result = await conn.QueryAsync<CachedMachineDto>(@"
                     SELECT 
                         machine_id AS MachineId,
-                        CONCAT(machine_type, '-', machine_area, '-', machine_number) AS Code,
-                        machine_type AS MachineType,
-                        machine_area AS MachineArea,
-                        machine_number AS MachineNumber,
-                        COALESCE(current_status_id, 1) AS StatusId
-                    FROM machines
-                    ORDER BY machine_type, machine_area, machine_number");
+                        CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) AS Code,
+                        mt.type_name AS MachineType,
+                        ma.area_name AS MachineArea,
+                        m.machine_number AS MachineNumber,
+                        COALESCE(m.current_status_id, 1) AS StatusId
+                    FROM machines m
+                    LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                    LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
+                    ORDER BY mt.type_name, ma.area_name, m.machine_number");
                 return result.ToList();
             }
         }
