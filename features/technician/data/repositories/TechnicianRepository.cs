@@ -15,6 +15,7 @@ namespace mtc_app.features.technician.data.repositories
             {
                 // PERBAIKAN: Mengambil data failure/masalah dari tabel ticket_problems
                 // [FIX] Menggunakan GROUP_CONCAT untuk menampilkan SEMUA masalah.
+                // [FIX] Menggunakan GROUP_CONCAT untuk menampilkan SEMUA teknisi (Concurrent Support)
                 string sql = @"
                     SELECT 
                         t.ticket_id AS TicketId,
@@ -39,7 +40,23 @@ namespace mtc_app.features.technician.data.repositories
                         t.technician_finished_at AS FinishedAt,
                         t.gl_rating_score AS GlRatingScore,
                         t.gl_validated_at AS GlValidatedAt,
-                        u.full_name AS TechnicianName
+                        
+                        -- [NEW] Aggregate Technician Names
+                        (SELECT 
+                            CASE 
+                                WHEN COUNT(DISTINCT tts.technician_id) > 1 
+                                THEN CONCAT(
+                                    (SELECT u2.full_name FROM ticket_technician_sessions tts2 JOIN users u2 ON tts2.technician_id = u2.user_id WHERE tts2.ticket_id = t.ticket_id ORDER BY tts2.session_id ASC LIMIT 1), 
+                                    ' + ', 
+                                    (COUNT(DISTINCT tts.technician_id) - 1), 
+                                    ' Others'
+                                )
+                                ELSE u.full_name 
+                            END
+                         FROM ticket_technician_sessions tts
+                         WHERE tts.ticket_id = t.ticket_id
+                        ) AS TechnicianName
+
                     FROM tickets t
                     JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN machine_types m_type ON m.type_id = m_type.type_id
@@ -61,7 +78,13 @@ namespace mtc_app.features.technician.data.repositories
                         t.ticket_id AS TicketId,
                         CONCAT(m_type.type_name, '.', m_area.area_name, '-', m.machine_number) AS MachineName,
                         op.full_name AS OperatorName,
-                        tech.full_name AS TechnicianName,
+                        
+                        -- [FIXED] Aggregate Technician Names for Detail View (Comma Separated)
+                        (SELECT GROUP_CONCAT(DISTINCT u_tech.full_name SEPARATOR ', ')
+                         FROM ticket_technician_sessions tts
+                         JOIN users u_tech ON tts.technician_id = u_tech.user_id
+                         WHERE tts.ticket_id = t.ticket_id
+                        ) AS TechnicianName,
                         
                         -- [FIXED] Subquery FailureDetails (Multi-Problem Support)
                         (SELECT GROUP_CONCAT(
@@ -99,7 +122,6 @@ namespace mtc_app.features.technician.data.repositories
                     LEFT JOIN machine_types m_type ON m.type_id = m_type.type_id
                     LEFT JOIN machine_areas m_area ON m.area_id = m_area.area_id
                     LEFT JOIN users op ON t.operator_id = op.user_id
-                    LEFT JOIN users tech ON t.technician_id = tech.user_id
                     WHERE t.ticket_id = @TicketId";
 
                 return await connection.QueryFirstOrDefaultAsync<TechnicianTicketDetailDto>(sql, new { TicketId = ticketId });
