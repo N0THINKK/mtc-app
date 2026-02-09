@@ -12,14 +12,30 @@ namespace mtc_app.features.group_leader.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // PERBAIKAN: Menggunakan Subquery untuk FailureDetails
-                // Menghapus join langsung ke failures/problem_types
+                // PERBAIKAN: Mengambil data failure/masalah dari tabel ticket_problems
+                // [FIX] Menggunakan GROUP_CONCAT untuk menampilkan SEMUA masalah.
+                // [FIX] Menggunakan GROUP_CONCAT untuk menampilkan SEMUA teknisi (Concurrent Support)
                 string sql = @"
                     SELECT 
                         t.ticket_uuid AS TicketUuid,
                         t.ticket_id AS TicketId,
                         CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) AS MachineName,
-                        u.full_name AS TechnicianName,
+                        
+                        -- [NEW] Aggregate Technician Names
+                        (SELECT 
+                            CASE 
+                                WHEN COUNT(DISTINCT tts.technician_id) > 1 
+                                THEN CONCAT(
+                                    (SELECT u2.full_name FROM ticket_technician_sessions tts2 JOIN users u2 ON tts2.technician_id = u2.user_id WHERE tts2.ticket_id = t.ticket_id ORDER BY tts2.session_id ASC LIMIT 1), 
+                                    ' + ', 
+                                    (COUNT(DISTINCT tts.technician_id) - 1), 
+                                    ' Others'
+                                )
+                                ELSE u.full_name 
+                            END
+                         FROM ticket_technician_sessions tts
+                         WHERE tts.ticket_id = t.ticket_id
+                        ) AS TechnicianName,
                         
                         -- Subquery mengambil detail masalah dari ticket_problems (Multi-Problem Support)
                         (SELECT GROUP_CONCAT(
@@ -60,7 +76,14 @@ namespace mtc_app.features.group_leader.data.repositories
                         t.ticket_uuid AS TicketId, 
                         t.ticket_display_code AS TicketCode,
                         CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) AS MachineName,
-                        tech.full_name AS TechnicianName,
+                        
+                        -- [FIXED] Aggregate Technician Names for Detail View (Comma Separated)
+                        (SELECT GROUP_CONCAT(DISTINCT u_tech.full_name SEPARATOR ', ')
+                         FROM ticket_technician_sessions tts
+                         JOIN users u_tech ON tts.technician_id = u_tech.user_id
+                         WHERE tts.ticket_id = t.ticket_id
+                        ) AS TechnicianName,
+                        
                         op.full_name AS OperatorName,
                         
                         -- Subquery FailureDetails (Multi-Problem Support)
@@ -98,7 +121,6 @@ namespace mtc_app.features.group_leader.data.repositories
                     LEFT JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN machine_types mt ON m.type_id = mt.type_id
                     LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
-                    LEFT JOIN users tech ON t.technician_id = tech.user_id
                     LEFT JOIN users op ON t.operator_id = op.user_id
                     -- Join ke failures/actions dihapus dari query utama
                     WHERE t.ticket_uuid = @TicketId";
