@@ -124,13 +124,16 @@ namespace mtc_app.features.technician.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
+                // [FIXED] Updated to use ticket_technician_sessions for concurrent support
                 string sql = @"
                     SELECT 
-                        COUNT(CASE WHEN status_id = 3 THEN 1 END) AS CompletedRepairs,
-                        COALESCE(AVG(CASE WHEN gl_rating_score > 0 THEN gl_rating_score END), 0) AS AverageRating,
-                        COALESCE(SUM(CASE WHEN gl_rating_score > 0 THEN gl_rating_score ELSE 0 END), 0) AS TotalStars
-                    FROM tickets
-                    WHERE technician_id = @TechnicianId";
+                        COUNT(DISTINCT t.ticket_id) AS CompletedRepairs,
+                        COALESCE(AVG(CASE WHEN t.gl_rating_score > 0 THEN t.gl_rating_score END), 0) AS AverageRating,
+                        COALESCE(SUM(CASE WHEN t.gl_rating_score > 0 THEN t.gl_rating_score ELSE 0 END), 0) AS TotalStars
+                    FROM ticket_technician_sessions tts
+                    JOIN tickets t ON tts.ticket_id = t.ticket_id
+                    WHERE tts.technician_id = @TechnicianId
+                      AND t.status_id = 3";
                 
                 return connection.QueryFirstOrDefault<TechnicianStatsDto>(sql, new { TechnicianId = technicianId });
             }
@@ -138,19 +141,30 @@ namespace mtc_app.features.technician.data.repositories
 
         public async Task<IEnumerable<TechnicianPerformanceDto>> GetLeaderboardAsync(DateTime start, DateTime end)
         {
+            // [FIXED] Updated query to:
+            // 1. Join ticket_technician_sessions (Concurrent support)
+            // 2. Remove gl_validated_at check (Show ratings even if GL approval pending)
+            // 3. Use DISTINCT ticket counting per technician
             const string sql = @"
                 SELECT 
-                    u.full_name AS TechnicianName,
-                    COUNT(t.ticket_id) AS TotalRepairs,
-                    AVG(t.gl_rating_score) AS AverageRating,
-                    SUM(t.gl_rating_score) AS TotalStars
-                FROM tickets t
-                JOIN users u ON t.technician_id = u.user_id
-                WHERE t.status_id = 3 
-                  AND t.gl_validated_at IS NOT NULL
-                  AND t.created_at BETWEEN @Start AND @End
-                GROUP BY u.user_id, u.full_name
-                HAVING COUNT(t.ticket_id) > 0";
+                    T.TechnicianName,
+                    COUNT(T.ticket_id) AS TotalRepairs,
+                    COALESCE(AVG(NULLIF(T.gl_rating_score, 0)), 0) AS AverageRating,
+                    COALESCE(SUM(T.gl_rating_score), 0) AS TotalStars
+                FROM (
+                    SELECT DISTINCT 
+                        u.user_id, 
+                        u.full_name AS TechnicianName, 
+                        t.ticket_id, 
+                        t.gl_rating_score
+                    FROM ticket_technician_sessions tts
+                    JOIN tickets t ON tts.ticket_id = t.ticket_id
+                    JOIN users u ON tts.technician_id = u.user_id
+                    WHERE t.status_id = 3 
+                      AND t.created_at BETWEEN @Start AND @End
+                ) AS T
+                GROUP BY T.user_id, T.TechnicianName
+                HAVING COUNT(T.ticket_id) > 0";
 
             using (var connection = DatabaseHelper.GetConnection())
             {
