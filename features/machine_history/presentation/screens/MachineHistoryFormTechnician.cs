@@ -28,14 +28,20 @@ namespace mtc_app.features.machine_history.presentation.screens
         private Timer _timer;
         
         // Session Tracking (for multi-technician support)
-        private long _currentSessionId = 0;
-        private int _currentTechnicianId = 0;
-        private int _sessionElapsedSeconds = 0;
+        // private long _currentSessionId = 0; // REPLACED
+        // private int _currentTechnicianId = 0; // REPLACED
+        // private int _sessionElapsedSeconds = 0; // REPLACED
+        
+        private List<long> _activeSessionIds = new List<long>();
+        private List<int> _activeTechnicianIds = new List<int>();
+        private Dictionary<long, int> _sessionElapsedMap = new Dictionary<long, int>();
 
         // UI Controls
         private Label _lblPreviousTechnicians; // Shows previous technician sessions
         private AppInput inputNIK;
+        private FlowLayoutPanel pnlActiveTechs; // List of active technician chips
         private AppButton btnVerify;
+        private AppButton btnAddTechnician; // New button for concurrent sessions
         
         // Multi-Problem List
         private FlowLayoutPanel pnlProblems;
@@ -59,6 +65,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             SetupInputs();
             LoadTicketProblems();
             LoadOfflineTicketState();
+            LoadActiveSessions(); // [FIX] Rehydrate active sessions for online tickets
             UpdateUIState();
             
             this.StartPosition = FormStartPosition.CenterScreen;
@@ -128,7 +135,14 @@ namespace mtc_app.features.machine_history.presentation.screens
             else
             {
                 _repairSeconds++;
-                _sessionElapsedSeconds++; // Track per-session time
+                // Update all active sessions
+                foreach (var sessionId in _activeSessionIds)
+                {
+                    if (_sessionElapsedMap.ContainsKey(sessionId))
+                    {
+                        _sessionElapsedMap[sessionId]++;
+                    }
+                }
             }
 
             UpdateTimerDisplay();
@@ -180,6 +194,13 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             if (_currentTicketId <= 0) return; // Skip for offline tickets
             
+            // Prevent duplicate active session for same technician
+            if (_activeTechnicianIds.Contains(technicianId))
+            {
+                MessageBox.Show("Teknisi ini sudah aktif dalam sesi ini.", "Info");
+                return;
+            }
+            
             try
             {
                 using (var conn = DatabaseHelper.GetConnection())
@@ -194,11 +215,14 @@ namespace mtc_app.features.machine_history.presentation.screens
                         new { TicketId = _currentTicketId, TechId = technicianId });
                     
                     // Get inserted session ID
-                    _currentSessionId = conn.QueryFirstOrDefault<long>("SELECT LAST_INSERT_ID()");
-                    _currentTechnicianId = technicianId;
-                    _sessionElapsedSeconds = 0;
+                    long newSessionId = conn.QueryFirstOrDefault<long>("SELECT LAST_INSERT_ID()");
                     
-                    System.Diagnostics.Debug.WriteLine($"[FormTechnician] Created session {_currentSessionId} for technician {technicianId}");
+                    // Add to active lists
+                    _activeSessionIds.Add(newSessionId);
+                    _activeTechnicianIds.Add(technicianId);
+                    _sessionElapsedMap[newSessionId] = 0;
+                    
+                    System.Diagnostics.Debug.WriteLine($"[FormTechnician] Created session {newSessionId} for technician {technicianId}");
                 }
             }
             catch (Exception ex)
@@ -214,20 +238,28 @@ namespace mtc_app.features.machine_history.presentation.screens
         /// </summary>
         private void SaveSession()
         {
-            if (_currentSessionId <= 0) return;
+            if (_activeSessionIds.Count == 0) return;
             
             try
             {
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
-                    conn.Execute(@"
-                        UPDATE ticket_technician_sessions 
-                        SET elapsed_seconds = @Elapsed, ended_at = NOW()
-                        WHERE session_id = @Id",
-                        new { Elapsed = _sessionElapsedSeconds, Id = _currentSessionId });
                     
-                    System.Diagnostics.Debug.WriteLine($"[FormTechnician] Saved session {_currentSessionId} with {_sessionElapsedSeconds}s");
+                    foreach (var sessionId in _activeSessionIds)
+                    {
+                        if (_sessionElapsedMap.ContainsKey(sessionId))
+                        {
+                            int elapsed = _sessionElapsedMap[sessionId];
+                            conn.Execute(@"
+                                UPDATE ticket_technician_sessions 
+                                SET elapsed_seconds = @Elapsed, ended_at = NOW()
+                                WHERE session_id = @Id",
+                                new { Elapsed = elapsed, Id = sessionId });
+                        }
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine($"[FormTechnician] Saved {_activeSessionIds.Count} active sessions");
                 }
             }
             catch (Exception ex)
@@ -242,20 +274,28 @@ namespace mtc_app.features.machine_history.presentation.screens
         /// </summary>
         private void EndSessionAsCompleted()
         {
-            if (_currentSessionId <= 0) return;
+            if (_activeSessionIds.Count == 0) return;
             
             try
             {
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
-                    conn.Execute(@"
-                        UPDATE ticket_technician_sessions 
-                        SET elapsed_seconds = @Elapsed, ended_at = NOW(), is_completing_session = 1
-                        WHERE session_id = @Id",
-                        new { Elapsed = _sessionElapsedSeconds, Id = _currentSessionId });
                     
-                    System.Diagnostics.Debug.WriteLine($"[FormTechnician] Completed session {_currentSessionId}");
+                    foreach (var sessionId in _activeSessionIds)
+                    {
+                        if (_sessionElapsedMap.ContainsKey(sessionId))
+                        {
+                            int elapsed = _sessionElapsedMap[sessionId];
+                            conn.Execute(@"
+                                UPDATE ticket_technician_sessions 
+                                SET elapsed_seconds = @Elapsed, ended_at = NOW(), is_completing_session = 1
+                                WHERE session_id = @Id",
+                                new { Elapsed = elapsed, Id = sessionId });
+                        }
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine($"[FormTechnician] Completed {_activeSessionIds.Count} sessions");
                 }
             }
             catch (Exception ex)
@@ -289,7 +329,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     if (sessions.Any())
                     {
                         var lines = new List<string>();
-                        lines.Add("⚠️ Teknisi Sebelumnya:");
+                        lines.Add("⚠️ Riwayat Sesi Teknisi:");
                         
                         foreach (var s in sessions)
                         {
@@ -446,6 +486,19 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
             mainLayout.Controls.Add(inputNIK);
 
+            // === Active Technicians List ===
+            pnlActiveTechs = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                Width = 450,
+                MinimumSize = new Size(450, 10), // Ensure panel has size
+                Margin = new Padding(0, 5, 0, 5),
+                BackColor = Color.Transparent
+            };
+            mainLayout.Controls.Add(pnlActiveTechs);
+
             btnVerify = new AppButton 
             { 
                 Text = "Verifikasi Teknisi", 
@@ -454,6 +507,17 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
             btnVerify.Click += BtnVerify_Click;
             mainLayout.Controls.Add(btnVerify);
+
+            // === Add Technician Button (Concurrent Support) ===
+            btnAddTechnician = new AppButton 
+            { 
+                Text = "+ Tambah Teknisi (Pendamping)", 
+                Type = AppButton.ButtonType.Secondary, 
+                Margin = new Padding(0, 0, 0, 15),
+                Visible = false // Initially hidden
+            };
+            btnAddTechnician.Click += BtnAddTechnician_Click;
+            mainLayout.Controls.Add(btnAddTechnician);
 
             // === Problem List ===
             var lblProblems = new Label 
@@ -577,9 +641,17 @@ namespace mtc_app.features.machine_history.presentation.screens
             btnVerify.Visible = !enabled;
             
             // [UI-FIX] Hide "Add Problem" button when technician is verified
+            
+            // [UI-FIX] Hide "Add Problem" button when technician is verified
             if (btnAddProblem != null)
             {
                 btnAddProblem.Visible = !enabled;
+            }
+
+            // Concurrent Tech Support
+            if (btnAddTechnician != null)
+            {
+                btnAddTechnician.Visible = enabled; // Visible ONLY when verified
             }
         }
 
@@ -648,6 +720,13 @@ namespace mtc_app.features.machine_history.presentation.screens
                 var user = ServiceLocator.OfflineRepo.GetUserByNik(nik);
                 if (user != null)
                 {
+                    // Basic Offline Role Check (assuming RoleId is available in offline User model)
+                    if (user.RoleId != 2)
+                    {
+                        MessageBox.Show("Hanya teknisi yang dapat melakukan verifikasi.", "Akses Ditolak");
+                        return;
+                    }
+
                     int pendingId = (int)Math.Abs(_currentTicketId);
                     var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
                     if (request != null)
@@ -679,7 +758,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
-                    var tech = conn.QueryFirstOrDefault("SELECT user_id, full_name FROM users WHERE nik = @Nik", new { Nik = nik });
+                    // [FIX] Validating role_id = 2 (Technician)
+                    var tech = conn.QueryFirstOrDefault("SELECT user_id, full_name, nik FROM users WHERE nik = @Nik AND role_id = 2", new { Nik = nik });
                     
                     if (tech != null)
                     {
@@ -692,12 +772,16 @@ namespace mtc_app.features.machine_history.presentation.screens
                         SaveTimerToDatabase(); // Save arrival time before switching to repair
                         CreateSession((int)tech.user_id); // Start tracking session for this technician
                         
+                        // Add visual chip for Lead Technician
+                        AddTechnicianChip(tech.nik, tech.full_name, (int)tech.user_id, _activeSessionIds.Last());
+
                         AutoClosingMessageBox.Show($"Verifikasi Berhasil!\nSelamat bekerja, {tech.full_name}.", "Sukses", 2000);
+                        LoadPreviousSessions(); // Refresh list to show new session
                         UpdateUIState();
                     }
                     else
                     {
-                        MessageBox.Show("Inisial tidak ditemukan.");
+                        MessageBox.Show("Inisial tidak ditemukan atau bukan teknisi.", "Akses Ditolak");
                     }
                 }
             }
@@ -705,6 +789,103 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 MessageBox.Show($"Error: {ex.Message}");
             }
+        }
+
+        private void BtnAddTechnician_Click(object sender, EventArgs e)
+        {
+            string nik = ShowTechnicianEntryDialog();
+            if (string.IsNullOrWhiteSpace(nik)) return;
+
+            // Offline Logic handling
+            if (_currentTicketId < 0)
+            {
+                MessageBox.Show("Penambahan teknisi hanya tersedia saat online.", "Info");
+                return;
+            }
+
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Open();
+                    // [FIX] Validating role_id = 2 (Technician)
+                    var tech = conn.QueryFirstOrDefault("SELECT user_id, full_name, nik FROM users WHERE nik = @Nik AND role_id = 2", new { Nik = nik });
+                    
+                    if (tech != null)
+                    {
+                        if (_activeTechnicianIds.Contains((int)tech.user_id))
+                        {
+                            MessageBox.Show($"Teknisi {tech.full_name} sudah aktif.", "Info");
+                            return;
+                        }
+
+                        CreateSession((int)tech.user_id);
+                        
+                        // Add visual chip for Additional Technician
+                        AddTechnicianChip(tech.nik, tech.full_name, (int)tech.user_id, _activeSessionIds.Last());
+
+                        AutoClosingMessageBox.Show($"Teknisi {tech.full_name} berhasil ditambahkan.", "Sukses", 2000);
+                        LoadPreviousSessions(); // Refresh list to show new technician
+                    }
+                    else
+                    {
+                        MessageBox.Show("Inisial tidak ditemukan atau bukan teknisi.", "Validasi");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error: {ex.Message}");
+            }
+        }
+
+        private void AddTechnicianChip(string nik, string name, int techId, long sessionId)
+        {
+            // Create AppInput matching the main "Inisial Teknisi" style
+            var techInput = new AppInput
+            {
+                LabelText = "Teknisi Pendamping",
+                InputValue = $"{nik} - {name}",
+                InputType = AppInput.InputTypeEnum.Text,
+                Width = inputNIK.Width, // Match main input width
+                Enabled = false, // Read-only display
+                Margin = new Padding(0, 0, 0, 10)
+            };
+            
+            // Store reference for identification
+            techInput.Tag = new { SessionId = sessionId, TechId = techId };
+            
+            pnlActiveTechs.Controls.Add(techInput);
+            pnlActiveTechs.Visible = true;
+        }
+
+        private string ShowTechnicianEntryDialog()
+        {
+            Form prompt = new Form()
+            {
+                Width = 350,
+                Height = 180,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                Text = "Tambah Teknisi",
+                StartPosition = FormStartPosition.CenterParent,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            Label textLabel = new Label() { Left = 20, Top = 20, Text = "Masukkan Inisial (NIK):", AutoSize = true, Font = AppFonts.Body };
+            TextBox textBox = new TextBox() { Left = 20, Top = 50, Width = 290, Font = AppFonts.Body, CharacterCasing = CharacterCasing.Upper };
+            Button confirmation = new Button() { Text = "Tambahkan", Left = 180, Width = 130, Top = 90, DialogResult = DialogResult.OK, Height = 35, BackColor = AppColors.Primary, ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            confirmation.FlatAppearance.BorderSize = 0;
+            Button cancel = new Button() { Text = "Batal", Left = 40, Width = 100, Top = 90, DialogResult = DialogResult.Cancel, Height = 35, FlatStyle = FlatStyle.Flat };
+
+            prompt.Controls.Add(textLabel);
+            prompt.Controls.Add(textBox);
+            prompt.Controls.Add(confirmation);
+            prompt.Controls.Add(cancel);
+            prompt.AcceptButton = confirmation;
+            prompt.CancelButton = cancel;
+
+            return prompt.ShowDialog() == DialogResult.OK ? textBox.Text.Trim() : "";
         }
 
         private void buttonRequestSparepart_Click(object sender, EventArgs e)
@@ -1007,6 +1188,66 @@ namespace mtc_app.features.machine_history.presentation.screens
                 {
                     child.Width = contentWidth;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Restore active sessions from database (for online tickets).
+        /// </summary>
+        private void LoadActiveSessions()
+        {
+            if (_currentTicketId <= 0) return;
+
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Open();
+                    // Get sessions that are NOT ended
+                    string sql = @"
+                        SELECT tts.session_id, tts.technician_id, tts.elapsed_seconds, 
+                               u.nik, u.full_name
+                        FROM ticket_technician_sessions tts
+                        JOIN users u ON tts.technician_id = u.user_id
+                        WHERE tts.ticket_id = @Id AND tts.ended_at IS NULL
+                        ORDER BY tts.started_at ASC";
+                    
+                    var activeSessions = conn.Query(sql, new { Id = _currentTicketId });
+                    
+                    if (activeSessions.Any())
+                    {
+                        bool isFirst = true;
+                        foreach (var s in activeSessions)
+                        {
+                            long sId = (long)s.session_id;
+                            int tId = (int)s.technician_id;
+                            int elapsed = (int)s.elapsed_seconds;
+                            
+                            // 1. Populate Lists (if not already present)
+                            if (!_activeSessionIds.Contains(sId))
+                            {
+                                _activeSessionIds.Add(sId);
+                                _activeTechnicianIds.Add(tId);
+                                _sessionElapsedMap[sId] = elapsed;
+                                
+                                // 2. Add Visual Chip
+                                AddTechnicianChip((string)s.nik, (string)s.full_name, tId, sId);
+                            }
+
+                            // 3. Set Lead Info (First Active Tech)
+                            if (isFirst)
+                            {
+                                _isVerified = true;
+                                inputNIK.InputValue = (string)s.nik;
+                                isFirst = false;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error active sessions: {ex.Message}");
             }
         }
     }
