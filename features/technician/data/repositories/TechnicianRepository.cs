@@ -15,6 +15,7 @@ namespace mtc_app.features.technician.data.repositories
             {
                 // PERBAIKAN: Mengambil data failure/masalah dari tabel ticket_problems
                 // [FIX] Menggunakan GROUP_CONCAT untuk menampilkan SEMUA masalah.
+                // [FIX] Menggunakan GROUP_CONCAT untuk menampilkan SEMUA teknisi (Concurrent Support)
                 string sql = @"
                     SELECT 
                         t.ticket_id AS TicketId,
@@ -39,7 +40,23 @@ namespace mtc_app.features.technician.data.repositories
                         t.technician_finished_at AS FinishedAt,
                         t.gl_rating_score AS GlRatingScore,
                         t.gl_validated_at AS GlValidatedAt,
-                        u.full_name AS TechnicianName
+                        
+                        -- [NEW] Aggregate Technician Names
+                        (SELECT 
+                            CASE 
+                                WHEN COUNT(DISTINCT tts.technician_id) > 1 
+                                THEN CONCAT(
+                                    (SELECT u2.full_name FROM ticket_technician_sessions tts2 JOIN users u2 ON tts2.technician_id = u2.user_id WHERE tts2.ticket_id = t.ticket_id ORDER BY tts2.session_id ASC LIMIT 1), 
+                                    ' + ', 
+                                    (COUNT(DISTINCT tts.technician_id) - 1), 
+                                    ' Others'
+                                )
+                                ELSE u.full_name 
+                            END
+                         FROM ticket_technician_sessions tts
+                         WHERE tts.ticket_id = t.ticket_id
+                        ) AS TechnicianName
+
                     FROM tickets t
                     JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN machine_types m_type ON m.type_id = m_type.type_id
@@ -61,7 +78,13 @@ namespace mtc_app.features.technician.data.repositories
                         t.ticket_id AS TicketId,
                         CONCAT(m_type.type_name, '.', m_area.area_name, '-', m.machine_number) AS MachineName,
                         op.full_name AS OperatorName,
-                        tech.full_name AS TechnicianName,
+                        
+                        -- [FIXED] Aggregate Technician Names for Detail View (Comma Separated)
+                        (SELECT GROUP_CONCAT(DISTINCT u_tech.full_name SEPARATOR ', ')
+                         FROM ticket_technician_sessions tts
+                         JOIN users u_tech ON tts.technician_id = u_tech.user_id
+                         WHERE tts.ticket_id = t.ticket_id
+                        ) AS TechnicianName,
                         
                         -- [FIXED] Subquery FailureDetails (Multi-Problem Support)
                         (SELECT GROUP_CONCAT(
@@ -99,7 +122,6 @@ namespace mtc_app.features.technician.data.repositories
                     LEFT JOIN machine_types m_type ON m.type_id = m_type.type_id
                     LEFT JOIN machine_areas m_area ON m.area_id = m_area.area_id
                     LEFT JOIN users op ON t.operator_id = op.user_id
-                    LEFT JOIN users tech ON t.technician_id = tech.user_id
                     WHERE t.ticket_id = @TicketId";
 
                 return await connection.QueryFirstOrDefaultAsync<TechnicianTicketDetailDto>(sql, new { TicketId = ticketId });
@@ -124,13 +146,16 @@ namespace mtc_app.features.technician.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
+                // [FIXED] Updated to use ticket_technician_sessions for concurrent support
                 string sql = @"
                     SELECT 
-                        COUNT(CASE WHEN status_id = 3 THEN 1 END) AS CompletedRepairs,
-                        COALESCE(AVG(CASE WHEN gl_rating_score > 0 THEN gl_rating_score END), 0) AS AverageRating,
-                        COALESCE(SUM(CASE WHEN gl_rating_score > 0 THEN gl_rating_score ELSE 0 END), 0) AS TotalStars
-                    FROM tickets
-                    WHERE technician_id = @TechnicianId";
+                        COUNT(DISTINCT t.ticket_id) AS CompletedRepairs,
+                        COALESCE(AVG(CASE WHEN t.gl_rating_score > 0 THEN t.gl_rating_score END), 0) AS AverageRating,
+                        COALESCE(SUM(CASE WHEN t.gl_rating_score > 0 THEN t.gl_rating_score ELSE 0 END), 0) AS TotalStars
+                    FROM ticket_technician_sessions tts
+                    JOIN tickets t ON tts.ticket_id = t.ticket_id
+                    WHERE tts.technician_id = @TechnicianId
+                      AND t.status_id = 3";
                 
                 return connection.QueryFirstOrDefault<TechnicianStatsDto>(sql, new { TechnicianId = technicianId });
             }
@@ -138,19 +163,30 @@ namespace mtc_app.features.technician.data.repositories
 
         public async Task<IEnumerable<TechnicianPerformanceDto>> GetLeaderboardAsync(DateTime start, DateTime end)
         {
+            // [FIXED] Updated query to:
+            // 1. Join ticket_technician_sessions (Concurrent support)
+            // 2. Remove gl_validated_at check (Show ratings even if GL approval pending)
+            // 3. Use DISTINCT ticket counting per technician
             const string sql = @"
                 SELECT 
-                    u.full_name AS TechnicianName,
-                    COUNT(t.ticket_id) AS TotalRepairs,
-                    AVG(t.gl_rating_score) AS AverageRating,
-                    SUM(t.gl_rating_score) AS TotalStars
-                FROM tickets t
-                JOIN users u ON t.technician_id = u.user_id
-                WHERE t.status_id = 3 
-                  AND t.gl_validated_at IS NOT NULL
-                  AND t.created_at BETWEEN @Start AND @End
-                GROUP BY u.user_id, u.full_name
-                HAVING COUNT(t.ticket_id) > 0";
+                    T.TechnicianName,
+                    COUNT(T.ticket_id) AS TotalRepairs,
+                    COALESCE(AVG(NULLIF(T.gl_rating_score, 0)), 0) AS AverageRating,
+                    COALESCE(SUM(T.gl_rating_score), 0) AS TotalStars
+                FROM (
+                    SELECT DISTINCT 
+                        u.user_id, 
+                        u.full_name AS TechnicianName, 
+                        t.ticket_id, 
+                        t.gl_rating_score
+                    FROM ticket_technician_sessions tts
+                    JOIN tickets t ON tts.ticket_id = t.ticket_id
+                    JOIN users u ON tts.technician_id = u.user_id
+                    WHERE t.status_id = 3 
+                      AND t.created_at BETWEEN @Start AND @End
+                ) AS T
+                GROUP BY T.user_id, T.TechnicianName
+                HAVING COUNT(T.ticket_id) > 0";
 
             using (var connection = DatabaseHelper.GetConnection())
             {
