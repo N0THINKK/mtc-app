@@ -167,9 +167,16 @@ namespace mtc_app.features.machine_history.presentation.screens
                         mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
                     }
                     
+                    
                     stopwatch?.Stop();
                     timer?.Stop();
                     
+                    // Navigate to Rating Form
+                    using (var ratingForm = new OperatorRatingForm(_ticketId))
+                    {
+                        ratingForm.ShowDialog();
+                    }
+
                     this.DialogResult = DialogResult.OK;
                     this.Close();
                 }
@@ -206,6 +213,12 @@ namespace mtc_app.features.machine_history.presentation.screens
                 stopwatch?.Stop();
                 timer?.Stop();
                 
+                // Navigate to Rating Form
+                using (var ratingForm = new OperatorRatingForm(_ticketId))
+                {
+                    ratingForm.ShowDialog();
+                }
+
                 // Close this form and return OK result
                 this.DialogResult = DialogResult.OK;
                 this.Close();

@@ -23,6 +23,8 @@ namespace mtc_app.features.machine_history.data.dtos
         public bool Is4M { get; set; }
         public int TechRatingScore { get; set; }
         public string TechRatingNote { get; set; }
+
+        public int GlRatingScore { get; set; } // Operator/GL Rating
         
         // Sparepart Requests (for offline sync)
         public List<string> SparepartRequests { get; set; } = new List<string>();
