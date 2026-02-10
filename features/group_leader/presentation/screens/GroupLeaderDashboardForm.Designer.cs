@@ -79,29 +79,31 @@ namespace mtc_app.features.group_leader.presentation.screens
 
             // 
             // labelTitle
+            // [RESPONSIVE] Dock instead of hardcoded Location
             // 
             this.labelTitle.Text = "Dashboard Group Leader";
             this.labelTitle.Font = new System.Drawing.Font("Segoe UI", 20F, System.Drawing.FontStyle.Bold);
             this.labelTitle.ForeColor = AppColors.TextPrimary;
-            this.labelTitle.Location = new System.Drawing.Point(30, 25);
+            this.labelTitle.Dock = System.Windows.Forms.DockStyle.Top;
             this.labelTitle.AutoSize = true;
+            this.labelTitle.Padding = new System.Windows.Forms.Padding(20, 15, 0, 5);
 
             // 
             // lblTicketStats
+            // [RESPONSIVE] Dock instead of hardcoded Location
             // 
             this.lblTicketStats.Font = new System.Drawing.Font("Segoe UI Semibold", 12F, System.Drawing.FontStyle.Bold);
             this.lblTicketStats.ForeColor = AppColors.Primary;
-            this.lblTicketStats.Location = new System.Drawing.Point(30, 80); // Adjusted Y
+            this.lblTicketStats.Dock = System.Windows.Forms.DockStyle.Top;
             this.lblTicketStats.AutoSize = true;
+            this.lblTicketStats.Padding = new System.Windows.Forms.Padding(20, 5, 0, 10);
             this.lblTicketStats.Text = "Total: 0 | Direview: 0 | Belum: 0";
 
             // 
             // panelStatusBar
             // 
             this.panelStatusBar.BackColor = System.Drawing.Color.FromArgb(240, 253, 244);
-            this.panelStatusBar.Controls.Add(this.lblLastUpdate);
-            this.panelStatusBar.Controls.Add(this.lblSystemStatus);
-            this.panelStatusBar.Controls.Add(this.picStatusIndicator);
+            // NOTE: Controls are added via flowStatus FlowLayoutPanel below
             this.panelStatusBar.Dock = System.Windows.Forms.DockStyle.Top;
             this.panelStatusBar.Height = 60;
             this.panelStatusBar.Padding = new System.Windows.Forms.Padding(30, 0, 30, 0);
@@ -110,35 +112,42 @@ namespace mtc_app.features.group_leader.presentation.screens
             // picStatusIndicator
             // 
             this.picStatusIndicator.Size = new System.Drawing.Size(12, 12);
-            this.picStatusIndicator.Location = new System.Drawing.Point(30, 19);
             this.picStatusIndicator.BackColor = System.Drawing.Color.Transparent;
+            this.picStatusIndicator.Margin = new System.Windows.Forms.Padding(0, 8, 5, 0);
 
             // 
             // lblSystemStatus
             // 
             this.lblSystemStatus.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.lblSystemStatus.ForeColor = System.Drawing.Color.FromArgb(21, 128, 61);
-            this.lblSystemStatus.Location = new System.Drawing.Point(50, 20); // Adjusted Y center
             this.lblSystemStatus.AutoSize = true;
             this.lblSystemStatus.Text = "Sistem Aktif";
+            this.lblSystemStatus.Margin = new System.Windows.Forms.Padding(0, 5, 15, 0);
 
             // 
             // lblLastUpdate
             // 
             this.lblLastUpdate.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.lblLastUpdate.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-            this.lblLastUpdate.Location = new System.Drawing.Point(180, 21); // Adjusted X/Y
             this.lblLastUpdate.AutoSize = true;
             this.lblLastUpdate.Text = "Terakhir diperbarui: -";
+            this.lblLastUpdate.Margin = new System.Windows.Forms.Padding(0, 6, 0, 0);
+
+            // [RESPONSIVE] Use FlowLayoutPanel for status bar items
+            var flowStatus = new System.Windows.Forms.FlowLayoutPanel
+            {
+                Dock = System.Windows.Forms.DockStyle.Fill,
+                FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight,
+                WrapContents = false,
+                Padding = new System.Windows.Forms.Padding(20, 10, 20, 0)
+            };
+            flowStatus.Controls.AddRange(new System.Windows.Forms.Control[] { this.picStatusIndicator, this.lblSystemStatus, this.lblLastUpdate });
+            this.panelStatusBar.Controls.Add(flowStatus);
 
             // 
             // panelFilters
             // 
             this.panelFilters.BackColor = mtc_app.shared.presentation.styles.AppColors.CardBackground;
-            this.panelFilters.Controls.Add(this.cmbFilterStatus);
-            this.panelFilters.Controls.Add(this.lblFilter);
-            this.panelFilters.Controls.Add(this.cmbSortTime);
-            this.panelFilters.Controls.Add(this.lblSort);
             this.panelFilters.Dock = System.Windows.Forms.DockStyle.Top;
             this.panelFilters.Height = 90;
             this.panelFilters.Padding = new System.Windows.Forms.Padding(30, 20, 30, 20);
@@ -149,8 +158,8 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.lblSort.AutoSize = true;
             this.lblSort.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
             this.lblSort.ForeColor = AppColors.TextPrimary;
-            this.lblSort.Location = new System.Drawing.Point(30, 30);
             this.lblSort.Text = "Urutkan:";
+            this.lblSort.Margin = new System.Windows.Forms.Padding(0, 8, 5, 0);
 
             // 
             // cmbSortTime
@@ -159,10 +168,10 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.cmbSortTime.Font = new System.Drawing.Font("Segoe UI", 12F);
             this.cmbSortTime.FormattingEnabled = true;
             this.cmbSortTime.Items.AddRange(new object[] { "Terbaru", "Terlama" });
-            this.cmbSortTime.Location = new System.Drawing.Point(120, 27);
             this.cmbSortTime.Width = 180;
             this.cmbSortTime.SelectedIndex = 0;
             this.cmbSortTime.SelectedIndexChanged += new System.EventHandler(this.Filter_Changed);
+            this.cmbSortTime.Margin = new System.Windows.Forms.Padding(0, 5, 20, 0);
 
             // 
             // lblFilter
@@ -170,8 +179,8 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.lblFilter.AutoSize = true;
             this.lblFilter.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
             this.lblFilter.ForeColor = AppColors.TextPrimary;
-            this.lblFilter.Location = new System.Drawing.Point(340, 30);
             this.lblFilter.Text = "Status:";
+            this.lblFilter.Margin = new System.Windows.Forms.Padding(0, 8, 5, 0);
 
             // 
             // cmbFilterStatus
@@ -180,10 +189,21 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.cmbFilterStatus.Font = new System.Drawing.Font("Segoe UI", 12F);
             this.cmbFilterStatus.FormattingEnabled = true;
             this.cmbFilterStatus.Items.AddRange(new object[] { "Semua", "Sudah Direview", "Belum Direview" });
-            this.cmbFilterStatus.Location = new System.Drawing.Point(420, 27);
             this.cmbFilterStatus.Width = 220;
             this.cmbFilterStatus.SelectedIndex = 0;
             this.cmbFilterStatus.SelectedIndexChanged += new System.EventHandler(this.Filter_Changed);
+            this.cmbFilterStatus.Margin = new System.Windows.Forms.Padding(0, 5, 0, 0);
+
+            // [RESPONSIVE] Use FlowLayoutPanel for filter controls
+            var flowFilters = new System.Windows.Forms.FlowLayoutPanel
+            {
+                Dock = System.Windows.Forms.DockStyle.Fill,
+                FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight,
+                WrapContents = false,
+                Padding = new System.Windows.Forms.Padding(0)
+            };
+            flowFilters.Controls.AddRange(new System.Windows.Forms.Control[] { this.lblSort, this.cmbSortTime, this.lblFilter, this.cmbFilterStatus });
+            this.panelFilters.Controls.Add(flowFilters);
 
             // 
             // panelEmptyState
