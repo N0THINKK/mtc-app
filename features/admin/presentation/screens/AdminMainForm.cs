@@ -76,21 +76,33 @@ namespace mtc_app.features.admin.presentation.screens
             {
                 Text = "MTC Admin",
                 Type = AppLabel.LabelType.Header2,
-                Location = new Point(20, 20),
+                Dock = DockStyle.Top,
+                Padding = new Padding(20, 20, 0, 20),
                 AutoSize = true
             };
             pnlSidebar.Controls.Add(lblBrand);
 
+            // [RESPONSIVE] Menu Container
+            var flowMenu = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                Padding = new Padding(0, 10, 0, 0),
+                AutoSize = true
+            };
+            pnlSidebar.Controls.Add(flowMenu);
+            flowMenu.BringToFront(); // Ensure it's below the Top-docked header (z-order again!)
+
             // Menu Buttons
-            int startY = 80;
-            AddMenuButton("Monitoring Widget", startY, () => {
+            AddMenuButton("Monitoring Widget", flowMenu, () => {
                 LoadView(_monitoringView);
                 _monitoringView.OnViewLoad();
             });
             
-            AddMenuButton("Master Data", startY + 60, () => LoadView(_masterDataView));
-            AddMenuButton("Laporan / Export", startY + 120, () => LoadView(_reportView));
-            AddMenuButton("Backup Database", startY + 180, () => LoadView(_backupView));
+            AddMenuButton("Master Data", flowMenu, () => LoadView(_masterDataView));
+            AddMenuButton("Laporan / Export", flowMenu, () => LoadView(_reportView));
+            AddMenuButton("Backup Database", flowMenu, () => LoadView(_backupView));
             
             // Logout
             AppButton btnLogout = new AppButton
@@ -98,9 +110,11 @@ namespace mtc_app.features.admin.presentation.screens
                 Text = "Logout",
                 Type = AppButton.ButtonType.Danger,
                 Width = 210,
-                Location = new Point(20, this.ClientSize.Height - 80),
+                Height = 45,
+                Margin = new Padding(20, 0, 0, 20), // Left margin to align
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Left
             };
+            btnLogout.Location = new Point(20, this.ClientSize.Height - 80); // Anchor needs initial location
             btnLogout.Click += (s, e) => this.Close();
             pnlSidebar.Controls.Add(btnLogout);
 
@@ -116,7 +130,7 @@ namespace mtc_app.features.admin.presentation.screens
             this.Controls.Add(pnlSidebar);
         }
 
-        private void AddMenuButton(string text, int y, Action onClick)
+        private void AddMenuButton(string text, FlowLayoutPanel parent, Action onClick)
         {
             AppButton btn = new AppButton
             {
@@ -124,12 +138,12 @@ namespace mtc_app.features.admin.presentation.screens
                 Type = AppButton.ButtonType.Secondary, // Or Ghost/Outline style if available
                 Width = 210,
                 Height = 45,
-                Location = new Point(20, y)
+                Margin = new Padding(20, 0, 0, 15) // Spacing between buttons
             };
             // Simple styling for menu
             btn.TextAlign = ContentAlignment.MiddleLeft;
             btn.Click += (s, e) => onClick?.Invoke();
-            pnlSidebar.Controls.Add(btn);
+            parent.Controls.Add(btn);
         }
 
         private void LoadView(UserControl view)

@@ -115,6 +115,17 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Controls.Remove(panelHeader);
             this.Controls.Remove(panelFooter);
 
+            // [RESPONSIVE] Header Right Container
+            var flowHeaderRight = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Right,
+                FlowDirection = FlowDirection.RightToLeft, // Ensure link stays on right
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Padding = new Padding(0, 15, 20, 0), // Top padding for vertical alignment
+                BackColor = Color.Transparent
+            };
+
             // Add Pending Ticket Indicator to Header
             _lnkPendingTicket = new LinkLabel
             {
@@ -124,12 +135,17 @@ namespace mtc_app.features.machine_history.presentation.screens
                 ActiveLinkColor = Color.OrangeRed,
                 AutoSize = true,
                 Visible = false,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0)
             };
-            _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
+            // _lnkPendingTicket.Location = ... (Removed)
+            
             _lnkPendingTicket.LinkClicked += LnkPendingTicket_LinkClicked;
-            panelHeader.Controls.Add(_lnkPendingTicket);
+            
+            flowHeaderRight.Controls.Add(_lnkPendingTicket);
+            panelHeader.Controls.Add(flowHeaderRight);
+            // Ensure proper docking priority (Last Added = Bottom Z-Order = First Dock Priority usually)
+            // But just in case, let's keep it as added.
             
             // Add in correct order: Fill control first, then docked edges
             // In WinForms, controls added LATER have priority for docking
