@@ -63,7 +63,7 @@ namespace mtc_app.features.technician.logic
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     var machines = await conn.QueryAsync(@"
-                        SELECT m.machine_id, t.type_name as machine_type 
+                        SELECT m.machine_id, t.type_name as type_name 
                         FROM machines m 
                         LEFT JOIN machine_types t ON m.type_id = t.type_id");
 
@@ -72,7 +72,7 @@ namespace mtc_app.features.technician.logic
                         long lots = 0, pcs = 0;
                         double auto = 0, mon = 0;
                         bool fileFound = false;
-                        string type = m.machine_type.ToString().ToUpper();
+                        string type = m.type_name.ToString().ToUpper();
 
                         // AC90 Logic
                         if (type.Contains("AC90"))

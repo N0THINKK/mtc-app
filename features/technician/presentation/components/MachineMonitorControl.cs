@@ -173,8 +173,8 @@ namespace mtc_app.features.technician.presentation.components
                 
                 // New Schema: JOIN tables to get Type/Area names
                 string sql = @"SELECT m.machine_id, 
-                                      COALESCE(t.type_name, 'UNK') AS machine_type, 
-                                      COALESCE(a.area_name, 'UNK') AS machine_area, 
+                                      COALESCE(t.type_name, 'UNK') AS type_name, 
+                                      COALESCE(a.area_name, 'UNK') AS area_name, 
                                       m.machine_number 
                                FROM machines m
                                LEFT JOIN machine_types t ON m.type_id = t.type_id
@@ -204,9 +204,9 @@ namespace mtc_app.features.technician.presentation.components
                 {
                     // ... (Parsing logic remains same) ...
                     var data = new MachineData { 
-                        MachineName = $"{m.machine_type}-{m.machine_area}.{m.machine_number}" 
+                        MachineName = $"{m.type_name}.{m.area_name}-{m.machine_number}" 
                     };
-                    string type = m.machine_type.ToString().ToUpper();
+                    string type = m.type_name.ToString().ToUpper();
 
                     // AC90
                     if (type.Contains("AC90"))
