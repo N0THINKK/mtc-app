@@ -34,22 +34,16 @@ namespace mtc_app.features.machine_history.presentation.components
 
         private void InitializeComponent(string problemType, string problemDetail, bool isEnabled)
         {
-            this.AutoSize = true;
-            this.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            int inputHeight = AppDimens.ControlHeight + 55;
+            int spacing = AppDimens.SpacingLarge; // 32
+
+            this.AutoSize = false;
+            // Header(30) + 4 * (Input + Spacing) + Extra Buffer
+            this.Height = 40 + (4 * (inputHeight + spacing)); 
             this.Margin = new Padding(0, 0, 0, AppDimens.SpacingLarge);
             this.BackColor = Color.Transparent;
 
-            // Main Layout
-            var tableLayout = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                ColumnCount = 1,
-                RowCount = 5,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Padding = new Padding(0)
-            };
-            tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            int yPos = 0;
 
             // Header Label
             lblHeader = new Label
@@ -58,11 +52,12 @@ namespace mtc_app.features.machine_history.presentation.components
                 Font = AppFonts.Subtitle,
                 ForeColor = AppColors.TextPrimary,
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, 10)
+                Location = new Point(0, yPos)
             };
-            tableLayout.Controls.Add(lblHeader, 0, 0);
+            this.Controls.Add(lblHeader);
+            yPos += 35; // Header height + gap
 
-            // Problem Type Input
+            // Problem Type Input (pre-filled, editable)
             InputProblemType = new AppInput 
             { 
                 LabelText = "Jenis Problem", 
@@ -70,12 +65,12 @@ namespace mtc_app.features.machine_history.presentation.components
                 AllowCustomText = true,
                 IsRequired = true,
                 Enabled = isEnabled,
-                Dock = DockStyle.Top,
-                Margin = new Padding(0, 0, 0, 15)
+                Location = new Point(0, yPos)
             };
-            tableLayout.Controls.Add(InputProblemType, 0, 1);
+            this.Controls.Add(InputProblemType);
+            yPos += inputHeight + spacing;
 
-            // Problem Detail Input
+            // Problem Detail Input (pre-filled, editable)
             InputProblemDetail = new AppInput 
             { 
                 LabelText = "Detail Masalah", 
@@ -83,10 +78,10 @@ namespace mtc_app.features.machine_history.presentation.components
                 AllowCustomText = true,
                 IsRequired = true,
                 Enabled = isEnabled,
-                Dock = DockStyle.Top,
-                Margin = new Padding(0, 0, 0, 15)
+                Location = new Point(0, yPos)
             };
-            tableLayout.Controls.Add(InputProblemDetail, 0, 2);
+            this.Controls.Add(InputProblemDetail);
+            yPos += inputHeight + spacing ;
 
             // Cause Input
             InputCause = new AppInput 
@@ -96,10 +91,10 @@ namespace mtc_app.features.machine_history.presentation.components
                 AllowCustomText = true,
                 IsRequired = true,
                 Enabled = isEnabled,
-                Dock = DockStyle.Top,
-                Margin = new Padding(0, 0, 0, 15)
+                Location = new Point(0, yPos)
             };
-            tableLayout.Controls.Add(InputCause, 0, 3);
+            this.Controls.Add(InputCause);
+            yPos += inputHeight + spacing;
             
             // Action Input
             InputAction = new AppInput 
@@ -109,20 +104,15 @@ namespace mtc_app.features.machine_history.presentation.components
                 AllowCustomText = true,
                 IsRequired = true,
                 Enabled = isEnabled,
-                Dock = DockStyle.Top,
-                Margin = new Padding(0, 0, 0, 15)
+                Location = new Point(0, yPos)
             };
-            tableLayout.Controls.Add(InputAction, 0, 4);
-
-            this.Controls.Add(tableLayout);
+            this.Controls.Add(InputAction);
 
             // Set pre-filled values AFTER controls are added
             InputProblemType.InputValue = problemType ?? "";
             InputProblemDetail.InputValue = problemDetail ?? "";
         }
 
-        // Removed OnResize - Layout handled by Dock/Table
-        /*
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
@@ -134,7 +124,6 @@ namespace mtc_app.features.machine_history.presentation.components
             if (InputCause != null) InputCause.Width = inputWidth;
             if (InputAction != null) InputAction.Width = inputWidth;
         }
-        */
 
         public void SetEnabled(bool enabled)
         {
