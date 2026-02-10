@@ -140,6 +140,37 @@ namespace mtc_app.features.machine_history.data.repositories
                             RatingNote = request.TechRatingNote
                         }, trans);
 
+                        // [FIX] Insert Session Log for Offline Sync / Direct Completion
+                        // Ensures technician gets credit in Leaderboard even if ticket was created/completed offline
+                        if (techId.HasValue)
+                        {
+                            int elapsed = 0;
+                            // Only calculate duration if both Start and Finish are present
+                            if (request.FinishedAt.HasValue && request.StartedAt.HasValue)
+                            {
+                                elapsed = (int)(request.FinishedAt.Value - request.StartedAt.Value).TotalSeconds;
+                                if (elapsed < 0) elapsed = 0;
+                            }
+                            
+                            // Determine if this session actually completed the ticket
+                            int isCompleting = request.FinishedAt.HasValue ? 1 : 0;
+
+                            string insertSessionSql = @"
+                                INSERT INTO ticket_technician_sessions 
+                                (ticket_id, technician_id, shift_id, started_at, ended_at, elapsed_seconds, is_completing_session)
+                                VALUES (@TId, @TechId, @ShiftId, @Start, @End, @Elapsed, @IsComp)";
+
+                            conn.Execute(insertSessionSql, new {
+                                TId = ticketId,
+                                TechId = techId.Value,
+                                ShiftId = shiftId,
+                                Start = request.StartedAt ?? DateTime.Now,
+                                End = request.FinishedAt,
+                                Elapsed = elapsed,
+                                IsComp = isCompleting
+                            }, trans);
+                        }
+
                         string insertProblemSql = @"
                             INSERT INTO ticket_problems (ticket_id, problem_type_id, problem_type_remarks, failure_id, failure_remarks, root_cause_id, root_cause_remarks, action_id, action_details_manual)
                             VALUES (@TicketId, @TypeId, @TypeRem, @FailId, @FailRem, @CauseId, @CauseRem, @ActionId, @ActionRem)";
