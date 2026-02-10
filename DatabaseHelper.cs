@@ -18,38 +18,38 @@ namespace mtc_app
 
         private static void LoadConfig()
         {
+            // [FIX] Use BaseDirectory to ensure appsettings.json is found
+            // even if the app is launched from a shortcut or different folder.
+            var basePath = AppDomain.CurrentDomain.BaseDirectory;
+
             var builder = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
+                .SetBasePath(basePath) 
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+            
             _configuration = builder.Build();
         }
 
         public static string ConnectionString => _configuration.GetConnectionString("DefaultConnection");
 
         /// <summary>
-        /// Gets a database connection with a short timeout (3 seconds) for responsive UI.
+        /// Gets a database connection using the configured timeout.
         /// </summary>
         public static IDbConnection GetConnection()
         {
-            // Append short connection timeout if not already specified
-            var connStr = ConnectionString;
-            // [FIX] .NET 4.8 Compatibility: Use IndexOf instead of Contains(string, comparison)
-            if (connStr.IndexOf("ConnectionTimeout", StringComparison.OrdinalIgnoreCase) < 0 
-                && connStr.IndexOf("Connect Timeout", StringComparison.OrdinalIgnoreCase) < 0)
-            {
-                connStr += ";ConnectionTimeout=3";
-            }
-            return new MySqlConnection(connStr);
+            // [FIX] Respect the timeout in appsettings.json (60s)
+            // Do NOT force a short 3s timeout for remote connections.
+            return new MySqlConnection(ConnectionString);
         }
 
         public static string GetMachineId()
         {
-            LoadConfig(); // Ensure latest
+            LoadConfig(); // Ensure latest config is loaded
             return _configuration["AppSettings:MachineID"];
         }
 
         public static void UpdateMachineConfig(string machineId)
         {
+            // Pastikan path penyimpanan juga menggunakan BaseDirectory
             string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
             string json = File.ReadAllText(path);
             
