@@ -130,7 +130,6 @@ namespace mtc_app.features.technician.presentation.components
             flowVertical.Controls.Add(lblTitle);
 
             // Stats Control (Shop-wide totals)
-            // NOTE: This shows aggregate stats for ALL technicians, not the logged-in user
             statsControl = new TechnicianStatsControl
             {
                 Size = new Size(940, 100),
@@ -231,7 +230,7 @@ namespace mtc_app.features.technician.presentation.components
         }
 
         // ========================================================
-        // Chart Rendering (Logic untouched)
+        // Chart Rendering (Logic Modified for Vertical Layout)
         // ========================================================
         private void SortAndRenderChart()
         {
@@ -275,12 +274,18 @@ namespace mtc_app.features.technician.presentation.components
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.Clear(AppColors.CardBackground);
 
+            // Layout Parameters for Vertical Chart
             int padding = 20;
-            int labelWidth = 120; // Space for technician names
-            int chartLeft = labelWidth + padding;
-            int chartTop = padding;
-            int chartWidth = chartPanel.Width - chartLeft - padding - 60; // Space for value labels
-            int chartHeight = chartPanel.Height - padding * 2;
+            int bottomLabelHeight = 60; // Space for Rank and Name at bottom
+            int topValueHeight = 25;    // Space for Value label at top
+            
+            int chartLeft = padding;
+            int chartRight = chartPanel.Width - padding;
+            int chartTop = padding + topValueHeight;
+            int chartBottom = chartPanel.Height - padding - bottomLabelHeight;
+            
+            int chartWidth = chartRight - chartLeft;
+            int chartHeight = chartBottom - chartTop;
 
             if (chartWidth < 100 || chartHeight < 50) return;
 
@@ -289,56 +294,77 @@ namespace mtc_app.features.technician.presentation.components
             if (maxValue == 0) maxValue = 1;
 
             int barCount = Math.Min(_leaderboardData.Count, 10); // Top 10
-            int barHeight = Math.Min(35, (chartHeight - 10) / barCount);
-            int gap = 8;
+            int gap = 20; // Gap between vertical bars
+            
+            // Calculate bar width
+            int barWidth = (chartWidth - (gap * (barCount - 1))) / barCount;
+            
+            // Constrain bar width to look good
+            if (barWidth < 15) barWidth = 15; // Minimum width
+            if (barWidth > 80) barWidth = 80; // Maximum width cap
+            
+            // Re-calculate start X to center the chart group
+            int totalContentWidth = (barWidth * barCount) + (gap * (barCount - 1));
+            int startX = chartLeft + (chartWidth - totalContentWidth) / 2;
 
             // Draw bars
-            int y = chartTop;
             for (int i = 0; i < barCount; i++)
             {
                 var item = _leaderboardData[i];
                 double value = GetMetricValue(item);
-
-                // Rank number
-                using (var font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold))
-                using (var brush = new SolidBrush(AppColors.TextSecondary))
-                {
-                    g.DrawString($"#{i + 1}", font, brush, 10, y + (barHeight - gap) / 2 - 8);
-                }
-
-                // Technician Name
-                string name = item.TechnicianName ?? "Unknown";
-                if (name.Length > 15) name = name.Substring(0, 12) + "...";
                 
-                using (var font = new Font("Segoe UI", 9F))
-                using (var brush = new SolidBrush(AppColors.TextPrimary))
-                {
-                    g.DrawString(name, font, brush, 40, y + (barHeight - gap) / 2 - 7);
-                }
+                int x = startX + i * (barWidth + gap);
+                
+                // Calculate Height relative to max value
+                int barHeight = (int)((value / maxValue) * chartHeight);
+                if (barHeight < 5) barHeight = 5; // Minimum visual height for 0 or low values
+                
+                int y = chartBottom - barHeight;
 
-                // Bar
-                int barWidth = (int)((value / maxValue) * chartWidth);
-                if (barWidth < 5) barWidth = 5;
-
+                // 1. Draw Bar
                 Color barColor = GetBarColor(i);
                 using (var brush = new SolidBrush(barColor))
                 {
-                    var barRect = new Rectangle(chartLeft, y, barWidth, barHeight - gap);
+                    var barRect = new Rectangle(x, y, barWidth, barHeight);
                     using (var path = GetRoundedRect(barRect, 4))
                     {
                         g.FillPath(brush, path);
                     }
                 }
 
-                // Value Label
-                string valueText = GetFormattedValue(value);
-                using (var font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold))
-                using (var brush = new SolidBrush(AppColors.TextPrimary))
+                // Prepare string format for centering text
+                using (var centerFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Near })
                 {
-                    g.DrawString(valueText, font, brush, chartLeft + barWidth + 8, y + (barHeight - gap) / 2 - 7);
-                }
+                    float centerX = x + barWidth / 2f;
 
-                y += barHeight;
+                    // 2. Draw Value Label (Above Bar)
+                    string valueText = GetFormattedValue(value);
+                    using (var font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold))
+                    using (var brush = new SolidBrush(AppColors.TextPrimary))
+                    {
+                        // Position slightly above the bar top
+                        g.DrawString(valueText, font, brush, centerX, y - 18, centerFormat);
+                    }
+
+                    // 3. Draw Rank (Below Bar)
+                    using (var font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold))
+                    using (var brush = new SolidBrush(AppColors.TextSecondary))
+                    {
+                        g.DrawString($"#{i + 1}", font, brush, centerX, chartBottom + 8, centerFormat);
+                    }
+
+                    // 4. Draw Name (Below Rank)
+                    string name = item.TechnicianName ?? "Unknown";
+                    // Simple truncate if name is too long for the bar width
+                    int maxNameChars = Math.Max(5, barWidth / 7); // Approx char width
+                    if (name.Length > maxNameChars) name = name.Substring(0, maxNameChars - 2) + "..";
+                    
+                    using (var font = new Font("Segoe UI", 9F))
+                    using (var brush = new SolidBrush(AppColors.TextPrimary))
+                    {
+                        g.DrawString(name, font, brush, centerX, chartBottom + 28, centerFormat);
+                    }
+                }
             }
         }
 
