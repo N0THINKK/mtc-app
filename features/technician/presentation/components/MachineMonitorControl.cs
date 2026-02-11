@@ -163,6 +163,14 @@ namespace mtc_app.features.technician.presentation.components
         public void StartMonitoring() { _ = LoadData(); _timer.Start(); }
         public void StopMonitoring() { _timer.Stop(); }
 
+        public void SetMetric(int index)
+        {
+            if (index >= 0 && index < _comboMetric.Items.Count)
+            {
+                _comboMetric.SelectedIndex = index;
+            }
+        }
+
         private async Task LoadData()
         {
             try

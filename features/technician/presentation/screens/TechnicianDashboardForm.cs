@@ -138,19 +138,43 @@ namespace mtc_app.features.technician.presentation.screens
             }
         }
 
+        private int _autoSwitchStage = 0;
+
+        private void AutoSwitch_Tick(object sender, EventArgs e)
+        {
+            if (tabControl.TabCount <= 0) return;
+
+            const int totalStages = 5; // 3 tabs + 2 modes for the 4th tab
+            _autoSwitchStage = (_autoSwitchStage + 1) % totalStages;
+
+            switch (_autoSwitchStage)
+            {
+                case 0: // Stage 0: Tab 1 (Work Queue)
+                    tabControl.SelectedIndex = 0;
+                    break;
+                case 1: // Stage 1: Tab 2 (Performance)
+                    tabControl.SelectedIndex = 1;
+                    break;
+                case 2: // Stage 2: Tab 3 (Machine Analysis)
+                    tabControl.SelectedIndex = 2;
+                    break;
+                case 3: // Stage 3: Tab 4 (Monitor) - Set to Output
+                    tabControl.SelectedIndex = 3;
+                    machineMonitorControl?.SetMetric(0); // 0 for "Produksi (Output)"
+                    break;
+                case 4: // Stage 4: Tab 4 (Monitor) - Set to Efficiency
+                    tabControl.SelectedIndex = 3;
+                    machineMonitorControl?.SetMetric(1); // 1 for "Efisiensi (Waktu)"
+                    break;
+            }
+        }
+
         private void InitializeAutoSwitch(Panel parent)
         {
             // Timer Setup
             timerTabSwitch = new Timer();
             timerTabSwitch.Interval = 10000; // 10 Seconds
-            timerTabSwitch.Tick += (s, e) =>
-            {
-                if (tabControl.TabCount > 0)
-                {
-                    int nextIndex = (tabControl.SelectedIndex + 1) % tabControl.TabCount;
-                    tabControl.SelectedIndex = nextIndex;
-                }
-            };
+            timerTabSwitch.Tick += AutoSwitch_Tick;
 
             // Interval Controls
             var lblInterval = new Label 
@@ -169,7 +193,7 @@ namespace mtc_app.features.technician.presentation.screens
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Minimum = 5,
                 Maximum = 3600,
-                Value = 60,
+                Value = 10, // Default to 10 seconds for faster switching
                 Font = AppFonts.Body
             };
 
@@ -211,6 +235,7 @@ namespace mtc_app.features.technician.presentation.screens
                 if (timerTabSwitch.Enabled)
                 {
                     timerTabSwitch.Stop();
+                    _autoSwitchStage = -1; // Reset stage so it starts from 0 on next play
                     btnAutoSwitch.Text = "Auto Switch: OFF";
                     btnAutoSwitch.BackColor = AppColors.Surface;
                     btnAutoSwitch.ForeColor = AppColors.TextSecondary;
@@ -220,6 +245,8 @@ namespace mtc_app.features.technician.presentation.screens
                     // Update interval before starting just in case
                     timerTabSwitch.Interval = (int)nudInterval.Value * 1000;
                     timerTabSwitch.Start();
+                    // Manually trigger first tick to avoid initial delay
+                    AutoSwitch_Tick(null, EventArgs.Empty);
                     btnAutoSwitch.Text = "Auto Switch: ON";
                     btnAutoSwitch.BackColor = AppColors.Success; 
                     btnAutoSwitch.ForeColor = AppColors.TextInverse;
