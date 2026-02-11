@@ -28,6 +28,7 @@ namespace mtc_app.features.technician.presentation.screens
         private Button btnAutoSwitch;
         private NumericUpDown nudInterval;
         private Button btnSetInterval;
+        private int _autoSwitchStage = 0;
 
         // Date Filter Feature
         private DateTimePicker dtpStart;
@@ -177,15 +178,8 @@ namespace mtc_app.features.technician.presentation.screens
 
             // Timer Setup
             timerTabSwitch = new Timer();
-            timerTabSwitch.Interval = 10000; // 10 Seconds
-            timerTabSwitch.Tick += (s, e) =>
-            {
-                if (tabControl.TabCount > 0)
-                {
-                    int nextIndex = (tabControl.SelectedIndex + 1) % tabControl.TabCount;
-                    tabControl.SelectedIndex = nextIndex;
-                }
-            };
+            timerTabSwitch.Interval = 10000; // 10 Seconds default
+            timerTabSwitch.Tick += AutoSwitch_Tick;
 
             // Button (added first because FlowDirection is RightToLeft)
             btnAutoSwitch = new Button
@@ -206,6 +200,7 @@ namespace mtc_app.features.technician.presentation.screens
                 if (timerTabSwitch.Enabled)
                 {
                     timerTabSwitch.Stop();
+                    _autoSwitchStage = -1; // Reset stage so it starts from 0 on next play
                     btnAutoSwitch.Text = "Auto Switch: OFF";
                     btnAutoSwitch.BackColor = AppColors.Surface;
                     btnAutoSwitch.ForeColor = AppColors.TextSecondary;
@@ -215,6 +210,8 @@ namespace mtc_app.features.technician.presentation.screens
                     // Update interval before starting just in case
                     timerTabSwitch.Interval = (int)nudInterval.Value * 1000;
                     timerTabSwitch.Start();
+                    // Manually trigger first tick to avoid initial delay
+                    AutoSwitch_Tick(null, EventArgs.Empty);
                     btnAutoSwitch.Text = "Auto Switch: ON";
                     btnAutoSwitch.BackColor = AppColors.Success; 
                     btnAutoSwitch.ForeColor = AppColors.TextInverse;
@@ -245,7 +242,7 @@ namespace mtc_app.features.technician.presentation.screens
                 Size = new Size(60, 28),
                 Minimum = 5,
                 Maximum = 3600,
-                Value = 60,
+                Value = 10, // Default to 10 seconds for faster switching
                 Font = AppFonts.Body,
                 Margin = new Padding(AppDimens.MarginSmall, 5, 0, 0)
             };
@@ -262,6 +259,35 @@ namespace mtc_app.features.technician.presentation.screens
             // RightToLeft order: Button first (rightmost), then Set, then NUD, then label
             flowAutoSwitch.Controls.AddRange(new Control[] { btnAutoSwitch, btnSetInterval, nudInterval, lblInterval });
             return flowAutoSwitch;
+        }
+
+        private void AutoSwitch_Tick(object sender, EventArgs e)
+        {
+            if (tabControl.TabCount <= 0) return;
+
+            const int totalStages = 5; // 3 tabs + 2 modes for the 4th tab
+            _autoSwitchStage = (_autoSwitchStage + 1) % totalStages;
+
+            switch (_autoSwitchStage)
+            {
+                case 0: // Stage 0: Tab 1 (Work Queue)
+                    tabControl.SelectedIndex = 0;
+                    break;
+                case 1: // Stage 1: Tab 2 (Performance)
+                    tabControl.SelectedIndex = 1;
+                    break;
+                case 2: // Stage 2: Tab 3 (Machine Analysis)
+                    tabControl.SelectedIndex = 2;
+                    break;
+                case 3: // Stage 3: Tab 4 (Monitor) - Set to Output
+                    tabControl.SelectedIndex = 3;
+                    machineMonitorControl?.SetMetric(0); // 0 for "Produksi (Output)"
+                    break;
+                case 4: // Stage 4: Tab 4 (Monitor) - Set to Efficiency
+                    tabControl.SelectedIndex = 3;
+                    machineMonitorControl?.SetMetric(1); // 1 for "Efisiensi (Waktu)"
+                    break;
+            }
         }
 
         // ========================================================
