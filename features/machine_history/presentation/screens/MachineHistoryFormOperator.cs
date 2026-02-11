@@ -174,14 +174,16 @@ namespace mtc_app.features.machine_history.presentation.screens
             // We should do that here too.
             _lnkPendingTicket = new LinkLabel
             {
-                Text = "⚠️ Ticket Aktif",
-                Font = AppFonts.BodySmall,
-                LinkColor = Color.DarkOrange,
-                ActiveLinkColor = Color.OrangeRed,
+                Text = "⚠️ TICKET AKTIF", // Initial text
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold), // [UI-POLISH] Bold & Larger
+                LinkColor = Color.Gold, // [UI-POLISH] High Contrast Warning Color
+                ActiveLinkColor = Color.Yellow,
+                LinkBehavior = LinkBehavior.HoverUnderline,
                 AutoSize = true,
                 Visible = false,
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                BackColor = Color.Transparent // Ensure it looks clean on header
             };
             _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
             _lnkPendingTicket.LinkClicked += LnkPendingTicket_LinkClicked;
@@ -473,8 +475,11 @@ namespace mtc_app.features.machine_history.presentation.screens
                 
                 if (_pendingTicket != null)
                 {
-                    _lnkPendingTicket.Text = $"⚠️ Ticket Aktif: {_pendingTicket.StatusName}";
+                    _lnkPendingTicket.Text = $"⚠️ TICKET ACTIVE: {_pendingTicket.StatusName.ToUpper()}"; // [UI-POLISH] Uppercase for emphasis
                     _lnkPendingTicket.Visible = true;
+                    // Manual refresh of location might be needed if AutoSize changes width significantly
+                    // But Anchor Top|Right should handle resize. 
+                    // However, since we set Location manually in OnResize, we should let that handle it or update it here.
                     _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
                 }
                 else
