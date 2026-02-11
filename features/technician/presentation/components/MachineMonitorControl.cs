@@ -20,9 +20,9 @@ namespace mtc_app.features.technician.presentation.components
 
         private Timer _timer;
         private Chart _chart;
-        private Panel _pnlChartContainer; // [NEW] Container for scrolling
+        private Panel _pnlChartContainer; // Container for scrolling
         private ComboBox _comboMetric;
-        private ComboBox _comboArea;      // [NEW] Filter Area
+        private ComboBox _comboArea;      // Filter Area
         private Label _lblStatus;
         
         private System.ComponentModel.IContainer components = null;
@@ -42,7 +42,7 @@ namespace mtc_app.features.technician.presentation.components
         {
             InitializeComponent();
             SetupTimer();
-            LoadAreas(); // [NEW] Populate Area Filter
+            LoadAreas(); // Populate Area Filter
         }
 
         private async void LoadAreas()
@@ -61,6 +61,9 @@ namespace mtc_app.features.technician.presentation.components
             catch { /* Ignore */ }
         }
 
+        // ========================================================
+        // UI Construction
+        // ========================================================
         private void InitializeComponent()
         {
             this.Dock = DockStyle.Fill;
@@ -68,52 +71,7 @@ namespace mtc_app.features.technician.presentation.components
             this.Padding = new Padding(AppDimens.MarginLarge);
 
             // 1. Header
-            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = AppDimens.RowHeight }; 
-            
-            var lblTitle = new Label 
-            { 
-                Text = "Monitoring Output Produksi", 
-                Font = AppFonts.MetricSmall,
-                AutoSize = true,
-                Location = new Point(0, 5)
-            };
-
-            _lblStatus = new Label
-            {
-                Text = "Memuat data...",
-                Font = AppFonts.BodySmall,
-                ForeColor = Color.Gray,
-                AutoSize = true,
-                Location = new Point(300, 12)
-            };
-
-            // Area Filter (Right Aligned)
-            var lblArea = new Label { Text = "Area:", AutoSize = true, Location = new Point(pnlHeader.Width - 420, 15), Font = AppFonts.BodySmall, Anchor = AnchorStyles.Top | AnchorStyles.Right };
-            _comboArea = new ComboBox
-            {
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Width = 100,
-                Location = new Point(pnlHeader.Width - 380, 12),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Font = AppFonts.BodySmall
-            };
-            _comboArea.SelectedIndexChanged += async (s, e) => await LoadData();
-
-            // Metric Filter (Right Aligned)
-            var lblMetric = new Label { Text = "Metrik:", AutoSize = true, Location = new Point(pnlHeader.Width - 260, 15), Font = AppFonts.BodySmall, Anchor = AnchorStyles.Top | AnchorStyles.Right };
-            _comboMetric = new ComboBox
-            {
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Width = 150,
-                Location = new Point(pnlHeader.Width - 210, 12),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Font = AppFonts.BodySmall
-            };
-            _comboMetric.Items.AddRange(new object[] { "Produksi (Output)", "Efisiensi (Waktu)" });
-            _comboMetric.SelectedIndex = 0;
-            _comboMetric.SelectedIndexChanged += async (s, e) => await LoadData();
-
-            pnlHeader.Controls.AddRange(new Control[] { lblTitle, _lblStatus, lblArea, _comboArea, lblMetric, _comboMetric });
+            var pnlHeader = BuildHeaderPanel();
             this.Controls.Add(pnlHeader);
 
             // 2. Chart Container (Scrollable)
@@ -153,6 +111,109 @@ namespace mtc_app.features.technician.presentation.components
             this.Controls.Add(_pnlChartContainer);
         }
 
+        private Panel BuildHeaderPanel()
+        {
+            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = AppDimens.RowHeight };
+
+            // Use a TableLayoutPanel: left=title+status, right=filters
+            var headerLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                BackColor = Color.Transparent
+            };
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            headerLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            // Left: Title + Status
+            var flowLeft = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Dock = DockStyle.Fill,
+                BackColor = Color.Transparent
+            };
+
+            var lblTitle = new Label 
+            { 
+                Text = "Monitoring Output Produksi", 
+                Font = AppFonts.MetricSmall,
+                AutoSize = true,
+                Margin = new Padding(0, 5, AppDimens.MarginLarge, 0)
+            };
+
+            _lblStatus = new Label
+            {
+                Text = "Memuat data...",
+                Font = AppFonts.BodySmall,
+                ForeColor = Color.Gray,
+                AutoSize = true,
+                Margin = new Padding(0, 10, 0, 0)
+            };
+
+            flowLeft.Controls.AddRange(new Control[] { lblTitle, _lblStatus });
+            headerLayout.Controls.Add(flowLeft, 0, 0);
+
+            // Right: Area + Metric filters (right-aligned)
+            var flowRight = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.RightToLeft,
+                WrapContents = false,
+                Dock = DockStyle.Fill,
+                BackColor = Color.Transparent
+            };
+
+            // RightToLeft order: Metric combo first (rightmost), then label, then area combo, then area label
+            _comboMetric = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Width = 150,
+                Font = AppFonts.BodySmall,
+                Margin = new Padding(0, 10, 0, 0)
+            };
+            _comboMetric.Items.AddRange(new object[] { "Produksi (Output)", "Efisiensi (Waktu)" });
+            _comboMetric.SelectedIndex = 0;
+            _comboMetric.SelectedIndexChanged += async (s, e) => await LoadData();
+
+            var lblMetric = new Label 
+            { 
+                Text = "Metrik:", 
+                AutoSize = true, 
+                Font = AppFonts.BodySmall,
+                Margin = new Padding(0, 13, AppDimens.MarginSmall, 0)
+            };
+
+            _comboArea = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Width = 100,
+                Font = AppFonts.BodySmall,
+                Margin = new Padding(0, 10, AppDimens.MarginLarge, 0)
+            };
+            _comboArea.SelectedIndexChanged += async (s, e) => await LoadData();
+
+            var lblArea = new Label 
+            { 
+                Text = "Area:", 
+                AutoSize = true, 
+                Font = AppFonts.BodySmall,
+                Margin = new Padding(0, 13, AppDimens.MarginSmall, 0)
+            };
+
+            flowRight.Controls.AddRange(new Control[] { _comboMetric, lblMetric, _comboArea, lblArea });
+            headerLayout.Controls.Add(flowRight, 1, 0);
+
+            pnlHeader.Controls.Add(headerLayout);
+            return pnlHeader;
+        }
+
+        // ========================================================
+        // Timer & Monitoring
+        // ========================================================
         private void SetupTimer()
         {
             _timer = new Timer();
@@ -163,6 +224,9 @@ namespace mtc_app.features.technician.presentation.components
         public void StartMonitoring() { _ = LoadData(); _timer.Start(); }
         public void StopMonitoring() { _timer.Stop(); }
 
+        // ========================================================
+        // Data Loading (Logic untouched)
+        // ========================================================
         private async Task LoadData()
         {
             try
@@ -191,9 +255,6 @@ namespace mtc_app.features.technician.presentation.components
                     {
                         machines = await conn.QueryAsync(sql + " ORDER BY t.type_name, a.area_name, m.machine_number");
                     }
-                    
-                    // History Query (Keep simplified for now or add Area filter there too if optimized)
-                    // ... (Skipping history for Raw Data mode)
                 }
 
                 // 2. Process each machine (Fetch ALL data)
@@ -202,7 +263,6 @@ namespace mtc_app.features.technician.presentation.components
 
                 foreach (var m in machines)
                 {
-                    // ... (Parsing logic remains same) ...
                     var data = new MachineData { 
                         MachineName = $"{m.type_name}.{m.area_name}-{m.machine_number}" 
                     };

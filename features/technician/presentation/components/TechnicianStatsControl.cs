@@ -70,31 +70,43 @@ namespace mtc_app.features.technician.presentation.components
             this.Size = new Size(900, 100);
             this.Padding = new Padding(0);
 
+            // Responsive card container
+            var flowCards = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                Dock = DockStyle.Fill,
+                BackColor = Color.Transparent,
+                Padding = new Padding(0)
+            };
+
             // Setup three stat cards
             SetupStatCard(pnlJumlahPerbaikan, iconJumlah, lblJumlahValue, lblJumlahLabel,
-                0, "0", "Jumlah Perbaikan", Color.FromArgb(59, 130, 246), Color.FromArgb(239, 246, 255));
+                "0", "Jumlah Perbaikan", Color.FromArgb(59, 130, 246), Color.FromArgb(239, 246, 255));
 
             SetupStatCard(pnlAverageBintang, iconAverage, lblAverageValue, lblAverageLabel,
-                310, "0.0", "Rata-rata Bintang", Color.FromArgb(234, 179, 8), Color.FromArgb(254, 252, 232));
+                "0.0", "Rata-rata Bintang", Color.FromArgb(234, 179, 8), Color.FromArgb(254, 252, 232));
 
             SetupStatCard(pnlTotalBintang, iconTotal, lblTotalValue, lblTotalLabel,
-                620, "0", "Total Bintang", Color.FromArgb(34, 197, 94), Color.FromArgb(240, 253, 244));
+                "0", "Total Bintang", Color.FromArgb(34, 197, 94), Color.FromArgb(240, 253, 244));
 
-            // Add panels to control
-            this.Controls.Add(pnlJumlahPerbaikan);
-            this.Controls.Add(pnlAverageBintang);
-            this.Controls.Add(pnlTotalBintang);
+            // Add panels to flow layout
+            flowCards.Controls.Add(pnlJumlahPerbaikan);
+            flowCards.Controls.Add(pnlAverageBintang);
+            flowCards.Controls.Add(pnlTotalBintang);
+
+            this.Controls.Add(flowCards);
 
             this.ResumeLayout(false);
         }
 
         private void SetupStatCard(Panel panel, PictureBox icon, Label valueLabel, Label textLabel,
-            int xPosition, string defaultValue, string labelText, Color accentColor, Color bgColor)
+            string defaultValue, string labelText, Color accentColor, Color bgColor)
         {
             // Panel
             panel.BackColor = AppColors.CardBackground;
             panel.Size = new Size(290, 100);
-            panel.Location = new Point(xPosition, 0);
+            panel.Margin = new Padding(0, 0, AppDimens.GapStandard, 0);
             panel.Paint += (s, e) => DrawStatCard(e.Graphics, panel.ClientRectangle, accentColor);
 
             // Icon

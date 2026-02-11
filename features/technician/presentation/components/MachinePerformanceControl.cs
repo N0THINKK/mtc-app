@@ -75,6 +75,9 @@ namespace mtc_app.features.technician.presentation.components
             }
         }
 
+        // ========================================================
+        // UI Construction
+        // ========================================================
         private void InitializeComponent()
         {
             this.Dock = DockStyle.Fill;
@@ -91,58 +94,135 @@ namespace mtc_app.features.technician.presentation.components
             mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); 
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); 
 
-            // === Header ===
-            headerPanel = new Panel
+            headerPanel = BuildHeaderPanel();
+            mainLayout.Controls.Add(headerPanel, 0, 0);
+
+            chartPanel = BuildChartPanel();
+            mainLayout.Controls.Add(chartPanel, 0, 1);
+
+            this.Controls.Add(mainLayout);
+        }
+
+        private Panel BuildHeaderPanel()
+        {
+            var header = new Panel
             {
                 Dock = DockStyle.Fill,
-                Height = AppDimens.HeaderHeight, 
+                Height = AppDimens.HeaderHeight,
                 BackColor = AppColors.CardBackground,
                 Padding = new Padding(AppDimens.MarginLarge)
             };
-            
+
+            // Two-row vertical flow: Title row + Legend row
+            var flowVertical = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Dock = DockStyle.Top,
+                BackColor = Color.Transparent
+            };
+
+            // Top row: Title + Area filter
+            var flowTitleRow = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                BackColor = Color.Transparent,
+                Margin = new Padding(0, 0, 0, AppDimens.MarginSmall)
+            };
+
             lblTitle = new Label
             {
                 Text = "Analisis Downtime Mesin",
                 Font = new Font("Segoe UI Semibold", 14F, FontStyle.Bold),
-                Location = new Point(20, 15),
-                AutoSize = true
+                AutoSize = true,
+                Margin = new Padding(0, 3, AppDimens.SpacingXL, 0)
             };
-            headerPanel.Controls.Add(lblTitle);
+            flowTitleRow.Controls.Add(lblTitle);
 
-            // Area Filter
             var lblArea = new Label 
             { 
                 Text = "Filter Area:", 
                 Font = AppFonts.BodySmall, 
-                Location = new Point(400, 20), 
-                AutoSize = true 
+                AutoSize = true,
+                Margin = new Padding(0, 7, AppDimens.MarginSmall, 0)
             };
-            headerPanel.Controls.Add(lblArea);
+            flowTitleRow.Controls.Add(lblArea);
 
             cmbArea = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Font = AppFonts.BodySmall, 
-                Location = new Point(480, 16),
-                Width = 120
+                Width = 120,
+                Margin = new Padding(0, 3, 0, 0)
             };
             cmbArea.SelectedIndexChanged += async (s, e) => await LoadDataAsync(_lastStart, _lastEnd);
-            headerPanel.Controls.Add(cmbArea);
+            flowTitleRow.Controls.Add(cmbArea);
 
-            // Legend
-            DrawLegend(headerPanel, 20, 50);
+            flowVertical.Controls.Add(flowTitleRow);
 
-            mainLayout.Controls.Add(headerPanel, 0, 0);
+            // Bottom row: Legend
+            var flowLegend = BuildLegendFlow();
+            flowVertical.Controls.Add(flowLegend);
 
-            // === Chart ===
-            chartPanel = new Panel
+            header.Controls.Add(flowVertical);
+
+            return header;
+        }
+
+        private FlowLayoutPanel BuildLegendFlow()
+        {
+            var flowLegend = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                BackColor = Color.Transparent,
+                Margin = new Padding(0)
+            };
+
+            AddLegendItem(flowLegend, "Respon", AppColors.Danger);
+            AddLegendItem(flowLegend, "Perbaikan", AppColors.Warning);
+            AddLegendItem(flowLegend, "Tunggu Part", AppColors.Success);
+            AddLegendItem(flowLegend, "Tunggu Op", AppColors.Primary);
+
+            return flowLegend;
+        }
+
+        private void AddLegendItem(FlowLayoutPanel parent, string text, Color color)
+        {
+            var pnlColor = new Panel 
+            { 
+                BackColor = color, 
+                Size = new Size(15, 15), 
+                Margin = new Padding(0, 3, AppDimens.MarginXS, 0) 
+            };
+            var lblText = new Label 
+            { 
+                Text = text, 
+                AutoSize = true, 
+                Font = AppFonts.Caption,
+                Margin = new Padding(0, 0, AppDimens.MarginLarge, 0)
+            };
+            parent.Controls.Add(pnlColor);
+            parent.Controls.Add(lblText);
+        }
+
+        private Panel BuildChartPanel()
+        {
+            var chart = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = AppColors.CardBackground,
                 Padding = new Padding(AppDimens.MarginLarge),
                 AutoScroll = true 
             };
-            chartPanel.Paint += ChartPanel_Paint;
+            chart.Paint += ChartPanel_Paint;
 
             lblNoData = new Label
             {
@@ -152,29 +232,14 @@ namespace mtc_app.features.technician.presentation.components
                 Dock = DockStyle.Fill,
                 Visible = false
             };
-            chartPanel.Controls.Add(lblNoData);
+            chart.Controls.Add(lblNoData);
 
-            mainLayout.Controls.Add(chartPanel, 0, 1);
-            this.Controls.Add(mainLayout);
+            return chart;
         }
 
-        private void DrawLegend(Panel panel, int x, int y)
-        {
-            // Simple legend labels
-            CreateLegendItem(panel, "Respon", AppColors.Danger, x, y);
-            CreateLegendItem(panel, "Perbaikan", AppColors.Warning, x + 100, y);
-            CreateLegendItem(panel, "Tunggu Part", AppColors.Success, x + 200, y);
-            CreateLegendItem(panel, "Tunggu Op", AppColors.Primary, x + 320, y);
-        }
-
-        private void CreateLegendItem(Panel panel, string text, Color color, int x, int y)
-        {
-            var pnlColor = new Panel { BackColor = color, Size = new Size(15, 15), Location = new Point(x, y + 3) };
-            var lblText = new Label { Text = text, Location = new Point(x + 20, y), AutoSize = true, Font = AppFonts.Caption };
-            panel.Controls.Add(pnlColor);
-            panel.Controls.Add(lblText);
-        }
-
+        // ========================================================
+        // Chart Rendering (Logic untouched)
+        // ========================================================
         private void ChartPanel_Paint(object sender, PaintEventArgs e)
         {
             if (_data.Count == 0)
