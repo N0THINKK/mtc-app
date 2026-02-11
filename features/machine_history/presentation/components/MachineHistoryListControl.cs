@@ -39,6 +39,7 @@ namespace mtc_app.features.machine_history.presentation.components
             this._grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             this._grid.AllowUserToAddRows = false;
             this._grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            this._grid.AutoGenerateColumns = false; // Prevent auto-generation
             this._grid.RowTemplate.Height = 40;
             
             // Styling
