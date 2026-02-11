@@ -62,42 +62,31 @@ namespace mtc_app.features.technician.presentation.components
             this.Size = new Size(900, 100);
             this.Padding = new Padding(0);
 
-            // Responsive card container
-            var flowCards = new FlowLayoutPanel
-            {
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = true,
-                Dock = DockStyle.Fill,
-                BackColor = Color.Transparent,
-                Padding = new Padding(0)
-            };
-
             // Setup three stat cards
             SetupStatCard(pnlOpen, iconOpen, lblOpenValue, lblOpenLabel,
-                "0", "Belum Ditangani", AppColors.Danger, Color.FromArgb(254, 242, 242));
+                0, "0", "Belum Ditangani", AppColors.Danger, Color.FromArgb(254, 242, 242));
 
             SetupStatCard(pnlRepairing, iconRepair, lblRepairValue, lblRepairLabel,
-                "0", "Sedang Diperbaiki", Color.FromArgb(234, 179, 8), Color.FromArgb(254, 252, 232));
+                310, "0", "Sedang Diperbaiki", Color.FromArgb(234, 179, 8), Color.FromArgb(254, 252, 232));
 
             SetupStatCard(pnlDone, iconDone, lblDoneValue, lblDoneLabel,
-                "0", "Selesai", Color.FromArgb(34, 197, 94), Color.FromArgb(240, 253, 244));
+                620, "0", "Selesai", Color.FromArgb(34, 197, 94), Color.FromArgb(240, 253, 244));
 
-            flowCards.Controls.Add(pnlOpen);
-            flowCards.Controls.Add(pnlRepairing);
-            flowCards.Controls.Add(pnlDone);
-
-            this.Controls.Add(flowCards);
+            // Add panels to control
+            this.Controls.Add(pnlOpen);
+            this.Controls.Add(pnlRepairing);
+            this.Controls.Add(pnlDone);
 
             this.ResumeLayout(false);
         }
 
         private void SetupStatCard(Panel panel, PictureBox icon, Label valueLabel, Label textLabel,
-            string defaultValue, string labelText, Color accentColor, Color bgColor)
+            int xPosition, string defaultValue, string labelText, Color accentColor, Color bgColor)
         {
             // Panel
             panel.BackColor = AppColors.CardBackground;
             panel.Size = new Size(290, 100);
-            panel.Margin = new Padding(0, 0, AppDimens.GapStandard, 0);
+            panel.Location = new Point(xPosition, 0);
             panel.Paint += (s, e) => DrawStatCard(e.Graphics, panel.ClientRectangle, accentColor);
 
             // Icon
