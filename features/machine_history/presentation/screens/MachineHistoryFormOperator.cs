@@ -65,41 +65,97 @@ namespace mtc_app.features.machine_history.presentation.screens
             await CheckForPendingTicketAsync();
         }
 
+        // Main Responsive Layout Containers
+        private TableLayoutPanel _rootLayout;
+        private TableLayoutPanel _tab1Layout;
+        private TableLayoutPanel _formLayout; // Replaces mainLayout logic
+        private TableLayoutPanel _problemsLayout; // Replaces pnlProblems logic
+
         private void InitializeCustomTabs()
         {
-            this.Controls.Remove(this.mainLayout);
+            // Clear existing controls from Designer
+            this.Controls.Clear(); // We will rebuild the entire form structure
 
+            // === 1. Root Layout (Header, Content) ===
+            _rootLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                BackColor = AppColors.Background
+            };
+            _rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            _rootLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Header
+            _rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Content (Tabs)
+
+            // Header (Preserve existing panelHeader)
+            panelHeader.Dock = DockStyle.Fill;
+            _rootLayout.Controls.Add(panelHeader, 0, 0);
+
+            // === 2. Tab Control (Content) ===
             _tabControl = new TabControl
             {
                 Dock = DockStyle.Fill,
                 Font = AppFonts.Body,
                 Padding = new Point(10, 5)
             };
-            var tabControl = _tabControl;
+            _rootLayout.Controls.Add(_tabControl, 0, 1);
+            this.Controls.Add(_rootLayout);
 
             // === Tab 1: Report Tab ===
             var tabReport = new TabPage("Lapor Kerusakan") { BackColor = AppColors.CardBackground };
-            
-            var reportLayout = new FlowLayoutPanel
+
+            // Tab 1 Main Layout (Form Fields vs Action Button)
+            _tab1Layout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.TopDown,
-                Padding = new Padding(30, 20, 30, 20),  // Normal padding, docking handles footer
-                AutoScroll = true,
-                WrapContents = false
+                ColumnCount = 1,
+                RowCount = 2,
+                Padding = new Padding(20, 10, 20, 10)
             };
-            this.mainLayout = reportLayout;
-            tabReport.Controls.Add(reportLayout);
-            tabControl.TabPages.Add(tabReport);
+            _tab1Layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            _tab1Layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Form Fields (Scrollable)
+            _tab1Layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));    // Action Button
+
+            // row 0: Form Fields Container
+            _formLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                AutoScroll = true,
+                Padding = new Padding(0, 0, 10, 0) // Right padding for scrollbar
+            };
+            _formLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            _tab1Layout.Controls.Add(_formLayout, 0, 0);
+
+            // row 1: Action Button Container (Repurpose panelFooter)
+            panelFooter.Parent = null; // Detach from form
+            panelFooter.Controls.Clear();
+            panelFooter.Dock = DockStyle.Fill;
+            panelFooter.Height = 80; // Ensure enough height for button
+            panelFooter.Padding = new Padding(0); 
+            // panelFooter is just a Panel, we can put it in the Table
+            _tab1Layout.Controls.Add(panelFooter, 0, 1);
+
+            tabReport.Controls.Add(_tab1Layout);
+            _tabControl.TabPages.Add(tabReport);
 
             // === Tab 2: History Tab ===
             var tabHistory = new TabPage("Riwayat Mesin") { BackColor = AppColors.CardBackground };
+            // Filter Panel - Use FlowLayoutPanel to prevent overlap
+            var pnlFilter = new FlowLayoutPanel 
+            { 
+                Dock = DockStyle.Top, 
+                Height = 60, 
+                Padding = new Padding(10, 15, 10, 10),
+                FlowDirection = FlowDirection.LeftToRight,
+                AutoSize = false
+            };
             
-            var pnlFilter = new Panel { Dock = DockStyle.Top, Height = 60, Padding = new Padding(10) };
-            _dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 120, Top = 15, Left = 10 };
-            _dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 120, Top = 15, Left = 140 };
-            var lblTo = new Label { Text = "s/d", AutoSize = true, Top = 18, Left = 130 };
-            _btnFilter = new AppButton { Text = "Filter", Type = AppButton.ButtonType.Primary, Width = 80, Height = 30, Top = 12, Left = 280 };
+            _dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 120 };
+            var lblTo = new Label { Text = "s/d", AutoSize = true, Margin = new Padding(5, 5, 5, 0) }; // Center vertically approx
+            _dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 120 };
+            _btnFilter = new AppButton { Text = "Filter", Type = AppButton.ButtonType.Primary, Width = 80, Height = 30 };
             _btnFilter.Click += async (s, e) => await LoadHistoryAsync();
 
             pnlFilter.Controls.AddRange(new Control[] { _dtpStart, lblTo, _dtpEnd, _btnFilter });
@@ -109,13 +165,13 @@ namespace mtc_app.features.machine_history.presentation.screens
             _historyControl.ItemClicked += HistoryControl_ItemClicked;
             tabHistory.Controls.Add(_historyControl);
             _historyControl.BringToFront();
-            tabControl.TabPages.Add(tabHistory);
 
-            // Remove all docked controls to rebuild z-order correctly
-            this.Controls.Remove(panelHeader);
-            this.Controls.Remove(panelFooter);
+            _tabControl.TabPages.Add(tabHistory);
 
-            // Add Pending Ticket Indicator to Header
+            // Re-Add Pending Ticket Link to Header (since we cleared Control collection of Header? No, Header controls preserved)
+            // But we created a NEW LinkLabel in original code logic?
+            // The original logic created _lnkPendingTicket and added to panelHeader.
+            // We should do that here too.
             _lnkPendingTicket = new LinkLabel
             {
                 Text = "⚠️ Ticket Aktif",
@@ -130,12 +186,139 @@ namespace mtc_app.features.machine_history.presentation.screens
             _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
             _lnkPendingTicket.LinkClicked += LnkPendingTicket_LinkClicked;
             panelHeader.Controls.Add(_lnkPendingTicket);
+        }
+        
+        // Remove manual resizing logic
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+             // Reposition pending indicator if needed (standard Anchor handles most, but manual location update in original code)
+            if (_lnkPendingTicket != null && _lnkPendingTicket.Visible)
+            {
+                _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
+            }
+            // No manual width calculations needed for fields!
+        }
+
+        private void SetupInputs()
+        {
+            // === Form Fields Setup ===
+
+            // Helper to add row to _formLayout
+            void AddToForm(Control c, int bottomMargin = 10)
+            {
+                 c.Dock = DockStyle.Top; // Or Fill, but Top works for AutoSize controls
+                 c.Margin = new Padding(0, 0, 0, bottomMargin);
+                 _formLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                 _formLayout.Controls.Add(c, 0, _formLayout.RowCount++);
+            }
+
+            // 1. NIK
+            inputNIK = CreateInput("NIK Operator", AppInput.InputTypeEnum.Dropdown, true);
+            inputNIK.AllowCustomText = true;
+            inputNIK.DropdownOpened += (s, e) => LoadOperatorsFromDB();
+            LoadOperatorsFromDB();
+            AddToForm(inputNIK);
+
+            // 2. Shift
+            inputShift = CreateInput("Shift", AppInput.InputTypeEnum.Dropdown, true);
+            inputShift.AllowCustomText = false;
+            LoadShiftsFromDB();
+            AddToForm(inputShift);
+
+            // 3. Applicator
+            inputApplicator = CreateInput("No. Aplikator", AppInput.InputTypeEnum.Text, true);
+            inputApplicator.CharacterCasing = CharacterCasing.Upper;
+            AddToForm(inputApplicator);
+
+            // 4. Problems Label
+            var lblProblems = new Label 
+            {
+                Text = "Daftar Kerusakan:", 
+                Font = AppFonts.Subtitle,
+                ForeColor = AppColors.TextPrimary,
+                AutoSize = true,
+                Margin = new Padding(0, 20, 0, 5)
+            };
+            AddToForm(lblProblems);
+
+            // 5. Problems Container (Nested TableLayout)
+            _problemsLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink, // IMPORTANT: Force resize
+                GrowStyle = TableLayoutPanelGrowStyle.AddRows,
+                ColumnCount = 1,
+                Padding = new Padding(0)
+            };
+            _problemsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             
-            // Add in correct order: Fill control first, then docked edges
-            // In WinForms, controls added LATER have priority for docking
-            this.Controls.Add(tabControl);    // Fill - lowest priority
-            this.Controls.Add(panelFooter);   // Bottom - medium priority  
-            this.Controls.Add(panelHeader);   // Top - highest priority (docks first)
+            // Add _problemsLayout to _formLayout
+            _formLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _formLayout.Controls.Add(_problemsLayout, 0, _formLayout.RowCount++);
+
+            // 6. Add Problem Button
+            btnAddProblem = new AppButton
+            {
+                Text = "+ Tambah Masalah Lain",
+                Width = 200, 
+                Height = 40,
+                Type = AppButton.ButtonType.Secondary,
+                Margin = new Padding(0, 10, 0, 20)
+            };
+            btnAddProblem.Click += (s, e) => AddProblemInput();
+            AddToForm(btnAddProblem);
+
+            // === Footer Action Button ===
+            // btnSave is added to panelFooter
+             btnSave = new AppButton 
+            { 
+                Text = "Panggil Teknisi", 
+                Type = AppButton.ButtonType.Primary, 
+                Height = 55,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(10) // Small margin inside footer
+            };
+            btnSave.Click += SaveButton_Click;
+            
+            panelFooter.Controls.Add(btnSave);
+
+            // Add initial problem
+            AddProblemInput();
+        }
+
+        private void AddProblemInput()
+        {
+            var problemControl = new ProblemInputControl(_problemControls.Count);
+            problemControl.RemoveRequested += (s, e) => RemoveProblemInput(problemControl);
+            problemControl.Dock = DockStyle.Top;
+            problemControl.AutoSize = true;
+            problemControl.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            
+            _problemControls.Add(problemControl);
+            
+            _problemsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _problemsLayout.Controls.Add(problemControl, 0, _problemsLayout.RowCount++);
+        }
+
+        private void RemoveProblemInput(ProblemInputControl control)
+        {
+            if (_problemControls.Count <= 1)
+            {
+                AutoClosingMessageBox.Show("Minimal harus ada satu masalah.", "Info", 1500);
+                return;
+            }
+            
+            _problemsLayout.Controls.Remove(control);
+            _problemControls.Remove(control);
+            control.Dispose();
+            
+            // Renumber remaining problems
+            for (int i = 0; i < _problemControls.Count; i++)
+            {
+                _problemControls[i].UpdateIndex(i);
+            }
         }
 
         private void HandleKeyDown(object sender, KeyEventArgs e)
@@ -149,80 +332,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        private void SetupInputs()
-        {
-            // === Header Inputs ===
-            inputNIK = CreateInput("NIK Operator", AppInput.InputTypeEnum.Dropdown, true);
-            inputNIK.AllowCustomText = true;
-            inputNIK.DropdownOpened += (s, e) => LoadOperatorsFromDB();
-            LoadOperatorsFromDB();
-
-            inputShift = CreateInput("Shift", AppInput.InputTypeEnum.Dropdown, true);
-            inputShift.AllowCustomText = false;
-            LoadShiftsFromDB();
-
-            inputApplicator = CreateInput("No. Aplikator", AppInput.InputTypeEnum.Text, true);
-            inputApplicator.CharacterCasing = CharacterCasing.Upper;
-
-            mainLayout.Controls.Add(inputNIK);
-            mainLayout.Controls.Add(inputShift);
-            mainLayout.Controls.Add(inputApplicator);
-
-            // === Problem Section ===
-            var lblProblems = new Label 
-            {
-                Text = "Daftar Kerusakan:", 
-                Font = AppFonts.Subtitle,
-                ForeColor = AppColors.TextPrimary,
-                AutoSize = true,
-                Margin = new Padding(0, 20, 0, 5)
-            };
-            mainLayout.Controls.Add(lblProblems);
-
-            pnlProblems = new FlowLayoutPanel
-            {
-                FlowDirection = FlowDirection.TopDown,
-                AutoSize = true,
-                WrapContents = false,
-                Margin = new Padding(0)
-            };
-            mainLayout.Controls.Add(pnlProblems);
-
-            btnAddProblem = new AppButton
-            {
-                Text = "+ Tambah Masalah Lain",
-                Width = 200,
-                Type = AppButton.ButtonType.Secondary,
-                Margin = new Padding(0, 10, 0, 20)  // Normal margin, layout padding handles footer
-            };
-            btnAddProblem.Click += (s, e) => AddProblemInput();
-            mainLayout.Controls.Add(btnAddProblem);
-
-            // Spacer to prevent footer from blocking content
-            // Spacer to prevent footer from blocking content
-            var spacer = new Panel { Height = 40, Width = 10, BackColor = Color.Transparent };
-            mainLayout.Controls.Add(spacer);
-
-            // === Save Button ===
-            btnSave = new AppButton 
-            { 
-                Text = "Panggil Teknisi", 
-                Type = AppButton.ButtonType.Primary, 
-                Height = 55,
-                Dock = DockStyle.Fill,
-                Margin = new Padding(10)
-            };
-            btnSave.Click += SaveButton_Click;
-            
-            // Add to Footer Panel instead of Main Layout
-            panelFooter.Controls.Clear();
-            panelFooter.Padding = new Padding(20, 10, 20, 10);
-            panelFooter.Controls.Add(btnSave);
-
-            // Add initial problem
-            AddProblemInput();
-        }
-
         private AppInput CreateInput(string label, AppInput.InputTypeEnum type, bool required)
         {
             return new AppInput
@@ -232,37 +341,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                 IsRequired = required,
                 AllowCustomText = (type == AppInput.InputTypeEnum.Dropdown)
             };
-        }
-
-        private void AddProblemInput()
-        {
-            var problemControl = new ProblemInputControl(_problemControls.Count);
-            problemControl.RemoveRequested += (s, e) => RemoveProblemInput(problemControl);
-            
-            _problemControls.Add(problemControl);
-            pnlProblems.Controls.Add(problemControl);
-            
-            // Trigger resize to set correct width
-            this.OnResize(EventArgs.Empty);
-        }
-
-        private void RemoveProblemInput(ProblemInputControl control)
-        {
-            if (_problemControls.Count <= 1)
-            {
-                AutoClosingMessageBox.Show("Minimal harus ada satu masalah.", "Info", 1500);
-                return;
-            }
-            
-            pnlProblems.Controls.Remove(control);
-            _problemControls.Remove(control);
-            control.Dispose();
-            
-            // Renumber remaining problems
-            for (int i = 0; i < _problemControls.Count; i++)
-            {
-                _problemControls[i].UpdateIndex(i);
-            }
         }
 
         private async void LoadOperatorsFromDB()
@@ -373,46 +451,11 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-
-
         private void PanelFooter_Paint(object sender, PaintEventArgs e)
         {
             using (var pen = new Pen(AppColors.Separator))
             {
                 e.Graphics.DrawLine(pen, 0, 0, panelFooter.Width, 0);
-            }
-        }
-
-        protected override void OnResize(EventArgs e)
-        {
-            base.OnResize(e);
-            
-            if (mainLayout == null) return;
-            
-            int contentWidth = mainLayout.ClientSize.Width - 80;
-            if (contentWidth < 400) contentWidth = 400;
-            
-            foreach (Control c in mainLayout.Controls)
-            {
-                if (c is AppInput || c is AppButton || c == pnlProblems)
-                {
-                    c.Width = contentWidth;
-                }
-            }
-            
-            // Resize problem controls
-            if (pnlProblems != null)
-            {
-                foreach (Control child in pnlProblems.Controls)
-                {
-                    child.Width = contentWidth;
-                }
-            }
-
-            // Reposition pending indicator
-            if (_lnkPendingTicket != null && _lnkPendingTicket.Visible)
-            {
-                _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
             }
         }
 
