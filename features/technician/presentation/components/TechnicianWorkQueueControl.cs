@@ -65,29 +65,15 @@ namespace mtc_app.features.technician.presentation.components
             _timerRefresh.Stop();
         }
 
-        // ========================================================
-        // UI Construction
-        // ========================================================
+
+
         private void InitializeComponent()
         {
             this.Dock = DockStyle.Fill;
             this.BackColor = AppColors.Surface;
 
-            panelHeader = BuildHeaderPanel();
-            panelStatusBar = BuildStatusBar();
-            panelFilters = BuildFilterPanel();
-            pnlTicketList = BuildTicketListPanel();
-
-            // Add all panels (Dock Order: Last Added = Topmost)
-            this.Controls.Add(pnlTicketList); // Fill (Bottom-most logically)
-            this.Controls.Add(panelFilters);  // Top (Below Header)
-            this.Controls.Add(panelHeader);   // Top (Below Status Bar)
-            this.Controls.Add(panelStatusBar);// Top (Very Top)
-        }
-
-        private Panel BuildHeaderPanel()
-        {
-            var header = new Panel
+            // Header Panel
+            panelHeader = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = AppDimens.HeaderHeightLarge,
@@ -95,20 +81,19 @@ namespace mtc_app.features.technician.presentation.components
                 Padding = new Padding(AppDimens.SpacingXL, AppDimens.MarginLarge, AppDimens.SpacingXL, AppDimens.MarginLarge)
             };
 
+            // [UI-UPGRADE] Replace Label with Stats Control
             statsControl = new TechnicianWorkQueueStatsControl
             {
                 Location = new Point(20, 10),
                 Size = new Size(900, 100),
                 BackColor = Color.Transparent
             };
-            header.Controls.Add(statsControl);
+            panelHeader.Controls.Add(statsControl);
 
-            return header;
-        }
 
-        private Panel BuildStatusBar()
-        {
-            var statusBar = new Panel
+
+            // Status Bar
+            panelStatusBar = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 60,
@@ -116,21 +101,11 @@ namespace mtc_app.features.technician.presentation.components
                 Padding = new Padding(AppDimens.SpacingXL, 0, AppDimens.SpacingXL, 0)
             };
 
-            var flowStatus = new FlowLayoutPanel
-            {
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Dock = DockStyle.Fill,
-                BackColor = Color.Transparent
-            };
-
             picStatusIndicator = new PictureBox
             {
                 Size = new Size(12, 12),
-                BackColor = Color.Transparent,
-                Margin = new Padding(0, 22, AppDimens.MarginSmall, 0)
+                Location = new Point(30, 24), // Centered vertically in 60
+                BackColor = Color.Transparent
             };
             picStatusIndicator.Paint += (s, e) =>
             {
@@ -144,8 +119,8 @@ namespace mtc_app.features.technician.presentation.components
                 Text = "Sistem Aktif",
                 Font = AppFonts.Subtitle,
                 ForeColor = Color.FromArgb(21, 128, 61),
-                AutoSize = true,
-                Margin = new Padding(0, 18, AppDimens.MarginLarge, 0)
+                Location = new Point(50, 20),
+                AutoSize = true
             };
 
             lblLastUpdate = new Label
@@ -153,68 +128,40 @@ namespace mtc_app.features.technician.presentation.components
                 Text = "Terakhir diperbarui: -",
                 Font = AppFonts.BodySmall,
                 ForeColor = AppColors.TextSecondary,
-                AutoSize = true,
-                Margin = new Padding(0, 19, 0, 0)
+                Location = new Point(180, 21),
+                AutoSize = true
             };
 
-            flowStatus.Controls.AddRange(new Control[] { picStatusIndicator, lblSystemStatus, lblLastUpdate });
-            statusBar.Controls.Add(flowStatus);
+            panelStatusBar.Controls.Add(picStatusIndicator);
+            panelStatusBar.Controls.Add(lblSystemStatus);
+            panelStatusBar.Controls.Add(lblLastUpdate);
 
-            return statusBar;
-        }
-
-        private Panel BuildFilterPanel()
-        {
-            var filters = new Panel
+            // Filter Panel
+            panelFilters = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 70,
                 BackColor = AppColors.CardBackground
             };
 
-            var flowFilters = new FlowLayoutPanel
-            {
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Dock = DockStyle.Fill,
-                Padding = new Padding(AppDimens.SpacingXL, 0, 0, 0),
-                BackColor = Color.Transparent
-            };
-
-            var lblFilterStatus = new Label 
-            { 
-                Text = "Filter:", 
-                AutoSize = true, 
-                Font = AppFonts.Body,
-                Margin = new Padding(0, 23, AppDimens.MarginSmall, 0)
-            };
-
+            var lblFilterStatus = new Label { Text = "Filter:", Location = new Point(30, 25), AutoSize = true, Font = AppFonts.Body };
             cmbFilterStatus = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new Point(80, 22),
                 Size = new Size(160, 28),
-                Font = AppFonts.Body,
-                Margin = new Padding(0, 20, AppDimens.MarginLarge, 0)
+                Font = AppFonts.Body
             };
             cmbFilterStatus.Items.AddRange(new object[] { "Semua", "Belum Ditangani", "Sedang Diperbaiki", "Selesai" });
             cmbFilterStatus.SelectedIndex = 0;
 
-            var lblSortBy = new Label 
-            { 
-                Text = "Urutkan:", 
-                AutoSize = true, 
-                Font = AppFonts.Body,
-                Margin = new Padding(0, 23, AppDimens.MarginSmall, 0)
-            };
-
+            var lblSortBy = new Label { Text = "Urutkan:", Location = new Point(260, 25), AutoSize = true, Font = AppFonts.Body };
             cmbSortBy = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new Point(335, 22),
                 Size = new Size(200, 28),
-                Font = AppFonts.Body,
-                Margin = new Padding(0, 20, AppDimens.MarginLarge, 0)
+                Font = AppFonts.Body
             };
             cmbSortBy.Items.AddRange(new object[] { "Default (Urgensi)", "Terbaru (Waktu)", "Terlama (Waktu)" });
             cmbSortBy.SelectedIndex = 0;
@@ -222,23 +169,18 @@ namespace mtc_app.features.technician.presentation.components
             btnClearFilters = new Button
             {
                 Text = "Reset",
+                Location = new Point(560, 21),
                 Size = new Size(90, 30),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = AppColors.Surface,
-                ForeColor = AppColors.TextSecondary,
-                Margin = new Padding(0, 19, 0, 0)
+                ForeColor = AppColors.TextSecondary
             };
             btnClearFilters.FlatAppearance.BorderColor = AppColors.Separator;
 
-            flowFilters.Controls.AddRange(new Control[] { lblFilterStatus, cmbFilterStatus, lblSortBy, cmbSortBy, btnClearFilters });
-            filters.Controls.Add(flowFilters);
+            panelFilters.Controls.AddRange(new Control[] { lblFilterStatus, cmbFilterStatus, lblSortBy, cmbSortBy, btnClearFilters });
 
-            return filters;
-        }
-
-        private Panel BuildTicketListPanel()
-        {
-            var ticketList = new Panel
+            // Ticket List Panel
+            pnlTicketList = new Panel
             {
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
@@ -278,14 +220,15 @@ namespace mtc_app.features.technician.presentation.components
             };
 
             panelEmptyState.Controls.AddRange(new Control[] { picEmptyIcon, lblEmptyTitle, lblEmptyMessage });
-            ticketList.Controls.Add(panelEmptyState);
+            pnlTicketList.Controls.Add(panelEmptyState);
 
-            return ticketList;
+            // Add all panels (Dock Order: Last Added = Topmost)
+            this.Controls.Add(pnlTicketList); // Fill (Bottom-most logically)
+            this.Controls.Add(panelFilters);  // Top (Below Header)
+            this.Controls.Add(panelHeader);   // Top (Below Status Bar)
+            this.Controls.Add(panelStatusBar);// Top (Very Top)
         }
 
-        // ========================================================
-        // Event Handlers
-        // ========================================================
         private void SetupEventHandlers()
         {
             cmbFilterStatus.SelectedIndexChanged += (s, e) => RenderTickets();
@@ -303,9 +246,6 @@ namespace mtc_app.features.technician.presentation.components
             };
         }
 
-        // ========================================================
-        // Data Loading & Rendering
-        // ========================================================
         public void LoadData()
         {
             try
@@ -398,9 +338,6 @@ namespace mtc_app.features.technician.presentation.components
             }
         }
 
-        // ========================================================
-        // Status & UI Helpers
-        // ========================================================
         private void UpdateStatusIndicator(bool isActive)
         {
             _isSystemActive = isActive;

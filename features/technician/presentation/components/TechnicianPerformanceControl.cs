@@ -62,9 +62,6 @@ namespace mtc_app.features.technician.presentation.components
             }
         }
 
-        // ========================================================
-        // UI Construction
-        // ========================================================
         private void InitializeComponent()
         {
             this.Dock = DockStyle.Fill;
@@ -82,40 +79,18 @@ namespace mtc_app.features.technician.presentation.components
             mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Header
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Chart
 
-            headerPanel = BuildHeaderPanel();
-            mainLayout.Controls.Add(headerPanel, 0, 0);
-
-            chartPanel = BuildChartPanel();
-            mainLayout.Controls.Add(chartPanel, 0, 1);
-
-            this.Controls.Add(mainLayout);
-        }
-
-        private Panel BuildHeaderPanel()
-        {
-            var header = new Panel
+            // === Header Panel (Row 0) ===
+            headerPanel = new Panel
             {
                 Dock = DockStyle.Fill,
                 AutoSize = true,
                 BackColor = AppColors.CardBackground,
                 Padding = new Padding(AppDimens.MarginLarge, AppDimens.PaddingStandard, AppDimens.MarginLarge, AppDimens.PaddingStandard)
             };
-            header.Paint += (s, e) =>
+            headerPanel.Paint += (s, e) =>
             {
                 // Bottom border
-                e.Graphics.DrawLine(new Pen(Color.FromArgb(230, 230, 230)), 0, header.Height - 1, header.Width, header.Height - 1);
-            };
-
-            // Use a vertical FlowLayoutPanel to stack title, stats, and filter row
-            var flowVertical = new FlowLayoutPanel
-            {
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents = false,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Dock = DockStyle.Top,
-                BackColor = Color.Transparent,
-                Padding = new Padding(0)
+                e.Graphics.DrawLine(new Pen(Color.FromArgb(230, 230, 230)), 0, headerPanel.Height - 1, headerPanel.Width, headerPanel.Height - 1);
             };
 
             // Title
@@ -124,47 +99,44 @@ namespace mtc_app.features.technician.presentation.components
                 Text = "Leaderboard Teknisi",
                 Font = new Font("Segoe UI Semibold", 16F, FontStyle.Bold),
                 ForeColor = AppColors.TextPrimary,
-                AutoSize = true,
-                Margin = new Padding(0, 0, 0, AppDimens.MarginSmall)
+                Location = new Point(20, 15),
+                AutoSize = true
             };
-            flowVertical.Controls.Add(lblTitle);
+            headerPanel.Controls.Add(lblTitle);
 
             // Stats Control (Shop-wide totals)
             // NOTE: This shows aggregate stats for ALL technicians, not the logged-in user
             statsControl = new TechnicianStatsControl
             {
-                Size = new Size(940, 100),
-                BackColor = Color.Transparent,
-                Margin = new Padding(0, 0, 0, AppDimens.MarginLarge)
+                Location = new Point(20, 45),
+                Size = new Size(940, 100), // Must be at least 900x100 for 3 cards
+                BackColor = Color.Transparent
             };
-            flowVertical.Controls.Add(statsControl);
+            headerPanel.Controls.Add(statsControl);
 
             // Filter Controls Row
-            var flowFilterRow = new FlowLayoutPanel
+            var filterRow = new Panel
             {
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                BackColor = Color.Transparent,
-                Margin = new Padding(0)
+                Location = new Point(20, 180),  // Moved down to accommodate taller stats
+                Size = new Size(650, 40),
+                BackColor = Color.Transparent
             };
 
             var lblMetric = new Label
             {
                 Text = "Metrik:",
                 Font = AppFonts.Title,
-                AutoSize = true,
-                Margin = new Padding(0, 7, AppDimens.MarginSmall, 0)
+                Location = new Point(0, 7),
+                AutoSize = true
             };
-            flowFilterRow.Controls.Add(lblMetric);
+            filterRow.Controls.Add(lblMetric);
 
             cmbMetric = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Font = AppFonts.Title,
-                Size = new Size(200, 28),
-                Margin = new Padding(0, 3, AppDimens.MarginLarge, 0)
+                Location = new Point(70, 3),
+                Size = new Size(200, 28)
             };
             cmbMetric.Items.AddRange(new object[] { "Jumlah Perbaikan", "Rata-rata Rating", "Total Bintang" });
             cmbMetric.SelectedIndex = 0;
@@ -178,17 +150,17 @@ namespace mtc_app.features.technician.presentation.components
                 }
                 SortAndRenderChart();
             };
-            flowFilterRow.Controls.Add(cmbMetric);
+            filterRow.Controls.Add(cmbMetric);
 
             btnSort = new Button
             {
                 Text = "↓ Tertinggi",
                 Font = AppFonts.Body,
+                Location = new Point(300, 2),
                 Size = new Size(120, 32),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(248, 250, 252),
-                ForeColor = AppColors.TextPrimary,
-                Margin = new Padding(0, 2, 0, 0)
+                ForeColor = AppColors.TextPrimary
             };
             btnSort.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
             btnSort.Click += (s, e) =>
@@ -197,24 +169,21 @@ namespace mtc_app.features.technician.presentation.components
                 btnSort.Text = _sortAscending ? "↑ Terendah" : "↓ Tertinggi";
                 SortAndRenderChart();
             };
-            flowFilterRow.Controls.Add(btnSort);
+            filterRow.Controls.Add(btnSort);
 
-            flowVertical.Controls.Add(flowFilterRow);
+            headerPanel.Controls.Add(filterRow);
+            headerPanel.Height = 230; // Increased height for header
 
-            header.Controls.Add(flowVertical);
+            mainLayout.Controls.Add(headerPanel, 0, 0);
 
-            return header;
-        }
-
-        private Panel BuildChartPanel()
-        {
-            var chart = new Panel
+            // === Chart Panel (Row 1) ===
+            chartPanel = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = AppColors.CardBackground,
                 Padding = new Padding(AppDimens.MarginLarge)
             };
-            chart.Paint += ChartPanel_Paint;
+            chartPanel.Paint += ChartPanel_Paint;
 
             lblNoData = new Label
             {
@@ -225,14 +194,13 @@ namespace mtc_app.features.technician.presentation.components
                 Dock = DockStyle.Fill,
                 Visible = false
             };
-            chart.Controls.Add(lblNoData);
+            chartPanel.Controls.Add(lblNoData);
 
-            return chart;
+            mainLayout.Controls.Add(chartPanel, 0, 1);
+
+            this.Controls.Add(mainLayout);
         }
 
-        // ========================================================
-        // Chart Rendering (Logic untouched)
-        // ========================================================
         private void SortAndRenderChart()
         {
             if (_leaderboardData.Count == 0)
