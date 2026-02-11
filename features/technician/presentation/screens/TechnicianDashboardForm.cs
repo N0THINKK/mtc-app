@@ -2,7 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using mtc_app.features.technician.data.repositories;
-using mtc_app.features.technician.logic;
+using mtc_app.features.technician.logic; // [NEW] For Logger
 using mtc_app.features.technician.presentation.components;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.data.session;
@@ -57,16 +57,27 @@ namespace mtc_app.features.technician.presentation.screens
 
             InitializeComponent();
             
-            // 1. Setup Toolbar Container (TableLayoutPanel: 2 columns)
-            var pnlToolbar = BuildToolbar();
+            // 1. Setup Toolbar Container
+            var pnlToolbar = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = AppDimens.HeaderHeight,
+                BackColor = AppColors.CardBackground,
+                Padding = new Padding(AppDimens.PaddingSmall)
+            };
+            // Add Toolbar BEFORE Tabs so it docks to top
             this.Controls.Add(pnlToolbar);
             pnlToolbar.BringToFront(); 
 
-            // 2. Initialize Tabs (Dock=Fill will take remaining space)
+            // 2. Initialize Features into Toolbar
+            InitializeDateFilter(pnlToolbar);
+            InitializeAutoSwitch(pnlToolbar);
+            
+            // 3. Initialize Tabs (Dock=Fill will take remaining space)
             InitializeTabs();
             tabControl.BringToFront(); 
 
-            // 3. Start Background Logger (Every 5 Mins)
+            // 4. Start Background Logger (Every 5 Mins)
             timerLogger = new Timer { Interval = 300000 }; // 5 Minutes
             timerLogger.Tick += async (s, e) => { await new MachineDataLogger().LogMachineDataAsync(); };
             timerLogger.Start();
@@ -75,79 +86,25 @@ namespace mtc_app.features.technician.presentation.screens
             _ = new MachineDataLogger().LogMachineDataAsync();
         }
 
-        // ========================================================
-        // Toolbar: Two-column layout (Left=Date Filter, Right=Auto Switch)
-        // ========================================================
-        private TableLayoutPanel BuildToolbar()
-        {
-            var toolbar = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                Height = AppDimens.HeaderHeight,
-                BackColor = AppColors.CardBackground,
-                ColumnCount = 2,
-                RowCount = 1,
-                Padding = new Padding(AppDimens.PaddingSmall)
-            };
-            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            toolbar.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-
-            // Left column: Date Filter
-            var flowFilter = BuildDateFilterFlow();
-            toolbar.Controls.Add(flowFilter, 0, 0);
-
-            // Right column: Auto Switch
-            var flowAutoSwitch = BuildAutoSwitchFlow();
-            toolbar.Controls.Add(flowAutoSwitch, 1, 0);
-
-            return toolbar;
-        }
-
-        private FlowLayoutPanel BuildDateFilterFlow()
+        private void InitializeDateFilter(Panel parent)
         {
             var flowFilter = new FlowLayoutPanel
             {
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                Anchor = AnchorStyles.Left,
-                Dock = DockStyle.Fill
+                Location = new Point(10, 15), // Vertical center roughly
+                Anchor = AnchorStyles.Top | AnchorStyles.Left
             };
 
-            var lblFrom = new Label 
-            { 
-                Text = "Periode:", 
-                AutoSize = true, 
-                Margin = new Padding(0, AppDimens.MarginSmall, AppDimens.MarginSmall, 0), 
-                Font = AppFonts.Title 
-            };
+            var lblFrom = new Label { Text = "Periode:", AutoSize = true, Margin = new Padding(0, AppDimens.MarginSmall, AppDimens.MarginSmall, 0), Font = AppFonts.Title };
             
-            // Default start date = 1st of current month
+            // [UI-FIX] Default start date = 1st of current month
             DateTime firstDayOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
-            dtpStart = new DateTimePicker 
-            { 
-                Format = DateTimePickerFormat.Short, 
-                Width = 140, 
-                Font = AppFonts.Title, 
-                Value = firstDayOfMonth 
-            };
+            dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 140, Font = AppFonts.Title, Value = firstDayOfMonth };
             
-            var lblTo = new Label 
-            { 
-                Text = "-", 
-                AutoSize = true, 
-                Margin = new Padding(AppDimens.MarginSmall, AppDimens.MarginSmall, AppDimens.MarginSmall, 0), 
-                Font = AppFonts.Title 
-            };
-            dtpEnd = new DateTimePicker 
-            { 
-                Format = DateTimePickerFormat.Short, 
-                Width = 140, 
-                Font = AppFonts.Title, 
-                Value = DateTime.Now 
-            };
+            var lblTo = new Label { Text = "-", AutoSize = true, Margin = new Padding(AppDimens.MarginSmall, AppDimens.MarginSmall, AppDimens.MarginSmall, 0), Font = AppFonts.Title };
+            dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 140, Font = AppFonts.Title, Value = DateTime.Now };
 
             btnFilter = new Button 
             { 
@@ -164,34 +121,92 @@ namespace mtc_app.features.technician.presentation.screens
             btnFilter.Click += (s, e) => LoadCurrentTabData();
 
             flowFilter.Controls.AddRange(new Control[] { lblFrom, dtpStart, lblTo, dtpEnd, btnFilter });
-            return flowFilter;
+            parent.Controls.Add(flowFilter);
         }
 
-        private FlowLayoutPanel BuildAutoSwitchFlow()
+        private async void LoadCurrentTabData()
         {
-            var flowAutoSwitch = new FlowLayoutPanel
-            {
-                FlowDirection = FlowDirection.RightToLeft,
-                WrapContents = false,
-                Dock = DockStyle.Fill
-            };
+            DateTime start = dtpStart.Value.Date;
+            DateTime end = dtpEnd.Value.Date.AddDays(1).AddSeconds(-1); // End of day
 
+            if (tabControl.SelectedIndex == 1) // Performa
+            {
+                await performanceControl.LoadDataAsync(start, end);
+            }
+            else if (tabControl.SelectedIndex == 2) // Analisis Mesin
+            {
+                await machinePerformanceControl.LoadDataAsync(start, end);
+            }
+        }
+
+        private int _autoSwitchStage = 0;
+
+        private void AutoSwitch_Tick(object sender, EventArgs e)
+        {
+            if (tabControl.TabCount <= 0) return;
+
+            const int totalStages = 5; // 3 tabs + 2 modes for the 4th tab
+            _autoSwitchStage = (_autoSwitchStage + 1) % totalStages;
+
+            switch (_autoSwitchStage)
+            {
+                case 0: // Stage 0: Tab 1 (Work Queue)
+                    tabControl.SelectedIndex = 0;
+                    break;
+                case 1: // Stage 1: Tab 2 (Performance)
+                    tabControl.SelectedIndex = 1;
+                    break;
+                case 2: // Stage 2: Tab 3 (Machine Analysis)
+                    tabControl.SelectedIndex = 2;
+                    break;
+                case 3: // Stage 3: Tab 4 (Monitor) - Set to Output
+                    tabControl.SelectedIndex = 3;
+                    machineMonitorControl?.SetMetric(0); // 0 for "Produksi (Output)"
+                    break;
+                case 4: // Stage 4: Tab 4 (Monitor) - Set to Efficiency
+                    tabControl.SelectedIndex = 3;
+                    machineMonitorControl?.SetMetric(1); // 1 for "Efisiensi (Waktu)"
+                    break;
+            }
+        }
+
+        private void InitializeAutoSwitch(Panel parent)
+        {
             // Timer Setup
             timerTabSwitch = new Timer();
             timerTabSwitch.Interval = 10000; // 10 Seconds default
             timerTabSwitch.Tick += AutoSwitch_Tick;
 
-            // Button (added first because FlowDirection is RightToLeft)
+            btnSetInterval = new Button
+            {
+                Text = "Set",
+                Size = new Size(50, 30),
+                Location = new Point(parent.Width - 240, 19),  // Adjusted for input spacing
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                BackColor = AppColors.Primary,
+                ForeColor = AppColors.TextInverse,
+                FlatStyle = FlatStyle.Flat,
+                Font = AppFonts.Caption,
+                Cursor = Cursors.Hand
+            };
+            btnSetInterval.Click += (s, e) =>
+            {
+                timerTabSwitch.Interval = (int)nudInterval.Value * 1000;
+                MessageBox.Show($"Auto switch interval set to {nudInterval.Value} seconds.", "Pengaturan Tersimpan", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            };
+
+            // Button Setup
             btnAutoSwitch = new Button
             {
                 Text = "Auto Switch: OFF",
                 Size = new Size(160, 40),
+                Location = new Point(parent.Width - 170, 15), // Further right
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 BackColor = AppColors.Surface,
                 ForeColor = AppColors.TextSecondary,
                 FlatStyle = FlatStyle.Flat,
                 Font = AppFonts.Button,
-                Cursor = Cursors.Hand,
-                Margin = new Padding(AppDimens.MarginSmall, 0, 0, 0)
+                Cursor = Cursors.Hand
             };
             btnAutoSwitch.FlatAppearance.BorderColor = AppColors.Border;
             
@@ -217,27 +232,29 @@ namespace mtc_app.features.technician.presentation.screens
                     btnAutoSwitch.ForeColor = AppColors.TextInverse;
                 }
             };
+            
+            parent.Controls.Add(lblInterval);
+            parent.Controls.Add(nudInterval);
+            parent.Controls.Add(btnSetInterval);
+            parent.Controls.Add(btnAutoSwitch);
+        }
 
-            // Set Interval Button
-            btnSetInterval = new Button
+        private void InitializeAutoSwitch()
+        {
+            // Timer Setup
+            timerTabSwitch = new Timer();
+            timerTabSwitch.Interval = 10000; // 10 Seconds
+            timerTabSwitch.Tick += (s, e) =>
             {
-                Text = "Set",
-                Size = new Size(50, 30),
-                BackColor = AppColors.Primary,
-                ForeColor = AppColors.TextInverse,
-                FlatStyle = FlatStyle.Flat,
-                Font = AppFonts.Caption,
-                Cursor = Cursors.Hand,
-                Margin = new Padding(AppDimens.MarginSmall, 5, 0, 0)
-            };
-            btnSetInterval.Click += (s, e) =>
-            {
-                timerTabSwitch.Interval = (int)nudInterval.Value * 1000;
-                MessageBox.Show($"Auto switch interval set to {nudInterval.Value} seconds.", "Pengaturan Tersimpan", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (tabControl.TabCount > 0)
+                {
+                    int nextIndex = (tabControl.SelectedIndex + 1) % tabControl.TabCount;
+                    tabControl.SelectedIndex = nextIndex;
+                }
             };
 
-            // Interval NumericUpDown
-            nudInterval = new NumericUpDown
+            // Button Setup (Added directly to Form, on top of everything)
+            btnAutoSwitch = new Button
             {
                 Size = new Size(60, 28),
                 Minimum = 5,
@@ -304,13 +321,26 @@ namespace mtc_app.features.technician.presentation.screens
             }
             else if (tabControl.SelectedIndex == 2) // Analisis Mesin
             {
-                await machinePerformanceControl.LoadDataAsync(start, end);
-            }
+                if (timerTabSwitch.Enabled)
+                {
+                    timerTabSwitch.Stop();
+                    btnAutoSwitch.Text = "Auto Switch: OFF";
+                    btnAutoSwitch.BackColor = Color.WhiteSmoke;
+                    btnAutoSwitch.ForeColor = Color.Black;
+                }
+                else
+                {
+                    timerTabSwitch.Start();
+                    btnAutoSwitch.Text = "Auto Switch: ON";
+                    btnAutoSwitch.BackColor = AppColors.Success; // Green indicates active
+                    btnAutoSwitch.ForeColor = Color.White;
+                }
+            };
+            
+            this.Controls.Add(btnAutoSwitch);
+            btnAutoSwitch.BringToFront(); // Ensure it is above the header panel
         }
 
-        // ========================================================
-        // Tab Initialization
-        // ========================================================
         private void InitializeTabs()
         {
             tabControl = new TabControl
@@ -345,7 +375,7 @@ namespace mtc_app.features.technician.presentation.screens
 
             tabPerformance.Controls.Add(performanceControl);
 
-            // Tab 3: Machine Analysis
+            // Tab 3: Machine Analysis (NEW)
             var tabMachine = new TabPage("Analisis Mesin")
             {
                 BackColor = AppColors.CardBackground
