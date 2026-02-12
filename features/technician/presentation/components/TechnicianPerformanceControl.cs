@@ -51,7 +51,7 @@ namespace mtc_app.features.technician.presentation.components
                     int totalRepairs = _leaderboardData.Sum(t => t.TotalRepairs);
                     double avgRating = _leaderboardData.Average(t => t.AverageRating);
                     int totalStars = _leaderboardData.Sum(t => t.TotalStars);
-                    statsControl.UpdateStats(totalRepairs, (decimal)avgRating, totalStars);
+                    statsControl.UpdateStats(totalRepairs, (decimal)avgRating);
                 }
 
                 SortAndRenderChart();
