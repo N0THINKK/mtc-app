@@ -110,7 +110,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = 2,
-                Padding = new Padding(20, 10, 20, 10)
+                Padding = new Padding(20, 10, 0, 10) // Right padding 0 to push scrollbar to edge
             };
             _tab1Layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             _tab1Layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); 
@@ -121,7 +121,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 AutoScroll = true,
-                Padding = new Padding(0, 0, 10, 0) 
+                Padding = new Padding(0, 0, 20, 0) // Compensate content padding
             };
             _formLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             _tab1Layout.Controls.Add(_formLayout, 0, 0);
@@ -187,17 +187,23 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Cursor = Cursors.Hand,
                 BackColor = Color.Transparent 
             };
-            _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
-            _lnkPendingTicket.LinkClicked += LnkPendingTicket_LinkClicked;
             panelHeader.Controls.Add(_lnkPendingTicket);
+            RepositionPendingLink(); // Initial Position
+            _lnkPendingTicket.LinkClicked += LnkPendingTicket_LinkClicked;
         }
         
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            if (_lnkPendingTicket != null && _lnkPendingTicket.Visible)
+            RepositionPendingLink();
+        }
+
+        private void RepositionPendingLink()
+        {
+            if (_lnkPendingTicket != null && panelHeader != null)
             {
-                _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
+                // "Most right" alignment (margin 5px)
+                _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 5, 15);
             }
         }
 
@@ -484,7 +490,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                 {
                     _lnkPendingTicket.Text = $"⚠️ CONTINUE PROBLEM ({_pendingTicket.StatusName.ToUpper()})";
                     _lnkPendingTicket.Visible = true;
-                    _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
+                    // Recalculate position after text change
+                    RepositionPendingLink();
                 }
                 else
                 {
