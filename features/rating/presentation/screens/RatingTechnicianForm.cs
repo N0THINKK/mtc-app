@@ -122,11 +122,11 @@ namespace mtc_app.features.rating.presentation.screens
             mainLayout.Controls.Add(_lblGlNote);
 
             // 5. Rating Input (Operator)
-            AddSectionHeader(mainLayout, "Penilaian Operator");
+            AddSectionHeader(mainLayout, "Penilaian dari Teknisi");
             
             mainLayout.Controls.Add(new AppLabel 
             { 
-                Text = "Rating Operator (1-5):", 
+                Text = "Rating dari Teknisi (1-5):", 
                 Type = AppLabel.LabelType.Subtitle,
                 AutoSize = true,
                 Margin = new Padding(0, 5, 0, 2)
@@ -139,7 +139,7 @@ namespace mtc_app.features.rating.presentation.screens
 
             _inputNote = new AppInput
             {
-                LabelText = "Catatan untuk Operator",
+                LabelText = "Catatan : ",
                 InputType = AppInput.InputTypeEnum.Text,
                 Multiline = true,
                 Width = 440,

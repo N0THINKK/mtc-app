@@ -1005,7 +1005,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             
             if (ratingOperator.Rating == 0)
             {
-                MessageBox.Show("Beri rating operator.", "Validasi");
+                MessageBox.Show("Beri rating.", "Validasi");
                 return;
             }
 
