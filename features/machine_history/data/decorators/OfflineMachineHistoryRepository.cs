@@ -25,24 +25,26 @@ namespace mtc_app.features.machine_history.data.decorators
             _networkMonitor = networkMonitor;
         }
 
-        public async Task<IEnumerable<MachineHistoryDto>> GetHistoryAsync(DateTime? startDate = null, DateTime? endDate = null, string machineFilter = null)
+        public async Task<IEnumerable<MachineHistoryDto>> GetHistoryAsync(DateTime? startDate = null, DateTime? endDate = null, string search = null, string areaFilter = null)
         {
-            // History read logic can be sophisticated, but for now we prioritize remote.
-            // Offline history read is not fully requested yet, but we can try catch.
+            // Prioritaskan Online
             if (_networkMonitor.IsOnline)
             {
                 try
                 {
-                    return await _innerRepository.GetHistoryAsync(startDate, endDate, machineFilter);
+                    // Teruskan semua parameter (termasuk areaFilter) ke repository asli (online)
+                    return await _innerRepository.GetHistoryAsync(startDate, endDate, search, areaFilter);
                 }
                 catch (Exception ex) when (IsNetworkException(ex))
                 {
-                    // Fallback
+                    System.Diagnostics.Debug.WriteLine($"[OfflineHistory] Network error fetching history: {ex.Message}");
+                    // Jika gagal koneksi, jatuh ke logika offline di bawah
                 }
             }
 
-            // TODO: Improve offline history read if needed.
-            // Currently returns empty or cached history if implemented.
+            // Fallback Offline:
+            // Saat ini kita mengembalikan list kosong atau data lokal jika diimplementasikan.
+            // Fitur sinkronisasi riwayat penuh ke lokal biasanya berat, jadi default list kosong aman.
             return new List<MachineHistoryDto>(); 
         }
 
@@ -60,23 +62,10 @@ namespace mtc_app.features.machine_history.data.decorators
                 }
             }
 
-            // Offline Mode: Buffer to SQLite
+            // Mode Offline: Simpan ke SQLite Lokal
+            // ID dikembalikan sebagai angka negatif untuk menandakan "Disimpan Lokal"
             int pendingId = _offlineRepo.SavePendingTicket(request);
-            return (-pendingId, "OFFLINE-QUEUED"); // Negative ID indicates "Saved Locally"
-        }
-
-        private bool IsNetworkException(Exception ex)
-        {
-            if (ex == null) return false;
-            if (ex is SocketException) return true;
-            if (ex is TimeoutException) return true;
-            
-            var message = ex.Message?.ToLowerInvariant() ?? "";
-            if (message.Contains("unable to connect")) return true;
-            if (message.Contains("connection refused")) return true;
-            if (message.Contains("timeout")) return true;
-            
-            return ex.InnerException != null && IsNetworkException(ex.InnerException);
+            return (-pendingId, "OFFLINE-QUEUED"); 
         }
 
         public async Task<MachineHistoryDto> GetActiveTicketForMachineAsync(int machineId)
@@ -89,13 +78,30 @@ namespace mtc_app.features.machine_history.data.decorators
                 }
                 catch (Exception ex) when (IsNetworkException(ex))
                 {
-                    // Fallback to offline check
+                    // Fallback ke cek offline
                 }
             }
 
-            // Offline: Check SQLite for pending tickets on this machine
-            // For now, return null (offline tickets are not yet supported for this check)
+            // Mode Offline: 
+            // Cek apakah ada tiket pending (status Waiting/Repairing) di SQLite untuk mesin ini.
+            // Saat ini kita kembalikan null karena fitur pencarian pending ticket by MachineID
+            // perlu ditambahkan di OfflineRepository.
             return null;
+        }
+
+        private bool IsNetworkException(Exception ex)
+        {
+            if (ex == null) return false;
+            if (ex is SocketException) return true;
+            if (ex is TimeoutException) return true;
+            
+            var message = ex.Message?.ToLowerInvariant() ?? "";
+            if (message.Contains("unable to connect")) return true;
+            if (message.Contains("connection refused")) return true;
+            if (message.Contains("timeout")) return true;
+            if (message.Contains("host not found")) return true;
+            
+            return ex.InnerException != null && IsNetworkException(ex.InnerException);
         }
     }
 }

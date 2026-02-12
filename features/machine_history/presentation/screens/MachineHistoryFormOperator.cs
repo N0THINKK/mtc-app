@@ -12,6 +12,7 @@ using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 using mtc_app.shared.infrastructure;
 using mtc_app.shared.data.repositories;
+using mtc_app.features.authentication.presentation.screens; // [BARU] Tambahkan ini untuk akses LoginForm
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
@@ -35,6 +36,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private MachineHistoryListControl _historyControl;
         private DateTimePicker _dtpStart;
         private DateTimePicker _dtpEnd;
+        private ComboBox _cmbArea;
         private AppButton _btnFilter;
 
         // Pending Ticket Indicator
@@ -61,6 +63,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             base.OnLoad(e);
             this.OnResize(EventArgs.Empty);
+            LoadAreas();
             await CheckForPendingTicketAsync();
         }
 
@@ -72,7 +75,6 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void InitializeCustomTabs()
         {
-            // Clear existing controls from Designer
             this.Controls.Clear(); 
 
             // === 1. Root Layout (Header, Content) ===
@@ -84,10 +86,9 @@ namespace mtc_app.features.machine_history.presentation.screens
                 BackColor = AppColors.Background
             };
             _rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            _rootLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Header
-            _rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Content (Tabs)
+            _rootLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); 
+            _rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); 
 
-            // Header (Preserve existing panelHeader)
             panelHeader.Dock = DockStyle.Fill;
             _rootLayout.Controls.Add(panelHeader, 0, 0);
 
@@ -104,7 +105,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             // === Tab 1: Report Tab ===
             var tabReport = new TabPage("Lapor Kerusakan") { BackColor = AppColors.CardBackground };
 
-            // Tab 1 Main Layout (Form Fields vs Action Button)
             _tab1Layout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -113,22 +113,20 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Padding = new Padding(20, 10, 20, 10)
             };
             _tab1Layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            _tab1Layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Form Fields (Scrollable)
-            _tab1Layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));    // Action Button
+            _tab1Layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); 
+            _tab1Layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));    
 
-            // row 0: Form Fields Container
             _formLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 AutoScroll = true,
-                Padding = new Padding(0, 0, 10, 0) // Right padding for scrollbar
+                Padding = new Padding(0, 0, 10, 0) 
             };
             _formLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             _tab1Layout.Controls.Add(_formLayout, 0, 0);
 
-            // row 1: Action Button Container (Repurpose panelFooter)
-            panelFooter.Parent = null; // Detach from form
+            panelFooter.Parent = null; 
             panelFooter.Controls.Clear();
             panelFooter.Dock = DockStyle.Fill;
             panelFooter.Height = 80; 
@@ -140,7 +138,6 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             // === Tab 2: History Tab ===
             var tabHistory = new TabPage("Riwayat Mesin") { BackColor = AppColors.CardBackground };
-            // Filter Panel
             var pnlFilter = new FlowLayoutPanel 
             { 
                 Dock = DockStyle.Top, 
@@ -150,13 +147,24 @@ namespace mtc_app.features.machine_history.presentation.screens
                 AutoSize = false
             };
             
-            _dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 120 };
+            _dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110 };
             var lblTo = new Label { Text = "s/d", AutoSize = true, Margin = new Padding(5, 5, 5, 0) }; 
-            _dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 120 };
-            _btnFilter = new AppButton { Text = "Filter", Type = AppButton.ButtonType.Primary, Width = 80, Height = 30 };
+            _dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110 };
+            
+            var lblArea = new Label { Text = "Area:", AutoSize = true, Margin = new Padding(10, 5, 5, 0) };
+            _cmbArea = new ComboBox 
+            { 
+                DropDownStyle = ComboBoxStyle.DropDownList, 
+                Width = 100,
+                Font = AppFonts.BodySmall
+            };
+            _cmbArea.Items.Add("Semua"); 
+            _cmbArea.SelectedIndex = 0;
+
+            _btnFilter = new AppButton { Text = "Filter", Type = AppButton.ButtonType.Primary, Width = 80, Height = 30, Margin = new Padding(10, 0, 0, 0) };
             _btnFilter.Click += async (s, e) => await LoadHistoryAsync();
 
-            pnlFilter.Controls.AddRange(new Control[] { _dtpStart, lblTo, _dtpEnd, _btnFilter });
+            pnlFilter.Controls.AddRange(new Control[] { _dtpStart, lblTo, _dtpEnd, lblArea, _cmbArea, _btnFilter });
             tabHistory.Controls.Add(pnlFilter);
 
             _historyControl = new MachineHistoryListControl { Dock = DockStyle.Fill };
@@ -166,10 +174,9 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             _tabControl.TabPages.Add(tabHistory);
 
-            // === PENDING TICKET LINK ===
             _lnkPendingTicket = new LinkLabel
             {
-                Text = "⚠️ CONTINUE PROBLEM", // [PERUBAHAN 1] Text Default
+                Text = "⚠️ CONTINUE PROBLEM",
                 Font = new Font("Segoe UI", 12F, FontStyle.Bold), 
                 LinkColor = Color.Gold, 
                 ActiveLinkColor = Color.Yellow,
@@ -350,11 +357,34 @@ namespace mtc_app.features.machine_history.presentation.screens
             catch { /* Ignore */ }
         }
 
+        private async void LoadAreas()
+        {
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    var areas = await conn.QueryAsync<string>("SELECT area_name FROM machine_areas ORDER BY area_name");
+                    foreach (var area in areas)
+                    {
+                        if (!_cmbArea.Items.Contains(area)) 
+                            _cmbArea.Items.Add(area);
+                    }
+                }
+            }
+            catch { /* Ignore */ }
+        }
+
         private async Task LoadHistoryAsync()
         {
             try
             {
-                var history = await _repository.GetHistoryAsync(_dtpStart.Value, _dtpEnd.Value);
+                string areaFilter = null;
+                if (_cmbArea.SelectedItem != null && _cmbArea.SelectedItem.ToString() != "Semua")
+                {
+                    areaFilter = _cmbArea.SelectedItem.ToString();
+                }
+
+                var history = await _repository.GetHistoryAsync(_dtpStart.Value, _dtpEnd.Value, null, areaFilter);
                 _historyControl.SetData(history);
             }
             catch (Exception ex)
@@ -411,16 +441,14 @@ namespace mtc_app.features.machine_history.presentation.screens
 
                 var technicianForm = new MachineHistoryFormTechnician(result.TicketId);
                 this.Hide(); 
+                
+                // [MODIFIED] Logic Tutup Form: Selalu Logout (Login Form)
                 technicianForm.FormClosed += (s, args) => 
                 {
-                    if (technicianForm.DialogResult == DialogResult.OK)
-                    {
-                        this.Close();
-                    }
-                    else
-                    {
-                        this.Show();
-                    }
+                    // Tutup Operator Form -> Reset ke Login
+                    var loginForm = new LoginForm();
+                    loginForm.Show();
+                    this.Close();
                 };
                 technicianForm.Show();
             }
@@ -454,8 +482,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                 
                 if (_pendingTicket != null)
                 {
-                    // [PERUBAHAN 2] Teks diganti jadi CONTINUE PROBLEM
-                    // Ditambah info status dalam kurung agar user tetap tahu kondisinya
                     _lnkPendingTicket.Text = $"⚠️ CONTINUE PROBLEM ({_pendingTicket.StatusName.ToUpper()})";
                     _lnkPendingTicket.Visible = true;
                     _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
@@ -492,18 +518,14 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             var technicianForm = new MachineHistoryFormTechnician(ticketId);
             this.Hide();
-            technicianForm.FormClosed += async (s, args) =>
+            
+            // [MODIFIED] Logic Tutup Form: Selalu Logout (Login Form)
+            technicianForm.FormClosed += (s, args) =>
             {
-                if (technicianForm.DialogResult == DialogResult.OK)
-                {
-                    this.Close();
-                }
-                else
-                {
-                    this.Show();
-                    await CheckForPendingTicketAsync();
-                    await LoadHistoryAsync();
-                }
+                // Tutup Operator Form -> Reset ke Login
+                var loginForm = new LoginForm();
+                loginForm.Show();
+                this.Close();
             };
             technicianForm.Show();
         }
