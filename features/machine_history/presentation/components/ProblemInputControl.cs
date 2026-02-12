@@ -63,7 +63,7 @@ namespace mtc_app.features.machine_history.presentation.components
             // Jenis Problem Input
             InputType = new AppInput 
             {
-                LabelText = "Jenis Problem", 
+                LabelText = "Jenis Masalah", 
                 InputType = AppInput.InputTypeEnum.Dropdown,
                 AllowCustomText = true,
                 IsRequired = true,

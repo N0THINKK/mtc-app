@@ -10,7 +10,7 @@ namespace mtc_app.features.machine_history.data.repositories
 {
     public class MachineHistoryRepository : IMachineHistoryRepository
     {
-        public async Task<IEnumerable<MachineHistoryDto>> GetHistoryAsync(DateTime? startDate = null, DateTime? endDate = null, string machineFilter = null)
+        public async Task<IEnumerable<MachineHistoryDto>> GetHistoryAsync(DateTime? startDate = null, DateTime? endDate = null, string search = null, string areaFilter = null)
         {
             DateTime start = startDate ?? DateTime.Now.AddDays(-30);
             DateTime end = endDate ?? DateTime.Now.AddDays(1); 
@@ -75,15 +75,27 @@ namespace mtc_app.features.machine_history.data.repositories
                     LEFT JOIN ticket_statuses ts ON t.status_id = ts.status_id
                     WHERE t.created_at >= @Start AND t.created_at < @End";
 
-                if (!string.IsNullOrEmpty(machineFilter))
+                var parameters = new DynamicParameters();
+                parameters.Add("Start", start);
+                parameters.Add("End", end);
+
+                // Filter Area Spesifik
+                if (!string.IsNullOrEmpty(areaFilter))
                 {
-                    sql += " AND CONCAT(mt.type_name, ma.area_name, m.machine_number) LIKE @Machine";
-                    machineFilter = $"%{machineFilter}%";
+                    sql += " AND ma.area_name = @Area";
+                    parameters.Add("Area", areaFilter);
+                }
+
+                // Filter Pencarian Teks (Optional)
+                if (!string.IsNullOrEmpty(search))
+                {
+                    sql += " AND CONCAT(IFNULL(mt.type_name,''), IFNULL(ma.area_name,''), IFNULL(m.machine_number,'')) LIKE @Search";
+                    parameters.Add("Search", $"%{search}%");
                 }
 
                 sql += " ORDER BY t.created_at DESC";
 
-                return await connection.QueryAsync<MachineHistoryDto>(sql, new { Start = start, End = end, Machine = machineFilter });
+                return await connection.QueryAsync<MachineHistoryDto>(sql, parameters);
             }
         }
 
@@ -170,26 +182,27 @@ namespace mtc_app.features.machine_history.data.repositories
                             }, trans);
                         }
 
-                        // 3. Insert Problems (DENGAN FORMATTING & AUTO-ADD KE MASTER)
+                        // 3. Insert Problems (AUTO-LEARNING FITUR)
                         string insertProblemSql = @"
                             INSERT INTO ticket_problems (ticket_id, problem_type_id, problem_type_remarks, failure_id, failure_remarks, root_cause_id, root_cause_remarks, action_id, action_details_manual)
                             VALUES (@TicketId, @TypeId, @TypeRem, @FailId, @FailRem, @CauseId, @CauseRem, @ActionId, @ActionRem)";
 
                         foreach (var prob in request.Problems)
                         {
-                            // A. JENIS PROBLEM (Auto Add + Format)
+                            // A. JENIS PROBLEM (Auto Add ke tabel problem_types)
                             int? typeId = GetOrCreateMasterData(conn, trans, "problem_types", "type_id", "type_name", prob.ProblemTypeName);
                             
-                            // B. DETAIL MASALAH (Auto Add + Format)
+                            // B. DETAIL MASALAH (Auto Add ke tabel failures)
                             int? failId = GetOrCreateMasterData(conn, trans, "failures", "failure_id", "failure_name", prob.FailureName);
                             
-                            // C. PENYEBAB (Auto Add + Format)
+                            // C. PENYEBAB (Auto Add ke tabel failure_causes)
                             int? causeId = GetOrCreateMasterData(conn, trans, "failure_causes", "cause_id", "cause_name", prob.CauseName);
                             
-                            // D. TINDAKAN (Auto Add + Format)
+                            // D. TINDAKAN (Auto Add ke tabel actions)
                             int? actionId = GetOrCreateMasterData(conn, trans, "actions", "action_id", "action_name", prob.ActionName);
 
-                            // Simpan ke Ticket Problem dengan ID yang pasti ada (jika input tidak kosong)
+                            // Simpan ke Ticket Problem. 
+                            // Remarks dikosongkan (NULL) karena data dipaksa masuk master via GetOrCreateMasterData.
                             conn.Execute(insertProblemSql, new {
                                 TicketId = ticketId,
                                 TypeId = typeId,
@@ -226,8 +239,8 @@ namespace mtc_app.features.machine_history.data.repositories
 
                         // 5. Update Status Mesin
                         int machineStatus = 2; // Default DOWN
-                        if (request.StatusId >= 4) machineStatus = 1; // RUNNING (Jika status rejected/closed?) 
-                        else if (request.StatusId == 3) machineStatus = 3; // RUNNING but NEED MONITORING (Completed)
+                        if (request.StatusId >= 4) machineStatus = 1; // Rejected -> Running
+                        else if (request.StatusId == 3) machineStatus = 3; // Completed -> Running/Monitoring
                         
                         conn.Execute("UPDATE machines SET current_status_id = @Status WHERE machine_id = @Id", new { Status = machineStatus, Id = request.MachineId }, trans);
 

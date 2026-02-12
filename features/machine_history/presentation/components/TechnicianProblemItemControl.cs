@@ -60,7 +60,7 @@ namespace mtc_app.features.machine_history.presentation.components
             // Problem Type Input (pre-filled, editable)
             InputProblemType = new AppInput 
             { 
-                LabelText = "Jenis Problem", 
+                LabelText = "Jenis Masalah", 
                 InputType = AppInput.InputTypeEnum.Dropdown,
                 AllowCustomText = true,
                 IsRequired = true,
