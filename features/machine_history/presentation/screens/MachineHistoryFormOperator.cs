@@ -11,7 +11,6 @@ using mtc_app.features.machine_history.presentation.components;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 using mtc_app.shared.infrastructure;
-using mtc_app.shared.infrastructure;
 using mtc_app.shared.data.repositories;
 
 namespace mtc_app.features.machine_history.presentation.screens
@@ -68,13 +67,13 @@ namespace mtc_app.features.machine_history.presentation.screens
         // Main Responsive Layout Containers
         private TableLayoutPanel _rootLayout;
         private TableLayoutPanel _tab1Layout;
-        private TableLayoutPanel _formLayout; // Replaces mainLayout logic
-        private TableLayoutPanel _problemsLayout; // Replaces pnlProblems logic
+        private TableLayoutPanel _formLayout; 
+        private TableLayoutPanel _problemsLayout; 
 
         private void InitializeCustomTabs()
         {
             // Clear existing controls from Designer
-            this.Controls.Clear(); // We will rebuild the entire form structure
+            this.Controls.Clear(); 
 
             // === 1. Root Layout (Header, Content) ===
             _rootLayout = new TableLayoutPanel
@@ -132,9 +131,8 @@ namespace mtc_app.features.machine_history.presentation.screens
             panelFooter.Parent = null; // Detach from form
             panelFooter.Controls.Clear();
             panelFooter.Dock = DockStyle.Fill;
-            panelFooter.Height = 80; // Ensure enough height for button
+            panelFooter.Height = 80; 
             panelFooter.Padding = new Padding(0); 
-            // panelFooter is just a Panel, we can put it in the Table
             _tab1Layout.Controls.Add(panelFooter, 0, 1);
 
             tabReport.Controls.Add(_tab1Layout);
@@ -142,7 +140,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             // === Tab 2: History Tab ===
             var tabHistory = new TabPage("Riwayat Mesin") { BackColor = AppColors.CardBackground };
-            // Filter Panel - Use FlowLayoutPanel to prevent overlap
+            // Filter Panel
             var pnlFilter = new FlowLayoutPanel 
             { 
                 Dock = DockStyle.Top, 
@@ -153,7 +151,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
             
             _dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 120 };
-            var lblTo = new Label { Text = "s/d", AutoSize = true, Margin = new Padding(5, 5, 5, 0) }; // Center vertically approx
+            var lblTo = new Label { Text = "s/d", AutoSize = true, Margin = new Padding(5, 5, 5, 0) }; 
             _dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 120 };
             _btnFilter = new AppButton { Text = "Filter", Type = AppButton.ButtonType.Primary, Width = 80, Height = 30 };
             _btnFilter.Click += async (s, e) => await LoadHistoryAsync();
@@ -168,48 +166,39 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             _tabControl.TabPages.Add(tabHistory);
 
-            // Re-Add Pending Ticket Link to Header (since we cleared Control collection of Header? No, Header controls preserved)
-            // But we created a NEW LinkLabel in original code logic?
-            // The original logic created _lnkPendingTicket and added to panelHeader.
-            // We should do that here too.
+            // === PENDING TICKET LINK ===
             _lnkPendingTicket = new LinkLabel
             {
-                Text = "⚠️ TICKET AKTIF", // Initial text
-                Font = new Font("Segoe UI", 12F, FontStyle.Bold), // [UI-POLISH] Bold & Larger
-                LinkColor = Color.Gold, // [UI-POLISH] High Contrast Warning Color
+                Text = "⚠️ CONTINUE PROBLEM", // [PERUBAHAN 1] Text Default
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold), 
+                LinkColor = Color.Gold, 
                 ActiveLinkColor = Color.Yellow,
                 LinkBehavior = LinkBehavior.HoverUnderline,
                 AutoSize = true,
                 Visible = false,
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Cursor = Cursors.Hand,
-                BackColor = Color.Transparent // Ensure it looks clean on header
+                BackColor = Color.Transparent 
             };
             _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
             _lnkPendingTicket.LinkClicked += LnkPendingTicket_LinkClicked;
             panelHeader.Controls.Add(_lnkPendingTicket);
         }
         
-        // Remove manual resizing logic
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-             // Reposition pending indicator if needed (standard Anchor handles most, but manual location update in original code)
             if (_lnkPendingTicket != null && _lnkPendingTicket.Visible)
             {
                 _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
             }
-            // No manual width calculations needed for fields!
         }
 
         private void SetupInputs()
         {
-            // === Form Fields Setup ===
-
-            // Helper to add row to _formLayout
             void AddToForm(Control c, int bottomMargin = 10)
             {
-                 c.Dock = DockStyle.Top; // Or Fill, but Top works for AutoSize controls
+                 c.Dock = DockStyle.Top; 
                  c.Margin = new Padding(0, 0, 0, bottomMargin);
                  _formLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
                  _formLayout.Controls.Add(c, 0, _formLayout.RowCount++);
@@ -244,19 +233,18 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
             AddToForm(lblProblems);
 
-            // 5. Problems Container (Nested TableLayout)
+            // 5. Problems Container
             _problemsLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink, // IMPORTANT: Force resize
+                AutoSizeMode = AutoSizeMode.GrowAndShrink, 
                 GrowStyle = TableLayoutPanelGrowStyle.AddRows,
                 ColumnCount = 1,
                 Padding = new Padding(0)
             };
             _problemsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             
-            // Add _problemsLayout to _formLayout
             _formLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             _formLayout.Controls.Add(_problemsLayout, 0, _formLayout.RowCount++);
 
@@ -273,20 +261,18 @@ namespace mtc_app.features.machine_history.presentation.screens
             AddToForm(btnAddProblem);
 
             // === Footer Action Button ===
-            // btnSave is added to panelFooter
              btnSave = new AppButton 
             { 
                 Text = "Panggil Teknisi", 
                 Type = AppButton.ButtonType.Primary, 
                 Height = 55,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(10) // Small margin inside footer
+                Margin = new Padding(10) 
             };
             btnSave.Click += SaveButton_Click;
             
             panelFooter.Controls.Add(btnSave);
 
-            // Add initial problem
             AddProblemInput();
         }
 
@@ -316,7 +302,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             _problemControls.Remove(control);
             control.Dispose();
             
-            // Renumber remaining problems
             for (int i = 0; i < _problemControls.Count; i++)
             {
                 _problemControls[i].UpdateIndex(i);
@@ -380,14 +365,12 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private async void SaveButton_Click(object sender, EventArgs e)
         {
-            // Validate Header
             if (!inputNIK.ValidateInput() || !inputShift.ValidateInput() || !inputApplicator.ValidateInput())
             {
                 MessageBox.Show("Mohon lengkapi semua data.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            // Validate Problems
             foreach (var prob in _problemControls)
             {
                 if (!prob.InputType.ValidateInput() || !prob.InputFailure.ValidateInput())
@@ -399,7 +382,6 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             try 
             {
-                // [FIX] Get Machine ID from Config (Dynamic)
                 int machineId = 1;
                 if (int.TryParse(DatabaseHelper.GetMachineId(), out int configId))
                 {
@@ -419,17 +401,14 @@ namespace mtc_app.features.machine_history.presentation.screens
                     }).ToList()
                 };
 
-                // Use Repository (supports offline buffer)
                 var result = await _repository.CreateTicketAsync(request);
 
-                // Both Online (>0) and Offline (<0) tickets proceed to Technician Form
                 string successMsg = (result.TicketId < 0) 
                     ? "Tiket Disimpan Offline.\nMenunggu Sinkronisasi." 
                     : $"Tiket Berhasil Dibuat!\nKode: {result.TicketCode}";
 
                 AutoClosingMessageBox.Show(successMsg, "Sukses", 2000);
 
-                // Open Technician Form
                 var technicianForm = new MachineHistoryFormTechnician(result.TicketId);
                 this.Hide(); 
                 technicianForm.FormClosed += (s, args) => 
@@ -475,11 +454,10 @@ namespace mtc_app.features.machine_history.presentation.screens
                 
                 if (_pendingTicket != null)
                 {
-                    _lnkPendingTicket.Text = $"⚠️ TICKET ACTIVE: {_pendingTicket.StatusName.ToUpper()}"; // [UI-POLISH] Uppercase for emphasis
+                    // [PERUBAHAN 2] Teks diganti jadi CONTINUE PROBLEM
+                    // Ditambah info status dalam kurung agar user tetap tahu kondisinya
+                    _lnkPendingTicket.Text = $"⚠️ CONTINUE PROBLEM ({_pendingTicket.StatusName.ToUpper()})";
                     _lnkPendingTicket.Visible = true;
-                    // Manual refresh of location might be needed if AutoSize changes width significantly
-                    // But Anchor Top|Right should handle resize. 
-                    // However, since we set Location manually in OnResize, we should let that handle it or update it here.
                     _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 20, 15);
                 }
                 else
@@ -497,19 +475,13 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             if (_pendingTicket == null) return;
 
-            // Switch to History tab
             _tabControl.SelectedIndex = 1;
-
-            // Reload history
             await LoadHistoryAsync();
-
-            // Open Technician Form to continue workflow
             OpenTechnicianForm(_pendingTicket.TicketId);
         }
 
         private void HistoryControl_ItemClicked(object sender, MachineHistoryDto item)
         {
-            // Only open Technician Form for Status 1 (Waiting) or 2 (Repairing)
             if (item.StatusId == 1 || item.StatusId == 2)
             {
                 OpenTechnicianForm(item.TicketId);
