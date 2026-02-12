@@ -590,7 +590,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             // === Rating ===
             var panelRating = new Panel { Width = 450, Height = 60, Margin = new Padding(0, 10, 0, 0) };
-            var lblRating = new Label { Text = "Rating Operator:", Font = AppFonts.Subtitle, Location = new Point(0, 0), AutoSize = true };
+            var lblRating = new Label { Text = "Rating Dari Teknisi:", Font = AppFonts.Subtitle, Location = new Point(0, 0), AutoSize = true };
             ratingOperator = new AppStarRating { Location = new Point(0, 25), Rating = 0 };
             panelRating.Controls.AddRange(new Control[] { lblRating, ratingOperator });
             mainLayout.Controls.Add(panelRating);
