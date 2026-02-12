@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks; // [FIX] Added for Task.Rundows.Forms;
 using System.Windows.Forms;
+using System.Data;
 using Dapper;
 using mtc_app.features.machine_history.presentation.components;
 using mtc_app.shared.presentation.components;
@@ -1046,7 +1047,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                             $"Perbaikan Selesai (Offline)!\nDurasi: {repairDuration:hh\\:mm\\:ss}\n\nData akan disinkronkan saat online.",
                             "Sukses", 2000);
                         
-                        // Continue to MachineRunForm (same as online flow)
                         var runForm = new MachineRunForm(_currentTicketId);
                         if (runForm.ShowDialog() == DialogResult.OK)
                         {
@@ -1067,7 +1067,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
 
             // ═══════════════════════════════════════════════════════════════════
-            // ONLINE MODE: Save directly to database
+            // ONLINE MODE: Save directly to database (WITH AUTO-LEARNING)
             // ═══════════════════════════════════════════════════════════════════
             try
             {
@@ -1091,7 +1091,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                                 Id = _currentTicketId 
                             }, trans);
 
-                            // Update Problem Details (including technician edits to problem type/detail)
+                            // Update Problem Details (AUTO-LEARNING LOGIC APPLIED HERE)
                             string detailSql = @"UPDATE ticket_problems SET 
                                 problem_type_id = @TId, problem_type_remarks = @TRem,
                                 failure_id = @FId, failure_remarks = @FRem,
@@ -1101,29 +1101,38 @@ namespace mtc_app.features.machine_history.presentation.screens
                             
                             foreach (var prob in _problemControls)
                             {
-                                // Resolve IDs or use remarks
-                                int? tId = conn.QueryFirstOrDefault<int?>("SELECT type_id FROM problem_types WHERE type_name = @N", new { N = prob.InputProblemType.InputValue }, trans);
-                                int? fId = conn.QueryFirstOrDefault<int?>("SELECT failure_id FROM failures WHERE failure_name = @N", new { N = prob.InputProblemDetail.InputValue }, trans);
-                                int? cId = conn.QueryFirstOrDefault<int?>("SELECT cause_id FROM failure_causes WHERE cause_name = @N", new { N = prob.InputCause.InputValue }, trans);
-                                int? aId = conn.QueryFirstOrDefault<int?>("SELECT action_id FROM actions WHERE action_name = @N", new { N = prob.InputAction.InputValue }, trans);
+                                // 1. Problem Type (Auto-Add to Master)
+                                int? tId = GetOrCreateMasterData(conn, trans, "problem_types", "type_id", "type_name", prob.InputProblemType.InputValue);
+
+                                // 2. Failure/Detail (Auto-Add to Master)
+                                int? fId = GetOrCreateMasterData(conn, trans, "failures", "failure_id", "failure_name", prob.InputProblemDetail.InputValue);
+
+                                // 3. Root Cause (Auto-Add to Master)
+                                int? cId = GetOrCreateMasterData(conn, trans, "failure_causes", "cause_id", "cause_name", prob.InputCause.InputValue);
+
+                                // 4. Action (Auto-Add to Master)
+                                int? aId = GetOrCreateMasterData(conn, trans, "actions", "action_id", "action_name", prob.InputAction.InputValue);
                                 
+                                // Execute Update:
+                                // Karena kita sudah memanggil GetOrCreateMasterData, ID pasti ada (jika input tidak kosong).
+                                // Maka Remarks kita set NULL agar data bersih dan masuk ke Master.
                                 conn.Execute(detailSql, new {
                                     TId = tId,
-                                    TRem = (!tId.HasValue) ? prob.InputProblemType.InputValue : null,
+                                    TRem = (string)null, 
                                     FId = fId,
-                                    FRem = (!fId.HasValue) ? prob.InputProblemDetail.InputValue : null,
+                                    FRem = (string)null,
                                     CId = cId, 
-                                    CRem = (!cId.HasValue) ? prob.InputCause.InputValue : null,
+                                    CRem = (string)null,
                                     AId = aId, 
-                                    ARem = (!aId.HasValue) ? prob.InputAction.InputValue : null,
+                                    ARem = (string)null,
                                     PId = prob.ProblemId
                                 }, trans);
                             }
                             
                             trans.Commit();
                             _timer.Stop();
-                            SaveTimerToDatabase(); // Final save before closing
-                            EndSessionAsCompleted(); // Mark session as completing
+                            SaveTimerToDatabase(); 
+                            EndSessionAsCompleted(); 
                             
                             TimeSpan repairDuration = TimeSpan.FromSeconds(_repairSeconds);
                             
@@ -1249,6 +1258,26 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error active sessions: {ex.Message}");
             }
+        }
+        // --- HELPER SAKTI: AUTO-ADD TO MASTER DATA (Sama seperti di Repository) ---
+        private int? GetOrCreateMasterData(IDbConnection conn, IDbTransaction trans, string tableName, string idCol, string nameCol, string valueToCheck)
+        {
+            if (string.IsNullOrWhiteSpace(valueToCheck)) return null;
+
+            // 1. Cek apakah sudah ada?
+            string checkSql = $"SELECT {idCol} FROM {tableName} WHERE {nameCol} = @Name";
+            var existingId = conn.QueryFirstOrDefault<int?>(checkSql, new { Name = valueToCheck }, trans);
+
+            if (existingId.HasValue)
+            {
+                return existingId.Value; // Sudah ada, kembalikan ID lama
+            }
+
+            // 2. Belum ada -> Insert Baru ke Tabel Master
+            string insertSql = $"INSERT INTO {tableName} ({nameCol}) VALUES (@Name); SELECT LAST_INSERT_ID();";
+            int newId = conn.ExecuteScalar<int>(insertSql, new { Name = valueToCheck }, trans);
+
+            return newId; // Kembalikan ID baru
         }
     }
 }
