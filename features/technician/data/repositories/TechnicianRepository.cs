@@ -116,8 +116,18 @@ namespace mtc_app.features.technician.data.repositories
                         t.tech_rating_score AS TechRatingScore,
                         t.tech_rating_note AS TechRatingNote,
                         t.gl_rating_score AS GlRatingScore,
-                        t.gl_rating_note AS GlRatingNote
-                    FROM tickets t
+                        t.gl_rating_note AS GlRatingNote,
+
+                -- [NEW] Subquery SparepartRequests
+                (SELECT GROUP_CONCAT(
+                    CONCAT(COALESCE(p.part_name, pr.part_name_manual), ' x', pr.qty)
+                    SEPARATOR ', ')
+                 FROM part_requests pr
+                 LEFT JOIN parts p ON pr.part_id = p.part_id
+                 WHERE pr.ticket_id = t.ticket_id
+                ) AS SparepartRequests
+
+            FROM tickets t
                     JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN machine_types m_type ON m.type_id = m_type.type_id
                     LEFT JOIN machine_areas m_area ON m.area_id = m_area.area_id

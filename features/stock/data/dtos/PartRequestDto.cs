@@ -6,6 +6,7 @@ namespace mtc_app.features.stock.data.dtos
     public class PartRequestDto
     {
         public int RequestId { get; set; }
+        public long TicketId { get; set; }
         public DateTime RequestedAt { get; set; }
         public string PartName { get; set; }
         public string PartCode { get; set; } // NEW

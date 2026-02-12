@@ -21,5 +21,8 @@ namespace mtc_app.features.technician.data.dtos
         // Rating given by GL to Technician
         public int? GlRatingScore { get; set; }
         public string GlRatingNote { get; set; }
+        
+        // Sparepart requests linked to this ticket
+        public string SparepartRequests { get; set; }
     }
 }

@@ -43,6 +43,22 @@ namespace mtc_app.features.stock.data.decorators
         }
 
         /// <summary>
+        /// Pass-through: Read operation with date filter.
+        /// </summary>
+        public Task<IEnumerable<PartRequestDto>> GetRequestsByDateAsync(DateTime start, DateTime end)
+        {
+            return _innerRepository.GetRequestsByDateAsync(start, end);
+        }
+
+        /// <summary>
+        /// Pass-through: Read operation with date filter.
+        /// </summary>
+        public Task<StockStatsDto> GetStatsByDateAsync(DateTime start, DateTime end)
+        {
+            return _innerRepository.GetStatsByDateAsync(start, end);
+        }
+
+        /// <summary>
         /// Write operation with offline fallback.
         /// </summary>
         public async Task<bool> MarkAsReadyAsync(int requestId)

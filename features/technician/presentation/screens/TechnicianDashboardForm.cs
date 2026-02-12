@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using mtc_app.features.stock.data.repositories;
 using mtc_app.features.technician.data.repositories;
 using mtc_app.features.technician.logic;
 using mtc_app.features.technician.presentation.components;
@@ -22,6 +23,7 @@ namespace mtc_app.features.technician.presentation.screens
         private TechnicianPerformanceControl performanceControl;
         private MachinePerformanceControl machinePerformanceControl;
         private MachineMonitorControl machineMonitorControl;
+        private StockDataControl stockDataControl;
         
         // Auto Switch Feature
         private Timer timerTabSwitch;
@@ -265,27 +267,30 @@ namespace mtc_app.features.technician.presentation.screens
         {
             if (tabControl.TabCount <= 0) return;
 
-            const int totalStages = 5; // 3 tabs + 2 modes for the 4th tab
+            const int totalStages = 6; // 4 tabs + 2 modes for the monitor tab
             _autoSwitchStage = (_autoSwitchStage + 1) % totalStages;
 
             switch (_autoSwitchStage)
             {
-                case 0: // Stage 0: Tab 1 (Work Queue)
+                case 0: // Tab 1: Work Queue
                     tabControl.SelectedIndex = 0;
                     break;
-                case 1: // Stage 1: Tab 2 (Performance)
+                case 1: // Tab 2: Data Part
                     tabControl.SelectedIndex = 1;
                     break;
-                case 2: // Stage 2: Tab 3 (Machine Analysis)
+                case 2: // Tab 3: Performance
                     tabControl.SelectedIndex = 2;
                     break;
-                case 3: // Stage 3: Tab 4 (Monitor) - Set to Output
+                case 3: // Tab 4: Machine Analysis
                     tabControl.SelectedIndex = 3;
-                    machineMonitorControl?.SetMetric(0); // 0 for "Produksi (Output)"
                     break;
-                case 4: // Stage 4: Tab 4 (Monitor) - Set to Efficiency
-                    tabControl.SelectedIndex = 3;
-                    machineMonitorControl?.SetMetric(1); // 1 for "Efisiensi (Waktu)"
+                case 4: // Tab 5: Monitor - Output
+                    tabControl.SelectedIndex = 4;
+                    machineMonitorControl?.SetMetric(0);
+                    break;
+                case 5: // Tab 5: Monitor - Efficiency
+                    tabControl.SelectedIndex = 4;
+                    machineMonitorControl?.SetMetric(1);
                     break;
             }
         }
@@ -298,11 +303,15 @@ namespace mtc_app.features.technician.presentation.screens
             DateTime start = dtpStart.Value.Date;
             DateTime end = dtpEnd.Value.Date.AddDays(1).AddSeconds(-1); // End of day
 
-            if (tabControl.SelectedIndex == 1) // Performa
+            if (tabControl.SelectedIndex == 1) // Data Part
+            {
+                await stockDataControl.LoadDataAsync(start, end);
+            }
+            else if (tabControl.SelectedIndex == 2) // Performa
             {
                 await performanceControl.LoadDataAsync(start, end);
             }
-            else if (tabControl.SelectedIndex == 2) // Analisis Mesin
+            else if (tabControl.SelectedIndex == 3) // Analisis Mesin
             {
                 await machinePerformanceControl.LoadDataAsync(start, end);
             }
@@ -332,7 +341,19 @@ namespace mtc_app.features.technician.presentation.screens
             };
             tabWorkQueue.Controls.Add(workQueueControl);
 
-            // Tab 2: Performance
+            // Tab 2: Stock Data (Part Requests)
+            var tabStockData = new TabPage("Data Part")
+            {
+                BackColor = AppColors.CardBackground
+            };
+
+            stockDataControl = new StockDataControl(ServiceLocator.CreateStockRepository())
+            {
+                Dock = DockStyle.Fill
+            };
+            tabStockData.Controls.Add(stockDataControl);
+
+            // Tab 3: Performance
             var tabPerformance = new TabPage("Performa")
             {
                 BackColor = AppColors.CardBackground
@@ -345,7 +366,7 @@ namespace mtc_app.features.technician.presentation.screens
 
             tabPerformance.Controls.Add(performanceControl);
 
-            // Tab 3: Machine Analysis
+            // Tab 4: Machine Analysis
             var tabMachine = new TabPage("Downtime")
             {
                 BackColor = AppColors.CardBackground
@@ -357,7 +378,7 @@ namespace mtc_app.features.technician.presentation.screens
             };
             tabMachine.Controls.Add(machinePerformanceControl);
 
-            // Tab 4: Machine Monitor (Real-time)
+            // Tab 5: Machine Monitor (Real-time)
             var tabMonitor = new TabPage("Output")
             {
                 BackColor = AppColors.CardBackground
@@ -370,6 +391,7 @@ namespace mtc_app.features.technician.presentation.screens
             tabMonitor.Controls.Add(machineMonitorControl);
 
             tabControl.TabPages.Add(tabWorkQueue);
+            tabControl.TabPages.Add(tabStockData);
             tabControl.TabPages.Add(tabPerformance);
             tabControl.TabPages.Add(tabMachine);
             tabControl.TabPages.Add(tabMonitor);
@@ -378,7 +400,7 @@ namespace mtc_app.features.technician.presentation.screens
             tabControl.SelectedIndexChanged += (s, e) =>
             {
                 // Manage Real-time monitoring
-                if (tabControl.SelectedTab == tabMonitor)
+                if (tabControl.SelectedIndex == 4) // Monitor tab
                 {
                     machineMonitorControl.StartMonitoring();
                 }

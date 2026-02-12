@@ -32,6 +32,9 @@ namespace mtc_app.features.rating.presentation.screens
         // GL Rating Display (Read Only)
         private AppStarRating _glRatingControl;
         private AppLabel _lblGlNote;
+        
+        // Sparepart Requests
+        private AppLabel _lblSparepartRequests;
 
         public RatingTechnicianForm(long ticketId)
         {
@@ -81,6 +84,10 @@ namespace mtc_app.features.rating.presentation.screens
             AddSectionHeader(mainLayout, "Durasi Pengerjaan");
             _lblArrivalDuration = AddInfoRow(mainLayout, "Respon (Arrival):");
             _lblRepairDuration = AddInfoRow(mainLayout, "Pengerjaan (Repair):");
+
+            // 3.5 Sparepart Requests
+            AddSectionHeader(mainLayout, "Permintaan Sparepart");
+            _lblSparepartRequests = AddDetailRow(mainLayout, "Part yang diminta:");
 
             // 4. GL Rating (Read Only)
             AddSectionHeader(mainLayout, "Penilaian GL");
@@ -290,6 +297,17 @@ namespace mtc_app.features.rating.presentation.screens
                     
                     if (!string.IsNullOrEmpty(data.TechRatingNote))
                         _inputNote.InputValue = data.TechRatingNote;
+
+                    // Populate Sparepart Requests
+                    if (!string.IsNullOrEmpty(data.SparepartRequests))
+                    {
+                        var parts = data.SparepartRequests.Split(new[] { ", " }, StringSplitOptions.None);
+                        _lblSparepartRequests.Text = string.Join(Environment.NewLine, parts.Select((p, i) => $"{i + 1}. {p}"));
+                    }
+                    else
+                    {
+                        _lblSparepartRequests.Text = "(Tidak ada permintaan sparepart)";
+                    }
                 }
                 else
                 {
