@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Data; // Tambahkan ini untuk IDbConnection
+using System.Data;
 using System.Threading.Tasks;
+using System.Linq;
 using Dapper;
 using mtc_app.features.machine_history.data.dtos;
 
@@ -169,34 +170,26 @@ namespace mtc_app.features.machine_history.data.repositories
                             }, trans);
                         }
 
-                        // 3. Insert Problems (DENGAN FITUR AUTO-ADD KE MASTER)
-                        //    Berlaku untuk 4 parameter: Type, Failure, Cause, Action
-                        
+                        // 3. Insert Problems (DENGAN FORMATTING & AUTO-ADD KE MASTER)
                         string insertProblemSql = @"
                             INSERT INTO ticket_problems (ticket_id, problem_type_id, problem_type_remarks, failure_id, failure_remarks, root_cause_id, root_cause_remarks, action_id, action_details_manual)
                             VALUES (@TicketId, @TypeId, @TypeRem, @FailId, @FailRem, @CauseId, @CauseRem, @ActionId, @ActionRem)";
 
                         foreach (var prob in request.Problems)
                         {
-                            // A. JENIS PROBLEM (Operator/Teknisi)
-                            // Jika user ketik baru -> Masuk tabel 'problem_types', ambil ID baru
+                            // A. JENIS PROBLEM (Auto Add + Format)
                             int? typeId = GetOrCreateMasterData(conn, trans, "problem_types", "type_id", "type_name", prob.ProblemTypeName);
                             
-                            // B. DETAIL MASALAH / FAILURE (Operator/Teknisi)
-                            // Jika user ketik baru -> Masuk tabel 'failures', ambil ID baru
+                            // B. DETAIL MASALAH (Auto Add + Format)
                             int? failId = GetOrCreateMasterData(conn, trans, "failures", "failure_id", "failure_name", prob.FailureName);
                             
-                            // C. PENYEBAB / CAUSE (Teknisi)
-                            // Jika user ketik baru -> Masuk tabel 'failure_causes', ambil ID baru
+                            // C. PENYEBAB (Auto Add + Format)
                             int? causeId = GetOrCreateMasterData(conn, trans, "failure_causes", "cause_id", "cause_name", prob.CauseName);
                             
-                            // D. TINDAKAN / ACTION (Teknisi)
-                            // Jika user ketik baru -> Masuk tabel 'actions', ambil ID baru
+                            // D. TINDAKAN (Auto Add + Format)
                             int? actionId = GetOrCreateMasterData(conn, trans, "actions", "action_id", "action_name", prob.ActionName);
 
-                            // Simpan ke Ticket Problem
-                            // Karena data sudah dipastikan masuk master (punya ID), maka kolom Remarks (Manual) kita kosongkan (NULL)
-                            // agar data tersentralisasi.
+                            // Simpan ke Ticket Problem dengan ID yang pasti ada (jika input tidak kosong)
                             conn.Execute(insertProblemSql, new {
                                 TicketId = ticketId,
                                 TypeId = typeId,
@@ -233,7 +226,7 @@ namespace mtc_app.features.machine_history.data.repositories
 
                         // 5. Update Status Mesin
                         int machineStatus = 2; // Default DOWN
-                        if (request.StatusId >= 4) machineStatus = 1; // RUNNING (Jika status rejected/closed?) - Logic sesuaikan kebutuhan
+                        if (request.StatusId >= 4) machineStatus = 1; // RUNNING (Jika status rejected/closed?) 
                         else if (request.StatusId == 3) machineStatus = 3; // RUNNING but NEED MONITORING (Completed)
                         
                         conn.Execute("UPDATE machines SET current_status_id = @Status WHERE machine_id = @Id", new { Status = machineStatus, Id = request.MachineId }, trans);
@@ -248,28 +241,6 @@ namespace mtc_app.features.machine_history.data.repositories
                     }
                 }
             }
-        }
-
-        // --- HELPER SAKTI: AUTO-ADD TO MASTER DATA ---
-        private int? GetOrCreateMasterData(IDbConnection conn, IDbTransaction trans, string tableName, string idCol, string nameCol, string valueToCheck)
-        {
-            if (string.IsNullOrWhiteSpace(valueToCheck)) return null;
-
-            // 1. Cek apakah sudah ada?
-            string checkSql = $"SELECT {idCol} FROM {tableName} WHERE {nameCol} = @Name";
-            var existingId = conn.QueryFirstOrDefault<int?>(checkSql, new { Name = valueToCheck }, trans);
-
-            if (existingId.HasValue)
-            {
-                return existingId.Value; // Sudah ada, kembalikan ID lama
-            }
-
-            // 2. Belum ada -> Insert Baru ke Tabel Master
-            // Ini akan membuat data tersebut tersedia di dropdown untuk selanjutnya
-            string insertSql = $"INSERT INTO {tableName} ({nameCol}) VALUES (@Name); SELECT LAST_INSERT_ID();";
-            int newId = conn.ExecuteScalar<int>(insertSql, new { Name = valueToCheck }, trans);
-
-            return newId; // Kembalikan ID baru
         }
 
         public async Task<MachineHistoryDto> GetActiveTicketForMachineAsync(int machineId)
@@ -314,6 +285,66 @@ namespace mtc_app.features.machine_history.data.repositories
 
                 return await connection.QueryFirstOrDefaultAsync<MachineHistoryDto>(sql, new { MachineId = machineId });
             }
+        }
+
+        // =========================================================================================
+        // HELPER FUNCTIONS (FORMATTING & AUTO-ADD TO MASTER)
+        // =========================================================================================
+
+        private int? GetOrCreateMasterData(IDbConnection conn, IDbTransaction trans, string tableName, string idCol, string nameCol, string rawValue)
+        {
+            if (string.IsNullOrWhiteSpace(rawValue)) return null;
+
+            // 1. FORMATTING INPUT (Huruf Besar Awal, Singkatan, dll)
+            string formattedValue = FormatInputText(rawValue);
+
+            // 2. Cek apakah sudah ada (pakai nilai yang sudah diformat)
+            string checkSql = $"SELECT {idCol} FROM {tableName} WHERE {nameCol} = @Name";
+            var existingId = conn.QueryFirstOrDefault<int?>(checkSql, new { Name = formattedValue }, trans);
+
+            if (existingId.HasValue)
+            {
+                return existingId.Value; // Sudah ada, kembalikan ID lama
+            }
+
+            // 3. Insert Baru (pakai nilai yang sudah diformat)
+            string insertSql = $"INSERT INTO {tableName} ({nameCol}) VALUES (@Name); SELECT LAST_INSERT_ID();";
+            int newId = conn.ExecuteScalar<int>(insertSql, new { Name = formattedValue }, trans);
+
+            return newId; // Kembalikan ID baru
+        }
+
+        // LOGIKA FORMATTING TEKS
+        private string FormatInputText(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return input;
+
+            // Split berdasarkan spasi
+            var words = input.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            
+            for (int i = 0; i < words.Length; i++)
+            {
+                string word = words[i];
+
+                // Aturan 1: Pengecualian kata "aus" -> "Aus" (Tetap Title Case, bukan UPPER)
+                if (word.Equals("aus", StringComparison.OrdinalIgnoreCase))
+                {
+                    words[i] = "Aus";
+                }
+                // Aturan 2: Singkatan 2-3 huruf -> UPPERCASE (contoh: PLC, NG, OK, MCB)
+                else if (word.Length >= 2 && word.Length <= 3)
+                {
+                    words[i] = word.ToUpper();
+                }
+                // Aturan 3: Default -> Title Case (Ganti -> Ganti, sensor -> Sensor)
+                else
+                {
+                    // Huruf pertama besar, sisanya kecil
+                    words[i] = char.ToUpper(word[0]) + word.Substring(1).ToLower();
+                }
+            }
+
+            return string.Join(" ", words);
         }
     }
 }

@@ -1259,25 +1259,56 @@ namespace mtc_app.features.machine_history.presentation.screens
                 System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error active sessions: {ex.Message}");
             }
         }
-        // --- HELPER SAKTI: AUTO-ADD TO MASTER DATA (Sama seperti di Repository) ---
-        private int? GetOrCreateMasterData(IDbConnection conn, IDbTransaction trans, string tableName, string idCol, string nameCol, string valueToCheck)
+        // --- HELPER SAKTI: FORMATTING & AUTO-ADD TO MASTER DATA ---
+        private int? GetOrCreateMasterData(IDbConnection conn, IDbTransaction trans, string tableName, string idCol, string nameCol, string rawValue)
         {
-            if (string.IsNullOrWhiteSpace(valueToCheck)) return null;
+            if (string.IsNullOrWhiteSpace(rawValue)) return null;
 
-            // 1. Cek apakah sudah ada?
+            // 1. FORMATTING INPUT SEBELUM SAVE
+            string formattedValue = FormatInputText(rawValue);
+
+            // 2. Cek apakah sudah ada?
             string checkSql = $"SELECT {idCol} FROM {tableName} WHERE {nameCol} = @Name";
-            var existingId = conn.QueryFirstOrDefault<int?>(checkSql, new { Name = valueToCheck }, trans);
+            var existingId = conn.QueryFirstOrDefault<int?>(checkSql, new { Name = formattedValue }, trans);
 
             if (existingId.HasValue)
             {
                 return existingId.Value; // Sudah ada, kembalikan ID lama
             }
 
-            // 2. Belum ada -> Insert Baru ke Tabel Master
+            // 3. Belum ada -> Insert Baru ke Tabel Master
             string insertSql = $"INSERT INTO {tableName} ({nameCol}) VALUES (@Name); SELECT LAST_INSERT_ID();";
-            int newId = conn.ExecuteScalar<int>(insertSql, new { Name = valueToCheck }, trans);
+            int newId = conn.ExecuteScalar<int>(insertSql, new { Name = formattedValue }, trans);
 
             return newId; // Kembalikan ID baru
+        }
+
+        // --- LOGIKA FORMATTING (Copy paste agar konsisten) ---
+        private string FormatInputText(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return input;
+
+            var words = input.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            
+            for (int i = 0; i < words.Length; i++)
+            {
+                string word = words[i];
+
+                if (word.Equals("aus", StringComparison.OrdinalIgnoreCase))
+                {
+                    words[i] = "Aus";
+                }
+                else if (word.Length >= 2 && word.Length <= 3)
+                {
+                    words[i] = word.ToUpper();
+                }
+                else
+                {
+                    words[i] = char.ToUpper(word[0]) + word.Substring(1).ToLower();
+                }
+            }
+
+            return string.Join(" ", words);
         }
     }
 }
