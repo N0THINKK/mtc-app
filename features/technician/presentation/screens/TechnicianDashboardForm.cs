@@ -346,7 +346,7 @@ namespace mtc_app.features.technician.presentation.screens
             tabPerformance.Controls.Add(performanceControl);
 
             // Tab 3: Machine Analysis
-            var tabMachine = new TabPage("Analisis Mesin")
+            var tabMachine = new TabPage("Downtime")
             {
                 BackColor = AppColors.CardBackground
             };
@@ -358,7 +358,7 @@ namespace mtc_app.features.technician.presentation.screens
             tabMachine.Controls.Add(machinePerformanceControl);
 
             // Tab 4: Machine Monitor (Real-time)
-            var tabMonitor = new TabPage("Monitoring Mesin")
+            var tabMonitor = new TabPage("Output")
             {
                 BackColor = AppColors.CardBackground
             };
