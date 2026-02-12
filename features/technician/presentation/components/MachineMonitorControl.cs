@@ -5,7 +5,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions; // [NEW] For Regex
+using System.Text.RegularExpressions; 
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.DataVisualization.Charting;
@@ -27,12 +27,13 @@ namespace mtc_app.features.technician.presentation.components
         
         private System.ComponentModel.IContainer components = null;
 
-        // Data Structure to hold all metrics
+        // Data Structure updated to hold Speed
         private class MachineData
         {
             public string MachineName { get; set; }
             public long ProducedLots { get; set; }
             public long ProducedPieces { get; set; }
+            public double SpeedPerHour { get; set; } // [NEW] Property for Speed
             public double AutoTime { get; set; }
             public double MonitorTime { get; set; }
             public double Efficiency => MonitorTime > 0 ? (AutoTime / MonitorTime) * 100 : 0;
@@ -42,7 +43,7 @@ namespace mtc_app.features.technician.presentation.components
         {
             InitializeComponent();
             SetupTimer();
-            LoadAreas(); // Populate Area Filter
+            LoadAreas(); 
         }
 
         private async void LoadAreas()
@@ -53,7 +54,6 @@ namespace mtc_app.features.technician.presentation.components
                 _comboArea.SelectedIndex = 0;
                 using (var conn = DatabaseHelper.GetConnection())
                 {
-                    // New Schema
                     var areas = await conn.QueryAsync<string>("SELECT area_name FROM machine_areas ORDER BY area_name");
                     foreach (var area in areas) _comboArea.Items.Add(area);
                 }
@@ -74,7 +74,7 @@ namespace mtc_app.features.technician.presentation.components
             var pnlHeader = BuildHeaderPanel();
             this.Controls.Add(pnlHeader);
 
-            // 2. Chart Container (Scrollable)
+            // 2. Chart Container
             _pnlChartContainer = new Panel
             {
                 Dock = DockStyle.Fill,
@@ -84,9 +84,9 @@ namespace mtc_app.features.technician.presentation.components
 
             // 3. Chart
             _chart = new Chart();
-            _chart.Dock = DockStyle.Left;  // Align left to allow scrolling
+            _chart.Dock = DockStyle.Left;  
             _chart.BackColor = Color.White;
-            _chart.Height = _pnlChartContainer.Height - 20; // Fit container height
+            _chart.Height = _pnlChartContainer.Height - 20; 
             
             var chartArea = new ChartArea("MainArea");
             chartArea.AxisX.Interval = 1;
@@ -96,9 +96,8 @@ namespace mtc_app.features.technician.presentation.components
             // Primary Y Axis
             chartArea.AxisY.MajorGrid.LineColor = Color.LightGray;
             
-            // Secondary Y Axis
-            chartArea.AxisY2.Enabled = AxisEnabled.Auto;
-            chartArea.AxisY2.MajorGrid.Enabled = false;
+            // Secondary Y Axis (Disabled)
+            chartArea.AxisY2.Enabled = AxisEnabled.False;
             
             _chart.ChartAreas.Add(chartArea);
 
@@ -115,7 +114,6 @@ namespace mtc_app.features.technician.presentation.components
         {
             var pnlHeader = new Panel { Dock = DockStyle.Top, Height = AppDimens.RowHeight };
 
-            // Use a TableLayoutPanel: left=title+status, right=filters
             var headerLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -140,7 +138,7 @@ namespace mtc_app.features.technician.presentation.components
 
             var lblTitle = new Label 
             { 
-                Text = "Monitoring Output Produksi", 
+                Text = "Monitoring Mesin Real-time", 
                 Font = AppFonts.MetricSmall,
                 AutoSize = true,
                 Margin = new Padding(0, 5, AppDimens.MarginLarge, 0)
@@ -158,7 +156,7 @@ namespace mtc_app.features.technician.presentation.components
             flowLeft.Controls.AddRange(new Control[] { lblTitle, _lblStatus });
             headerLayout.Controls.Add(flowLeft, 0, 0);
 
-            // Right: Area + Metric filters (right-aligned)
+            // Right: Filters
             var flowRight = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.RightToLeft,
@@ -167,15 +165,15 @@ namespace mtc_app.features.technician.presentation.components
                 BackColor = Color.Transparent
             };
 
-            // RightToLeft order: Metric combo first (rightmost), then label, then area combo, then area label
             _comboMetric = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Width = 150,
+                Width = 180, // Dilebarkan sedikit
                 Font = AppFonts.BodySmall,
                 Margin = new Padding(0, 10, 0, 0)
             };
-            _comboMetric.Items.AddRange(new object[] { "Produksi (Output)", "Efisiensi (Waktu)" });
+            // [UPDATE] Opsi diganti ke Speed
+            _comboMetric.Items.AddRange(new object[] { "Speed Produksi (Pcs/Jam)", "Efisiensi (Waktu)" });
             _comboMetric.SelectedIndex = 0;
             _comboMetric.SelectedIndexChanged += async (s, e) => await LoadData();
 
@@ -236,19 +234,28 @@ namespace mtc_app.features.technician.presentation.components
         {
             try
             {
-                // 1. Get List of Machines from DB (With Area Filter)
-                IEnumerable<dynamic> machines;
                 string selectedArea = _comboArea.SelectedItem?.ToString();
                 
-                // New Schema: JOIN tables to get Type/Area names
-                string sql = @"SELECT m.machine_id, 
-                                      COALESCE(t.type_name, 'UNK') AS type_name, 
-                                      COALESCE(a.area_name, 'UNK') AS area_name, 
-                                      m.machine_number 
-                               FROM machines m
-                               LEFT JOIN machine_types t ON m.type_id = t.type_id
-                               LEFT JOIN machine_areas a ON m.area_id = a.area_id";
+                // [UPDATE] Query Database: Join dengan Log Terakhir untuk referensi Speed
+                string sql = @"
+                    SELECT m.machine_id, 
+                           COALESCE(t.type_name, 'UNK') AS type_name, 
+                           COALESCE(a.area_name, 'UNK') AS area_name, 
+                           m.machine_number,
+                           l.produced_pieces AS last_log_pieces,
+                           l.created_at AS last_log_time
+                    FROM machines m
+                    LEFT JOIN machine_types t ON m.type_id = t.type_id
+                    LEFT JOIN machine_areas a ON m.area_id = a.area_id
+                    LEFT JOIN (
+                        SELECT machine_id, produced_pieces, created_at
+                        FROM machine_process_logs
+                        WHERE log_id IN (
+                            SELECT MAX(log_id) FROM machine_process_logs GROUP BY machine_id
+                        )
+                    ) l ON m.machine_id = l.machine_id";
                 
+                IEnumerable<dynamic> machines;
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     if (!string.IsNullOrEmpty(selectedArea) && selectedArea != "Semua Area")
@@ -262,9 +269,9 @@ namespace mtc_app.features.technician.presentation.components
                     }
                 }
 
-                // 2. Process each machine (Fetch ALL data)
+                // 2. Process each machine
                 var machineList = new List<MachineData>();
-                string selectedMetric = _comboMetric.SelectedItem?.ToString() ?? "Produksi (Output)";
+                string selectedMetric = _comboMetric.SelectedItem?.ToString() ?? "Speed Produksi (Pcs/Jam)";
 
                 foreach (var m in machines)
                 {
@@ -273,6 +280,7 @@ namespace mtc_app.features.technician.presentation.components
                     };
                     string type = m.type_name.ToString().ToUpper();
 
+                    // --- READ REAL-TIME DATA (INI FILES) ---
                     // AC90
                     if (type.Contains("AC90"))
                     {
@@ -312,15 +320,40 @@ namespace mtc_app.features.technician.presentation.components
                     }
 
                     // [FIX] Hide inactive machines
-                    if (data.ProducedLots == 0 && data.ProducedPieces == 0 && data.MonitorTime == 0) continue;
+                    if (data.ProducedPieces == 0 && data.MonitorTime == 0) continue;
+
+                    // --- CALCULATE SPEED (Pcs/Hour) based on DB Log ---
+                    if (m.last_log_time != null)
+                    {
+                        DateTime lastTime = m.last_log_time;
+                        long lastPieces = m.last_log_pieces ?? 0;
+                        double hoursElapsed = (DateTime.Now - lastTime).TotalHours;
+
+                        // Hanya hitung jika log cukup baru (< 4 jam) untuk menghindari data kemarin
+                        if (hoursElapsed > 0.001 && hoursElapsed < 4.0) 
+                        {
+                            long diffPieces = data.ProducedPieces - lastPieces;
+                            
+                            // Jika negatif, berarti mesin baru di-reset counter-nya.
+                            // Kita asumsikan mulai dari 0, jadi diff = data.ProducedPieces
+                            if (diffPieces < 0) diffPieces = data.ProducedPieces;
+
+                            data.SpeedPerHour = diffPieces / hoursElapsed;
+                        }
+                    }
+                    else
+                    {
+                        // Jika tidak ada log DB sama sekali, speed 0 (tunggu log pertama dibuat logger)
+                        data.SpeedPerHour = 0; 
+                    }
 
                     machineList.Add(data);
                 }
 
                 // 3. Sorting (Desc)
-                if (selectedMetric.Contains("Produksi"))
+                if (selectedMetric.Contains("Speed"))
                 {
-                    machineList = machineList.OrderByDescending(x => x.ProducedPieces).ToList();
+                    machineList = machineList.OrderByDescending(x => x.SpeedPerHour).ToList();
                 }
                 else
                 {
@@ -338,66 +371,51 @@ namespace mtc_app.features.technician.presentation.components
 
         private void UpdateChart(List<MachineData> data, string mode)
         {
-            // [FIX] Dynamic Width for Scrolling (Min 100px per bar)
             int requiredWidth = Math.Max(_pnlChartContainer.Width, data.Count * 100);
             _chart.Width = requiredWidth;
 
             _chart.Series.Clear();
             var area = _chart.ChartAreas[0];
 
-            // Reset Axis Scaling
             area.AxisY.Maximum = Double.NaN;
-            area.AxisY.Minimum = 0; // Always start from 0
+            area.AxisY.Minimum = 0; 
             area.AxisY.Title = "";
-            area.AxisY2.Maximum = Double.NaN;
-            area.AxisY2.Minimum = 0;
-            area.AxisY2.Title = "";
             area.RecalculateAxesScale();
             
-            if (mode.Contains("Produksi"))
+            if (mode.Contains("Speed"))
             {
-                area.AxisY.Title = "Lots (Ikat)";
-                area.AxisY2.Title = "Pieces (Pcs)";
-                area.AxisY2.Enabled = AxisEnabled.True;
+                // --- MODE SPEED (PCS/JAM) ---
+                area.AxisY.Title = "Speed (Pcs/Jam)";
 
-                // Series 1: Lots (Primary Axis)
-                var sLots = new Series("Lots (Kiri)") { 
+                var sSpeed = new Series("Speed") { 
                     ChartType = SeriesChartType.Column, 
-                    Color = AppColors.Primary 
+                    Color = AppColors.Primary, // Biru
+                    IsValueShownAsLabel = true 
                 };
-                sLots["PointWidth"] = "0.8"; // [FIX] Wider Bars
-                
-                // Series 2: Pieces (Secondary Axis - Right)
-                var sPcs = new Series("Pieces (Kanan)") { 
-                    ChartType = SeriesChartType.Column, 
-                    Color = AppColors.Success, 
-                    YAxisType = AxisType.Secondary 
-                };
-                sPcs["PointWidth"] = "0.8";
+                sSpeed["PointWidth"] = "0.8";
 
                 foreach (var item in data)
                 {
-                    sLots.Points.AddXY(item.MachineName, item.ProducedLots);
-                    sPcs.Points.AddXY(item.MachineName, item.ProducedPieces);
+                    // Tampilkan Speed
+                    int idx = sSpeed.Points.AddXY(item.MachineName, (int)item.SpeedPerHour);
+                    
+                    // Format Label: "2,500"
+                    sSpeed.Points[idx].Label = $"{item.SpeedPerHour:N0}"; 
                 }
-                _chart.Series.Add(sLots);
-                _chart.Series.Add(sPcs);
+                _chart.Series.Add(sSpeed);
             }
-            else // Efisiensi (Stacked: Auto vs Loss)
+            else 
             {
+                // --- MODE EFISIENSI ---
                 area.AxisY.Title = "Waktu (Menit)";
-                area.AxisY.Maximum = Double.NaN; // Auto scale for time
-                area.AxisY2.Enabled = AxisEnabled.False;
 
-                // Series 1: Auto Time (Green - Bottom)
                 var sAuto = new Series("Auto Time") { 
                     ChartType = SeriesChartType.StackedColumn, 
                     Color = AppColors.Success,
                     IsValueShownAsLabel = true 
                 };
-                sAuto["PointWidth"] = "0.8"; // [FIX] Wider Bars
+                sAuto["PointWidth"] = "0.8"; 
 
-                // Series 2: Loss Time (Red - Top)
                 var sLoss = new Series("Loss Time") { 
                     ChartType = SeriesChartType.StackedColumn, 
                     Color = AppColors.Danger,
@@ -405,42 +423,36 @@ namespace mtc_app.features.technician.presentation.components
                 };
                 sLoss["PointWidth"] = "0.8";
 
-                // Series 3: Eff Label (Point Series - Floating Label)
                 var sEffLabel = new Series("Eff Label") {
-                    ChartType = SeriesChartType.Point, // [FIX] Use Point to float
+                    ChartType = SeriesChartType.Point, 
                     Color = Color.Transparent,
                     IsValueShownAsLabel = true
                 };
-                sEffLabel["LabelStyle"] = "Top"; // Force Top
+                sEffLabel["LabelStyle"] = "Top"; 
 
                 foreach (var item in data)
                 {
                     double autoMin = item.AutoTime / 60.0;
                     double monMin = item.MonitorTime / 60.0;
                     double lossMin = (monMin > autoMin) ? (monMin - autoMin) : 0;
-                    
                     double eff = (item.MonitorTime > 0) ? (item.AutoTime / item.MonitorTime) * 100.0 : 0;
 
-                    // 1. Auto Point (Green)
                     int pIndexAuto = sAuto.Points.AddXY(item.MachineName, autoMin);
                     sAuto.Points[pIndexAuto].Label = $"{autoMin:F0}m";
 
-                    // 2. Loss Point (Red)
                     int pIndexLoss = sLoss.Points.AddXY(item.MachineName, lossMin);
                     sLoss.Points[pIndexLoss].Label = $"{monMin:F0}m"; 
 
-                    // 3. Label Point (Floating) -> Label: "85%"
-                    // Position: Top of Stack (monMin) + Buffer
-                    double labelY = monMin + (monMin * 0.05); // 5% above
-                    if (labelY == 0) labelY = 1; // Safety for 0 height
+                    double labelY = monMin + (monMin * 0.05); 
+                    if (labelY == 0) labelY = 1; 
 
                     int pIndexLabel = sEffLabel.Points.AddXY(item.MachineName, labelY); 
                     sEffLabel.Points[pIndexLabel].Label = $"{eff:F1}%";
-                    sEffLabel.Points[pIndexLabel].MarkerStyle = MarkerStyle.None; // Hide dot
+                    sEffLabel.Points[pIndexLabel].MarkerStyle = MarkerStyle.None; 
                 }
                 _chart.Series.Add(sAuto);
                 _chart.Series.Add(sLoss);
-                _chart.Series.Add(sEffLabel); // Added Last = Top of Stack
+                _chart.Series.Add(sEffLabel); 
             }
         }
 
@@ -472,7 +484,6 @@ namespace mtc_app.features.technician.presentation.components
                 if (lineIndex < lines.Length)
                 {
                     string line = lines[lineIndex];
-                    // [FIX] Use Regex to extract digits, ignoring Japanese chars or separators
                     var match = Regex.Match(line, @"\d+");
                     if (match.Success && long.TryParse(match.Value, out long val))
                     {
