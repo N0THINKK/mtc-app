@@ -16,7 +16,7 @@ namespace mtc_app.features.admin.presentation.views
         
         // Main Tab Control
         private TabControl tabControl;
-        private TabPage tabUsers, tabMachines, tabFailures;
+        private TabPage tabUsers, tabMachines, tabParts, tabGeneralMasters;
 
         // User Tab Controls
         private DataGridView gridUsers;
@@ -26,16 +26,60 @@ namespace mtc_app.features.admin.presentation.views
         private int? _selectedUserId = null;
 
         // Machine Tab Controls
+        private TabControl tabMachineSub;
+        private TabPage subMachineList, subMachineTypes, subMachineAreas;
+        
+        // Machine List (Aggregate)
         private DataGridView gridMachines;
         private AppInput txtMachineCode, txtMachineType, txtMachineArea, txtMachineNumber;
         private AppButton btnAddMachine, btnUpdateMachine, btnDeleteMachine;
         private int? _selectedMachineId = null;
 
-        // Failure Tab Controls
+        // Machine Types Master
+        private DataGridView gridMasterTypes;
+        private AppInput txtMasterTypeName;
+        private AppButton btnAddMasterType, btnUpdateMasterType, btnDeleteMasterType;
+        private int? _selectedMasterTypeId = null;
+
+        // Machine Areas Master
+        private DataGridView gridMasterAreas;
+        private AppInput txtMasterAreaName;
+        private AppButton btnAddMasterArea, btnUpdateMasterArea, btnDeleteMasterArea;
+        private int? _selectedMasterAreaId = null;
+
+        // Part Tab Controls
+        private DataGridView gridParts;
+        private AppInput txtPartCode, txtPartName, txtPartStock;
+        private AppButton btnAddPart, btnUpdatePart, btnDeletePart;
+        private int? _selectedPartId = null;
+
+        // General Masters Tab (Sub-tabs or Split View for smaller tables: Failures, Actions, Causes, Problem Types)
+        private TabControl tabGeneralSub;
+        private TabPage subFailures, subCauses, subActions, subTypes;
+        
+        // Failure Controls
         private DataGridView gridFailures;
         private AppInput txtFailureName;
         private AppButton btnAddFailure, btnUpdateFailure, btnDeleteFailure;
         private int? _selectedFailureId = null;
+
+        // Cause Controls
+        private DataGridView gridCauses;
+        private AppInput txtCauseName;
+        private AppButton btnAddCause, btnUpdateCause, btnDeleteCause;
+        private int? _selectedCauseId = null;
+
+        // Action Controls
+        private DataGridView gridActions;
+        private AppInput txtActionName;
+        private AppButton btnAddAction, btnUpdateAction, btnDeleteAction;
+        private int? _selectedActionId = null;
+
+        // Problem Type Controls
+        private DataGridView gridTypes;
+        private AppInput txtTypeName;
+        private AppButton btnAddType, btnUpdateType, btnDeleteType;
+        private int? _selectedTypeId = null;
 
 
         public MasterDataView()
@@ -43,15 +87,20 @@ namespace mtc_app.features.admin.presentation.views
             InitializeComponent();
             if (!this.DesignMode)
             {
-                // Load data for all tabs
                 LoadRoles();
                 LoadUsers();
                 LoadMachines();
+                LoadMasterMachineTypes();
+                LoadMasterMachineAreas();
+                LoadParts();
                 LoadFailures();
+                LoadCauses();
+                LoadActions();
+                LoadProblemTypes();
             }
         }
 
-        #region User Management Logic
+        #region User Management
         private void LoadRoles()
         {
             try
@@ -69,7 +118,7 @@ namespace mtc_app.features.admin.presentation.views
                     comboRole.SetDropdownItems(roleNames.ToArray());
                 }
             }
-            catch (Exception ex) { MessageBox.Show($"Gagal memuat data role: {ex.Message}"); }
+            catch (Exception ex) { MessageBox.Show($"Gagal memuat role: {ex.Message}"); }
         }
 
         private void LoadUsers()
@@ -82,7 +131,7 @@ namespace mtc_app.features.admin.presentation.views
                     gridUsers.DataSource = connection.Query(sql).ToList();
                 }
             }
-            catch (Exception ex) { MessageBox.Show($"Gagal memuat data user: {ex.Message}"); }
+            catch (Exception ex) { MessageBox.Show($"Gagal memuat user: {ex.Message}"); }
             ClearUserSelection();
         }
 
@@ -90,13 +139,11 @@ namespace mtc_app.features.admin.presentation.views
         {
             if (string.IsNullOrWhiteSpace(txtUsername.InputValue) || string.IsNullOrWhiteSpace(txtPassword.InputValue) || string.IsNullOrWhiteSpace(comboRole.InputValue))
             {
-                MessageBox.Show("Username, Password, dan Role wajib diisi.", "Validasi Gagal");
-                return;
+                MessageBox.Show("Username, Password, dan Role wajib diisi."); return;
             }
             if (!_roleNameToIdMap.TryGetValue(comboRole.InputValue, out int roleId))
             {
-                MessageBox.Show("Role yang dipilih tidak valid.", "Validasi Gagal");
-                return;
+                MessageBox.Show("Role tidak valid."); return;
             }
 
             try
@@ -104,13 +151,7 @@ namespace mtc_app.features.admin.presentation.views
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     string sql = "INSERT INTO users (username, password, full_name, nik, role_id) VALUES (@Username, @Password, @FullName, @Nik, @RoleId)";
-                    connection.Execute(sql, new { 
-                        Username = txtUsername.InputValue, 
-                        Password = txtPassword.InputValue, 
-                        FullName = txtFullName.InputValue, 
-                        Nik = txtNik.InputValue,
-                        RoleId = roleId 
-                    });
+                    connection.Execute(sql, new { Username = txtUsername.InputValue, Password = txtPassword.InputValue, FullName = txtFullName.InputValue, Nik = txtNik.InputValue, RoleId = roleId });
                     AutoClosingMessageBox.Show("User berhasil ditambahkan!", "Sukses", 1500);
                     LoadUsers();
                 }
@@ -120,71 +161,40 @@ namespace mtc_app.features.admin.presentation.views
 
         private void BtnUpdateUser_Click(object sender, EventArgs e)
         {
-            if (_selectedUserId == null)
-            {
-                MessageBox.Show("Pilih user dari tabel terlebih dahulu.", "Info");
-                return;
-            }
-            if (string.IsNullOrWhiteSpace(txtUsername.InputValue) || string.IsNullOrWhiteSpace(comboRole.InputValue))
-            {
-                MessageBox.Show("Username dan Role wajib diisi.", "Validasi Gagal");
-                return;
-            }
-            if (!_roleNameToIdMap.TryGetValue(comboRole.InputValue, out int roleId))
-            {
-                MessageBox.Show("Role yang dipilih tidak valid.", "Validasi Gagal");
-                return;
-            }
+            if (_selectedUserId == null) return;
+            if (!_roleNameToIdMap.TryGetValue(comboRole.InputValue, out int roleId)) return;
 
             try
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     string sql = "UPDATE users SET username = @Username, full_name = @FullName, nik = @Nik, role_id = @RoleId ";
-                    if (!string.IsNullOrWhiteSpace(txtPassword.InputValue))
-                    {
-                        sql += ", password = @Password ";
-                    }
+                    if (!string.IsNullOrWhiteSpace(txtPassword.InputValue)) sql += ", password = @Password ";
                     sql += "WHERE user_id = @UserId";
 
-                    connection.Execute(sql, new { 
-                        Username = txtUsername.InputValue, 
-                        FullName = txtFullName.InputValue, 
-                        Nik = txtNik.InputValue,
-                        RoleId = roleId, 
-                        Password = txtPassword.InputValue,
-                        UserId = _selectedUserId.Value 
-                    });
-
+                    connection.Execute(sql, new { Username = txtUsername.InputValue, FullName = txtFullName.InputValue, Nik = txtNik.InputValue, RoleId = roleId, Password = txtPassword.InputValue, UserId = _selectedUserId.Value });
                     AutoClosingMessageBox.Show("User berhasil diupdate!", "Sukses", 1500);
                     LoadUsers();
                 }
             }
-            catch (Exception ex) { MessageBox.Show($"Gagal mengupdate user: {ex.Message}"); }
+            catch (Exception ex) { MessageBox.Show($"Gagal update user: {ex.Message}"); }
         }
         
         private void BtnDeleteUser_Click(object sender, EventArgs e)
         {
-            if (_selectedUserId == null)
-            {
-                MessageBox.Show("Pilih user dari tabel terlebih dahulu.", "Info");
-                return;
-            }
-
-            var confirmResult = MessageBox.Show($"Anda yakin ingin menghapus user '{txtUsername.InputValue}'?", "Konfirmasi Hapus", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (confirmResult == DialogResult.Yes)
+            if (_selectedUserId == null) return;
+            if (MessageBox.Show($"Hapus user '{txtUsername.InputValue}'?", "Konfirmasi", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
             {
                 try
                 {
                     using (var connection = DatabaseHelper.GetConnection())
                     {
-                        string sql = "DELETE FROM users WHERE user_id = @UserId";
-                        connection.Execute(sql, new { UserId = _selectedUserId.Value });
-                        AutoClosingMessageBox.Show("User berhasil dihapus!", "Sukses", 1500);
+                        connection.Execute("DELETE FROM users WHERE user_id = @UserId", new { UserId = _selectedUserId.Value });
+                        AutoClosingMessageBox.Show("User dihapus!", "Sukses", 1500);
                         LoadUsers();
                     }
                 }
-                catch (Exception ex) { MessageBox.Show($"Gagal menghapus user: {ex.Message}"); }
+                catch (Exception ex) { MessageBox.Show($"Gagal hapus user: {ex.Message}"); }
             }
         }
 
@@ -192,15 +202,13 @@ namespace mtc_app.features.admin.presentation.views
         {
             if (e.RowIndex >= 0)
             {
-                DataGridViewRow row = gridUsers.Rows[e.RowIndex];
+                var row = gridUsers.Rows[e.RowIndex];
                 _selectedUserId = Convert.ToInt32(row.Cells["user_id"].Value);
-
                 txtUsername.InputValue = row.Cells["username"].Value.ToString();
                 txtFullName.InputValue = row.Cells["full_name"].Value?.ToString();
                 txtNik.InputValue = row.Cells["nik"].Value?.ToString();
                 comboRole.InputValue = row.Cells["role_name"].Value.ToString();
                 txtPassword.InputValue = "";
-                
                 btnUpdateUser.Enabled = true;
                 btnDeleteUser.Enabled = true;
             }
@@ -209,135 +217,107 @@ namespace mtc_app.features.admin.presentation.views
         private void ClearUserSelection()
         {
             _selectedUserId = null;
-            txtUsername.InputValue = "";
-            txtPassword.InputValue = "";
-            txtFullName.InputValue = "";
-            txtNik.InputValue = "";
-            comboRole.InputValue = "";
-            btnUpdateUser.Enabled = false;
-            btnDeleteUser.Enabled = false;
+            txtUsername.InputValue = txtPassword.InputValue = txtFullName.InputValue = txtNik.InputValue = comboRole.InputValue = "";
+            btnUpdateUser.Enabled = btnDeleteUser.Enabled = false;
             gridUsers.ClearSelection();
         }
-
         #endregion
 
-        #region Machine Management Logic
+        #region Machine Management
+        
+        // --- 1. Machine List (Aggregated) ---
         private void LoadMachines()
         {
             try
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    // Select individual columns to populate inputs on selection - JOINING tables
                     gridMachines.DataSource = connection.Query(@"
-                        SELECT 
-                            m.machine_id, 
-                            COALESCE(t.type_name, 'UNK') as machine_type,
-                            COALESCE(a.area_name, 'UNK') as machine_area,
-                            m.machine_number,
-                            CONCAT(COALESCE(t.type_name, 'UNK'), '-', COALESCE(a.area_name, 'UNK'), '.', m.machine_number) AS machine_name
+                        SELECT m.machine_id, COALESCE(t.type_name, 'UNK') as machine_type, COALESCE(a.area_name, 'UNK') as machine_area, m.machine_number,
+                        CONCAT(COALESCE(t.type_name, 'UNK'), '-', COALESCE(a.area_name, 'UNK'), '.', m.machine_number) AS machine_name
                         FROM machines m
                         LEFT JOIN machine_types t ON m.type_id = t.type_id
                         LEFT JOIN machine_areas a ON m.area_id = a.area_id
                         ORDER BY m.machine_id").ToList();
+                    
+                    // Refresh dropdowns in the main form too when list reloads
+                    RefreshMachineDropdowns(connection);
                 }
             }
-            catch (Exception ex) { MessageBox.Show($"Gagal memuat data mesin: {ex.Message}"); }
+            catch (Exception ex) { MessageBox.Show($"Gagal memuat mesin: {ex.Message}"); }
             ClearMachineSelection();
+        }
+
+        private void RefreshMachineDropdowns(IDbConnection conn)
+        {
+            try {
+                var types = conn.Query<string>("SELECT type_name FROM machine_types ORDER BY type_name").ToArray();
+                var areas = conn.Query<string>("SELECT area_name FROM machine_areas ORDER BY area_name").ToArray();
+                txtMachineType.SetDropdownItems(types);
+                txtMachineArea.SetDropdownItems(areas);
+            } catch { }
         }
 
         private void BtnAddMachine_Click(object sender, EventArgs e)
         {
             if (string.IsNullOrWhiteSpace(txtMachineType.InputValue) || string.IsNullOrWhiteSpace(txtMachineArea.InputValue) || string.IsNullOrWhiteSpace(txtMachineNumber.InputValue))
             {
-                MessageBox.Show("Tipe, Area, dan Nomor Mesin wajib diisi.");
-                return;
+                MessageBox.Show("Lengkapi data mesin."); return;
             }
             try
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    // 1. Get/Create IDs
                     int typeId = GetOrCreateLookupId(connection, "machine_types", "type_id", "type_name", txtMachineType.InputValue);
                     int areaId = GetOrCreateLookupId(connection, "machine_areas", "area_id", "area_name", txtMachineArea.InputValue);
-
-                    // 2. Insert
-                    string sql = "INSERT INTO machines (type_id, area_id, machine_number) VALUES (@TypeId, @AreaId, @Number)";
-                    connection.Execute(sql, new { 
-                        TypeId = typeId,
-                        AreaId = areaId,
-                        Number = txtMachineNumber.InputValue
-                    });
-                    AutoClosingMessageBox.Show("Mesin berhasil ditambahkan!", "Sukses", 1500);
+                    connection.Execute("INSERT INTO machines (type_id, area_id, machine_number) VALUES (@TypeId, @AreaId, @Number)", new { TypeId = typeId, AreaId = areaId, Number = txtMachineNumber.InputValue });
+                    AutoClosingMessageBox.Show("Mesin ditambahkan!", "Sukses", 1500);
                     LoadMachines();
                 }
             }
-            catch (Exception ex) { MessageBox.Show($"Gagal menambah mesin: {ex.Message}"); }
+            catch (Exception ex) { MessageBox.Show($"Gagal tambah mesin: {ex.Message}"); }
         }
 
         private void BtnUpdateMachine_Click(object sender, EventArgs e)
         {
-            if (_selectedMachineId == null) { MessageBox.Show("Pilih mesin dari tabel."); return; }
-             if (string.IsNullOrWhiteSpace(txtMachineType.InputValue) || string.IsNullOrWhiteSpace(txtMachineArea.InputValue) || string.IsNullOrWhiteSpace(txtMachineNumber.InputValue))
-            {
-                MessageBox.Show("Tipe, Area, dan Nomor Mesin wajib diisi.");
-                return;
-            }
+            if (_selectedMachineId == null) return;
             try
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    // 1. Get/Create IDs
                     int typeId = GetOrCreateLookupId(connection, "machine_types", "type_id", "type_name", txtMachineType.InputValue);
                     int areaId = GetOrCreateLookupId(connection, "machine_areas", "area_id", "area_name", txtMachineArea.InputValue);
-
-                    // 2. Update
-                    string sql = @"UPDATE machines 
-                                   SET type_id = @TypeId,
-                                       area_id = @AreaId,
-                                       machine_number = @Number
-                                   WHERE machine_id = @Id";
-                    connection.Execute(sql, new { 
-                        TypeId = typeId,
-                        AreaId = areaId,
-                        Number = txtMachineNumber.InputValue,
-                        Id = _selectedMachineId.Value 
-                    });
-                    AutoClosingMessageBox.Show("Mesin berhasil diupdate!", "Sukses", 1500);
+                    connection.Execute("UPDATE machines SET type_id = @TypeId, area_id = @AreaId, machine_number = @Number WHERE machine_id = @Id", 
+                        new { TypeId = typeId, AreaId = areaId, Number = txtMachineNumber.InputValue, Id = _selectedMachineId.Value });
+                    AutoClosingMessageBox.Show("Mesin diupdate!", "Sukses", 1500);
                     LoadMachines();
                 }
             }
-            catch (Exception ex) { MessageBox.Show($"Gagal mengupdate mesin: {ex.Message}"); }
+            catch (Exception ex) { MessageBox.Show($"Gagal update mesin: {ex.Message}"); }
         }
 
-        private int GetOrCreateLookupId(System.Data.IDbConnection conn, string tableName, string idCol, string nameCol, string value)
+        private int GetOrCreateLookupId(IDbConnection conn, string tableName, string idCol, string nameCol, string value)
         {
-             // Synchronous wrapper (Dapper allows blocking)
-            string sqlFind = $"SELECT {idCol} FROM {tableName} WHERE {nameCol} = @Value";
-            var id = conn.QueryFirstOrDefault<int?>(sqlFind, new { Value = value });
-
+            var id = conn.QueryFirstOrDefault<int?>($"SELECT {idCol} FROM {tableName} WHERE {nameCol} = @Value", new { Value = value });
             if (id.HasValue) return id.Value;
-
-            string sqlInsert = $"INSERT INTO {tableName} ({nameCol}) VALUES (@Value); SELECT LAST_INSERT_ID();";
-            return conn.QuerySingle<int>(sqlInsert, new { Value = value });
+            return conn.QuerySingle<int>($"INSERT INTO {tableName} ({nameCol}) VALUES (@Value); SELECT LAST_INSERT_ID();", new { Value = value });
         }
 
         private void BtnDeleteMachine_Click(object sender, EventArgs e)
         {
-            if (_selectedMachineId == null) { MessageBox.Show("Pilih mesin dari tabel."); return; }
-            var confirmResult = MessageBox.Show($"Yakin ingin menghapus mesin ini?", "Konfirmasi Hapus", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (confirmResult == DialogResult.Yes)
+            if (_selectedMachineId == null) return;
+            if (MessageBox.Show("Hapus mesin ini?", "Konfirmasi", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
             {
                 try
                 {
                     using (var connection = DatabaseHelper.GetConnection())
                     {
                         connection.Execute("DELETE FROM machines WHERE machine_id = @Id", new { Id = _selectedMachineId.Value });
-                        AutoClosingMessageBox.Show("Mesin berhasil dihapus!", "Sukses", 1500);
+                        AutoClosingMessageBox.Show("Mesin dihapus!", "Sukses", 1500);
                         LoadMachines();
                     }
                 }
-                catch (Exception ex) { MessageBox.Show($"Gagal menghapus mesin: {ex.Message}. Pastikan tidak ada tiket yang terkait."); }
+                catch (Exception ex) { MessageBox.Show($"Gagal hapus mesin: {ex.Message}"); }
             }
         }
 
@@ -345,16 +325,12 @@ namespace mtc_app.features.admin.presentation.views
         {
             if (e.RowIndex >= 0)
             {
-                DataGridViewRow row = gridMachines.Rows[e.RowIndex];
+                var row = gridMachines.Rows[e.RowIndex];
                 _selectedMachineId = Convert.ToInt32(row.Cells["machine_id"].Value);
-                
-                // Populate split fields
                 txtMachineType.InputValue = row.Cells["machine_type"].Value?.ToString();
                 txtMachineArea.InputValue = row.Cells["machine_area"].Value?.ToString();
                 txtMachineNumber.InputValue = row.Cells["machine_number"].Value?.ToString();
-
-                btnUpdateMachine.Enabled = true;
-                btnDeleteMachine.Enabled = true;
+                btnUpdateMachine.Enabled = btnDeleteMachine.Enabled = true;
             }
         }
 
@@ -362,96 +338,207 @@ namespace mtc_app.features.admin.presentation.views
         {
             _selectedMachineId = null;
             txtMachineType.InputValue = txtMachineArea.InputValue = txtMachineNumber.InputValue = "";
-            btnUpdateMachine.Enabled = false;
-            btnDeleteMachine.Enabled = false;
+            btnUpdateMachine.Enabled = btnDeleteMachine.Enabled = false;
             gridMachines.ClearSelection();
         }
+
+        // --- 2. Master Types ---
+        private void LoadMasterMachineTypes()
+        {
+            try { using (var c = DatabaseHelper.GetConnection()) gridMasterTypes.DataSource = c.Query("SELECT type_id, type_name FROM machine_types ORDER BY type_name").ToList(); } catch { }
+            ClearMasterTypeSelection();
+        }
+        private void BtnAddMasterType_Click(object sender, EventArgs e) { GenericAdd("machine_types", "type_name", txtMasterTypeName.InputValue, LoadMasterMachineTypes); }
+        private void BtnUpdateMasterType_Click(object sender, EventArgs e) { GenericUpdate("machine_types", "type_name", "type_id", txtMasterTypeName.InputValue, _selectedMasterTypeId, LoadMasterMachineTypes); }
+        private void BtnDeleteMasterType_Click(object sender, EventArgs e) { GenericDelete("machine_types", "type_id", _selectedMasterTypeId, LoadMasterMachineTypes); }
+        private void GridMasterTypes_CellClick(object sender, DataGridViewCellEventArgs e) { if(e.RowIndex>=0) { _selectedMasterTypeId=(int)gridMasterTypes.Rows[e.RowIndex].Cells["type_id"].Value; txtMasterTypeName.InputValue=gridMasterTypes.Rows[e.RowIndex].Cells["type_name"].Value.ToString(); btnUpdateMasterType.Enabled=btnDeleteMasterType.Enabled=true; } }
+        private void ClearMasterTypeSelection() { _selectedMasterTypeId=null; txtMasterTypeName.InputValue=""; btnUpdateMasterType.Enabled=btnDeleteMasterType.Enabled=false; }
+
+        // --- 3. Master Areas ---
+        private void LoadMasterMachineAreas()
+        {
+            try { using (var c = DatabaseHelper.GetConnection()) gridMasterAreas.DataSource = c.Query("SELECT area_id, area_name FROM machine_areas ORDER BY area_name").ToList(); } catch { }
+            ClearMasterAreaSelection();
+        }
+        private void BtnAddMasterArea_Click(object sender, EventArgs e) { GenericAdd("machine_areas", "area_name", txtMasterAreaName.InputValue, LoadMasterMachineAreas); }
+        private void BtnUpdateMasterArea_Click(object sender, EventArgs e) { GenericUpdate("machine_areas", "area_name", "area_id", txtMasterAreaName.InputValue, _selectedMasterAreaId, LoadMasterMachineAreas); }
+        private void BtnDeleteMasterArea_Click(object sender, EventArgs e) { GenericDelete("machine_areas", "area_id", _selectedMasterAreaId, LoadMasterMachineAreas); }
+        private void GridMasterAreas_CellClick(object sender, DataGridViewCellEventArgs e) { if(e.RowIndex>=0) { _selectedMasterAreaId=(int)gridMasterAreas.Rows[e.RowIndex].Cells["area_id"].Value; txtMasterAreaName.InputValue=gridMasterAreas.Rows[e.RowIndex].Cells["area_name"].Value.ToString(); btnUpdateMasterArea.Enabled=btnDeleteMasterArea.Enabled=true; } }
+        private void ClearMasterAreaSelection() { _selectedMasterAreaId=null; txtMasterAreaName.InputValue=""; btnUpdateMasterArea.Enabled=btnDeleteMasterArea.Enabled=false; }
+
         #endregion
-        
-        #region Failure Management Logic
-        private void LoadFailures()
+
+        #region Part Management
+        private void LoadParts()
         {
             try
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    gridFailures.DataSource = connection.Query("SELECT failure_id, failure_name FROM failures ORDER BY failure_name").ToList();
+                    gridParts.DataSource = connection.Query("SELECT part_id, part_code, part_name, stock_qty FROM parts ORDER BY part_name").ToList();
                 }
             }
-            catch (Exception ex) { MessageBox.Show($"Gagal memuat data masalah: {ex.Message}"); }
-            ClearFailureSelection();
+            catch (Exception ex) { MessageBox.Show($"Gagal memuat part: {ex.Message}"); }
+            ClearPartSelection();
         }
 
-        private void BtnAddFailure_Click(object sender, EventArgs e)
+        private void BtnAddPart_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txtFailureName.InputValue)) { MessageBox.Show("Nama Masalah wajib diisi."); return; }
+            if (string.IsNullOrWhiteSpace(txtPartName.InputValue)) { MessageBox.Show("Nama Part wajib diisi."); return; }
             try
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    connection.Execute("INSERT INTO failures (failure_name) VALUES (@Name)", new { Name = txtFailureName.InputValue });
-                    AutoClosingMessageBox.Show("Jenis masalah berhasil ditambahkan!", "Sukses", 1500);
-                    LoadFailures();
+                    int stock = int.TryParse(txtPartStock.InputValue, out int s) ? s : 0;
+                    connection.Execute("INSERT INTO parts (part_code, part_name, stock_qty) VALUES (@Code, @Name, @Stock)", 
+                        new { Code = txtPartCode.InputValue, Name = txtPartName.InputValue, Stock = stock });
+                    AutoClosingMessageBox.Show("Part ditambahkan!", "Sukses", 1500);
+                    LoadParts();
                 }
             }
-            catch (Exception ex) { MessageBox.Show($"Gagal menambah masalah: {ex.Message}"); }
+            catch (Exception ex) { MessageBox.Show($"Gagal tambah part: {ex.Message}"); }
         }
 
-        private void BtnUpdateFailure_Click(object sender, EventArgs e)
+        private void BtnUpdatePart_Click(object sender, EventArgs e)
         {
-            if (_selectedFailureId == null) { MessageBox.Show("Pilih masalah dari tabel."); return; }
-            if (string.IsNullOrWhiteSpace(txtFailureName.InputValue)) { MessageBox.Show("Nama Masalah wajib diisi."); return; }
+            if (_selectedPartId == null) return;
             try
             {
                 using (var connection = DatabaseHelper.GetConnection())
                 {
-                    connection.Execute("UPDATE failures SET failure_name = @Name WHERE failure_id = @Id", new { Name = txtFailureName.InputValue, Id = _selectedFailureId.Value });
-                    AutoClosingMessageBox.Show("Jenis masalah berhasil diupdate!", "Sukses", 1500);
-                    LoadFailures();
+                    int stock = int.TryParse(txtPartStock.InputValue, out int s) ? s : 0;
+                    connection.Execute("UPDATE parts SET part_code = @Code, part_name = @Name, stock_qty = @Stock WHERE part_id = @Id",
+                        new { Code = txtPartCode.InputValue, Name = txtPartName.InputValue, Stock = stock, Id = _selectedPartId.Value });
+                    AutoClosingMessageBox.Show("Part diupdate!", "Sukses", 1500);
+                    LoadParts();
                 }
             }
-            catch (Exception ex) { MessageBox.Show($"Gagal mengupdate masalah: {ex.Message}"); }
+            catch (Exception ex) { MessageBox.Show($"Gagal update part: {ex.Message}"); }
         }
 
-        private void BtnDeleteFailure_Click(object sender, EventArgs e)
+        private void BtnDeletePart_Click(object sender, EventArgs e)
         {
-            if (_selectedFailureId == null) { MessageBox.Show("Pilih masalah dari tabel."); return; }
-            var confirmResult = MessageBox.Show($"Yakin ingin menghapus masalah '{txtFailureName.InputValue}'?", "Konfirmasi Hapus", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (confirmResult == DialogResult.Yes)
+            if (_selectedPartId == null) return;
+            if (MessageBox.Show($"Hapus part '{txtPartName.InputValue}'?", "Konfirmasi", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
             {
                 try
                 {
                     using (var connection = DatabaseHelper.GetConnection())
                     {
-                        connection.Execute("DELETE FROM failures WHERE failure_id = @Id", new { Id = _selectedFailureId.Value });
-                        AutoClosingMessageBox.Show("Masalah berhasil dihapus!", "Sukses", 1500);
-                        LoadFailures();
+                        connection.Execute("DELETE FROM parts WHERE part_id = @Id", new { Id = _selectedPartId.Value });
+                        AutoClosingMessageBox.Show("Part dihapus!", "Sukses", 1500);
+                        LoadParts();
                     }
                 }
-                catch (Exception ex) { MessageBox.Show($"Gagal menghapus masalah: {ex.Message}. Pastikan tidak ada tiket yang terkait."); }
+                catch (Exception ex) { MessageBox.Show($"Gagal hapus part: {ex.Message}"); }
             }
         }
 
-        private void GridFailures_CellClick(object sender, DataGridViewCellEventArgs e)
+        private void GridParts_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0)
             {
-                DataGridViewRow row = gridFailures.Rows[e.RowIndex];
-                _selectedFailureId = Convert.ToInt32(row.Cells["failure_id"].Value);
-                txtFailureName.InputValue = row.Cells["failure_name"].Value.ToString();
-                btnUpdateFailure.Enabled = true;
-                btnDeleteFailure.Enabled = true;
+                var row = gridParts.Rows[e.RowIndex];
+                _selectedPartId = Convert.ToInt32(row.Cells["part_id"].Value);
+                txtPartCode.InputValue = row.Cells["part_code"].Value?.ToString();
+                txtPartName.InputValue = row.Cells["part_name"].Value?.ToString();
+                txtPartStock.InputValue = row.Cells["stock_qty"].Value?.ToString();
+                btnUpdatePart.Enabled = btnDeletePart.Enabled = true;
             }
         }
 
-        private void ClearFailureSelection()
+        private void ClearPartSelection()
         {
-            _selectedFailureId = null;
-            txtFailureName.InputValue = "";
-            btnUpdateFailure.Enabled = false;
-            btnDeleteFailure.Enabled = false;
-            gridFailures.ClearSelection();
+            _selectedPartId = null;
+            txtPartCode.InputValue = txtPartName.InputValue = txtPartStock.InputValue = "";
+            btnUpdatePart.Enabled = btnDeletePart.Enabled = false;
+            gridParts.ClearSelection();
         }
+        #endregion
+
+        #region General Masters (Failures, Actions, Causes, Types)
+        
+        // --- 1. Failures ---
+        private void LoadFailures()
+        {
+            try { using (var c = DatabaseHelper.GetConnection()) gridFailures.DataSource = c.Query("SELECT failure_id, failure_name FROM failures ORDER BY failure_name").ToList(); }
+            catch { }
+            ClearFailureSelection();
+        }
+        private void BtnAddFailure_Click(object sender, EventArgs e) { GenericAdd("failures", "failure_name", txtFailureName.InputValue, LoadFailures); }
+        private void BtnUpdateFailure_Click(object sender, EventArgs e) { GenericUpdate("failures", "failure_name", "failure_id", txtFailureName.InputValue, _selectedFailureId, LoadFailures); }
+        private void BtnDeleteFailure_Click(object sender, EventArgs e) { GenericDelete("failures", "failure_id", _selectedFailureId, LoadFailures); }
+        private void GridFailures_CellClick(object sender, DataGridViewCellEventArgs e) { 
+            if(e.RowIndex>=0) { _selectedFailureId = (int)gridFailures.Rows[e.RowIndex].Cells["failure_id"].Value; txtFailureName.InputValue = gridFailures.Rows[e.RowIndex].Cells["failure_name"].Value.ToString(); btnUpdateFailure.Enabled=btnDeleteFailure.Enabled=true; } 
+        }
+        private void ClearFailureSelection() { _selectedFailureId = null; txtFailureName.InputValue = ""; btnUpdateFailure.Enabled = btnDeleteFailure.Enabled = false; }
+
+        // --- 2. Causes ---
+        private void LoadCauses()
+        {
+            try { using (var c = DatabaseHelper.GetConnection()) gridCauses.DataSource = c.Query("SELECT cause_id, cause_name FROM failure_causes ORDER BY cause_name").ToList(); }
+            catch { }
+            ClearCauseSelection();
+        }
+        private void BtnAddCause_Click(object sender, EventArgs e) { GenericAdd("failure_causes", "cause_name", txtCauseName.InputValue, LoadCauses); }
+        private void BtnUpdateCause_Click(object sender, EventArgs e) { GenericUpdate("failure_causes", "cause_name", "cause_id", txtCauseName.InputValue, _selectedCauseId, LoadCauses); }
+        private void BtnDeleteCause_Click(object sender, EventArgs e) { GenericDelete("failure_causes", "cause_id", _selectedCauseId, LoadCauses); }
+        private void GridCauses_CellClick(object sender, DataGridViewCellEventArgs e) {
+            if(e.RowIndex>=0) { _selectedCauseId = (int)gridCauses.Rows[e.RowIndex].Cells["cause_id"].Value; txtCauseName.InputValue = gridCauses.Rows[e.RowIndex].Cells["cause_name"].Value.ToString(); btnUpdateCause.Enabled=btnDeleteCause.Enabled=true; }
+        }
+        private void ClearCauseSelection() { _selectedCauseId = null; txtCauseName.InputValue = ""; btnUpdateCause.Enabled = btnDeleteCause.Enabled = false; }
+
+        // --- 3. Actions ---
+        private void LoadActions()
+        {
+            try { using (var c = DatabaseHelper.GetConnection()) gridActions.DataSource = c.Query("SELECT action_id, action_name FROM actions ORDER BY action_name").ToList(); }
+            catch { }
+            ClearActionSelection();
+        }
+        private void BtnAddAction_Click(object sender, EventArgs e) { GenericAdd("actions", "action_name", txtActionName.InputValue, LoadActions); }
+        private void BtnUpdateAction_Click(object sender, EventArgs e) { GenericUpdate("actions", "action_name", "action_id", txtActionName.InputValue, _selectedActionId, LoadActions); }
+        private void BtnDeleteAction_Click(object sender, EventArgs e) { GenericDelete("actions", "action_id", _selectedActionId, LoadActions); }
+        private void GridActions_CellClick(object sender, DataGridViewCellEventArgs e) {
+            if(e.RowIndex>=0) { _selectedActionId = (int)gridActions.Rows[e.RowIndex].Cells["action_id"].Value; txtActionName.InputValue = gridActions.Rows[e.RowIndex].Cells["action_name"].Value.ToString(); btnUpdateAction.Enabled=btnDeleteAction.Enabled=true; }
+        }
+        private void ClearActionSelection() { _selectedActionId = null; txtActionName.InputValue = ""; btnUpdateAction.Enabled = btnDeleteAction.Enabled = false; }
+
+        // --- 4. Problem Types ---
+        private void LoadProblemTypes()
+        {
+            try { using (var c = DatabaseHelper.GetConnection()) gridTypes.DataSource = c.Query("SELECT type_id, type_name FROM problem_types ORDER BY type_name").ToList(); }
+            catch { }
+            ClearTypeSelection();
+        }
+        private void BtnAddType_Click(object sender, EventArgs e) { GenericAdd("problem_types", "type_name", txtTypeName.InputValue, LoadProblemTypes); }
+        private void BtnUpdateType_Click(object sender, EventArgs e) { GenericUpdate("problem_types", "type_name", "type_id", txtTypeName.InputValue, _selectedTypeId, LoadProblemTypes); }
+        private void BtnDeleteType_Click(object sender, EventArgs e) { GenericDelete("problem_types", "type_id", _selectedTypeId, LoadProblemTypes); }
+        private void GridTypes_CellClick(object sender, DataGridViewCellEventArgs e) {
+            if(e.RowIndex>=0) { _selectedTypeId = (int)gridTypes.Rows[e.RowIndex].Cells["type_id"].Value; txtTypeName.InputValue = gridTypes.Rows[e.RowIndex].Cells["type_name"].Value.ToString(); btnUpdateType.Enabled=btnDeleteType.Enabled=true; }
+        }
+        private void ClearTypeSelection() { _selectedTypeId = null; txtTypeName.InputValue = ""; btnUpdateType.Enabled = btnDeleteType.Enabled = false; }
+
+        // --- Helpers ---
+        private void GenericAdd(string table, string col, string val, Action reload)
+        {
+            if(string.IsNullOrWhiteSpace(val)) { MessageBox.Show("Input kosong."); return; }
+            try { using(var c=DatabaseHelper.GetConnection()) { c.Execute($"INSERT INTO {table} ({col}) VALUES (@V)", new{V=val}); AutoClosingMessageBox.Show("Data disimpan!","Sukses",1000); reload(); } }
+            catch(Exception ex){ MessageBox.Show(ex.Message); }
+        }
+        private void GenericUpdate(string table, string col, string idCol, string val, int? id, Action reload)
+        {
+            if(id==null || string.IsNullOrWhiteSpace(val)) return;
+            try { using(var c=DatabaseHelper.GetConnection()) { c.Execute($"UPDATE {table} SET {col}=@V WHERE {idCol}=@ID", new{V=val, ID=id}); AutoClosingMessageBox.Show("Data diupdate!","Sukses",1000); reload(); } }
+            catch(Exception ex){ MessageBox.Show(ex.Message); }
+        }
+        private void GenericDelete(string table, string idCol, int? id, Action reload)
+        {
+            if(id==null) return;
+            if(MessageBox.Show("Yakin hapus?","Confirm",MessageBoxButtons.YesNo)==DialogResult.Yes)
+            try { using(var c=DatabaseHelper.GetConnection()) { c.Execute($"DELETE FROM {table} WHERE {idCol}=@ID", new{ID=id}); AutoClosingMessageBox.Show("Data dihapus!","Sukses",1000); reload(); } }
+            catch(Exception ex){ MessageBox.Show(ex.Message); }
+        }
+
         #endregion
 
         protected override void Dispose(bool disposing)
@@ -469,95 +556,249 @@ namespace mtc_app.features.admin.presentation.views
             this.tabControl = new TabControl();
             this.tabUsers = new TabPage("Manajemen User");
             this.tabMachines = new TabPage("Manajemen Mesin");
-            this.tabFailures = new TabPage("Manajemen Masalah");
+            this.tabParts = new TabPage("Manajemen Sparepart");
+            this.tabGeneralMasters = new TabPage("Master Lainnya");
             
-            // Main Control
             this.Dock = DockStyle.Fill;
             this.tabControl.Dock = DockStyle.Fill;
             this.tabControl.Font = AppFonts.BodySmall;
-            this.tabControl.Controls.AddRange(new Control[] { this.tabUsers, this.tabMachines, this.tabFailures });
+            this.tabControl.Controls.AddRange(new Control[] { this.tabUsers, this.tabMachines, this.tabParts, this.tabGeneralMasters });
             this.Controls.Add(tabControl);
 
             // --- TAB 1: USERS ---
+            BuildUserTab();
+
+            // --- TAB 2: MACHINES ---
+            BuildMachineTab();
+
+            // --- TAB 3: PARTS ---
+            BuildPartTab();
+
+            // --- TAB 4: GENERAL MASTERS (Sub Tabs) ---
+            BuildGeneralMastersTab();
+        }
+
+        private void BuildUserTab()
+        {
             var pnlUserForm = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(AppDimens.PaddingSmall) };
             var flowUser = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoSize = true };
             this.txtUsername = new AppInput { LabelText = "Username", Width = 150 };
-            this.txtPassword = new AppInput { LabelText = "Password (kosongi jika sama)", Width = 200 };
+            this.txtPassword = new AppInput { LabelText = "Password (kosongi jk sama)", Width = 200 };
             this.txtFullName = new AppInput { LabelText = "Nama Lengkap", Width = 200 };
             this.txtNik = new AppInput { LabelText = "NIK / Inisial", Width = 100 };
             this.comboRole = new AppInput { LabelText = "Role", InputType = AppInput.InputTypeEnum.Dropdown, Width = 150 };
-            this.btnAddUser = new AppButton { Text = "Tambah", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall) };
-            this.btnUpdateUser = new AppButton { Text = "Update", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall), Enabled = false };
-            this.btnDeleteUser = new AppButton { Text = "Hapus", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall), Enabled = false, Type = AppButton.ButtonType.Danger };
+            this.btnAddUser = new AppButton { Text = "Tambah", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(5, 35, 5, 5) };
+            this.btnUpdateUser = new AppButton { Text = "Update", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(5, 35, 5, 5), Enabled = false };
+            this.btnDeleteUser = new AppButton { Text = "Hapus", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(5, 35, 5, 5), Enabled = false, Type = AppButton.ButtonType.Danger };
             this.btnAddUser.Click += BtnAddUser_Click;
             this.btnUpdateUser.Click += BtnUpdateUser_Click;
             this.btnDeleteUser.Click += BtnDeleteUser_Click;
             flowUser.Controls.AddRange(new Control[] { txtUsername, txtPassword, txtFullName, txtNik, comboRole, btnAddUser, btnUpdateUser, btnDeleteUser });
             pnlUserForm.Controls.Add(flowUser);
             
-            this.gridUsers = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = AppColors.CardBackground, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect, AutoGenerateColumns = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
+            this.gridUsers = CreateGrid();
             this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "user_id", DataPropertyName = "user_id", Visible = false });
             this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "username", HeaderText = "Username", DataPropertyName = "username" });
             this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "full_name", HeaderText = "Nama Lengkap", DataPropertyName = "full_name" });
-            this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "nik", HeaderText = "NIK/Inisial", DataPropertyName = "nik" });
+            this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "nik", HeaderText = "NIK", DataPropertyName = "nik" });
             this.gridUsers.Columns.Add(new DataGridViewTextBoxColumn { Name = "role_name", HeaderText = "Role", DataPropertyName = "role_name" });
-            
             this.gridUsers.CellClick += GridUsers_CellClick;
-            var pnlGridUser = new Panel { Dock = DockStyle.Fill, Padding = new Padding(AppDimens.PaddingSmall) };
-            pnlGridUser.Controls.Add(gridUsers);
-            this.tabUsers.Controls.AddRange(new Control[] { pnlGridUser, pnlUserForm });
+            
+            var pnlGrid = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
+            pnlGrid.Controls.Add(gridUsers);
+            this.tabUsers.Controls.AddRange(new Control[] { pnlGrid, pnlUserForm });
+        }
 
-            // --- TAB 2: MACHINES ---
-            var pnlMachineForm = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(AppDimens.PaddingSmall) };
-            var flowMachine = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
-            this.txtMachineCode = new AppInput { LabelText = "Kode Mesin", Width = 150 }; // Keeping UI input name for compatibility
-            this.txtMachineType = new AppInput { LabelText = "Tipe Mesin", Width = 150 };
-            this.txtMachineArea = new AppInput { LabelText = "Area", Width = 100 };
+        private void BuildMachineTab()
+        {
+            // Sub-Tab Control for Machine Management
+            this.tabMachineSub = new TabControl { Dock = DockStyle.Fill };
+
+            // 1. DAFTAR MESIN (Aggregate)
+            this.subMachineList = new TabPage("Daftar Mesin");
+            var pnlForm = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
+            var flow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
+            this.txtMachineType = new AppInput { LabelText = "Tipe Mesin", InputType = AppInput.InputTypeEnum.Dropdown, Width = 150, AllowCustomText = true }; // Changed to Dropdown
+            this.txtMachineArea = new AppInput { LabelText = "Area", InputType = AppInput.InputTypeEnum.Dropdown, Width = 100, AllowCustomText = true }; // Changed to Dropdown
             this.txtMachineNumber = new AppInput { LabelText = "No. Mesin", Width = 100 };
-            // txtLocation removed
-            this.btnAddMachine = new AppButton { Text = "Tambah", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall) };
-            this.btnUpdateMachine = new AppButton { Text = "Update", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall), Enabled = false };
-            this.btnDeleteMachine = new AppButton { Text = "Hapus", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall), Enabled = false, Type = AppButton.ButtonType.Danger };
+            this.btnAddMachine = new AppButton { Text = "Tambah", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(5, 35, 5, 5) };
+            this.btnUpdateMachine = new AppButton { Text = "Update", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(5, 35, 5, 5), Enabled = false };
+            this.btnDeleteMachine = new AppButton { Text = "Hapus", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(5, 35, 5, 5), Enabled = false, Type = AppButton.ButtonType.Danger };
             this.btnAddMachine.Click += BtnAddMachine_Click;
             this.btnUpdateMachine.Click += BtnUpdateMachine_Click;
             this.btnDeleteMachine.Click += BtnDeleteMachine_Click;
-            flowMachine.Controls.AddRange(new Control[] { txtMachineCode, txtMachineType, txtMachineArea, txtMachineNumber, btnAddMachine, btnUpdateMachine, btnDeleteMachine });
-            pnlMachineForm.Controls.Add(flowMachine);
+            flow.Controls.AddRange(new Control[] { txtMachineType, txtMachineArea, txtMachineNumber, btnAddMachine, btnUpdateMachine, btnDeleteMachine });
+            pnlForm.Controls.Add(flow);
             
-            this.gridMachines = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = AppColors.CardBackground, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect, AutoGenerateColumns = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
+            this.gridMachines = CreateGrid();
             this.gridMachines.Columns.Add(new DataGridViewTextBoxColumn { Name = "machine_id", DataPropertyName = "machine_id", Visible = false });
-            this.gridMachines.Columns.Add(new DataGridViewTextBoxColumn { Name = "machine_name", HeaderText = "Nama Mesin (Kode)", DataPropertyName = "machine_name" });
+            this.gridMachines.Columns.Add(new DataGridViewTextBoxColumn { Name = "machine_name", HeaderText = "Nama Mesin", DataPropertyName = "machine_name" });
             this.gridMachines.Columns.Add(new DataGridViewTextBoxColumn { Name = "machine_type", HeaderText = "Tipe", DataPropertyName = "machine_type" });
             this.gridMachines.Columns.Add(new DataGridViewTextBoxColumn { Name = "machine_area", HeaderText = "Area", DataPropertyName = "machine_area" });
             this.gridMachines.Columns.Add(new DataGridViewTextBoxColumn { Name = "machine_number", HeaderText = "No.", DataPropertyName = "machine_number" });
-            // Location column removed
-            
             this.gridMachines.CellClick += GridMachines_CellClick;
-            var pnlGridMachine = new Panel { Dock = DockStyle.Fill, Padding = new Padding(AppDimens.PaddingSmall) };
-            pnlGridMachine.Controls.Add(gridMachines);
-            this.tabMachines.Controls.AddRange(new Control[] { pnlGridMachine, pnlMachineForm });
             
-            // --- TAB 3: FAILURES ---
-            var pnlFailureForm = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(AppDimens.PaddingSmall) };
-            var flowFailure = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
-            this.txtFailureName = new AppInput { LabelText = "Nama Masalah", Width = 300 };
-            this.btnAddFailure = new AppButton { Text = "Tambah", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall) };
-            this.btnUpdateFailure = new AppButton { Text = "Update", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall), Enabled = false };
-            this.btnDeleteFailure = new AppButton { Text = "Hapus", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(AppDimens.MarginSmall, 35, AppDimens.MarginSmall, AppDimens.MarginSmall), Enabled = false, Type = AppButton.ButtonType.Danger };
-            this.btnAddFailure.Click += BtnAddFailure_Click;
-            this.btnUpdateFailure.Click += BtnUpdateFailure_Click;
-            this.btnDeleteFailure.Click += BtnDeleteFailure_Click;
-            flowFailure.Controls.AddRange(new Control[] { txtFailureName, btnAddFailure, btnUpdateFailure, btnDeleteFailure });
-            pnlFailureForm.Controls.Add(flowFailure);
+            var pnlGrid = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
+            pnlGrid.Controls.Add(gridMachines);
+            this.subMachineList.Controls.AddRange(new Control[] { pnlGrid, pnlForm });
+
+            // 2. MASTER TIPE MESIN
+            this.subMachineTypes = new TabPage("Master Tipe Mesin");
+            var pnlType = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
+            var flowType = new FlowLayoutPanel { Dock = DockStyle.Fill };
+            this.txtMasterTypeName = new AppInput { LabelText = "Nama Tipe", Width = 250 };
+            this.btnAddMasterType = new AppButton { Text = "Tambah", Width = 90, Margin = new Padding(5,35,5,5) };
+            this.btnUpdateMasterType = new AppButton { Text = "Update", Width = 90, Margin = new Padding(5,35,5,5), Enabled=false };
+            this.btnDeleteMasterType = new AppButton { Text = "Hapus", Width = 90, Margin = new Padding(5,35,5,5), Enabled=false, Type=AppButton.ButtonType.Danger };
+            btnAddMasterType.Click += BtnAddMasterType_Click; btnUpdateMasterType.Click += BtnUpdateMasterType_Click; btnDeleteMasterType.Click += BtnDeleteMasterType_Click;
+            flowType.Controls.AddRange(new Control[] { txtMasterTypeName, btnAddMasterType, btnUpdateMasterType, btnDeleteMasterType });
+            pnlType.Controls.Add(flowType);
+            this.gridMasterTypes = CreateGrid();
+            this.gridMasterTypes.Columns.Add(new DataGridViewTextBoxColumn { Name="type_id", DataPropertyName="type_id", Visible=false });
+            this.gridMasterTypes.Columns.Add(new DataGridViewTextBoxColumn { Name="type_name", DataPropertyName="type_name", HeaderText="Tipe Mesin" });
+            this.gridMasterTypes.CellClick += GridMasterTypes_CellClick;
+            this.subMachineTypes.Controls.Add(gridMasterTypes); this.subMachineTypes.Controls.Add(pnlType);
+
+            // 3. MASTER AREA MESIN
+            this.subMachineAreas = new TabPage("Master Area Mesin");
+            var pnlArea = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
+            var flowArea = new FlowLayoutPanel { Dock = DockStyle.Fill };
+            this.txtMasterAreaName = new AppInput { LabelText = "Nama Area", Width = 250 };
+            this.btnAddMasterArea = new AppButton { Text = "Tambah", Width = 90, Margin = new Padding(5,35,5,5) };
+            this.btnUpdateMasterArea = new AppButton { Text = "Update", Width = 90, Margin = new Padding(5,35,5,5), Enabled=false };
+            this.btnDeleteMasterArea = new AppButton { Text = "Hapus", Width = 90, Margin = new Padding(5,35,5,5), Enabled=false, Type=AppButton.ButtonType.Danger };
+            btnAddMasterArea.Click += BtnAddMasterArea_Click; btnUpdateMasterArea.Click += BtnUpdateMasterArea_Click; btnDeleteMasterArea.Click += BtnDeleteMasterArea_Click;
+            flowArea.Controls.AddRange(new Control[] { txtMasterAreaName, btnAddMasterArea, btnUpdateMasterArea, btnDeleteMasterArea });
+            pnlArea.Controls.Add(flowArea);
+            this.gridMasterAreas = CreateGrid();
+            this.gridMasterAreas.Columns.Add(new DataGridViewTextBoxColumn { Name="area_id", DataPropertyName="area_id", Visible=false });
+            this.gridMasterAreas.Columns.Add(new DataGridViewTextBoxColumn { Name="area_name", DataPropertyName="area_name", HeaderText="Area Mesin" });
+            this.gridMasterAreas.CellClick += GridMasterAreas_CellClick;
+            this.subMachineAreas.Controls.Add(gridMasterAreas); this.subMachineAreas.Controls.Add(pnlArea);
+
+            // Add Sub Tabs
+            this.tabMachineSub.Controls.AddRange(new Control[] { subMachineList, subMachineTypes, subMachineAreas });
+            this.tabMachines.Controls.Add(tabMachineSub);
+        }
+
+        private void BuildPartTab()
+        {
+            var pnlForm = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
+            var flow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
+            this.txtPartCode = new AppInput { LabelText = "Kode Part", Width = 150 };
+            this.txtPartName = new AppInput { LabelText = "Nama Part", Width = 300 };
+            this.txtPartStock = new AppInput { LabelText = "Stok", Width = 100, InputType = AppInput.InputTypeEnum.Text };
+            this.btnAddPart = new AppButton { Text = "Tambah", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(5, 35, 5, 5) };
+            this.btnUpdatePart = new AppButton { Text = "Update", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(5, 35, 5, 5), Enabled = false };
+            this.btnDeletePart = new AppButton { Text = "Hapus", Width = 90, Height = AppDimens.ButtonHeight, Margin = new Padding(5, 35, 5, 5), Enabled = false, Type = AppButton.ButtonType.Danger };
+            this.btnAddPart.Click += BtnAddPart_Click;
+            this.btnUpdatePart.Click += BtnUpdatePart_Click;
+            this.btnDeletePart.Click += BtnDeletePart_Click;
+            flow.Controls.AddRange(new Control[] { txtPartCode, txtPartName, txtPartStock, btnAddPart, btnUpdatePart, btnDeletePart });
+            pnlForm.Controls.Add(flow);
             
-            this.gridFailures = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, ReadOnly = true, BackgroundColor = AppColors.CardBackground, BorderStyle = BorderStyle.None, SelectionMode = DataGridViewSelectionMode.FullRowSelect, AutoGenerateColumns = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
-            this.gridFailures.Columns.Add(new DataGridViewTextBoxColumn { Name = "failure_id", DataPropertyName = "failure_id", Visible = false });
-            this.gridFailures.Columns.Add(new DataGridViewTextBoxColumn { Name = "failure_name", HeaderText = "Nama Masalah", DataPropertyName = "failure_name" });
+            this.gridParts = CreateGrid();
+            this.gridParts.Columns.Add(new DataGridViewTextBoxColumn { Name = "part_id", DataPropertyName = "part_id", Visible = false });
+            this.gridParts.Columns.Add(new DataGridViewTextBoxColumn { Name = "part_code", HeaderText = "Kode Part", DataPropertyName = "part_code" });
+            this.gridParts.Columns.Add(new DataGridViewTextBoxColumn { Name = "part_name", HeaderText = "Nama Part", DataPropertyName = "part_name" });
+            this.gridParts.Columns.Add(new DataGridViewTextBoxColumn { Name = "stock_qty", HeaderText = "Stok", DataPropertyName = "stock_qty" });
+            this.gridParts.CellClick += GridParts_CellClick;
             
+            var pnlGrid = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
+            pnlGrid.Controls.Add(gridParts);
+            this.tabParts.Controls.AddRange(new Control[] { pnlGrid, pnlForm });
+        }
+
+        private void BuildGeneralMastersTab()
+        {
+            this.tabGeneralSub = new TabControl { Dock = DockStyle.Fill };
+            
+            // Sub-Tab 1: Failures
+            this.subFailures = new TabPage("Jenis Kerusakan");
+            var pnlFail = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
+            var flowFail = new FlowLayoutPanel { Dock = DockStyle.Fill };
+            this.txtFailureName = new AppInput { LabelText = "Nama Kerusakan", Width = 400 };
+            this.btnAddFailure = new AppButton { Text = "Tambah", Width = 90, Margin = new Padding(5,35,5,5) };
+            this.btnUpdateFailure = new AppButton { Text = "Update", Width = 90, Margin = new Padding(5,35,5,5), Enabled=false };
+            this.btnDeleteFailure = new AppButton { Text = "Hapus", Width = 90, Margin = new Padding(5,35,5,5), Enabled=false, Type=AppButton.ButtonType.Danger };
+            btnAddFailure.Click += BtnAddFailure_Click; btnUpdateFailure.Click += BtnUpdateFailure_Click; btnDeleteFailure.Click += BtnDeleteFailure_Click;
+            flowFail.Controls.AddRange(new Control[]{ txtFailureName, btnAddFailure, btnUpdateFailure, btnDeleteFailure });
+            pnlFail.Controls.Add(flowFail);
+            this.gridFailures = CreateGrid();
+            this.gridFailures.Columns.Add(new DataGridViewTextBoxColumn { Name="failure_id", DataPropertyName="failure_id", Visible=false });
+            this.gridFailures.Columns.Add(new DataGridViewTextBoxColumn { Name="failure_name", DataPropertyName="failure_name", HeaderText="Nama Kerusakan" });
             this.gridFailures.CellClick += GridFailures_CellClick;
-            var pnlGridFailure = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
-            pnlGridFailure.Controls.Add(gridFailures);
-            this.tabFailures.Controls.AddRange(new Control[] { pnlGridFailure, pnlFailureForm });
+            this.subFailures.Controls.Add(gridFailures); this.subFailures.Controls.Add(pnlFail); gridFailures.Dock = DockStyle.Fill; gridFailures.BringToFront();
+
+            // Sub-Tab 2: Causes
+            this.subCauses = new TabPage("Penyebab Masalah");
+            var pnlCause = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
+            var flowCause = new FlowLayoutPanel { Dock = DockStyle.Fill };
+            this.txtCauseName = new AppInput { LabelText = "Nama Penyebab", Width = 400 };
+            this.btnAddCause = new AppButton { Text = "Tambah", Width = 90, Margin = new Padding(5,35,5,5) };
+            this.btnUpdateCause = new AppButton { Text = "Update", Width = 90, Margin = new Padding(5,35,5,5), Enabled=false };
+            this.btnDeleteCause = new AppButton { Text = "Hapus", Width = 90, Margin = new Padding(5,35,5,5), Enabled=false, Type=AppButton.ButtonType.Danger };
+            btnAddCause.Click += BtnAddCause_Click; btnUpdateCause.Click += BtnUpdateCause_Click; btnDeleteCause.Click += BtnDeleteCause_Click;
+            flowCause.Controls.AddRange(new Control[]{ txtCauseName, btnAddCause, btnUpdateCause, btnDeleteCause });
+            pnlCause.Controls.Add(flowCause);
+            this.gridCauses = CreateGrid();
+            this.gridCauses.Columns.Add(new DataGridViewTextBoxColumn { Name="cause_id", DataPropertyName="cause_id", Visible=false });
+            this.gridCauses.Columns.Add(new DataGridViewTextBoxColumn { Name="cause_name", DataPropertyName="cause_name", HeaderText="Nama Penyebab" });
+            this.gridCauses.CellClick += GridCauses_CellClick;
+            this.subCauses.Controls.Add(gridCauses); this.subCauses.Controls.Add(pnlCause); gridCauses.Dock = DockStyle.Fill; gridCauses.BringToFront();
+
+            // Sub-Tab 3: Actions
+            this.subActions = new TabPage("Tindakan Perbaikan");
+            var pnlAction = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
+            var flowAction = new FlowLayoutPanel { Dock = DockStyle.Fill };
+            this.txtActionName = new AppInput { LabelText = "Nama Tindakan", Width = 400 };
+            this.btnAddAction = new AppButton { Text = "Tambah", Width = 90, Margin = new Padding(5,35,5,5) };
+            this.btnUpdateAction = new AppButton { Text = "Update", Width = 90, Margin = new Padding(5,35,5,5), Enabled=false };
+            this.btnDeleteAction = new AppButton { Text = "Hapus", Width = 90, Margin = new Padding(5,35,5,5), Enabled=false, Type=AppButton.ButtonType.Danger };
+            btnAddAction.Click += BtnAddAction_Click; btnUpdateAction.Click += BtnUpdateAction_Click; btnDeleteAction.Click += BtnDeleteAction_Click;
+            flowAction.Controls.AddRange(new Control[]{ txtActionName, btnAddAction, btnUpdateAction, btnDeleteAction });
+            pnlAction.Controls.Add(flowAction);
+            this.gridActions = CreateGrid();
+            this.gridActions.Columns.Add(new DataGridViewTextBoxColumn { Name="action_id", DataPropertyName="action_id", Visible=false });
+            this.gridActions.Columns.Add(new DataGridViewTextBoxColumn { Name="action_name", DataPropertyName="action_name", HeaderText="Nama Tindakan" });
+            this.gridActions.CellClick += GridActions_CellClick;
+            this.subActions.Controls.Add(gridActions); this.subActions.Controls.Add(pnlAction); gridActions.Dock = DockStyle.Fill; gridActions.BringToFront();
+
+            // Sub-Tab 4: Types
+            this.subTypes = new TabPage("Kategori Masalah");
+            var pnlType = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
+            var flowType = new FlowLayoutPanel { Dock = DockStyle.Fill };
+            this.txtTypeName = new AppInput { LabelText = "Kategori Masalah", Width = 400 };
+            this.btnAddType = new AppButton { Text = "Tambah", Width = 90, Margin = new Padding(5,35,5,5) };
+            this.btnUpdateType = new AppButton { Text = "Update", Width = 90, Margin = new Padding(5,35,5,5), Enabled=false };
+            this.btnDeleteType = new AppButton { Text = "Hapus", Width = 90, Margin = new Padding(5,35,5,5), Enabled=false, Type=AppButton.ButtonType.Danger };
+            btnAddType.Click += BtnAddType_Click; btnUpdateType.Click += BtnUpdateType_Click; btnDeleteType.Click += BtnDeleteType_Click;
+            flowType.Controls.AddRange(new Control[]{ txtTypeName, btnAddType, btnUpdateType, btnDeleteType });
+            pnlType.Controls.Add(flowType);
+            this.gridTypes = CreateGrid();
+            this.gridTypes.Columns.Add(new DataGridViewTextBoxColumn { Name="type_id", DataPropertyName="type_id", Visible=false });
+            this.gridTypes.Columns.Add(new DataGridViewTextBoxColumn { Name="type_name", DataPropertyName="type_name", HeaderText="Kategori Masalah" });
+            this.gridTypes.CellClick += GridTypes_CellClick;
+            this.subTypes.Controls.Add(gridTypes); this.subTypes.Controls.Add(pnlType); gridTypes.Dock = DockStyle.Fill; gridTypes.BringToFront();
+
+            this.tabGeneralSub.Controls.AddRange(new Control[] { subFailures, subCauses, subActions, subTypes });
+            this.tabGeneralMasters.Controls.Add(tabGeneralSub);
+        }
+
+        private DataGridView CreateGrid()
+        {
+            return new DataGridView 
+            { 
+                Dock = DockStyle.Fill, 
+                AllowUserToAddRows = false, 
+                ReadOnly = true, 
+                BackgroundColor = AppColors.CardBackground, 
+                BorderStyle = BorderStyle.None, 
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect, 
+                AutoGenerateColumns = false, 
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                ColumnHeadersHeight = 40
+            };
         }
     }
 }
