@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data; // Tambahkan ini untuk IDbConnection
 using System.Threading.Tasks;
 using Dapper;
 using mtc_app.features.machine_history.data.dtos;
@@ -48,7 +49,6 @@ namespace mtc_app.features.machine_history.data.repositories
                         t.created_at AS CreatedAt,
                         t.technician_finished_at AS FinishedAt,
                         t.status_id AS StatusId,
-                        -- [FIX] Mengambil status name dari tabel referensi (join ts di bawah) atau fallback manual jika perlu
                         IFNULL(ts.status_name, 
                              CASE 
                                 WHEN t.status_id = 1 THEN 'Open'
@@ -109,6 +109,7 @@ namespace mtc_app.features.machine_history.data.repositories
                             techId = conn.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE nik = @Nik", new { Nik = request.TechnicianNik }, trans);
                         }
 
+                        // 1. Insert Header Ticket
                         string insertTicketSql = @"
                             INSERT INTO tickets (
                                 ticket_uuid, ticket_display_code, machine_id, shift_id, operator_id, applicator_code, 
@@ -140,19 +141,16 @@ namespace mtc_app.features.machine_history.data.repositories
                             RatingNote = request.TechRatingNote
                         }, trans);
 
-                        // [FIX] Insert Session Log for Offline Sync / Direct Completion
-                        // Ensures technician gets credit in Leaderboard even if ticket was created/completed offline
+                        // 2. Insert Session Log (Jika ada teknisi)
                         if (techId.HasValue)
                         {
                             int elapsed = 0;
-                            // Only calculate duration if both Start and Finish are present
                             if (request.FinishedAt.HasValue && request.StartedAt.HasValue)
                             {
                                 elapsed = (int)(request.FinishedAt.Value - request.StartedAt.Value).TotalSeconds;
                                 if (elapsed < 0) elapsed = 0;
                             }
                             
-                            // Determine if this session actually completed the ticket
                             int isCompleting = request.FinishedAt.HasValue ? 1 : 0;
 
                             string insertSessionSql = @"
@@ -171,30 +169,48 @@ namespace mtc_app.features.machine_history.data.repositories
                             }, trans);
                         }
 
+                        // 3. Insert Problems (DENGAN FITUR AUTO-ADD KE MASTER)
+                        //    Berlaku untuk 4 parameter: Type, Failure, Cause, Action
+                        
                         string insertProblemSql = @"
                             INSERT INTO ticket_problems (ticket_id, problem_type_id, problem_type_remarks, failure_id, failure_remarks, root_cause_id, root_cause_remarks, action_id, action_details_manual)
                             VALUES (@TicketId, @TypeId, @TypeRem, @FailId, @FailRem, @CauseId, @CauseRem, @ActionId, @ActionRem)";
 
                         foreach (var prob in request.Problems)
                         {
-                            int? typeId = conn.QueryFirstOrDefault<int?>("SELECT type_id FROM problem_types WHERE type_name = @N", new { N = prob.ProblemTypeName }, trans);
-                            int? failId = conn.QueryFirstOrDefault<int?>("SELECT failure_id FROM failures WHERE failure_name = @N", new { N = prob.FailureName }, trans);
-                            int? causeId = conn.QueryFirstOrDefault<int?>("SELECT cause_id FROM failure_causes WHERE cause_name = @N", new { N = prob.CauseName }, trans);
-                            int? actionId = conn.QueryFirstOrDefault<int?>("SELECT action_id FROM actions WHERE action_name = @N", new { N = prob.ActionName }, trans);
+                            // A. JENIS PROBLEM (Operator/Teknisi)
+                            // Jika user ketik baru -> Masuk tabel 'problem_types', ambil ID baru
+                            int? typeId = GetOrCreateMasterData(conn, trans, "problem_types", "type_id", "type_name", prob.ProblemTypeName);
+                            
+                            // B. DETAIL MASALAH / FAILURE (Operator/Teknisi)
+                            // Jika user ketik baru -> Masuk tabel 'failures', ambil ID baru
+                            int? failId = GetOrCreateMasterData(conn, trans, "failures", "failure_id", "failure_name", prob.FailureName);
+                            
+                            // C. PENYEBAB / CAUSE (Teknisi)
+                            // Jika user ketik baru -> Masuk tabel 'failure_causes', ambil ID baru
+                            int? causeId = GetOrCreateMasterData(conn, trans, "failure_causes", "cause_id", "cause_name", prob.CauseName);
+                            
+                            // D. TINDAKAN / ACTION (Teknisi)
+                            // Jika user ketik baru -> Masuk tabel 'actions', ambil ID baru
+                            int? actionId = GetOrCreateMasterData(conn, trans, "actions", "action_id", "action_name", prob.ActionName);
 
+                            // Simpan ke Ticket Problem
+                            // Karena data sudah dipastikan masuk master (punya ID), maka kolom Remarks (Manual) kita kosongkan (NULL)
+                            // agar data tersentralisasi.
                             conn.Execute(insertProblemSql, new {
                                 TicketId = ticketId,
                                 TypeId = typeId,
-                                TypeRem = (!typeId.HasValue && !string.IsNullOrEmpty(prob.ProblemTypeName)) ? prob.ProblemTypeName : null,
+                                TypeRem = (string)null, 
                                 FailId = failId,
-                                FailRem = (!failId.HasValue && !string.IsNullOrEmpty(prob.FailureName)) ? prob.FailureName : null,
+                                FailRem = (string)null,
                                 CauseId = causeId,
-                                CauseRem = (!causeId.HasValue && !string.IsNullOrEmpty(prob.CauseName)) ? prob.CauseName : null,
+                                CauseRem = (string)null,
                                 ActionId = actionId,
-                                ActionRem = (!actionId.HasValue && !string.IsNullOrEmpty(prob.ActionName)) ? prob.ActionName : null
+                                ActionRem = (string)null
                             }, trans);
                         }
 
+                        // 4. Sparepart Requests
                         if (request.SparepartRequests != null && request.SparepartRequests.Count > 0)
                         {
                             string insertPartSql = @"INSERT INTO part_requests (ticket_id, part_id, part_name_manual, qty, status_id, requested_at) VALUES (@TId, @PId, @Name, 1, 1, NOW())";
@@ -215,9 +231,10 @@ namespace mtc_app.features.machine_history.data.repositories
                             }
                         }
 
-                        int machineStatus = 2; 
-                        if (request.StatusId >= 4) machineStatus = 1; 
-                        else if (request.StatusId == 3) machineStatus = 3; 
+                        // 5. Update Status Mesin
+                        int machineStatus = 2; // Default DOWN
+                        if (request.StatusId >= 4) machineStatus = 1; // RUNNING (Jika status rejected/closed?) - Logic sesuaikan kebutuhan
+                        else if (request.StatusId == 3) machineStatus = 3; // RUNNING but NEED MONITORING (Completed)
                         
                         conn.Execute("UPDATE machines SET current_status_id = @Status WHERE machine_id = @Id", new { Status = machineStatus, Id = request.MachineId }, trans);
 
@@ -233,11 +250,32 @@ namespace mtc_app.features.machine_history.data.repositories
             }
         }
 
+        // --- HELPER SAKTI: AUTO-ADD TO MASTER DATA ---
+        private int? GetOrCreateMasterData(IDbConnection conn, IDbTransaction trans, string tableName, string idCol, string nameCol, string valueToCheck)
+        {
+            if (string.IsNullOrWhiteSpace(valueToCheck)) return null;
+
+            // 1. Cek apakah sudah ada?
+            string checkSql = $"SELECT {idCol} FROM {tableName} WHERE {nameCol} = @Name";
+            var existingId = conn.QueryFirstOrDefault<int?>(checkSql, new { Name = valueToCheck }, trans);
+
+            if (existingId.HasValue)
+            {
+                return existingId.Value; // Sudah ada, kembalikan ID lama
+            }
+
+            // 2. Belum ada -> Insert Baru ke Tabel Master
+            // Ini akan membuat data tersebut tersedia di dropdown untuk selanjutnya
+            string insertSql = $"INSERT INTO {tableName} ({nameCol}) VALUES (@Name); SELECT LAST_INSERT_ID();";
+            int newId = conn.ExecuteScalar<int>(insertSql, new { Name = valueToCheck }, trans);
+
+            return newId; // Kembalikan ID baru
+        }
+
         public async Task<MachineHistoryDto> GetActiveTicketForMachineAsync(int machineId)
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // [FIX] Menggunakan JOIN ticket_statuses untuk mendapatkan nama status yang akurat
                 string sql = @"
                     SELECT 
                         t.ticket_id AS TicketId,
