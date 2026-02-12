@@ -108,6 +108,19 @@ namespace mtc_app.features.technician.presentation.components
 
             _pnlChartContainer.Controls.Add(_chart);
             this.Controls.Add(_pnlChartContainer);
+
+            // Title — added LAST so it docks at the very top
+            var lblTitle = new Label
+            {
+                Text = "Monitoring Mesin Real-time",
+                Font = AppFonts.PageTitle,
+                ForeColor = AppColors.TextPrimary,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Top,
+                AutoSize = false,
+                Height = 40
+            };
+            this.Controls.Add(lblTitle);
         }
 
         private Panel BuildHeaderPanel()
@@ -136,13 +149,7 @@ namespace mtc_app.features.technician.presentation.components
                 BackColor = Color.Transparent
             };
 
-            var lblTitle = new Label 
-            { 
-                Text = "Monitoring Mesin Real-time", 
-                Font = AppFonts.MetricSmall,
-                AutoSize = true,
-                Margin = new Padding(0, 5, AppDimens.MarginLarge, 0)
-            };
+
 
             _lblStatus = new Label
             {
@@ -153,7 +160,7 @@ namespace mtc_app.features.technician.presentation.components
                 Margin = new Padding(0, 10, 0, 0)
             };
 
-            flowLeft.Controls.AddRange(new Control[] { lblTitle, _lblStatus });
+            flowLeft.Controls.Add(_lblStatus);
             headerLayout.Controls.Add(flowLeft, 0, 0);
 
             // Right: Filters
