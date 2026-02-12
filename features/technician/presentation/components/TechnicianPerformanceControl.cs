@@ -89,6 +89,19 @@ namespace mtc_app.features.technician.presentation.components
             mainLayout.Controls.Add(chartPanel, 0, 1);
 
             this.Controls.Add(mainLayout);
+
+            // Title — added LAST so it docks at the very top (WinForms dock order)
+            lblTitle = new Label
+            {
+                Text = "Leaderboard Teknisi",
+                Font = AppFonts.PageTitle,
+                ForeColor = AppColors.TextPrimary,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Top,
+                AutoSize = false,
+                Height = 40
+            };
+            this.Controls.Add(lblTitle);
         }
 
         private Panel BuildHeaderPanel()
@@ -118,16 +131,6 @@ namespace mtc_app.features.technician.presentation.components
                 Padding = new Padding(0)
             };
 
-            // Title
-            lblTitle = new Label
-            {
-                Text = "Leaderboard Teknisi",
-                Font = new Font("Segoe UI Semibold", 16F, FontStyle.Bold),
-                ForeColor = AppColors.TextPrimary,
-                AutoSize = true,
-                Margin = new Padding(0, 0, 0, AppDimens.MarginSmall)
-            };
-            flowVertical.Controls.Add(lblTitle);
 
             // Stats Control (Shop-wide totals)
             statsControl = new TechnicianStatsControl

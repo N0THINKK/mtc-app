@@ -101,6 +101,19 @@ namespace mtc_app.features.technician.presentation.components
             mainLayout.Controls.Add(chartPanel, 0, 1);
 
             this.Controls.Add(mainLayout);
+
+            // Title — added LAST so it docks at the very top
+            lblTitle = new Label
+            {
+                Text = "Analisis Downtime Mesin",
+                Font = AppFonts.PageTitle,
+                ForeColor = AppColors.TextPrimary,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Top,
+                AutoSize = false,
+                Height = 40
+            };
+            this.Controls.Add(lblTitle);
         }
 
         private Panel BuildHeaderPanel()
@@ -133,14 +146,6 @@ namespace mtc_app.features.technician.presentation.components
                 Margin = new Padding(0, 0, 0, AppDimens.MarginSmall)
             };
 
-            lblTitle = new Label
-            {
-                Text = "Analisis Downtime Mesin",
-                Font = new Font("Segoe UI Semibold", 14F, FontStyle.Bold),
-                AutoSize = true,
-                Margin = new Padding(0, 3, AppDimens.SpacingXL, 0)
-            };
-            flowTitleRow.Controls.Add(lblTitle);
 
             var lblArea = new Label 
             { 

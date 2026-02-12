@@ -10,6 +10,7 @@ namespace mtc_app.shared.presentation.styles
         public static Font Header1 => new Font(FontFamily, 26, FontStyle.Bold); // Was 22
         public static Font Header2 => new Font(FontFamily, 22, FontStyle.Bold); // Was 18
         public static Font Header3 => new Font(FontFamily, 16.5F, FontStyle.Bold); // Was 14
+        public static Font PageTitle => new Font(FontFamily, 20F, FontStyle.Bold); // Tab page headings
         
         public static Font Title => new Font(FontFamily, 14.5F, FontStyle.Bold); // Was 12
         public static Font Subtitle => new Font(FontFamily, 13, FontStyle.Bold); // Was 11
