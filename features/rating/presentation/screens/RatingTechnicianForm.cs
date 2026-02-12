@@ -44,7 +44,7 @@ namespace mtc_app.features.rating.presentation.screens
 
         private void InitializeCustomComponent()
         {
-            this.Text = "Rating Operator";
+            this.Text = "Rating Dari Teknisi";
             this.Size = new Size(500, 850); // Increased height
             this.StartPosition = FormStartPosition.CenterScreen;
             this.AutoScroll = true;
