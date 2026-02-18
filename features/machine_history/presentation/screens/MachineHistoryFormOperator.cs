@@ -445,18 +445,9 @@ namespace mtc_app.features.machine_history.presentation.screens
 
                 AutoClosingMessageBox.Show(successMsg, "Sukses", 2000);
 
-                var technicianForm = new MachineHistoryFormTechnician(result.TicketId);
-                this.Hide(); 
-                
-                // [MODIFIED] Logic Tutup Form: Selalu Logout (Login Form)
-                technicianForm.FormClosed += (s, args) => 
-                {
-                    // Tutup Operator Form -> Reset ke Login
-                    var loginForm = new LoginForm();
-                    loginForm.Show();
-                    this.Close();
-                };
-                technicianForm.Show();
+                AutoClosingMessageBox.Show(successMsg, "Sukses", 2000);
+
+                OpenTechnicianForm(result.TicketId);
             }
             catch (Exception ex)
             {
@@ -526,12 +517,10 @@ namespace mtc_app.features.machine_history.presentation.screens
             var technicianForm = new MachineHistoryFormTechnician(ticketId);
             this.Hide();
             
-            // [MODIFIED] Logic Tutup Form: Selalu Logout (Login Form)
+            // Current form hides, waits for technician form to close
             technicianForm.FormClosed += (s, args) =>
             {
-                // Tutup Operator Form -> Reset ke Login
-                var loginForm = new LoginForm();
-                loginForm.Show();
+                // Closing this form triggers the original LoginForm (which opened this) to show itself
                 this.Close();
             };
             technicianForm.Show();
