@@ -25,7 +25,7 @@ namespace mtc_app.features.technician.presentation.components
         private Label lblStatusBadge; // Now a button-like label
         private PictureBox iconMachine;
         private PictureBox iconClock;
-        private AppStarRating starRating;
+        // private AppStarRating starRating; // Removed
         
         private TicketDto _currentTicket;
         public event EventHandler<long> OnCardClick;
@@ -48,7 +48,7 @@ namespace mtc_app.features.technician.presentation.components
             this.lblStatusBadge = new Label();
             this.iconMachine = new PictureBox();
             this.iconClock = new PictureBox();
-            this.starRating = new AppStarRating();
+            // this.starRating = new AppStarRating(); // Removed
             
             this.SuspendLayout();
             this.pnlMain.SuspendLayout();
@@ -81,7 +81,9 @@ namespace mtc_app.features.technician.presentation.components
             // 
             // TableLayoutPanel (Horizontal Layout)
             // 
-            this.layoutTable.ColumnCount = 7;
+            // TableLayoutPanel (Horizontal Layout)
+            // 
+            this.layoutTable.ColumnCount = 6; // Reduced from 7
             this.layoutTable.RowCount = 1;
             this.layoutTable.Dock = DockStyle.Top;
             this.layoutTable.Padding = new Padding(AppDimens.PaddingStandard); // Bigger padding
@@ -89,11 +91,12 @@ namespace mtc_app.features.technician.presentation.components
             this.layoutTable.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             
             // Columns: Icon | Machine | Tech | Problem | Stars | Time | Badge
+            // Columns: Icon | Machine | Tech | Problem | [Stars Removed] | Time | Badge
             this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40F)); // Icon
             this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Machine
             this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Technician
             this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F)); // Problem (Fills gap)
-            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Stars
+            // this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Stars - Removed
             this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Time
             this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Badge
             
@@ -135,12 +138,12 @@ namespace mtc_app.features.technician.presentation.components
             this.lblProblem.Margin = new Padding(0, 0, AppDimens.MarginLarge, 0);
             this.layoutTable.Controls.Add(this.lblProblem, 3, 0);
 
-            // 5. Star Rating
-            this.starRating.IsReadOnly = true;
-            this.starRating.Visible = false;
-            this.starRating.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            this.starRating.Margin = new Padding(0, 0, AppDimens.MarginLarge, 0);
-            this.layoutTable.Controls.Add(this.starRating, 4, 0);
+            // 5. Star Rating - Removed
+            // this.starRating.IsReadOnly = true;
+            // this.starRating.Visible = false;
+            // this.starRating.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            // this.starRating.Margin = new Padding(0, 0, AppDimens.MarginLarge, 0);
+            // this.layoutTable.Controls.Add(this.starRating, 4, 0);
 
             // 6. Time (Icon + Text)
             var pnlTime = new Panel { AutoSize = true, Anchor = AnchorStyles.Left | AnchorStyles.Right };
@@ -155,7 +158,7 @@ namespace mtc_app.features.technician.presentation.components
             
             pnlTime.Controls.Add(this.iconClock);
             pnlTime.Controls.Add(this.lblTime);
-            this.layoutTable.Controls.Add(pnlTime, 5, 0);
+            this.layoutTable.Controls.Add(pnlTime, 4, 0); // Index shifted 5 -> 4
 
             // 7. Status Badge
             this.lblStatusBadge.Font = AppFonts.Subtitle;
@@ -167,7 +170,7 @@ namespace mtc_app.features.technician.presentation.components
             // but user loved the flat badge look in previous request.
             // Screenshot shows an Orange Button-like thing "Belum Direview".
             // So we use background color.
-            this.layoutTable.Controls.Add(this.lblStatusBadge, 6, 0);
+            this.layoutTable.Controls.Add(this.lblStatusBadge, 5, 0); // Index shifted 6 -> 5
 
             this.pnlMain.Controls.Add(this.layoutTable);
             this.pnlMain.Controls.Add(this.pnlColorStrip);
@@ -253,15 +256,15 @@ namespace mtc_app.features.technician.presentation.components
                  else
                      this.lblTime.Text = FormatTime(ticket.CreatedAt);
 
-                 this.starRating.Visible = true;
-                 this.starRating.Rating = ticket.GlRatingScore ?? 0;
+                 // this.starRating.Visible = true; // Removed
+                 // this.starRating.Rating = ticket.GlRatingScore ?? 0;
             }
             else
             {
                  // Open/Repairing
                  TimeSpan duration = DateTime.Now - (ticket.StartedAt ?? ticket.CreatedAt);
                  this.lblTime.Text = FormatDuration(duration);
-                 this.starRating.Visible = false;
+                 // this.starRating.Visible = false;
             }
             
             // Adjust visibility if problem text is empty to avoid gap?
