@@ -29,6 +29,8 @@ namespace mtc_app.features.authentication.presentation.screens
             _authRepository = authRepository;
             _setupRepository = setupRepository;
 
+            txtUsername.InputValue = "operator";
+
             // Compact UI
             this.AutoSize = true;
             this.AutoSizeMode = AutoSizeMode.GrowAndShrink;
