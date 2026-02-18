@@ -92,17 +92,18 @@ namespace mtc_app.features.rating.presentation.screens
             // 4. GL Rating (Read Only)
             AddSectionHeader(mainLayout, "Penilaian GL");
             
-            mainLayout.Controls.Add(new AppLabel 
-            { 
-                Text = "Rating dari GL:", 
-                Type = AppLabel.LabelType.Subtitle,
-                AutoSize = true,
-                Margin = new Padding(0, AppDimens.MarginSmall, 0, AppDimens.MarginXS)
-            });
+            // Label removed
+            // mainLayout.Controls.Add(new AppLabel 
+            // { 
+            //     Text = "Rating dari GL:", 
+            //     Type = AppLabel.LabelType.Subtitle,
+            //     AutoSize = true,
+            //     Margin = new Padding(0, AppDimens.MarginSmall, 0, AppDimens.MarginXS)
+            // });
 
-            _glRatingControl = new AppStarRating { IsReadOnly = true };
-            _glRatingControl.Margin = new Padding(0, 0, 0, AppDimens.GapStandard);
-            mainLayout.Controls.Add(_glRatingControl);
+            // _glRatingControl removed
+            // _glRatingControl.Margin = new Padding(0, 0, 0, AppDimens.GapStandard);
+            // mainLayout.Controls.Add(_glRatingControl);
 
             mainLayout.Controls.Add(new AppLabel 
             { 
@@ -124,18 +125,19 @@ namespace mtc_app.features.rating.presentation.screens
             // 5. Rating Input (Operator)
             AddSectionHeader(mainLayout, "Penilaian dari Teknisi");
             
-            mainLayout.Controls.Add(new AppLabel 
-            { 
-                Text = "Rating dari Teknisi (1-5):", 
-                Type = AppLabel.LabelType.Subtitle,
-                AutoSize = true,
-                Margin = new Padding(0, 5, 0, 2)
-            });
-
-            _starRating = new AppStarRating();
-            _starRating.Rating = 5; // Default
-            _starRating.Margin = new Padding(0, 0, 0, AppDimens.PaddingStandard);
-            mainLayout.Controls.Add(_starRating);
+            // Star Rating Input removed
+            // mainLayout.Controls.Add(new AppLabel 
+            // { 
+            //     Text = "Rating dari Teknisi (1-5):", 
+            //     Type = AppLabel.LabelType.Subtitle,
+            //     AutoSize = true,
+            //     Margin = new Padding(0, 5, 0, 2)
+            // });
+            //
+            // _starRating = new AppStarRating();
+            // _starRating.Rating = 5; // Default
+            // _starRating.Margin = new Padding(0, 0, 0, AppDimens.PaddingStandard);
+            // mainLayout.Controls.Add(_starRating);
 
             _inputNote = new AppInput
             {
@@ -282,18 +284,18 @@ namespace mtc_app.features.rating.presentation.screens
                         _lblRepairDuration.Text = repair.ToString(@"hh\:mm\:ss");
                     }
 
-                    // Populate GL Rating (Read Only)
-                    if (data.GlRatingScore.HasValue)
-                        _glRatingControl.Rating = data.GlRatingScore.Value;
+                    // Populate GL Rating (Read Only) - Removed
+                    // if (data.GlRatingScore.HasValue)
+                    //     _glRatingControl.Rating = data.GlRatingScore.Value;
                     
                     if (!string.IsNullOrEmpty(data.GlRatingNote))
                         _lblGlNote.Text = data.GlRatingNote;
                     else
                         _lblGlNote.Text = "(Belum dinilai oleh GL)";
 
-                    // Populate Operator Rating (Existing Input)
-                    if (data.TechRatingScore.HasValue)
-                        _starRating.Rating = data.TechRatingScore.Value;
+                    // Populate Operator Rating (Existing Input) - Star Removed
+                    // if (data.TechRatingScore.HasValue)
+                    //     _starRating.Rating = data.TechRatingScore.Value;
                     
                     if (!string.IsNullOrEmpty(data.TechRatingNote))
                         _inputNote.InputValue = data.TechRatingNote;
@@ -323,15 +325,17 @@ namespace mtc_app.features.rating.presentation.screens
 
         private async Task BtnSubmit_ClickAsync(object sender, EventArgs e)
         {
-            if (_starRating.Rating == 0)
-            {
-                MessageBox.Show("Mohon berikan rating untuk operator.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
+            // Validation removed
+            // if (_starRating.Rating == 0)
+            // {
+            //     MessageBox.Show("Mohon berikan rating untuk operator.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            //     return;
+            // }
 
             try
             {
-                await _repository.UpdateOperatorRatingAsync(_ticketId, _starRating.Rating, _inputNote.InputValue);
+                // Pass 0 as rating
+                await _repository.UpdateOperatorRatingAsync(_ticketId, 0, _inputNote.InputValue);
                 
                 MessageBox.Show("Penilaian operator berhasil disimpan.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 this.DialogResult = DialogResult.OK;
