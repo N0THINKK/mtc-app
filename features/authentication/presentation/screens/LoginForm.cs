@@ -154,7 +154,7 @@ namespace mtc_app.features.authentication.presentation.screens
             lblMachineName = new Label
             {
                 Text = "Machine: Loading...",
-                Font = new Font("Segoe UI", 8.25F, FontStyle.Underline),
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold | FontStyle.Underline),
                 ForeColor = Color.Gray,
                 AutoSize = true,
                 Cursor = Cursors.Hand,
