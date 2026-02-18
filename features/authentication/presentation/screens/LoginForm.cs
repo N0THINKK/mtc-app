@@ -118,7 +118,7 @@ namespace mtc_app.features.authentication.presentation.screens
             // 1. Store Session
             UserSession.SetUser(user);
 
-            MessageBox.Show($"Login Berhasil! Selamat datang, {user.Username} ({user.RoleName})", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            ToastNotification.ShowSuccess($"Login Berhasil! Selamat datang, {user.Username} ({user.RoleName})", 3000);
 
             // 2. Hide Login Form
             this.Hide();
