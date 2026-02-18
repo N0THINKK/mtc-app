@@ -36,6 +36,7 @@ namespace mtc_app.features.technician.data.repositories
 
                         t.created_at AS CreatedAt,
                         t.status_id AS StatusId,
+                        t.is_machine_running AS IsMachineRunning,
                         t.started_at AS StartedAt,
                         t.technician_finished_at AS FinishedAt,
                         t.gl_rating_score AS GlRatingScore,
