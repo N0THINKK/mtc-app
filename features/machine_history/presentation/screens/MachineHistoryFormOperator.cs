@@ -231,7 +231,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             AddToForm(inputShift);
 
             // 3. Applicator
-            inputApplicator = CreateInput("No. Aplikator", AppInput.InputTypeEnum.Text, true);
+            inputApplicator = CreateInput("No. Aplikator", AppInput.InputTypeEnum.Text, false);
             inputApplicator.CharacterCasing = CharacterCasing.Upper;
             AddToForm(inputApplicator);
 
@@ -401,9 +401,9 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private async void SaveButton_Click(object sender, EventArgs e)
         {
-            if (!inputNIK.ValidateInput() || !inputShift.ValidateInput() || !inputApplicator.ValidateInput())
+            if (!inputNIK.ValidateInput() || !inputShift.ValidateInput())
             {
-                MessageBox.Show("Mohon lengkapi semua data.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Mohon lengkapi data wajib (NIK & Shift).", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
