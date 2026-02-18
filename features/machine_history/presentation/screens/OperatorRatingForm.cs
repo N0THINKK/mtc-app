@@ -56,8 +56,8 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             // Rating Control
             ratingControl = new AppStarRating();
+            ratingControl.StarSize = 50;
             ratingControl.Rating = 0;
-            ratingControl.Size = new Size(300, 60);
             // We'll center this manually in layout
             
             // Submit Button
