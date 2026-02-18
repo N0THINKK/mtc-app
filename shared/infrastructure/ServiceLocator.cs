@@ -187,5 +187,14 @@ namespace mtc_app.shared.infrastructure
             var inner = new MasterDataRepository();
             return new OfflineMasterDataRepository(inner, OfflineRepo, NetworkMonitor);
         }
+
+        /// <summary>
+        /// Creates a SetupRepository.
+        /// </summary>
+        public static ISetupRepository CreateSetupRepository()
+        {
+            // Setup is usually online-only or local DB, no need for offline decorator yet logic is simple
+            return new SetupRepository();
+        }
     }
 }

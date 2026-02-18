@@ -8,5 +8,6 @@ namespace mtc_app.features.authentication.data.repositories
         Task<IEnumerable<string>> GetMachineTypesAsync();
         Task<IEnumerable<string>> GetMachineAreasAsync();
         Task<int> RegisterMachineAsync(string type, string area, string number);
+        Task<string> GetMachineNameByIdAsync(int id);
     }
 }
