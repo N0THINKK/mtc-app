@@ -98,7 +98,7 @@ namespace mtc_app.features.technician.presentation.components
             statsControl = new TechnicianWorkQueueStatsControl
             {
                 Location = new Point(20, 10),
-                Size = new Size(1100, 100),
+                Size = new Size(1340, 100),
                 BackColor = Color.Transparent
             };
             header.Controls.Add(statsControl);
@@ -198,7 +198,7 @@ namespace mtc_app.features.technician.presentation.components
                 Font = AppFonts.Body,
                 Margin = new Padding(0, 20, AppDimens.MarginLarge, 0)
             };
-            cmbFilterStatus.Items.AddRange(new object[] { "Semua", "Belum Ditangani", "Sedang Diperbaiki", "Run (Produksi)", "Selesai" });
+            cmbFilterStatus.Items.AddRange(new object[] { "Semua", "Belum Ditangani", "Sedang Diperbaiki", "Selesai", "Run", "Stop" });
             cmbFilterStatus.SelectedIndex = 0;
 
             var lblSortBy = new Label 
@@ -314,13 +314,16 @@ namespace mtc_app.features.technician.presentation.components
                 
                 pnlTicketList.SuspendLayout();
                 
-                // Calculate Stats
+                // Calculate Stats — Ticket Workflow
                 int openCount = _allTickets.Count(t => t.StatusId == 1);
                 int processCount = _allTickets.Count(t => t.StatusId == 2);
-                int runCount = _allTickets.Count(t => t.StatusId == 4);
                 int doneCount = _allTickets.Count(t => t.StatusId == 3);
+                
+                // Calculate Stats — Machine State
+                int runCount = _allTickets.Count(t => t.IsMachineRunning == 1);
+                int stopCount = _allTickets.Count(t => t.IsMachineRunning == 0);
 
-                statsControl.UpdateStats(openCount, processCount, runCount, doneCount);
+                statsControl.UpdateStats(openCount, processCount, doneCount, runCount, stopCount);
                 lblLastUpdate.Text = $"Terakhir diperbarui: {DateTime.Now:HH:mm:ss}";
                 
                 RenderTickets();
@@ -353,10 +356,11 @@ namespace mtc_app.features.technician.presentation.components
             var filtered = _allTickets.AsEnumerable();
 
             int statusIndex = cmbFilterStatus.SelectedIndex;
-            if (statusIndex == 1) filtered = filtered.Where(t => t.StatusId == 1);
-            else if (statusIndex == 2) filtered = filtered.Where(t => t.StatusId == 2);
-            else if (statusIndex == 3) filtered = filtered.Where(t => t.StatusId == 4); // Run
-            else if (statusIndex == 4) filtered = filtered.Where(t => t.StatusId == 3); // Done
+            if (statusIndex == 1) filtered = filtered.Where(t => t.StatusId == 1);       // Belum Ditangani
+            else if (statusIndex == 2) filtered = filtered.Where(t => t.StatusId == 2);  // Sedang Diperbaiki
+            else if (statusIndex == 3) filtered = filtered.Where(t => t.StatusId == 3);  // Selesai
+            else if (statusIndex == 4) filtered = filtered.Where(t => t.IsMachineRunning == 1); // Run
+            else if (statusIndex == 5) filtered = filtered.Where(t => t.IsMachineRunning == 0); // Stop
 
             int sortIndex = cmbSortBy.SelectedIndex;
             List<TicketDto> sortedList;

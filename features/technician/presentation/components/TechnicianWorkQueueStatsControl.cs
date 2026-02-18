@@ -9,9 +9,9 @@ namespace mtc_app.features.technician.presentation.components
 {
     public class TechnicianWorkQueueStatsControl : UserControl
     {
+        // Ticket Workflow Cards
         private Panel pnlOpen;
         private Panel pnlRepairing;
-        private Panel pnlRun;
         private Panel pnlDone;
         
         private Label lblOpenValue;
@@ -22,33 +22,43 @@ namespace mtc_app.features.technician.presentation.components
         private Label lblRepairLabel;
         private PictureBox iconRepair;
 
+        private Label lblDoneValue;
+        private Label lblDoneLabel;
+        private PictureBox iconDone;
+
+        // Machine State Cards
+        private Panel pnlRun;
+        private Panel pnlStop;
+
         private Label lblRunValue;
         private Label lblRunLabel;
         private PictureBox iconRun;
 
-        private Label lblDoneValue;
-        private Label lblDoneLabel;
-        private PictureBox iconDone;
+        private Label lblStopValue;
+        private Label lblStopLabel;
+        private PictureBox iconStop;
 
         public TechnicianWorkQueueStatsControl()
         {
             InitializeComponent();
         }
 
-        public void UpdateStats(int openCount, int repairCount, int runCount, int doneCount)
+        public void UpdateStats(int openCount, int repairCount, int doneCount, int runCount, int stopCount)
         {
             lblOpenValue.Text = openCount.ToString();
             lblRepairValue.Text = repairCount.ToString();
-            lblRunValue.Text = runCount.ToString();
             lblDoneValue.Text = doneCount.ToString();
+            lblRunValue.Text = runCount.ToString();
+            lblStopValue.Text = stopCount.ToString();
         }
 
         private void InitializeComponent()
         {
             this.pnlOpen = new Panel();
             this.pnlRepairing = new Panel();
-            this.pnlRun = new Panel();
             this.pnlDone = new Panel();
+            this.pnlRun = new Panel();
+            this.pnlStop = new Panel();
             
             this.lblOpenValue = new Label();
             this.lblOpenLabel = new Label();
@@ -57,49 +67,69 @@ namespace mtc_app.features.technician.presentation.components
             this.lblRepairValue = new Label();
             this.lblRepairLabel = new Label();
             this.iconRepair = new PictureBox();
-
-            this.lblRunValue = new Label();
-            this.lblRunLabel = new Label();
-            this.iconRun = new PictureBox();
             
             this.lblDoneValue = new Label();
             this.lblDoneLabel = new Label();
             this.iconDone = new PictureBox();
 
+            this.lblRunValue = new Label();
+            this.lblRunLabel = new Label();
+            this.iconRun = new PictureBox();
+
+            this.lblStopValue = new Label();
+            this.lblStopLabel = new Label();
+            this.iconStop = new PictureBox();
+
             this.SuspendLayout();
             
             // Main UserControl
             this.BackColor = Color.Transparent;
-            this.Size = new Size(1100, 100);
+            this.Size = new Size(1340, 100);
             this.Padding = new Padding(0);
 
-            // Responsive card container
+            // Main container: two groups side by side
             var flowCards = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = true,
+                WrapContents = false,
                 Dock = DockStyle.Fill,
                 BackColor = Color.Transparent,
                 Padding = new Padding(0)
             };
 
-            // Setup four stat cards
+            // ═══ Group 1: Ticket Workflow ═══
             SetupStatCard(pnlOpen, iconOpen, lblOpenValue, lblOpenLabel,
                 "0", "Belum Ditangani", AppColors.Danger, Color.FromArgb(254, 242, 242));
 
             SetupStatCard(pnlRepairing, iconRepair, lblRepairValue, lblRepairLabel,
                 "0", "Sedang Diperbaiki", Color.FromArgb(234, 179, 8), Color.FromArgb(254, 252, 232));
 
-            SetupStatCard(pnlRun, iconRun, lblRunValue, lblRunLabel,
-                "0", "Run (Produksi)", AppColors.Info, Color.FromArgb(239, 246, 255));
-
             SetupStatCard(pnlDone, iconDone, lblDoneValue, lblDoneLabel,
                 "0", "Selesai", Color.FromArgb(34, 197, 94), Color.FromArgb(240, 253, 244));
 
             flowCards.Controls.Add(pnlOpen);
             flowCards.Controls.Add(pnlRepairing);
-            flowCards.Controls.Add(pnlRun);
             flowCards.Controls.Add(pnlDone);
+
+            // ═══ Separator ═══
+            var separator = new Panel
+            {
+                Width = 2,
+                Height = 80,
+                BackColor = AppColors.Separator,
+                Margin = new Padding(AppDimens.GapStandard, 10, AppDimens.GapStandard, 10)
+            };
+            flowCards.Controls.Add(separator);
+
+            // ═══ Group 2: Machine State ═══
+            SetupStatCard(pnlRun, iconRun, lblRunValue, lblRunLabel,
+                "0", "Run", Color.FromArgb(34, 197, 94), Color.FromArgb(240, 253, 244));
+
+            SetupStatCard(pnlStop, iconStop, lblStopValue, lblStopLabel,
+                "0", "Stop", Color.FromArgb(107, 114, 128), Color.FromArgb(249, 250, 251));
+
+            flowCards.Controls.Add(pnlRun);
+            flowCards.Controls.Add(pnlStop);
 
             this.Controls.Add(flowCards);
 
@@ -111,35 +141,37 @@ namespace mtc_app.features.technician.presentation.components
         {
             // Panel
             panel.BackColor = AppColors.CardBackground;
-            panel.Size = new Size(250, 100);
+            panel.Size = new Size(210, 100);
             panel.Margin = new Padding(0, 0, AppDimens.GapStandard, 0);
             panel.Paint += (s, e) => DrawStatCard(e.Graphics, panel.ClientRectangle, accentColor);
 
             // Icon
             icon.Size = new Size(48, 48);
-            icon.Location = new Point(20, 26);
+            icon.Location = new Point(16, 26);
             icon.BackColor = Color.Transparent;
             
             if (labelText.Contains("Belum"))
                 icon.Paint += (s, e) => DrawAlertIcon(e.Graphics, accentColor);
             else if (labelText.Contains("Sedang"))
                 icon.Paint += (s, e) => DrawWrenchIcon(e.Graphics, accentColor);
-            else if (labelText.Contains("Run"))
+            else if (labelText == "Run")
                 icon.Paint += (s, e) => DrawRunIcon(e.Graphics, accentColor);
+            else if (labelText == "Stop")
+                icon.Paint += (s, e) => DrawStopIcon(e.Graphics, accentColor);
             else
                 icon.Paint += (s, e) => DrawCheckCircleIcon(e.Graphics, accentColor);
 
             // Value Label
             valueLabel.Font = new Font("Segoe UI", 24F, FontStyle.Bold);
             valueLabel.ForeColor = AppColors.TextPrimary;
-            valueLabel.Location = new Point(85, 20);
+            valueLabel.Location = new Point(72, 20);
             valueLabel.AutoSize = true;
             valueLabel.Text = defaultValue;
 
             // Text Label
             textLabel.Font = new Font("Segoe UI", 10F);
             textLabel.ForeColor = AppColors.TextSecondary;
-            textLabel.Location = new Point(85, 58);
+            textLabel.Location = new Point(72, 58);
             textLabel.AutoSize = true;
             textLabel.Text = labelText;
 
@@ -212,6 +244,16 @@ namespace mtc_app.features.technician.presentation.components
                 // Play Triangle
                 Point[] points = { new Point(16, 12), new Point(16, 36), new Point(38, 24) };
                 g.FillPolygon(brush, points);
+            }
+        }
+
+        private void DrawStopIcon(Graphics g, Color color)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (Brush brush = new SolidBrush(color))
+            {
+                // Stop Square
+                g.FillRectangle(brush, 12, 12, 24, 24);
             }
         }
 

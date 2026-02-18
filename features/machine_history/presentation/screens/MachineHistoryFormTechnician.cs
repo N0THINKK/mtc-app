@@ -22,6 +22,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         
         // Ticket State (for resume workflow)
         private int _ticketStatus = 1;
+        private int _isMachineRunning = 0;
         
         // Accumulated Timer (DB-persisted, counts only while form is open)
         private int _arrivalSeconds = 0;  // Loaded from DB, incremented while form open
@@ -94,7 +95,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                     var ticket = conn.QueryFirstOrDefault(@"
                         SELECT status_id AS StatusId, 
                                IFNULL(arrival_elapsed_seconds, 0) AS ArrivalSeconds,
-                               IFNULL(repair_elapsed_seconds, 0) AS RepairSeconds
+                               IFNULL(repair_elapsed_seconds, 0) AS RepairSeconds,
+                               IFNULL(is_machine_running, 0) AS IsMachineRunning
                         FROM tickets WHERE ticket_id = @Id",
                         new { Id = _currentTicketId });
                     
@@ -103,6 +105,10 @@ namespace mtc_app.features.machine_history.presentation.screens
                         _ticketStatus = (int)ticket.StatusId;
                         _arrivalSeconds = (int)ticket.ArrivalSeconds;
                         _repairSeconds = (int)ticket.RepairSeconds;
+                        _isMachineRunning = (int)ticket.IsMachineRunning;
+                        
+                        // Update the Run/Stop indicator in the header
+                        UpdateMachineStateIndicator();
                         
                         // NOTE: Do NOT auto-set _isVerified for Status 2
                         // The new technician must verify themselves to create a session
@@ -115,7 +121,75 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        private void SetupTimer()
+    /// <summary>
+    /// Update the Run/Stop indicator in the header based on _isMachineRunning.
+    /// </summary>
+    private void UpdateMachineStateIndicator()
+    {
+        if (_isMachineRunning == 1)
+        {
+            lblMachineState.Text = "\u25b6 RUN";
+            lblMachineState.ForeColor = System.Drawing.Color.FromArgb(34, 197, 94); // Green
+        }
+        else
+        {
+            lblMachineState.Text = "\u25a0 STOP";
+            lblMachineState.ForeColor = System.Drawing.Color.FromArgb(239, 68, 68); // Red
+        }
+    }
+
+    /// <summary>
+    /// Toggle machine state between Run and Stop.
+    /// Persists to database immediately (online) or to pending ticket (offline).
+    /// </summary>
+    private async void LblMachineState_Click(object sender, EventArgs e)
+    {
+        int newState = (_isMachineRunning == 1) ? 0 : 1;
+        string stateText = newState == 1 ? "RUN" : "STOP";
+
+        var confirm = MessageBox.Show(
+            $"Ubah status mesin menjadi {stateText}?",
+            "Konfirmasi",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+
+        if (confirm != DialogResult.Yes) return;
+
+        try
+        {
+            if (_currentTicketId > 0)
+            {
+                // Online mode: update database
+                await Task.Run(() =>
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        conn.Open();
+                        conn.Execute(
+                            "UPDATE tickets SET is_machine_running = @State WHERE ticket_id = @Id",
+                            new { State = newState, Id = _currentTicketId });
+                    }
+                });
+            }
+            else
+            {
+                // Offline mode: state updated in-memory, will be persisted on sync
+            }
+
+            _isMachineRunning = newState;
+            UpdateMachineStateIndicator();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Gagal mengubah status mesin: {ex.Message}",
+                "Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+    }
+
+    private void SetupTimer()
         {
             _timer = new Timer { Interval = 1000 }; // 1 second interval
             _timer.Tick += Timer_Tick;
@@ -1197,8 +1271,16 @@ namespace mtc_app.features.machine_history.presentation.screens
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            
-            if (mainLayout == null) return;
+    
+    // Center the Run/Stop indicator in panelHeader
+    if (panelHeader != null && lblMachineState != null && lblMachineStateTitle != null)
+    {
+        int centerX = panelHeader.ClientSize.Width / 2;
+        lblMachineStateTitle.Location = new Point(centerX - lblMachineStateTitle.Width / 2, 10);
+        lblMachineState.Location = new Point(centerX - lblMachineState.Width / 2, 35);
+    }
+    
+    if (mainLayout == null) return;
             
             int contentWidth = mainLayout.ClientSize.Width - 80;
             if (contentWidth < 300) contentWidth = 300;

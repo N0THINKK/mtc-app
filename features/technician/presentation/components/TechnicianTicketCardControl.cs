@@ -23,6 +23,7 @@ namespace mtc_app.features.technician.presentation.components
         private Label lblTechnicianName;
         private Label lblTime;
         private Label lblStatusBadge; // Now a button-like label
+        private Label lblMachineState; // Run/Stop badge
         private PictureBox iconMachine;
         private PictureBox iconClock;
         // private AppStarRating starRating; // Removed
@@ -46,6 +47,7 @@ namespace mtc_app.features.technician.presentation.components
             this.lblTechnicianName = new Label();
             this.lblTime = new Label();
             this.lblStatusBadge = new Label();
+            this.lblMachineState = new Label();
             this.iconMachine = new PictureBox();
             this.iconClock = new PictureBox();
             // this.starRating = new AppStarRating(); // Removed
@@ -83,22 +85,21 @@ namespace mtc_app.features.technician.presentation.components
             // 
             // TableLayoutPanel (Horizontal Layout)
             // 
-            this.layoutTable.ColumnCount = 6; // Reduced from 7
+            this.layoutTable.ColumnCount = 7;
             this.layoutTable.RowCount = 1;
             this.layoutTable.Dock = DockStyle.Top;
             this.layoutTable.Padding = new Padding(AppDimens.PaddingStandard); // Bigger padding
             this.layoutTable.AutoSize = true;
             this.layoutTable.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             
-            // Columns: Icon | Machine | Tech | Problem | Stars | Time | Badge
-            // Columns: Icon | Machine | Tech | Problem | [Stars Removed] | Time | Badge
+            // Columns: Icon | Machine | Tech | Problem | Time | StatusBadge | MachineState
             this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40F)); // Icon
             this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Machine
             this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Technician
             this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F)); // Problem (Fills gap)
-            // this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Stars - Removed
             this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Time
-            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Badge
+            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Status Badge
+            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Machine State
             
             // Row styling (single row, center vertically)
             this.layoutTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -170,7 +171,16 @@ namespace mtc_app.features.technician.presentation.components
             // but user loved the flat badge look in previous request.
             // Screenshot shows an Orange Button-like thing "Belum Direview".
             // So we use background color.
-            this.layoutTable.Controls.Add(this.lblStatusBadge, 5, 0); // Index shifted 6 -> 5
+            this.layoutTable.Controls.Add(this.lblStatusBadge, 5, 0);
+
+            // 8. Machine State Badge (Run/Stop)
+            this.lblMachineState.Font = AppFonts.Subtitle;
+            this.lblMachineState.AutoSize = true;
+            this.lblMachineState.Padding = new Padding(AppDimens.PaddingStandard, AppDimens.PaddingSmall, AppDimens.PaddingStandard, AppDimens.PaddingSmall);
+            this.lblMachineState.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            this.lblMachineState.TextAlign = ContentAlignment.MiddleCenter;
+            this.lblMachineState.Margin = new Padding(AppDimens.MarginSmall, 0, 0, 0);
+            this.layoutTable.Controls.Add(this.lblMachineState, 6, 0);
 
             this.pnlMain.Controls.Add(this.layoutTable);
             this.pnlMain.Controls.Add(this.pnlColorStrip);
@@ -247,6 +257,7 @@ namespace mtc_app.features.technician.presentation.components
 
             // Status
             UpdateStatusVisuals(ticket.StatusId);
+            UpdateMachineStateVisuals(ticket.IsMachineRunning);
 
             // Time & Rating Logic
             if (ticket.StatusId == 3) // Done
@@ -298,12 +309,6 @@ namespace mtc_app.features.technician.presentation.components
                     badgeTextColor = Color.FromArgb(21, 128, 61);
                     badgeText = "Selesai";
                     break;
-                case 4: // Run
-                    stripColor = AppColors.Info;
-                    badgeBgColor = Color.FromArgb(225, 245, 254); // Light Blue 50
-                    badgeTextColor = AppColors.PrimaryDark;
-                    badgeText = "Run";
-                    break;
                 default:
                     stripColor = AppColors.Primary;
                     badgeBgColor = AppColors.Separator;
@@ -318,6 +323,21 @@ namespace mtc_app.features.technician.presentation.components
             this.lblStatusBadge.Text = badgeText;
         }
 
+        private void UpdateMachineStateVisuals(int isMachineRunning)
+        {
+            if (isMachineRunning == 1)
+            {
+                this.lblMachineState.BackColor = Color.FromArgb(240, 253, 244); // Light Green
+                this.lblMachineState.ForeColor = Color.FromArgb(21, 128, 61);   // Dark Green
+                this.lblMachineState.Text = "▶ Run";
+            }
+            else
+            {
+                this.lblMachineState.BackColor = Color.FromArgb(243, 244, 246); // Light Grey
+                this.lblMachineState.ForeColor = Color.FromArgb(107, 114, 128); // Grey
+                this.lblMachineState.Text = "■ Stop";
+            }
+        }
         private string FormatFinishedTime(DateTime time)
         {
             return time.ToString("dd MMM HH:mm");

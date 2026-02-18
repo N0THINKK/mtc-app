@@ -162,7 +162,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     
                     if (request != null)
                     {
-                        request.StatusId = 4; // Production Resumed
+                        request.IsMachineRunning = 1; // Machine is Running
                         request.ProductionResumedAt = DateTime.Now;
                         mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
                     }
@@ -196,8 +196,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                 {
                     connection.Open();
                     
-                    // 1. Update Ticket: Set Production Resumed Time AND Status to 4 (Run)
-                    string sqlTicket = "UPDATE tickets SET production_resumed_at = NOW(), status_id = 4 WHERE ticket_id = @Id";
+                    // 1. Update Ticket: Set Production Resumed Time AND Machine State to Running
+                    string sqlTicket = "UPDATE tickets SET production_resumed_at = NOW(), is_machine_running = 1 WHERE ticket_id = @Id";
                     connection.Execute(sqlTicket, new { Id = _ticketId });
 
                     // 2. Update Machine Status: Set to RUNNING (1)

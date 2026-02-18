@@ -126,12 +126,12 @@ namespace mtc_app.features.machine_history.data.repositories
                         string insertTicketSql = @"
                             INSERT INTO tickets (
                                 ticket_uuid, ticket_display_code, machine_id, shift_id, operator_id, applicator_code, 
-                                status_id, technician_id, started_at, technician_finished_at, production_resumed_at,
+                                status_id, is_machine_running, technician_id, started_at, technician_finished_at, production_resumed_at,
                                 counter_stroke, is_4m, tech_rating_score, tech_rating_note, created_at
                             )
                             VALUES (
                                 @Uuid, @Code, @MachineId, @ShiftId, @OpId, @AppCode, 
-                                @StatusId, @TechId, @Started, @Finished, @Resumed,
+                                @StatusId, @IsRunning, @TechId, @Started, @Finished, @Resumed,
                                 @Counter, @Is4M, @Rating, @RatingNote, NOW()
                             );
                             SELECT LAST_INSERT_ID();";
@@ -144,6 +144,7 @@ namespace mtc_app.features.machine_history.data.repositories
                             OpId = operatorId, 
                             AppCode = request.ApplicatorCode,
                             StatusId = request.StatusId,
+                            IsRunning = request.IsMachineRunning,
                             TechId = techId,
                             Started = request.StartedAt,
                             Finished = request.FinishedAt,
@@ -239,8 +240,8 @@ namespace mtc_app.features.machine_history.data.repositories
 
                         // 5. Update Status Mesin
                         int machineStatus = 2; // Default DOWN
-                        if (request.StatusId >= 4) machineStatus = 1; // Rejected -> Running
-                        else if (request.StatusId == 3) machineStatus = 3; // Completed -> Running/Monitoring
+                        if (request.IsMachineRunning == 1) machineStatus = 1; // Machine Running
+                        else if (request.StatusId == 3) machineStatus = 1; // Completed -> Running
                         
                         conn.Execute("UPDATE machines SET current_status_id = @Status WHERE machine_id = @Id", new { Status = machineStatus, Id = request.MachineId }, trans);
 

@@ -34,6 +34,8 @@
             this.labelFinishedTitle = new mtc_app.shared.presentation.components.AppLabel();
             this.labelArrival = new mtc_app.shared.presentation.components.AppLabel();
             this.labelArrivalTitle = new mtc_app.shared.presentation.components.AppLabel();
+            this.lblMachineState = new System.Windows.Forms.Label();
+            this.lblMachineStateTitle = new System.Windows.Forms.Label();
             this.mainLayout = new System.Windows.Forms.FlowLayoutPanel();
             this.panelFooter = new System.Windows.Forms.Panel();
             this.buttonRequestSparepart = new mtc_app.shared.presentation.components.AppButton();
@@ -45,6 +47,8 @@
             // panelHeader
             // 
             this.panelHeader.BackColor = mtc_app.shared.presentation.styles.AppColors.Primary;
+            this.panelHeader.Controls.Add(this.lblMachineState);
+            this.panelHeader.Controls.Add(this.lblMachineStateTitle);
             this.panelHeader.Controls.Add(this.labelFinished);
             this.panelHeader.Controls.Add(this.labelFinishedTitle);
             this.panelHeader.Controls.Add(this.labelArrival);
@@ -108,6 +112,35 @@
             this.labelArrivalTitle.Text = "Kedatangan Teknisi";
             this.labelArrivalTitle.Type = mtc_app.shared.presentation.components.AppLabel.LabelType.Body;
             this.labelArrivalTitle.ForeColor = mtc_app.shared.presentation.styles.AppColors.TextInverse;
+            // 
+            // lblMachineStateTitle (center top)
+            // 
+            this.lblMachineStateTitle.Anchor = System.Windows.Forms.AnchorStyles.Top;
+            this.lblMachineStateTitle.AutoSize = true;
+            this.lblMachineStateTitle.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.lblMachineStateTitle.ForeColor = System.Drawing.Color.FromArgb(200, 220, 255);
+            this.lblMachineStateTitle.Location = new System.Drawing.Point(180, 10);
+            this.lblMachineStateTitle.Name = "lblMachineStateTitle";
+            this.lblMachineStateTitle.Size = new System.Drawing.Size(90, 20);
+            this.lblMachineStateTitle.TabIndex = 4;
+            this.lblMachineStateTitle.Text = "Status Mesin";
+            this.lblMachineStateTitle.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // lblMachineState (center, styled badge)
+            // 
+            this.lblMachineState.Anchor = System.Windows.Forms.AnchorStyles.Top;
+            this.lblMachineState.AutoSize = false;
+            this.lblMachineState.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
+            this.lblMachineState.ForeColor = System.Drawing.Color.FromArgb(239, 68, 68);
+            this.lblMachineState.BackColor = System.Drawing.Color.FromArgb(40, 255, 255, 255);
+            this.lblMachineState.Location = new System.Drawing.Point(160, 35);
+            this.lblMachineState.Name = "lblMachineState";
+            this.lblMachineState.Size = new System.Drawing.Size(130, 50);
+            this.lblMachineState.TabIndex = 5;
+            this.lblMachineState.Text = "■ STOP";
+            this.lblMachineState.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.lblMachineState.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.lblMachineState.Click += new System.EventHandler(this.LblMachineState_Click);
             // 
             // mainLayout
             // 
@@ -186,5 +219,7 @@
         private System.Windows.Forms.Panel panelFooter;
         private mtc_app.shared.presentation.components.AppButton buttonRepairComplete;
         private mtc_app.shared.presentation.components.AppButton buttonRequestSparepart;
+        private System.Windows.Forms.Label lblMachineState;
+        private System.Windows.Forms.Label lblMachineStateTitle;
     }
 }

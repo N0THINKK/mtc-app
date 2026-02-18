@@ -17,6 +17,9 @@ namespace mtc_app.features.technician.data.dtos
         public string TechnicianName { get; set; }
         public DateTime? StartedAt { get; set; }
         public DateTime? FinishedAt { get; set; }
+        
+        // Machine State (separate from ticket workflow status)
+        public int IsMachineRunning { get; set; }
     }
 
     public class TechnicianStatsDto

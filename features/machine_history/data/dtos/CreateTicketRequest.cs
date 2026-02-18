@@ -17,6 +17,7 @@ namespace mtc_app.features.machine_history.data.dtos
         public DateTime? FinishedAt { get; set; }
         public DateTime? ProductionResumedAt { get; set; }
         public int StatusId { get; set; } = 1; // Default Open
+        public int IsMachineRunning { get; set; } = 0; // Machine State: 0=Stop, 1=Run
 
         // Technician Completion Fields
         public int CounterStroke { get; set; }
