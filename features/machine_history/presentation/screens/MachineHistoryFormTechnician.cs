@@ -457,7 +457,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             if (mainLayout != null)
             {
                  int contentWidth = mainLayout.ClientSize.Width - 80;
-                 if (contentWidth < 400) contentWidth = 400;
+                 if (contentWidth < 300) contentWidth = 300;
                  control.Width = contentWidth;
             }
         }
@@ -493,8 +493,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 AutoSize = true,
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
-                Width = 450,
-                MinimumSize = new Size(450, 10), // Ensure panel has size
+                MinimumSize = new Size(10, 10),
                 Margin = new Padding(0, 5, 0, 5),
                 BackColor = Color.Transparent
             };
@@ -556,16 +555,30 @@ namespace mtc_app.features.machine_history.presentation.screens
             mainLayout.Controls.Add(btnAddProblem);
 
             // === 4M Analysis ===
-            var panel4M = new Panel { AutoSize = true, Height = 50, Margin = new Padding(0, 15, 0, 5) };
+            var panel4M = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                Margin = new Padding(0, 15, 0, 5)
+            };
             var lbl4M = new Label 
             { 
                 Text = "Apakah ada pergantian blade/crimping dies?", 
                 Font = AppFonts.Subtitle, 
-                Location = new Point(0, 0), 
-                AutoSize = true 
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, 5)
             };
-            chk4M = new CheckBox { Text = "Iya", Location = new Point(0, 25), AutoSize = true };
-            chkTidak4M = new CheckBox { Text = "Tidak", Location = new Point(80, 25), AutoSize = true };
+            // Checkbox row using horizontal FlowLayoutPanel
+            var pnlCheckboxes = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Margin = new Padding(0)
+            };
+            chk4M = new CheckBox { Text = "Iya", AutoSize = true, Margin = new Padding(0, 0, 15, 0) };
+            chkTidak4M = new CheckBox { Text = "Tidak", AutoSize = true };
             
             chk4M.CheckedChanged += (s, e) => { 
                 if (chk4M.Checked) chkTidak4M.Checked = false; 
@@ -576,7 +589,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                 if (chkTidak4M.Checked) { chk4M.Checked = false; inputCounter.Enabled = false; inputCounter.InputValue = ""; } 
             };
             
-            panel4M.Controls.AddRange(new Control[] { lbl4M, chk4M, chkTidak4M });
+            pnlCheckboxes.Controls.AddRange(new Control[] { chk4M, chkTidak4M });
+            panel4M.Controls.AddRange(new Control[] { lbl4M, pnlCheckboxes });
             mainLayout.Controls.Add(panel4M);
 
             // === Counter ===
@@ -589,9 +603,15 @@ namespace mtc_app.features.machine_history.presentation.screens
             LoadParts();
 
             // === Rating ===
-            var panelRating = new Panel { Width = 450, Height = 60, Margin = new Padding(0, 10, 0, 0) };
-            var lblRating = new Label { Text = "Rating Dari Teknisi:", Font = AppFonts.Subtitle, Location = new Point(0, 0), AutoSize = true };
-            ratingOperator = new AppStarRating { Location = new Point(0, 25), Rating = 0 };
+            var panelRating = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                Margin = new Padding(0, 10, 0, 0)
+            };
+            var lblRating = new Label { Text = "Rating Dari Teknisi:", Font = AppFonts.Subtitle, AutoSize = true, Margin = new Padding(0, 0, 0, 5) };
+            ratingOperator = new AppStarRating { Rating = 0, Margin = new Padding(0) };
             panelRating.Controls.AddRange(new Control[] { lblRating, ratingOperator });
             mainLayout.Controls.Add(panelRating);
 
@@ -1181,11 +1201,11 @@ namespace mtc_app.features.machine_history.presentation.screens
             if (mainLayout == null) return;
             
             int contentWidth = mainLayout.ClientSize.Width - 80;
-            if (contentWidth < 400) contentWidth = 400;
+            if (contentWidth < 300) contentWidth = 300;
             
             foreach (Control c in mainLayout.Controls)
             {
-                if (c is AppInput || c is AppButton || c == pnlProblems || c is Panel || c == btnAddProblem)
+                if (c is AppInput || c is AppButton || c == pnlProblems || c is Panel || c is FlowLayoutPanel || c == btnAddProblem)
                 {
                     c.Width = contentWidth;
                 }
@@ -1197,6 +1217,32 @@ namespace mtc_app.features.machine_history.presentation.screens
                 {
                     child.Width = contentWidth;
                 }
+            }
+
+            // Resize teknisi pendamping chips
+            if (pnlActiveTechs != null)
+            {
+                foreach (Control child in pnlActiveTechs.Controls)
+                {
+                    child.Width = contentWidth;
+                }
+            }
+
+            // Responsive footer buttons
+            if (panelFooter != null && buttonRequestSparepart != null && buttonRepairComplete != null)
+            {
+                int footerPad = 20;
+                int gap = 20;
+                int availableWidth = panelFooter.ClientSize.Width - (footerPad * 2) - gap;
+                int btnWidth = availableWidth / 2;
+                int btnHeight = panelFooter.Height - 30;
+                int btnY = (panelFooter.Height - btnHeight) / 2;
+
+                buttonRequestSparepart.Location = new Point(footerPad, btnY);
+                buttonRequestSparepart.Size = new Size(btnWidth, btnHeight);
+
+                buttonRepairComplete.Location = new Point(panelFooter.ClientSize.Width - footerPad - btnWidth, btnY);
+                buttonRepairComplete.Size = new Size(btnWidth, btnHeight);
             }
         }
 
