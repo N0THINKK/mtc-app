@@ -196,8 +196,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                 {
                     connection.Open();
                     
-                    // 1. Update Ticket: Set Production Resumed Time
-                    string sqlTicket = "UPDATE tickets SET production_resumed_at = NOW() WHERE ticket_id = @Id";
+                    // 1. Update Ticket: Set Production Resumed Time AND Status to 4 (Run)
+                    string sqlTicket = "UPDATE tickets SET production_resumed_at = NOW(), status_id = 4 WHERE ticket_id = @Id";
                     connection.Execute(sqlTicket, new { Id = _ticketId });
 
                     // 2. Update Machine Status: Set to RUNNING (1)

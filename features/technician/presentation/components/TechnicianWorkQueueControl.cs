@@ -98,7 +98,7 @@ namespace mtc_app.features.technician.presentation.components
             statsControl = new TechnicianWorkQueueStatsControl
             {
                 Location = new Point(20, 10),
-                Size = new Size(900, 100),
+                Size = new Size(1100, 100),
                 BackColor = Color.Transparent
             };
             header.Controls.Add(statsControl);
@@ -198,7 +198,7 @@ namespace mtc_app.features.technician.presentation.components
                 Font = AppFonts.Body,
                 Margin = new Padding(0, 20, AppDimens.MarginLarge, 0)
             };
-            cmbFilterStatus.Items.AddRange(new object[] { "Semua", "Belum Ditangani", "Sedang Diperbaiki", "Selesai" });
+            cmbFilterStatus.Items.AddRange(new object[] { "Semua", "Belum Ditangani", "Sedang Diperbaiki", "Run (Produksi)", "Selesai" });
             cmbFilterStatus.SelectedIndex = 0;
 
             var lblSortBy = new Label 
@@ -317,9 +317,10 @@ namespace mtc_app.features.technician.presentation.components
                 // Calculate Stats
                 int openCount = _allTickets.Count(t => t.StatusId == 1);
                 int processCount = _allTickets.Count(t => t.StatusId == 2);
+                int runCount = _allTickets.Count(t => t.StatusId == 4);
                 int doneCount = _allTickets.Count(t => t.StatusId == 3);
 
-                statsControl.UpdateStats(openCount, processCount, doneCount);
+                statsControl.UpdateStats(openCount, processCount, runCount, doneCount);
                 lblLastUpdate.Text = $"Terakhir diperbarui: {DateTime.Now:HH:mm:ss}";
                 
                 RenderTickets();
@@ -354,7 +355,8 @@ namespace mtc_app.features.technician.presentation.components
             int statusIndex = cmbFilterStatus.SelectedIndex;
             if (statusIndex == 1) filtered = filtered.Where(t => t.StatusId == 1);
             else if (statusIndex == 2) filtered = filtered.Where(t => t.StatusId == 2);
-            else if (statusIndex == 3) filtered = filtered.Where(t => t.StatusId == 3);
+            else if (statusIndex == 3) filtered = filtered.Where(t => t.StatusId == 4); // Run
+            else if (statusIndex == 4) filtered = filtered.Where(t => t.StatusId == 3); // Done
 
             int sortIndex = cmbSortBy.SelectedIndex;
             List<TicketDto> sortedList;

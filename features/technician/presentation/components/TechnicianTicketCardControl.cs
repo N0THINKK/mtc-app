@@ -298,6 +298,12 @@ namespace mtc_app.features.technician.presentation.components
                     badgeTextColor = Color.FromArgb(21, 128, 61);
                     badgeText = "Selesai";
                     break;
+                case 4: // Run
+                    stripColor = AppColors.Info;
+                    badgeBgColor = Color.FromArgb(225, 245, 254); // Light Blue 50
+                    badgeTextColor = AppColors.PrimaryDark;
+                    badgeText = "Run";
+                    break;
                 default:
                     stripColor = AppColors.Primary;
                     badgeBgColor = AppColors.Separator;
