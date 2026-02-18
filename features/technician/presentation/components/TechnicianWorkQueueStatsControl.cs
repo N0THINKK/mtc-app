@@ -11,6 +11,7 @@ namespace mtc_app.features.technician.presentation.components
     {
         private Panel pnlOpen;
         private Panel pnlRepairing;
+        private Panel pnlRun;
         private Panel pnlDone;
         
         private Label lblOpenValue;
@@ -20,7 +21,11 @@ namespace mtc_app.features.technician.presentation.components
         private Label lblRepairValue;
         private Label lblRepairLabel;
         private PictureBox iconRepair;
-        
+
+        private Label lblRunValue;
+        private Label lblRunLabel;
+        private PictureBox iconRun;
+
         private Label lblDoneValue;
         private Label lblDoneLabel;
         private PictureBox iconDone;
@@ -30,10 +35,11 @@ namespace mtc_app.features.technician.presentation.components
             InitializeComponent();
         }
 
-        public void UpdateStats(int openCount, int repairCount, int doneCount)
+        public void UpdateStats(int openCount, int repairCount, int runCount, int doneCount)
         {
             lblOpenValue.Text = openCount.ToString();
             lblRepairValue.Text = repairCount.ToString();
+            lblRunValue.Text = runCount.ToString();
             lblDoneValue.Text = doneCount.ToString();
         }
 
@@ -41,6 +47,7 @@ namespace mtc_app.features.technician.presentation.components
         {
             this.pnlOpen = new Panel();
             this.pnlRepairing = new Panel();
+            this.pnlRun = new Panel();
             this.pnlDone = new Panel();
             
             this.lblOpenValue = new Label();
@@ -50,6 +57,10 @@ namespace mtc_app.features.technician.presentation.components
             this.lblRepairValue = new Label();
             this.lblRepairLabel = new Label();
             this.iconRepair = new PictureBox();
+
+            this.lblRunValue = new Label();
+            this.lblRunLabel = new Label();
+            this.iconRun = new PictureBox();
             
             this.lblDoneValue = new Label();
             this.lblDoneLabel = new Label();
@@ -59,7 +70,7 @@ namespace mtc_app.features.technician.presentation.components
             
             // Main UserControl
             this.BackColor = Color.Transparent;
-            this.Size = new Size(900, 100);
+            this.Size = new Size(1100, 100);
             this.Padding = new Padding(0);
 
             // Responsive card container
@@ -72,18 +83,22 @@ namespace mtc_app.features.technician.presentation.components
                 Padding = new Padding(0)
             };
 
-            // Setup three stat cards
+            // Setup four stat cards
             SetupStatCard(pnlOpen, iconOpen, lblOpenValue, lblOpenLabel,
                 "0", "Belum Ditangani", AppColors.Danger, Color.FromArgb(254, 242, 242));
 
             SetupStatCard(pnlRepairing, iconRepair, lblRepairValue, lblRepairLabel,
                 "0", "Sedang Diperbaiki", Color.FromArgb(234, 179, 8), Color.FromArgb(254, 252, 232));
 
+            SetupStatCard(pnlRun, iconRun, lblRunValue, lblRunLabel,
+                "0", "Run (Produksi)", AppColors.Info, Color.FromArgb(239, 246, 255));
+
             SetupStatCard(pnlDone, iconDone, lblDoneValue, lblDoneLabel,
                 "0", "Selesai", Color.FromArgb(34, 197, 94), Color.FromArgb(240, 253, 244));
 
             flowCards.Controls.Add(pnlOpen);
             flowCards.Controls.Add(pnlRepairing);
+            flowCards.Controls.Add(pnlRun);
             flowCards.Controls.Add(pnlDone);
 
             this.Controls.Add(flowCards);
@@ -96,7 +111,7 @@ namespace mtc_app.features.technician.presentation.components
         {
             // Panel
             panel.BackColor = AppColors.CardBackground;
-            panel.Size = new Size(290, 100);
+            panel.Size = new Size(250, 100);
             panel.Margin = new Padding(0, 0, AppDimens.GapStandard, 0);
             panel.Paint += (s, e) => DrawStatCard(e.Graphics, panel.ClientRectangle, accentColor);
 
@@ -109,6 +124,8 @@ namespace mtc_app.features.technician.presentation.components
                 icon.Paint += (s, e) => DrawAlertIcon(e.Graphics, accentColor);
             else if (labelText.Contains("Sedang"))
                 icon.Paint += (s, e) => DrawWrenchIcon(e.Graphics, accentColor);
+            else if (labelText.Contains("Run"))
+                icon.Paint += (s, e) => DrawRunIcon(e.Graphics, accentColor);
             else
                 icon.Paint += (s, e) => DrawCheckCircleIcon(e.Graphics, accentColor);
 
@@ -184,6 +201,17 @@ namespace mtc_app.features.technician.presentation.components
                 g.DrawLine(pen, 12, 36, 24, 24);
                 // Head
                 g.DrawArc(pen, 20, 8, 20, 20, 270, 270); 
+            }
+        }
+
+        private void DrawRunIcon(Graphics g, Color color)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (Brush brush = new SolidBrush(color))
+            {
+                // Play Triangle
+                Point[] points = { new Point(16, 12), new Point(16, 36), new Point(38, 24) };
+                g.FillPolygon(brush, points);
             }
         }
 
