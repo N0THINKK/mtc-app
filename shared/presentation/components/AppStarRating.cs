@@ -15,7 +15,7 @@ namespace mtc_app.shared.presentation.components
         
         // Star config
         private const int StarCount = 5;
-        private const int StarSize = 24;
+        private int _starSize = 24;
         private const int Spacing = 4;
 
         public event EventHandler RatingChanged;
@@ -23,9 +23,27 @@ namespace mtc_app.shared.presentation.components
         public AppStarRating()
         {
             this.DoubleBuffered = true;
-            this.Size = new Size((StarSize * StarCount) + (Spacing * (StarCount - 1)) + 10, StarSize + 10);
+            UpdateControlSize();
             this.Cursor = Cursors.Hand;
             this.BackColor = Color.Transparent;
+        }
+
+        [Category("App Properties")]
+        public int StarSize
+        {
+            get { return _starSize; }
+            set
+            {
+                if (value < 10) _starSize = 10;
+                else _starSize = value;
+                UpdateControlSize();
+                this.Invalidate();
+            }
+        }
+
+        private void UpdateControlSize()
+        {
+            this.Size = new Size((_starSize * StarCount) + (Spacing * (StarCount - 1)) + 10, _starSize + 10);
         }
 
         [Category("App Properties")]
@@ -103,9 +121,9 @@ namespace mtc_app.shared.presentation.components
         {
             for (int i = 0; i < StarCount; i++)
             {
-                int startX = i * (StarSize + Spacing);
+                int startX = i * (_starSize + Spacing);
                 // Broad hit detection
-                if (p.X >= startX && p.X <= startX + StarSize + Spacing)
+                if (p.X >= startX && p.X <= startX + _starSize + Spacing)
                 {
                     return i + 1;
                 }
@@ -121,13 +139,12 @@ namespace mtc_app.shared.presentation.components
 
             for (int i = 0; i < StarCount; i++)
             {
-                PointF location = new PointF(i * (StarSize + Spacing), 0);
+                PointF location = new PointF(i * (_starSize + Spacing), 0);
                 bool isFilled = (i < activeRating);
                 
-                DrawStar(e.Graphics, location, StarSize, isFilled);
+                DrawStar(e.Graphics, location, _starSize, isFilled);
             }
         }
-
 
         private void DrawStar(Graphics g, PointF loc, float size, bool filled)
         {
