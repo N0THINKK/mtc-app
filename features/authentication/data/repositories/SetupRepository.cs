@@ -56,6 +56,21 @@ namespace mtc_app.features.authentication.data.repositories
             }
         }
 
+        public async Task<string> GetMachineNameByIdAsync(int id)
+        {
+            using (var conn = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT CONCAT(t.type_name, '-', a.area_name, '.', m.machine_number)
+                    FROM machines m
+                    JOIN machine_types t ON m.type_id = t.type_id
+                    JOIN machine_areas a ON m.area_id = a.area_id
+                    WHERE m.machine_id = @Id";
+                
+                return await conn.QueryFirstOrDefaultAsync<string>(sql, new { Id = id });
+            }
+        }
+
         private async Task<int> GetOrCreateLookupId(System.Data.IDbConnection conn, string tableName, string idCol, string nameCol, string value)
         {
             string sqlFind = $"SELECT {idCol} FROM {tableName} WHERE {nameCol} = @Value";

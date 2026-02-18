@@ -14,17 +14,20 @@ namespace mtc_app.features.authentication.presentation.screens
     public partial class LoginForm : AppBaseForm
     {
         private readonly IAuthRepository _authRepository;
+        private readonly ISetupRepository _setupRepository;
+        private Label lblMachineName;
 
         // Composition Root Pattern: Default constructor initializes the implementation.
         // This keeps Program.cs simple while allowing DI for testing if needed via overload.
-        public LoginForm() : this(ServiceLocator.CreateAuthRepository())
+        public LoginForm() : this(ServiceLocator.CreateAuthRepository(), ServiceLocator.CreateSetupRepository())
         {
         }
 
-        public LoginForm(IAuthRepository authRepository)
+        public LoginForm(IAuthRepository authRepository, ISetupRepository setupRepository)
         {
             InitializeComponent();
             _authRepository = authRepository;
+            _setupRepository = setupRepository;
 
             // Compact UI
             this.AutoSize = true;
@@ -34,6 +37,9 @@ namespace mtc_app.features.authentication.presentation.screens
             // Enable KeyPreview to catch key presses form-wide
             this.KeyPreview = true;
             this.KeyDown += LoginForm_KeyDown;
+            
+            InitializeMachineNameLabel();
+            LoadMachineNameAsync();
         }
 
         private void LoginForm_KeyDown(object sender, KeyEventArgs e)
@@ -141,6 +147,79 @@ namespace mtc_app.features.authentication.presentation.screens
         private void btnExit_Click(object sender, EventArgs e)
         {
             Application.Exit();
+        }
+
+        private void InitializeMachineNameLabel()
+        {
+            lblMachineName = new Label
+            {
+                Text = "Machine: Loading...",
+                Font = new Font("Segoe UI", 8.25F, FontStyle.Underline),
+                ForeColor = Color.Gray,
+                AutoSize = true,
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+            };
+            
+            // Calculate Position (Bottom Right, with padding)
+            // Since AutoSize is true for the Form, ensure we add it to the flow or position absolutely relative to client area
+            // However, LoginForm seems to use fixed controls or Flow? Designer file will tell.
+            // Assuming absolute positioning works if we add to Controls collection.
+            
+            // We'll hook into Load or Layout event to position it correctly if AutoSize form changes size.
+            // But initial placement:
+            lblMachineName.Location = new Point(this.ClientSize.Width - 150, this.ClientSize.Height - 20);
+            
+            lblMachineName.Click += (s, e) => OpenSetupForm();
+            this.Controls.Add(lblMachineName);
+            lblMachineName.BringToFront(); // Ensure it sits on top of panel1
+
+            // Ensure it stays at bottom right
+            this.Resize += (s, e) => 
+            {
+                 if (lblMachineName != null)
+                    lblMachineName.Location = new Point(this.ClientSize.Width - lblMachineName.Width - 10, this.ClientSize.Height - lblMachineName.Height - 5);
+            };
+        }
+
+        private async void LoadMachineNameAsync()
+        {
+            try
+            {
+                string machineIdStr = DatabaseHelper.GetMachineId();
+                if (int.TryParse(machineIdStr, out int machineId))
+                {
+                    string name = await _setupRepository.GetMachineNameByIdAsync(machineId);
+                    if (!string.IsNullOrEmpty(name))
+                    {
+                        lblMachineName.Text = name;
+                        // Re-position after text change (autosize)
+                        lblMachineName.Location = new Point(this.ClientSize.Width - lblMachineName.Width - 10, this.ClientSize.Height - lblMachineName.Height - 5);
+                    }
+                    else
+                    {
+                         lblMachineName.Text = "Machine: Unknown";
+                    }
+                }
+                else
+                {
+                    lblMachineName.Text = "Machine: Not Configured";
+                }
+            }
+            catch
+            {
+                lblMachineName.Text = "Machine: Error";
+            }
+        }
+
+        private void OpenSetupForm()
+        {
+            var setupForm = new SetupForm();
+            if (setupForm.ShowDialog() == DialogResult.OK)
+            {
+                // Refresh Name
+                LoadMachineNameAsync();
+            }
         }
     }
 }
