@@ -12,6 +12,10 @@
     <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode> 
     
     <Nullable>disable</Nullable> 
+    
+    <!-- Fix for SQLite in SingleFile publish -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract> 
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,6 +35,7 @@
   <ItemGroup>
     <Content Include="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
   </ItemGroup>
 
