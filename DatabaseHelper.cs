@@ -4,6 +4,7 @@ using System.IO;
 using Microsoft.Extensions.Configuration;
 using MySqlConnector;
 using Newtonsoft.Json.Linq;
+using System.Diagnostics;
 
 namespace mtc_app
 {
@@ -18,9 +19,11 @@ namespace mtc_app
 
         private static void LoadConfig()
         {
-            // [FIX] Use BaseDirectory to ensure appsettings.json is found
-            // even if the app is launched from a shortcut or different folder.
-            var basePath = AppDomain.CurrentDomain.BaseDirectory;
+            // [FIX] Use Process.GetCurrentProcess().MainModule.FileName to get the directory of the .exe
+            // explicitly. AppDomain.CurrentDomain.BaseDirectory points to the temp extraction folder
+            // in SingleFile apps.
+            var processModule = System.Diagnostics.Process.GetCurrentProcess().MainModule;
+            var basePath = Path.GetDirectoryName(processModule?.FileName);
 
             var builder = new ConfigurationBuilder()
                 .SetBasePath(basePath) 
@@ -49,8 +52,10 @@ namespace mtc_app
 
         public static void UpdateMachineConfig(string machineId)
         {
-            // Pastikan path penyimpanan juga menggunakan BaseDirectory
-            string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
+            // Use Process.GetCurrentProcess().MainModule.FileName to get the directory of the .exe
+            var processModule = Process.GetCurrentProcess().MainModule;
+            var basePath = Path.GetDirectoryName(processModule?.FileName);
+            string path = Path.Combine(basePath, "appsettings.json");
             string json = File.ReadAllText(path);
             
             JObject jsonObj = JObject.Parse(json);
