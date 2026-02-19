@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using mtc_app.features.stock.data.repositories;
 using mtc_app.features.technician.data.repositories;
-using mtc_app.features.technician.logic;
+// using mtc_app.features.technician.logic; // <-- HAPUS INI
 using mtc_app.features.technician.presentation.components;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.data.session;
@@ -37,8 +37,8 @@ namespace mtc_app.features.technician.presentation.screens
         private DateTimePicker dtpEnd;
         private Button btnFilter;
 
-        // Background Logger
-        private Timer timerLogger;
+        // [HAPUS BAGIAN INI] Background Logger
+        // private Timer timerLogger; 
 
         public TechnicianDashboardForm() : this(ServiceLocator.CreateTechnicianRepository())
         {
@@ -68,13 +68,18 @@ namespace mtc_app.features.technician.presentation.screens
             InitializeTabs();
             tabControl.BringToFront(); 
 
+            // [HAPUS BAGIAN INI] 
             // 3. Start Background Logger (Every 5 Mins)
-            timerLogger = new Timer { Interval = 300000 }; // 5 Minutes
-            timerLogger.Tick += async (s, e) => { await new MachineDataLogger().LogMachineDataAsync(); };
-            timerLogger.Start();
+            // timerLogger = new Timer { Interval = 300000 }; 
+            // timerLogger.Tick += async (s, e) => { await new MachineDataLogger().LogMachineDataAsync(); };
+            // timerLogger.Start();
             
             // Initial Log on Startup
-            _ = new MachineDataLogger().LogMachineDataAsync();
+            // _ = new MachineDataLogger().LogMachineDataAsync();
+            
+            // CATATAN:
+            // Sekarang logging dilakukan oleh Windows Service "MtcMachineLogger".
+            // Dashboard ini hanya bertugas MENAMPILKAN data (Read-Only).
         }
 
         // ========================================================
@@ -126,7 +131,6 @@ namespace mtc_app.features.technician.presentation.screens
                 Font = AppFonts.Title 
             };
             
-            // Default start date = 1st of current month
             DateTime firstDayOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
             dtpStart = new DateTimePicker 
             { 
@@ -202,17 +206,15 @@ namespace mtc_app.features.technician.presentation.screens
                 if (timerTabSwitch.Enabled)
                 {
                     timerTabSwitch.Stop();
-                    _autoSwitchStage = -1; // Reset stage so it starts from 0 on next play
+                    _autoSwitchStage = -1; // Reset stage
                     btnAutoSwitch.Text = "Auto Switch: OFF";
                     btnAutoSwitch.BackColor = AppColors.Surface;
                     btnAutoSwitch.ForeColor = AppColors.TextSecondary;
                 }
                 else
                 {
-                    // Update interval before starting just in case
                     timerTabSwitch.Interval = (int)nudInterval.Value * 1000;
                     timerTabSwitch.Start();
-                    // Manually trigger first tick to avoid initial delay
                     AutoSwitch_Tick(null, EventArgs.Empty);
                     btnAutoSwitch.Text = "Auto Switch: ON";
                     btnAutoSwitch.BackColor = AppColors.Success; 
@@ -244,7 +246,7 @@ namespace mtc_app.features.technician.presentation.screens
                 Size = new Size(60, 28),
                 Minimum = 5,
                 Maximum = 3600,
-                Value = 10, // Default to 10 seconds for faster switching
+                Value = 10,
                 Font = AppFonts.Body,
                 Margin = new Padding(AppDimens.MarginSmall, 5, 0, 0)
             };
@@ -258,7 +260,6 @@ namespace mtc_app.features.technician.presentation.screens
                 Margin = new Padding(0, 10, 0, 0)
             };
 
-            // RightToLeft order: Button first (rightmost), then Set, then NUD, then label
             flowAutoSwitch.Controls.AddRange(new Control[] { btnAutoSwitch, btnSetInterval, nudInterval, lblInterval });
             return flowAutoSwitch;
         }
@@ -267,7 +268,7 @@ namespace mtc_app.features.technician.presentation.screens
         {
             if (tabControl.TabCount <= 0) return;
 
-            const int totalStages = 6; // 4 tabs + 2 modes for the monitor tab
+            const int totalStages = 6; 
             _autoSwitchStage = (_autoSwitchStage + 1) % totalStages;
 
             switch (_autoSwitchStage)
@@ -301,7 +302,7 @@ namespace mtc_app.features.technician.presentation.screens
         private async void LoadCurrentTabData()
         {
             DateTime start = dtpStart.Value.Date;
-            DateTime end = dtpEnd.Value.Date.AddDays(1).AddSeconds(-1); // End of day
+            DateTime end = dtpEnd.Value.Date.AddDays(1).AddSeconds(-1); 
 
             if (tabControl.SelectedIndex == 1) // Data Part
             {
@@ -330,64 +331,28 @@ namespace mtc_app.features.technician.presentation.screens
             };
 
             // Tab 1: Work Queue
-            var tabWorkQueue = new TabPage("Daftar Tunggu")
-            {
-                BackColor = AppColors.CardBackground
-            };
-            
-            workQueueControl = new TechnicianWorkQueueControl(_repository)
-            {
-                Dock = DockStyle.Fill
-            };
+            var tabWorkQueue = new TabPage("Daftar Tunggu") { BackColor = AppColors.CardBackground };
+            workQueueControl = new TechnicianWorkQueueControl(_repository) { Dock = DockStyle.Fill };
             tabWorkQueue.Controls.Add(workQueueControl);
 
             // Tab 2: Stock Data (Part Requests)
-            var tabStockData = new TabPage("Data Part")
-            {
-                BackColor = AppColors.CardBackground
-            };
-
-            stockDataControl = new StockDataControl(ServiceLocator.CreateStockRepository())
-            {
-                Dock = DockStyle.Fill
-            };
+            var tabStockData = new TabPage("Data Part") { BackColor = AppColors.CardBackground };
+            stockDataControl = new StockDataControl(ServiceLocator.CreateStockRepository()) { Dock = DockStyle.Fill };
             tabStockData.Controls.Add(stockDataControl);
 
             // Tab 3: Performance
-            var tabPerformance = new TabPage("Performa")
-            {
-                BackColor = AppColors.CardBackground
-            };
-            
-            performanceControl = new TechnicianPerformanceControl(_repository)
-            {
-                Dock = DockStyle.Fill
-            };
-
+            var tabPerformance = new TabPage("Performa") { BackColor = AppColors.CardBackground };
+            performanceControl = new TechnicianPerformanceControl(_repository) { Dock = DockStyle.Fill };
             tabPerformance.Controls.Add(performanceControl);
 
             // Tab 4: Machine Analysis
-            var tabMachine = new TabPage("Downtime")
-            {
-                BackColor = AppColors.CardBackground
-            };
-            
-            machinePerformanceControl = new MachinePerformanceControl(_repository)
-            {
-                Dock = DockStyle.Fill
-            };
+            var tabMachine = new TabPage("Downtime") { BackColor = AppColors.CardBackground };
+            machinePerformanceControl = new MachinePerformanceControl(_repository) { Dock = DockStyle.Fill };
             tabMachine.Controls.Add(machinePerformanceControl);
 
             // Tab 5: Machine Monitor (Real-time)
-            var tabMonitor = new TabPage("Output")
-            {
-                BackColor = AppColors.CardBackground
-            };
-            
-            machineMonitorControl = new MachineMonitorControl
-            {
-                Dock = DockStyle.Fill
-            };
+            var tabMonitor = new TabPage("Output") { BackColor = AppColors.CardBackground };
+            machineMonitorControl = new MachineMonitorControl { Dock = DockStyle.Fill };
             tabMonitor.Controls.Add(machineMonitorControl);
 
             tabControl.TabPages.Add(tabWorkQueue);
@@ -417,7 +382,6 @@ namespace mtc_app.features.technician.presentation.screens
             // Start work queue auto-refresh
             if (!this.DesignMode)
             {
-
                 workQueueControl.StartAutoRefresh();
             }
         }
@@ -426,8 +390,9 @@ namespace mtc_app.features.technician.presentation.screens
         {
             workQueueControl?.StopAutoRefresh();
             
-            timerLogger?.Stop();
-            timerLogger?.Dispose();
+            // [HAPUS BAGIAN INI]
+            // timerLogger?.Stop();
+            // timerLogger?.Dispose();
             
             base.OnFormClosing(e);
         }
