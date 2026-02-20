@@ -27,13 +27,9 @@ namespace mtc_app.features.technician.presentation.components
         private class MachineData
         {
             public string MachineName { get; set; }
-            public long ProducedPieces { get; set; } 
-            
-            // [BARU] Dictionary untuk menyimpan produksi per jam (Index 0-11)
-            public Dictionary<int, long> HourlyProduction { get; set; } = new Dictionary<int, long>();
-            
-            // [HAPUS] legacy MinuteAverage
-            // public long MinuteAverage { get; set; } 
+            public long[] HourlyPieces { get; set; } = new long[14]; 
+            public long TotalPieces { get; set; } 
+            public double AveragePerHour { get; set; } 
             
             public double AutoTime { get; set; }
             public double MonitorTime { get; set; }
@@ -94,16 +90,16 @@ namespace mtc_app.features.technician.presentation.components
             _pnlChartContainer.Controls.Add(_chart);
             this.Controls.Add(_pnlChartContainer);
 
-            var lblTitle = new Label { Text = "Monitoring Mesin Real-time", Font = AppFonts.PageTitle, ForeColor = AppColors.TextPrimary, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Top, Height = 40 };
+            var lblTitle = new Label { Text = "Monitoring Output", Font = AppFonts.PageTitle, ForeColor = AppColors.TextPrimary, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Top, Height = 40 };
             this.Controls.Add(lblTitle);
         }
 
         private Panel BuildHeaderPanel()
         {
-            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = AppDimens.RowHeight };
+            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = AppDimens.RowHeight + 10 };
             var headerLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, BackColor = Color.Transparent };
-            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
             
             var flowLeft = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Dock = DockStyle.Fill, BackColor = Color.Transparent };
             _lblStatus = new Label { Text = "Memuat data...", Font = AppFonts.BodySmall, ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(0, 10, 0, 0) };
@@ -112,20 +108,21 @@ namespace mtc_app.features.technician.presentation.components
 
             var flowRight = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill, BackColor = Color.Transparent };
             
-            _comboMetric = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, 0, 0) };
-            
-            // [UPDATE LABEL] Menjadi "Rata-rata 1 Menit"
-            _comboMetric.Items.AddRange(new object[] { "Rata-rata 1 Menit (Pcs)", "Efisiensi Mesin" });
+            _comboMetric = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 160, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, 0, 0) };
+            _comboMetric.Items.AddRange(new object[] { "Output Per Jam", "Efisiensi Mesin" });
             _comboMetric.SelectedIndex = 0;
             _comboMetric.SelectedIndexChanged += async (s, e) => await LoadData();
+            var lblMetric = new Label { Text = "Metrik:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
 
-            var lblMetric = new Label { Text = "Metrik:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, AppDimens.MarginSmall, 0) };
-
-            _comboArea = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 100, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, AppDimens.MarginLarge, 0) };
+            _comboArea = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, 15, 0) };
             _comboArea.SelectedIndexChanged += async (s, e) => await LoadData();
-            var lblArea = new Label { Text = "Area:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, AppDimens.MarginSmall, 0) };
+            var lblArea = new Label { Text = "Area:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
 
-            flowRight.Controls.AddRange(new Control[] { _comboMetric, lblMetric, _comboArea, lblArea });
+            flowRight.Controls.Add(_comboMetric);
+            flowRight.Controls.Add(lblMetric);
+            flowRight.Controls.Add(_comboArea);
+            flowRight.Controls.Add(lblArea);
+            
             headerLayout.Controls.Add(flowRight, 1, 0);
             pnlHeader.Controls.Add(headerLayout);
             return pnlHeader;
@@ -140,65 +137,171 @@ namespace mtc_app.features.technician.presentation.components
 
         public void StartMonitoring() { _ = LoadData(); _timer.Start(); }
         public void StopMonitoring() { _timer.Stop(); }
-
         public void SetMetric(int index) { if (index >= 0 && index < _comboMetric.Items.Count) _comboMetric.SelectedIndex = index; }
+
+        private DateTime GetCurrentShiftStart()
+        {
+            DateTime now = DateTime.Now;
+            
+            // Shift Pagi (07:00 - 17:59)
+            if (now.Hour >= 7 && now.Hour < 18) 
+            {
+                return now.Date.AddHours(7);
+            }
+            // Shift Malam (18:00 - 23:59)
+            else if (now.Hour >= 18) 
+            {
+                return now.Date.AddHours(18);
+            }
+            // Shift Malam Lintas Hari Pagi Subuh (00:00 - 06:59)
+            else 
+            {
+                return now.Date.AddDays(-1).AddHours(18); 
+            }
+        }
 
         private async Task LoadData()
         {
             try
             {
-                string selectedArea = _comboArea.SelectedItem?.ToString();
-                
-                // [BARU] Tentukan Awal Shift
+                string selectedArea = _comboArea.SelectedItem?.ToString() ?? "Semua Area";
                 DateTime shiftStart = GetCurrentShiftStart();
-                DateTime nextShiftStart = shiftStart.AddHours(shiftStart.Hour == 7 ? 12 : 9); // Estimasi durasi shift
+                
+                int maxShiftHours = (shiftStart.Hour == 7) ? 11 : 13;
 
                 string sql = @"
                     SELECT m.machine_id, 
                            COALESCE(t.type_name, 'UNK') AS type_name, 
                            COALESCE(a.area_name, 'UNK') AS area_name, 
                            m.machine_number,
-                           l.produced_pieces,
-                           l.auto_time,
-                           l.monitor_time,
-                           l.created_at
+                           -1 AS hour_index,
+                           COALESCE((SELECT produced_pieces FROM machine_process_logs WHERE machine_id = m.machine_id AND created_at < @ShiftStart ORDER BY created_at DESC LIMIT 1), 0) AS max_pieces,
+                           0 AS curr_auto, 0 AS curr_mon
                     FROM machines m
                     LEFT JOIN machine_types t ON m.type_id = t.type_id
                     LEFT JOIN machine_areas a ON m.area_id = a.area_id
-                    -- [FIX] Gunakan LEFT JOIN agar mesin tetap muncul meski belum ada log shift ini
-                    LEFT JOIN machine_process_logs l ON m.machine_id = l.machine_id AND l.created_at >= @ShiftStart
-                    ORDER BY m.machine_id, l.created_at ASC";
-
-                IEnumerable<dynamic> logs;
+                    WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
+                    
+                    UNION ALL
+                    
+                    SELECT m.machine_id, 
+                           COALESCE(t.type_name, 'UNK') AS type_name, 
+                           COALESCE(a.area_name, 'UNK') AS area_name, 
+                           m.machine_number,
+                           TIMESTAMPDIFF(HOUR, @ShiftStart, p.created_at) AS hour_index,
+                           MAX(p.produced_pieces) AS max_pieces,
+                           MAX(p.auto_time) AS curr_auto,
+                           MAX(p.monitor_time) AS curr_mon
+                    FROM machines m
+                    LEFT JOIN machine_types t ON m.type_id = t.type_id
+                    LEFT JOIN machine_areas a ON m.area_id = a.area_id
+                    JOIN machine_process_logs p ON m.machine_id = p.machine_id
+                    WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
+                      AND p.created_at >= @ShiftStart
+                    GROUP BY m.machine_id, type_name, area_name, m.machine_number, hour_index
+                    ORDER BY machine_id, hour_index;";
+                
+                IEnumerable<dynamic> rows;
                 using (var conn = DatabaseHelper.GetConnection())
                 {
-                    if (!string.IsNullOrEmpty(selectedArea) && selectedArea != "Semua Area")
+                    rows = await conn.QueryAsync(sql, new { Area = selectedArea, ShiftStart = shiftStart });
+                }
+
+                var rawData = new Dictionary<int, long[]>();
+                var machines = new Dictionary<int, MachineData>();
+
+                foreach (var row in rows)
+                {
+                    int mId = (int)row.machine_id;
+                    if (!machines.ContainsKey(mId))
                     {
-                        sql += " AND a.area_name = @Area";
-                        logs = await conn.QueryAsync(sql, new { ShiftStart = shiftStart, Area = selectedArea });
+                        machines[mId] = new MachineData { MachineName = $"{row.type_name}.{row.area_name}-{row.machine_number}" };
+                        
+                        rawData[mId] = new long[maxShiftHours + 1]; 
+                        for(int i=0; i <= maxShiftHours; i++) rawData[mId][i] = -1; 
+                    }
+
+                    int hIndex = (int)row.hour_index;
+                    if (hIndex >= -1 && hIndex < maxShiftHours) 
+                    {
+                        rawData[mId][hIndex + 1] = (long)row.max_pieces;
+                        
+                        if (hIndex >= 0) 
+                        {
+                            machines[mId].AutoTime = Math.Max(machines[mId].AutoTime, (double)(row.curr_auto ?? 0));
+                            machines[mId].MonitorTime = Math.Max(machines[mId].MonitorTime, (double)(row.curr_mon ?? 0));
+                        }
+                    }
+                }
+
+                int currentHourCount = (int)(DateTime.Now - shiftStart).TotalHours + 1;
+                if (currentHourCount > maxShiftHours) currentHourCount = maxShiftHours;
+                if (currentHourCount < 1) currentHourCount = 1;
+
+                foreach (var kvp in machines)
+                {
+                    int mId = kvp.Key;
+                    var machine = kvp.Value;
+                    var maxes = rawData[mId];
+
+                    long lastKnown = maxes[0] != -1 ? maxes[0] : 0;
+                    for (int i = 0; i <= maxShiftHours; i++)
+                    {
+                        if (maxes[i] == -1) maxes[i] = lastKnown;
+                        else lastKnown = maxes[i];
+                    }
+
+                    long totalPiecesShiftIni = 0;
+                    int firstActiveHour = -1; 
+
+                    for (int i = 1; i <= maxShiftHours; i++)
+                    {
+                        long diff = maxes[i] - maxes[i - 1];
+                        if (diff < 0) diff = maxes[i]; 
+                        
+                        if (i <= currentHourCount)
+                        {
+                            machine.HourlyPieces[i - 1] = diff;
+                            totalPiecesShiftIni += diff; 
+                            if (diff > 0 && firstActiveHour == -1) 
+                            {
+                                firstActiveHour = i;
+                            }
+                        }
+                        else
+                        {
+                            machine.HourlyPieces[i - 1] = 0; 
+                        }
+                    }
+
+                    machine.TotalPieces = totalPiecesShiftIni;
+                    
+                    int pembagi = 1;
+                    if (firstActiveHour != -1)
+                    {
+                        pembagi = currentHourCount - firstActiveHour + 1;
                     }
                     else
                     {
-                        logs = await conn.QueryAsync(sql, new { ShiftStart = shiftStart });
+                        pembagi = currentHourCount; 
                     }
+                    
+                    machine.AveragePerHour = (double)totalPiecesShiftIni / pembagi;
                 }
 
-                // [BARU] Proses Data untuk Hourly Stacking
-                var machineList = ProcessHourlyData(logs, shiftStart);
-
-                // Sorting
                 string selectedMetric = _comboMetric.SelectedItem?.ToString();
-                if (selectedMetric.Contains("Efisiensi"))
-                {
-                    machineList = machineList.OrderByDescending(x => x.Efficiency).ToList();
-                }
-                else
-                {
-                    machineList = machineList.OrderByDescending(x => x.ProducedPieces).ToList();
-                }
+                var machineList = machines.Values.ToList();
 
-                UpdateChart(machineList, selectedMetric, shiftStart);
-                _lblStatus.Text = $"Shift: {shiftStart:HH:mm} | Update: {DateTime.Now:HH:mm:ss} | Aktif: {machineList.Count}";
+                if (selectedMetric.Contains("Efisiensi"))
+                    machineList = machineList.OrderByDescending(x => x.Efficiency).ToList();
+                else
+                    machineList = machineList.OrderByDescending(x => x.TotalPieces).ToList();
+
+                // [UPDATE] HANYA kirimkan currentHourCount, jangan maxShiftHours agar grafiknya tidak kebablasan!
+                UpdateChart(machineList, selectedMetric, currentHourCount);
+                
+                string namaShift = (shiftStart.Hour == 7) ? "Shift Pagi" : "Shift Malam";
+                _lblStatus.Text = $"Update: {DateTime.Now:HH:mm:ss} | {namaShift} | Berjalan: Jam ke-{currentHourCount}";
             }
             catch (Exception ex)
             {
@@ -206,114 +309,10 @@ namespace mtc_app.features.technician.presentation.components
             }
         }
 
-        private DateTime GetCurrentShiftStart()
+        // Parameter ketiga sekarang adalah currentHourCount
+        private void UpdateChart(List<MachineData> data, string mode, int currentHourCount)
         {
-            DateTime now = DateTime.Now;
-            // Shift 1: 07:00 - 18:59 -> Start Today 07:00
-            // Shift 2: 19:00 - 06:59 -> Start Today 19:00 OR Yesterday 19:00
-            
-            if (now.Hour >= 7 && now.Hour < 19)
-            {
-                return now.Date.AddHours(7);
-            }
-            else
-            {
-                // Jika jam 00:00 - 06:59, berarti shift mulai kemarin jam 19:00
-                if (now.Hour < 7) return now.Date.AddDays(-1).AddHours(19);
-                // Jika jam 19:00 - 23:59, berarti shift mulai hari ini jam 19:00
-                return now.Date.AddHours(19);
-            }
-        }
-
-        private List<MachineData> ProcessHourlyData(IEnumerable<dynamic> logs, DateTime shiftStart)
-        {
-            var result = new List<MachineData>();
-            
-            // Group logs per Machine
-            var machineGroups = logs.GroupBy(l => (int)l.machine_id);
-
-            foreach (var grp in machineGroups)
-            {
-                var firstRow = grp.First(); // Info mesin (nama, tipe) selalu ada
-                
-                // Ambil log yang valid saja (dimana produced_pieces TIDAK NULL)
-                // Karena LEFT JOIN, jika tidak ada log, produced_pieces akan null
-                var validLogs = grp.Where(x => x.produced_pieces != null)
-                                   .OrderBy(x => x.created_at)
-                                   .ToList();
-
-                var md = new MachineData
-                {
-                    MachineName = $"{firstRow.type_name}.{firstRow.area_name}-{firstRow.machine_number}",
-                    HourlyProduction = new Dictionary<int, long>() 
-                };
-
-                // Jika tidak ada log valid, berarti mesin ini belum ada data di shift ini
-                if (!validLogs.Any()) 
-                {
-                    md.ProducedPieces = 0;
-                    md.AutoTime = 0;
-                    md.MonitorTime = 0;
-                    result.Add(md);
-                    continue; 
-                }
-
-                // --- LOGIKA STACKING PER JAM ---
-                
-                long lastCounter = 0;
-                // Inisialisasi counter awal
-                lastCounter = (long)validLogs.First().produced_pieces;
-
-                // Ambil log terakhir untuk Total Saat Ini
-                var lastLog = validLogs.Last();
-                md.ProducedPieces = (long)lastLog.produced_pieces;
-                
-                // Handle null untuk auto_time/monitor_time (jaga-jaga)
-                md.AutoTime = lastLog.auto_time != null ? (double)lastLog.auto_time : 0;
-                md.MonitorTime = lastLog.monitor_time != null ? (double)lastLog.monitor_time : 0;
-
-                // Iterasi setiap jam dalam shift (Max 12 jam)
-                for (int i = 0; i < 12; i++)
-                {
-                    DateTime hourStart = shiftStart.AddHours(i);
-                    DateTime hourEnd = hourStart.AddHours(1);
-                    
-                    if (hourStart > DateTime.Now) break; 
-
-                    // Cari log Paling Akhir di jam ini
-                    var logAtEnd = validLogs
-                        .Where(l => l.created_at < hourEnd)
-                        .LastOrDefault();
-
-                    if (logAtEnd == null) continue;
-
-                    long currentCounter = (long)logAtEnd.produced_pieces;
-                    long delta = 0;
-
-                    if (currentCounter >= lastCounter)
-                    {
-                        delta = currentCounter - lastCounter;
-                    }
-                    else
-                    {
-                        // Reset logic: counter reset ke 0
-                        delta = currentCounter; 
-                    }
-
-                    if (delta > 0) md.HourlyProduction[i] = delta;
-
-                    lastCounter = currentCounter;
-                }
-                
-                result.Add(md);
-            }
-
-            return result;
-        }
-
-        private void UpdateChart(List<MachineData> data, string mode, DateTime shiftStart)
-        {
-            int requiredWidth = Math.Max(_pnlChartContainer.Width, data.Count * 120); 
+            int requiredWidth = Math.Max(_pnlChartContainer.Width, data.Count * 120);
             _chart.Width = requiredWidth;
 
             _chart.Series.Clear();
@@ -321,122 +320,118 @@ namespace mtc_app.features.technician.presentation.components
 
             area.AxisY.Maximum = Double.NaN;
             area.AxisY.Minimum = 0;
-            area.AxisX.LabelStyle.Angle = 0; // [FIX] Horizontal Labels
+            area.AxisY.Title = "";
             area.RecalculateAxesScale();
 
-            if (mode.Contains("Rata-rata"))
+            if (mode.Contains("Output"))
             {
-                area.AxisY.Title = "Output (Pcs / Jam)";
-                
-                // 1. Stacked Bar (Produksi per Jam)
-                for (int i = 0; i < 12; i++)
-                {
-                    DateTime h = shiftStart.AddHours(i);
-                    string seriesName = h.ToString("HH:00"); 
+                area.AxisY.Title = "Output (Pcs)";
 
-                    var series = new Series(seriesName)
-                    {
-                        ChartType = SeriesChartType.StackedColumn,
-                        IsValueShownAsLabel = false, // [FIX] Matikan default label biar '0' tidak muncul
-                        Color = GetHourColor(i),
-                        Font = new Font("Segoe UI", 8, FontStyle.Bold) 
-                    };
-                    series["PointWidth"] = "0.7";
-                    
-                    foreach (var m in data)
-                    {
-                        long val = m.HourlyProduction.ContainsKey(i) ? m.HourlyProduction[i] : 0;
-                        int idx = series.Points.AddXY(m.MachineName, val);
-                        
-                        // [FIX] Manual Label hanya jika > 0
-                        if (val > 0) 
-                        {
-                            series.Points[idx].Label = $"{val}";
-                            series.Points[idx].LabelAngle = 0; 
-                        }
-                    }
-                    _chart.Series.Add(series);
-                }
-
-                // 2. Average Line (Total / Jam Berjalan)
-                var sAvg = new Series("Avg / Hour") 
-                { 
-                    ChartType = SeriesChartType.Line, 
-                    Color = Color.Red, 
-                    BorderWidth = 2,
-                    IsValueShownAsLabel = true,
-                    LabelForeColor = Color.Red
+                Color[] hourColors = new Color[] {
+                    Color.FromArgb(52, 152, 219), Color.FromArgb(41, 128, 185), // Jam 1-2
+                    Color.FromArgb(46, 204, 113), Color.FromArgb(39, 174, 96),  // Jam 3-4
+                    Color.FromArgb(241, 196, 15), Color.FromArgb(230, 126, 34), // Jam 5-6
+                    Color.FromArgb(231, 76, 60),  Color.FromArgb(192, 57, 43),  // Jam 7-8
+                    Color.FromArgb(155, 89, 182), Color.FromArgb(142, 68, 173), // Jam 9-10
+                    Color.FromArgb(26, 188, 156), Color.FromArgb(22, 160, 133), // Jam 11-12
+                    Color.FromArgb(52, 73, 94),   Color.FromArgb(44, 62, 80)    // Jam 13-14
                 };
 
-                // Hitung jam berjalan saat ini (1-12)
-                int hoursPassed = (int)(DateTime.Now - shiftStart).TotalHours;
-                if (hoursPassed < 1) hoursPassed = 1; 
-
-                foreach (var m in data)
+                // [UPDATE] Looping hanya sebatas jam yang sedang berjalan
+                for (int i = 0; i < currentHourCount; i++)
                 {
-                    // Total Produksi / Jam Berjalan
-                    long total = m.ProducedPieces; 
-                    double avg = (double)total / hoursPassed;
-
-                    int idx = sAvg.Points.AddXY(m.MachineName, avg);
-                    // Tampilkan label di titik warning
-                    sAvg.Points[idx].Label = $"Avg: {avg:N0}";
-                    sAvg.Points[idx].LabelAngle = 0; 
-                    sAvg.Points[idx].MarkerStyle = MarkerStyle.Circle;
+                    var s = new Series($"Jam {i + 1}") 
+                    { 
+                        ChartType = SeriesChartType.StackedColumn, 
+                        Color = hourColors[i],
+                        IsValueShownAsLabel = false 
+                    };
+                    s["PixelPointWidth"] = "80"; 
+                    _chart.Series.Add(s);
                 }
+
+                var sAvg = new Series("Rata-rata/Jam") 
+                { 
+                    ChartType = SeriesChartType.Point, 
+                    MarkerStyle = MarkerStyle.None, 
+                    Color = Color.Transparent,
+                    IsValueShownAsLabel = true,
+                    Font = new Font("Segoe UI", 8, FontStyle.Bold)
+                };
+                sAvg["LabelStyle"] = "Top";
                 _chart.Series.Add(sAvg);
-            }
-            else 
-            {
-                // Mode Efisiensi
-                area.AxisY.Title = "Waktu (Menit)";
-                var sAuto = new Series("Auto") { ChartType = SeriesChartType.StackedColumn, Color = AppColors.Success, IsValueShownAsLabel = true };
-                var sLoss = new Series("Loss") { ChartType = SeriesChartType.StackedColumn, Color = AppColors.Danger, IsValueShownAsLabel = true };
 
                 foreach (var item in data)
                 {
-                    double autoM = item.AutoTime / 60.0;
-                    double monM = item.MonitorTime / 60.0;
-                    double lossM = Math.Max(0, monM - autoM);
-
-                    int p1 = sAuto.Points.AddXY(item.MachineName, autoM);
-                    sAuto.Points[p1].Label = autoM > 0 ? $"{autoM:N0}" : "";
+                    // [UPDATE] Mengisi data titik (points) HANYA sebatas jam yang berjalan
+                    for (int i = 0; i < currentHourCount; i++)
+                    {
+                        int pIdx = _chart.Series[i].Points.AddXY(item.MachineName, item.HourlyPieces[i]);
+                        if (item.HourlyPieces[i] > 0)
+                            _chart.Series[i].Points[pIdx].Label = item.HourlyPieces[i].ToString("N0");
+                    }
                     
-                    int p2 = sLoss.Points.AddXY(item.MachineName, lossM);
-                    sLoss.Points[p2].Label = lossM > 0 ? $"{lossM:N0}" : "";
+                    double labelYPos = item.TotalPieces > 0 ? item.TotalPieces + (item.TotalPieces * 0.05) : 0;
+                    int pAvg = sAvg.Points.AddXY(item.MachineName, labelYPos);
+                    
+                    if (item.TotalPieces > 0)
+                    {
+                        sAvg.Points[pAvg].Label = $"Rata-rata: {item.AveragePerHour:N0} / jam\nTotal: {item.TotalPieces:N0}";
+                    }
+                    else
+                    {
+                        sAvg.Points[pAvg].Label = " "; 
+                    }
+                }
+            }
+            else 
+            {
+                area.AxisY.Title = "Waktu (Menit)";
+
+                var sAuto = new Series("Auto Time") { ChartType = SeriesChartType.StackedColumn, Color = AppColors.Success, IsValueShownAsLabel = true };
+                sAuto["PixelPointWidth"] = "80";
+                
+                var sLoss = new Series("Loss Time") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(230, 126, 34), IsValueShownAsLabel = true };
+                sLoss["PixelPointWidth"] = "80";
+                
+                var sEffLabel = new Series("Eff %") { ChartType = SeriesChartType.Point, Color = Color.Transparent, IsValueShownAsLabel = true };
+                sEffLabel["LabelStyle"] = "Top"; 
+
+                foreach (var item in data)
+                {
+                    double autoValMinutes = item.AutoTime / 60.0; 
+                    double monValMinutes = item.MonitorTime / 60.0;
+                    double lossValMinutes = (monValMinutes > autoValMinutes) ? (monValMinutes - autoValMinutes) : 0;
+                    
+                    int p1 = sAuto.Points.AddXY(item.MachineName, autoValMinutes);
+                    sAuto.Points[p1].Label = autoValMinutes > 0 ? $"{autoValMinutes:N0}m" : " ";
+
+                    int p2 = sLoss.Points.AddXY(item.MachineName, lossValMinutes);
+                    sLoss.Points[p2].Label = lossValMinutes > 0 ? $"{lossValMinutes:N0}m" : " "; 
+
+                    double labelY = monValMinutes > 0 ? monValMinutes + (monValMinutes * 0.05) : 0; 
+                    int p3 = sEffLabel.Points.AddXY(item.MachineName, labelY);
+                    
+                    if (monValMinutes > 0)
+                    {
+                        sEffLabel.Points[p3].Label = $"{item.Efficiency:F1}%";
+                    }
+                    else
+                    {
+                        sEffLabel.Points[p3].Label = " ";
+                    }
+                    
+                    sEffLabel.Points[p3].MarkerStyle = MarkerStyle.None;
                 }
                 _chart.Series.Add(sAuto);
                 _chart.Series.Add(sLoss);
+                _chart.Series.Add(sEffLabel);
             }
-        }
-        
-        private Color GetHourColor(int index)
-        {
-            // Palet warna gradasi atau distinct
-            Color[] colors = {
-                Color.FromArgb(65, 140, 240), // Biru
-                Color.FromArgb(252, 180, 65), // Kuning
-                Color.FromArgb(224, 64, 10),  // Merah
-                Color.FromArgb(5, 100, 146),  // Biru Tua
-                Color.FromArgb(191, 191, 191),// Abu
-                Color.FromArgb(26, 59, 105),  // Navy
-                Color.FromArgb(255, 128, 0),  // Orange
-                Color.FromArgb(100, 200, 100),// Hijau
-                Color.Purple,
-                Color.Teal,
-                Color.Magenta,
-                Color.Brown
-            };
-            return colors[index % colors.Length];
         }
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
-            {
-                if (components != null) components.Dispose();
-                if (_timer != null) { _timer.Stop(); _timer.Dispose(); }
-            }
+            if (disposing) { if (components != null) components.Dispose(); if (_timer != null) { _timer.Stop(); _timer.Dispose(); } }
             base.Dispose(disposing);
         }
     }
