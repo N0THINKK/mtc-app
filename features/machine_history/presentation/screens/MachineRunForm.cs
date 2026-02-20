@@ -16,6 +16,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private Label lblStopwatch;
         private Panel panelButton;
         private AppButton btnRun;
+        private AppButton btnBack;
         private System.Diagnostics.Stopwatch stopwatch;
         private Timer timer;
 
@@ -42,6 +43,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.lblStopwatch = new Label();
             this.panelButton = new Panel();
             this.btnRun = new AppButton();
+            this.btnBack = new AppButton();
             this.SuspendLayout();
 
             // 
@@ -99,18 +101,37 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.btnRun.Type = AppButton.ButtonType.Primary;
             this.btnRun.BackColor = AppColors.Success; // Green for GO
             this.btnRun.Font = AppFonts.MetricMedium;
-            this.btnRun.Size = new Size(500, 120);
+            this.btnRun.Size = new Size(500, 100);
             this.btnRun.Click += BtnRun_Click;
             
-            // Center button in panel
+            //
+            // btnBack
+            //
+            this.btnBack.Anchor = AnchorStyles.None;
+            this.btnBack.Text = "KEMBALI KE PERBAIKAN";
+            this.btnBack.Type = AppButton.ButtonType.Secondary;
+            this.btnBack.Font = AppFonts.Header2;
+            this.btnBack.Size = new Size(500, 80);
+            this.btnBack.Click += BtnBack_Click;
+            
+            // Center buttons in panel
             this.panelButton.Resize += (s, e) => {
+                 int totalHeight = this.btnRun.Height + 20 + this.btnBack.Height;
+                 int startY = (this.panelButton.Height - totalHeight) / 2;
+                 
                  this.btnRun.Location = new Point(
                     (this.panelButton.Width - this.btnRun.Width) / 2,
-                    (this.panelButton.Height - this.btnRun.Height) / 2
-                );
+                    startY
+                 );
+                 
+                 this.btnBack.Location = new Point(
+                    (this.panelButton.Width - this.btnBack.Width) / 2,
+                    startY + this.btnRun.Height + 20
+                 );
             };
             
             this.panelButton.Controls.Add(this.btnRun);
+            this.panelButton.Controls.Add(this.btnBack);
 
             // 
             // Controls
@@ -226,6 +247,36 @@ namespace mtc_app.features.machine_history.presentation.screens
             catch (Exception ex)
             {
                 MessageBox.Show($"Gagal menyimpan data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void BtnBack_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (_ticketId > 0)
+                {
+                    using (var connection = DatabaseHelper.GetConnection())
+                    {
+                        connection.Open();
+                        // Revert ticket status to 2 (Repairing) and remove finished_at
+                        connection.Execute("UPDATE tickets SET status_id = 2, technician_finished_at = NULL WHERE ticket_id = @Id", new { Id = _ticketId });
+                        
+                        // Revert the session to not completing and ended_at to NULL so timer continues correctly
+                        connection.Execute("UPDATE ticket_technician_sessions SET is_completing_session = 0, ended_at = NULL WHERE ticket_id = @Id AND is_completing_session = 1", new { Id = _ticketId });
+                    }
+                }
+                
+                stopwatch?.Stop();
+                timer?.Stop();
+                
+                // Return Cancel so the parent form (MachineHistoryFormTechnician) stays open
+                this.DialogResult = DialogResult.Cancel;
+                this.Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Gagal membatalkan status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
