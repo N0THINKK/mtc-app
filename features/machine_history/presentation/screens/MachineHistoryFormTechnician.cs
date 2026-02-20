@@ -1147,6 +1147,11 @@ namespace mtc_app.features.machine_history.presentation.screens
                             this.DialogResult = DialogResult.OK;
                             this.Close();
                         }
+                        else
+                        {
+                            // Resume if cancelled
+                            _timer.Start();
+                        }
                     }
                     else
                     {
@@ -1237,6 +1242,11 @@ namespace mtc_app.features.machine_history.presentation.screens
                             {
                                 this.DialogResult = DialogResult.OK;
                                 this.Close();
+                            }
+                            else
+                            {
+                                // Resume the session locally since DB was reverted in MachineRunForm
+                                _timer.Start();
                             }
                         }
                         catch
