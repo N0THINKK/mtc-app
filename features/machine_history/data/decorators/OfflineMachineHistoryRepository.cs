@@ -25,15 +25,15 @@ namespace mtc_app.features.machine_history.data.decorators
             _networkMonitor = networkMonitor;
         }
 
-        public async Task<IEnumerable<MachineHistoryDto>> GetHistoryAsync(DateTime? startDate = null, DateTime? endDate = null, string search = null, string areaFilter = null)
+        public async Task<IEnumerable<MachineHistoryDto>> GetHistoryAsync(DateTime? startDate = null, DateTime? endDate = null, string search = null, string areaFilter = null, int? machineId = null)
         {
             // Prioritaskan Online
             if (_networkMonitor.IsOnline)
             {
                 try
                 {
-                    // Teruskan semua parameter (termasuk areaFilter) ke repository asli (online)
-                    return await _innerRepository.GetHistoryAsync(startDate, endDate, search, areaFilter);
+                    // Teruskan semua parameter (termasuk areaFilter dan machineId) ke repository asli (online)
+                    return await _innerRepository.GetHistoryAsync(startDate, endDate, search, areaFilter, machineId);
                 }
                 catch (Exception ex) when (IsNetworkException(ex))
                 {

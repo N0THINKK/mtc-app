@@ -390,7 +390,13 @@ namespace mtc_app.features.machine_history.presentation.screens
                     areaFilter = _cmbArea.SelectedItem.ToString();
                 }
 
-                var history = await _repository.GetHistoryAsync(_dtpStart.Value, _dtpEnd.Value, null, areaFilter);
+                int? machineId = null;
+                if (int.TryParse(DatabaseHelper.GetMachineId(), out int configId))
+                {
+                    machineId = configId;
+                }
+
+                var history = await _repository.GetHistoryAsync(_dtpStart.Value, _dtpEnd.Value, null, areaFilter, machineId);
                 _historyControl.SetData(history);
             }
             catch (Exception ex)

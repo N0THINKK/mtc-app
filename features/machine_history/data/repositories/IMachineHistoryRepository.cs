@@ -14,7 +14,8 @@ namespace mtc_app.features.machine_history.data.repositories
         /// <param name="endDate">Tanggal akhir filter</param>
         /// <param name="search">Kata kunci pencarian (opsional)</param>
         /// <param name="areaFilter">Nama area untuk filter spesifik (opsional)</param>
-        Task<IEnumerable<MachineHistoryDto>> GetHistoryAsync(DateTime? startDate = null, DateTime? endDate = null, string search = null, string areaFilter = null);
+        /// <param name="machineId">ID mesin untuk filter history spesifik (opsional)</param>
+        Task<IEnumerable<MachineHistoryDto>> GetHistoryAsync(DateTime? startDate = null, DateTime? endDate = null, string search = null, string areaFilter = null, int? machineId = null);
 
         /// <summary>
         /// Membuat tiket baru (Lapor Kerusakan).
