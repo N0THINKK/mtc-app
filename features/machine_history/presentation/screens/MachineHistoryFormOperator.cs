@@ -445,8 +445,6 @@ namespace mtc_app.features.machine_history.presentation.screens
 
                 AutoClosingMessageBox.Show(successMsg, "Sukses", 2000);
 
-                AutoClosingMessageBox.Show(successMsg, "Sukses", 2000);
-
                 OpenTechnicianForm(result.TicketId);
             }
             catch (Exception ex)
