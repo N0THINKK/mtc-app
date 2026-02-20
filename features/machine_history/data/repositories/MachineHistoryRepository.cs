@@ -10,7 +10,7 @@ namespace mtc_app.features.machine_history.data.repositories
 {
     public class MachineHistoryRepository : IMachineHistoryRepository
     {
-        public async Task<IEnumerable<MachineHistoryDto>> GetHistoryAsync(DateTime? startDate = null, DateTime? endDate = null, string search = null, string areaFilter = null)
+        public async Task<IEnumerable<MachineHistoryDto>> GetHistoryAsync(DateTime? startDate = null, DateTime? endDate = null, string search = null, string areaFilter = null, int? machineId = null)
         {
             DateTime start = startDate ?? DateTime.Now.AddDays(-30);
             DateTime end = endDate ?? DateTime.Now.AddDays(1); 
@@ -84,6 +84,13 @@ namespace mtc_app.features.machine_history.data.repositories
                 {
                     sql += " AND ma.area_name = @Area";
                     parameters.Add("Area", areaFilter);
+                }
+
+                // Filter Mesin Spesifik
+                if (machineId.HasValue)
+                {
+                    sql += " AND t.machine_id = @MachineId";
+                    parameters.Add("MachineId", machineId.Value);
                 }
 
                 // Filter Pencarian Teks (Optional)
