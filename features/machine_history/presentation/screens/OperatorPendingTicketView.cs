@@ -68,7 +68,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             // Row 3: Issue
             var lblIssue = new Label
             {
-                Text = $"Masalah: {_ticket.Issue ?? "-"}",
+                Text = $"Problem: {_ticket.Issue ?? "-"}",
                 Font = AppFonts.Body,
                 ForeColor = AppColors.TextPrimary,
                 AutoSize = true,

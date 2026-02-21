@@ -111,7 +111,7 @@ namespace mtc_app.features.admin.presentation.views
             this.lblDescription.ForeColor = AppColors.TextSecondary;
             this.lblDescription.Location = new Point(0, 35);
             this.lblDescription.MaximumSize = new Size(600, 0);
-            this.lblDescription.Text = "Fitur ini akan membuat salinan lengkap dari database 'db_maintenance' (termasuk struktur tabel dan semua datanya) ke dalam sebuah file .sql. Anda bisa menggunakan file ini untuk restore jika terjadi masalah.";
+            this.lblDescription.Text = "Fitur ini akan membuat salinan lengkap dari database 'db_maintenance' (termasuk struktur tabel dan semua datanya) ke dalam sebuah file .sql. Anda bisa menggunakan file ini untuk restore jika terjadi problem.";
             
             // Backup Button
             this.btnCreateBackup.Text = "Buat & Simpan Backup...";

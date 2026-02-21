@@ -264,7 +264,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             // 6. Add Problem Button
             btnAddProblem = new AppButton
             {
-                Text = "+ Tambah Masalah Lain",
+                Text = "+ Tambah Problem Lain",
                 Width = 200, 
                 Height = 40,
                 Type = AppButton.ButtonType.Secondary,
@@ -307,7 +307,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             if (_problemControls.Count <= 1)
             {
-                AutoClosingMessageBox.Show("Minimal harus ada satu masalah.", "Info", 1500);
+                AutoClosingMessageBox.Show("Minimal harus ada satu problem.", "Info", 1500);
                 return;
             }
             
@@ -417,7 +417,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 if (!prob.InputType.ValidateInput() || !prob.InputFailure.ValidateInput())
                 {
-                    MessageBox.Show("Mohon lengkapi detail masalah.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Mohon lengkapi detail problem.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
             }

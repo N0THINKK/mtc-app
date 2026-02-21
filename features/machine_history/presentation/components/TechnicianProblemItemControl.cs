@@ -48,7 +48,7 @@ namespace mtc_app.features.machine_history.presentation.components
             // Header Label
             lblHeader = new Label
             {
-                Text = "Masalah Dilaporkan:",
+                Text = "Problem Dilaporkan:",
                 Font = AppFonts.Subtitle,
                 ForeColor = AppColors.TextPrimary,
                 AutoSize = true,
@@ -60,7 +60,7 @@ namespace mtc_app.features.machine_history.presentation.components
             // Problem Type Input (pre-filled, editable)
             InputProblemType = new AppInput 
             { 
-                LabelText = "Jenis Masalah", 
+                LabelText = "Jenis Problem (silahkan pilih jenis problem)", 
                 InputType = AppInput.InputTypeEnum.Dropdown,
                 AllowCustomText = true,
                 IsRequired = true,
@@ -73,7 +73,7 @@ namespace mtc_app.features.machine_history.presentation.components
             // Problem Detail Input (pre-filled, editable)
             InputProblemDetail = new AppInput 
             { 
-                LabelText = "Detail Masalah", 
+                LabelText = "Detail Problem", 
                 InputType = AppInput.InputTypeEnum.Dropdown,
                 AllowCustomText = true,
                 IsRequired = true,
@@ -86,7 +86,7 @@ namespace mtc_app.features.machine_history.presentation.components
             // Cause Input
             InputCause = new AppInput 
             { 
-                LabelText = "Penyebab Masalah", 
+                LabelText = "Penyebab Problem", 
                 InputType = AppInput.InputTypeEnum.Dropdown,
                 AllowCustomText = true,
                 IsRequired = true,

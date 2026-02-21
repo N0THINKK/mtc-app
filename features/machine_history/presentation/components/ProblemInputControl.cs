@@ -40,7 +40,7 @@ namespace mtc_app.features.machine_history.presentation.components
             // Title Label
             lblTitle = new Label 
             {
-                Text = $"Masalah #{index + 1}", 
+                Text = $"Problem #{index + 1}", 
                 Font = AppFonts.Subtitle,
                 ForeColor = AppColors.TextPrimary,
                 AutoSize = true,
@@ -63,9 +63,9 @@ namespace mtc_app.features.machine_history.presentation.components
             // Jenis Problem Input
             InputType = new AppInput 
             {
-                LabelText = "Jenis Masalah", 
+                LabelText = "Jenis Problem (silahkan pilih jenis problem)", 
                 InputType = AppInput.InputTypeEnum.Dropdown,
-                AllowCustomText = true,
+                AllowCustomText = false,
                 IsRequired = true,
                 Location = new Point(0, 30)
             };
@@ -74,7 +74,7 @@ namespace mtc_app.features.machine_history.presentation.components
             // Detail Masalah Input
             InputFailure = new AppInput 
             {
-                LabelText = "Detail Masalah", 
+                LabelText = "Detail Problem", 
                 InputType = AppInput.InputTypeEnum.Dropdown, 
                 AllowCustomText = true,
                 IsRequired = true,
@@ -88,7 +88,7 @@ namespace mtc_app.features.machine_history.presentation.components
         /// </summary>
         public void UpdateIndex(int index)
         {
-            lblTitle.Text = $"Masalah #{index + 1}";
+            lblTitle.Text = $"Problem #{index + 1}";
             btnRemove.Visible = index > 0;
         }
 

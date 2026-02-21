@@ -63,7 +63,7 @@ namespace mtc_app.features.machine_history.presentation.components
             _grid.Columns.Add(colDate);
 
             _grid.Columns.Add(CreateColumn("MachineName", "Mesin", 150));
-            _grid.Columns.Add(CreateColumn("Issue", "Masalah", 250));
+            _grid.Columns.Add(CreateColumn("Issue", "Problem", 250));
             _grid.Columns.Add(CreateColumn("TechnicianName", "Teknisi", 150));
             _grid.Columns.Add(CreateColumn("StatusName", "Status", 100));
 
