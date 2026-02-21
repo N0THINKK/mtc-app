@@ -870,15 +870,18 @@ namespace mtc_app.features.machine_history.presentation.screens
                         request.TechnicianNik = nik;
                         request.StartedAt = DateTime.Now;
                         request.StatusId = 2; // In Progress
+                        request.IsMachineRunning = 0; // Auto-stop machine
                         
                         ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
 
                         _isVerified = true;
                         _ticketStatus = 2;
+                        _isMachineRunning = 0; // Ensure UI state matches DB auto-stop
                         // Note: For offline, timer values are stored locally until sync
 
                         AutoClosingMessageBox.Show($"Verifikasi Berhasil (Offline)!\nSelamat bekerja, {user.FullName}.", "Sukses", 2000);
                         UpdateUIState();
+                        UpdateMachineStateIndicator(); // Refresh Top Banner
                     }
                 }
                 else
@@ -898,11 +901,12 @@ namespace mtc_app.features.machine_history.presentation.screens
                     
                     if (tech != null)
                     {
-                        conn.Execute("UPDATE tickets SET status_id = 2, technician_id = @Id, started_at = NOW() WHERE ticket_id = @TId", 
+                        conn.Execute("UPDATE tickets SET status_id = 2, technician_id = @Id, started_at = NOW(), is_machine_running = 0 WHERE ticket_id = @TId", 
                             new { Id = tech.user_id, TId = _currentTicketId });
                         
                         _isVerified = true;
                         _ticketStatus = 2;
+                        _isMachineRunning = 0; // Ensure UI state matches DB auto-stop
                         
                         SaveTimerToDatabase(); // Save arrival time before switching to repair
                         CreateSession((int)tech.user_id); // Start tracking session for this technician
@@ -913,6 +917,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                         AutoClosingMessageBox.Show($"Verifikasi Berhasil!\nSelamat bekerja, {tech.full_name}.", "Sukses", 2000);
                         LoadPreviousSessions(); // Refresh list to show new session
                         UpdateUIState();
+                        UpdateMachineStateIndicator(); // Refresh Top Banner
                     }
                     else
                     {
