@@ -286,7 +286,7 @@ namespace mtc_app.features.technician.presentation.components
             // Layout Parameters for Vertical Chart
             int padding = 20;
             int bottomLabelHeight = 60; // Space for Rank and Name at bottom
-            int topValueHeight = 25;    // Space for Value label at top
+            int topValueHeight = 40;    // Space for Value label at top
             
             int chartLeft = padding;
             int chartRight = chartPanel.Width - padding;
@@ -348,11 +348,11 @@ namespace mtc_app.features.technician.presentation.components
 
                     // 2. Draw Value Label (Above Bar)
                     string valueText = GetFormattedValue(value);
-                    using (var font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold))
+                    using (var font = new Font("Segoe UI Semibold", 12F, FontStyle.Bold))
                     using (var brush = new SolidBrush(AppColors.TextPrimary))
                     {
                         // Position slightly above the bar top
-                        g.DrawString(valueText, font, brush, centerX, y - 18, centerFormat);
+                        g.DrawString(valueText, font, brush, centerX, y - 25, centerFormat);
                     }
 
                     // 3. Draw Rank (Below Bar)

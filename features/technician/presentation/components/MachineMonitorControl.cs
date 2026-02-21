@@ -386,7 +386,7 @@ namespace mtc_app.features.technician.presentation.components
                     MarkerStyle = MarkerStyle.None, 
                     Color = Color.Transparent,
                     IsValueShownAsLabel = true,
-                    Font = new Font("Segoe UI", 8, FontStyle.Bold)
+                    Font = new Font("Segoe UI", 11F, FontStyle.Bold)
                 };
                 sAvg["LabelStyle"] = "Top";
                 _chart.Series.Add(sAvg);
@@ -426,6 +426,7 @@ namespace mtc_app.features.technician.presentation.components
                 
                 var sEffLabel = new Series("Eff %") { ChartType = SeriesChartType.Point, Color = Color.Transparent, IsValueShownAsLabel = true };
                 sEffLabel["LabelStyle"] = "Top"; 
+                sEffLabel.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
 
                 foreach (var item in data)
                 {
