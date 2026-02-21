@@ -163,20 +163,20 @@ namespace mtc_app.features.technician.presentation.components
         {
             DateTime now = DateTime.Now;
             
-            // Shift Pagi (07:00 - 17:59)
-            if (now.Hour >= 7 && now.Hour < 18) 
+            // Shift Pagi (07:00 - 18:59)
+            if (now.Hour >= 7 && now.Hour < 19) 
             {
                 return now.Date.AddHours(7);
             }
-            // Shift Malam (18:00 - 23:59)
-            else if (now.Hour >= 18) 
+            // Shift Malam (19:00 - 23:59)
+            else if (now.Hour >= 19) 
             {
-                return now.Date.AddHours(18);
+                return now.Date.AddHours(19);
             }
             // Shift Malam Lintas Hari Pagi Subuh (00:00 - 06:59)
             else 
             {
-                return now.Date.AddDays(-1).AddHours(18); 
+                return now.Date.AddDays(-1).AddHours(19); 
             }
         }
 
@@ -187,7 +187,7 @@ namespace mtc_app.features.technician.presentation.components
                 string selectedArea = _comboArea.SelectedItem?.ToString() ?? "Semua Area";
                 DateTime shiftStart = GetCurrentShiftStart();
                 
-                int maxShiftHours = (shiftStart.Hour == 7) ? 11 : 13;
+                int maxShiftHours = 12;
 
                 string sql = @"
                     SELECT m.machine_id, 
