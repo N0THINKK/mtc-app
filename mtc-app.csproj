@@ -16,6 +16,10 @@
     <!-- Fix for SQLite in SingleFile publish -->
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract> 
+    
+    <!-- Make it run on ANY Windows (32-bit/64-bit) without installing .NET -->
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
   </PropertyGroup>
 
   <ItemGroup>
