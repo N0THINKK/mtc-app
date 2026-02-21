@@ -5,6 +5,7 @@ namespace mtc_app.features.stock.data.enums
         None = 0,
         Pending = 1,
         Ready = 2,
-        Completed = 3
+        Completed = 3,
+        Rejected = 4
     }
 }

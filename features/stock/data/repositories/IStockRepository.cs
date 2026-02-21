@@ -13,5 +13,6 @@ namespace mtc_app.features.stock.data.repositories
         Task<StockStatsDto> GetStatsAsync();
         Task<StockStatsDto> GetStatsByDateAsync(DateTime start, DateTime end);
         Task<bool> MarkAsReadyAsync(int requestId);
+        Task<bool> RejectRequestAsync(int requestId);
     }
 }

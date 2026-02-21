@@ -23,6 +23,7 @@ namespace mtc_app.features.stock.data.repositories
                     pr.request_id AS RequestId,
                     t.ticket_id AS TicketId,
                     pr.requested_at AS RequestedAt,
+                    pr.ready_at AS ReadyAt,
                     p.part_code AS PartCode,
                     COALESCE(p.part_name, pr.part_name_manual) AS PartName,
                     (SELECT GROUP_CONCAT(DISTINCT u_tech.full_name SEPARATOR ', ')
@@ -69,7 +70,8 @@ namespace mtc_app.features.stock.data.repositories
                     SELECT 
                         COUNT(*) AS TotalRequests,
                         COUNT(CASE WHEN status_id = 1 THEN 1 END) AS PendingCount,
-                        COUNT(CASE WHEN status_id = 2 THEN 1 END) AS ReadyCount
+                        COUNT(CASE WHEN status_id = 2 THEN 1 END) AS ReadyCount,
+                        COUNT(CASE WHEN status_id = 4 THEN 1 END) AS RejectedCount
                     FROM part_requests";
 
                 return await connection.QuerySingleAsync<StockStatsDto>(sql);
@@ -88,6 +90,7 @@ namespace mtc_app.features.stock.data.repositories
                     pr.request_id AS RequestId,
                     t.ticket_id AS TicketId,
                     pr.requested_at AS RequestedAt,
+                    pr.ready_at AS ReadyAt,
                     p.part_code AS PartCode,
                     COALESCE(p.part_name, pr.part_name_manual) AS PartName,
                     (SELECT GROUP_CONCAT(DISTINCT u_tech.full_name SEPARATOR ', ')
@@ -124,7 +127,8 @@ namespace mtc_app.features.stock.data.repositories
                     SELECT 
                         COUNT(*) AS TotalRequests,
                         COUNT(CASE WHEN status_id = 1 THEN 1 END) AS PendingCount,
-                        COUNT(CASE WHEN status_id = 2 THEN 1 END) AS ReadyCount
+                        COUNT(CASE WHEN status_id = 2 THEN 1 END) AS ReadyCount,
+                        COUNT(CASE WHEN status_id = 4 THEN 1 END) AS RejectedCount
                     FROM part_requests
                     WHERE requested_at BETWEEN @Start AND @End";
 
@@ -142,6 +146,23 @@ namespace mtc_app.features.stock.data.repositories
                 const string sql = @"
                     UPDATE part_requests 
                     SET status_id = 2, ready_at = NOW() 
+                    WHERE request_id = @Id";
+
+                var affectedRows = await connection.ExecuteAsync(sql, new { Id = requestId });
+                return affectedRows > 0;
+            }
+        }
+
+        public async Task<bool> RejectRequestAsync(int requestId)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                if (connection.State != ConnectionState.Open)
+                    connection.Open();
+
+                const string sql = @"
+                    UPDATE part_requests 
+                    SET status_id = 4 
                     WHERE request_id = @Id";
 
                 var affectedRows = await connection.ExecuteAsync(sql, new { Id = requestId });

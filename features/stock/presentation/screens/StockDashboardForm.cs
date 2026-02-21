@@ -117,7 +117,16 @@ namespace mtc_app.features.stock.presentation.screens
                 Name = "RequestedAt", 
                 HeaderText = "Waktu Request", 
                 DataPropertyName = "FormattedRequestTime",
-                Width = 180
+                Width = 140
+            });
+
+            // 2.5 Waktu Siap
+            gridRequests.Columns.Add(new DataGridViewTextBoxColumn 
+            { 
+                Name = "ReadyAt", 
+                HeaderText = "Waktu Siap", 
+                DataPropertyName = "FormattedReadyTime",
+                Width = 140
             });
 
             // 3. Nama Part
@@ -192,6 +201,7 @@ namespace mtc_app.features.stock.presentation.screens
                     if (statusId == 1) e.Value = "Menunggu"; // Pending
                     else if (statusId == 2) e.Value = "Siap"; // Ready
                     else if (statusId == 3) e.Value = "Diambil"; // Taken
+                    else if (statusId == 4) e.Value = "Ditolak"; // Rejected
                     else e.Value = "-";
                 }
             }
@@ -328,32 +338,39 @@ namespace mtc_app.features.stock.presentation.screens
             await LoadDataAsync();
         }
 
-        private async void btnFilterAll_Click(object sender, EventArgs e)
+        private void btnFilterAll_Click(object sender, EventArgs e)
         {
-            _currentFilter = RequestStatus.None; // All
+            _currentFilter = RequestStatus.None;
             UpdateFilterButtons();
-            await LoadDataAsync();
+            _ = LoadDataAsync();
+        }
+
+        private void btnFilterRejected_Click(object sender, EventArgs e)
+        {
+            _currentFilter = RequestStatus.Rejected;
+            UpdateFilterButtons();
+            _ = LoadDataAsync();
         }
 
         private void UpdateFilterButtons()
         {
-             // Reset types
-            btnFilterPending.Type = AppButton.ButtonType.Secondary;
-            btnFilterReady.Type = AppButton.ButtonType.Secondary;
-            btnFilterAll.Type = AppButton.ButtonType.Secondary;
+            btnFilterPending.Type = _currentFilter == RequestStatus.Pending 
+                ? AppButton.ButtonType.Primary : AppButton.ButtonType.Secondary;
+            
+            btnFilterReady.Type = _currentFilter == RequestStatus.Ready 
+                ? AppButton.ButtonType.Primary : AppButton.ButtonType.Secondary;
+            
+            btnFilterAll.Type = _currentFilter == RequestStatus.None 
+                ? AppButton.ButtonType.Primary : AppButton.ButtonType.Secondary;
 
-            switch (_currentFilter)
-            {
-                case RequestStatus.Pending:
-                    btnFilterPending.Type = AppButton.ButtonType.Primary;
-                    break;
-                case RequestStatus.Ready:
-                    btnFilterReady.Type = AppButton.ButtonType.Primary;
-                    break;
-                default:
-                    btnFilterAll.Type = AppButton.ButtonType.Primary;
-                    break;
-            }
+            btnFilterRejected.Type = _currentFilter == RequestStatus.Rejected 
+                ? AppButton.ButtonType.Danger : AppButton.ButtonType.Secondary;
+                
+            // Need to force redraw
+            btnFilterPending.Invalidate();
+            btnFilterReady.Invalidate();
+            btnFilterAll.Invalidate();
+            btnFilterRejected.Invalidate();
         }
 
         private async void btnSortAsc_Click(object sender, EventArgs e)
@@ -424,6 +441,37 @@ namespace mtc_app.features.stock.presentation.screens
                 MessageBox.Show("Pilih permintaan terlebih dahulu.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
+
+        private async void btnReject_Click(object sender, EventArgs e)
+        {
+            if (gridRequests.CurrentRow?.DataBoundItem is PartRequestDto request)
+            {
+                if (request.StatusId == 3)
+                {
+                   MessageBox.Show("Barang sudah diambil, tidak bisa ditolak.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                   return;
+                }
+
+                if (request.StatusId == 4)
+                {
+                    MessageBox.Show("Permintaan ini sudah berstatus DITOLAK.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                if (MessageBox.Show("Apakah Anda yakin ingin MENOLAK permintaan part ini?\nTeknisi akan diberitahu.", "Konfirmasi Tolak", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+                {
+                    bool success = await _repository.RejectRequestAsync(request.RequestId);
+                    if (success)
+                    {
+                        MessageBox.Show("Permintaan berhasil ditolak.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        await LoadDataAsync();
+                    }
+                }
+            }
+            else
+            {
+                MessageBox.Show("Pilih permintaan terlebih dahulu.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
     }
 }
-

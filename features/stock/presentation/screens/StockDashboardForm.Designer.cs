@@ -28,6 +28,7 @@ namespace mtc_app.features.stock.presentation.screens
             this.btnFilterAll = new mtc_app.shared.presentation.components.AppButton();
             this.btnFilterReady = new mtc_app.shared.presentation.components.AppButton();
             this.btnFilterPending = new mtc_app.shared.presentation.components.AppButton();
+            this.btnFilterRejected = new mtc_app.shared.presentation.components.AppButton();
             this.lblFilterLabel = new System.Windows.Forms.Label();
             this.pnlStatusCards = new System.Windows.Forms.Panel();
 
@@ -36,6 +37,7 @@ namespace mtc_app.features.stock.presentation.screens
 
             this.pnlActions = new System.Windows.Forms.Panel();
             this.btnReady = new mtc_app.shared.presentation.components.AppButton();
+            this.btnReject = new mtc_app.shared.presentation.components.AppButton();
             this.btnRefresh = new mtc_app.shared.presentation.components.AppButton();
             this.timerRefresh = new System.Windows.Forms.Timer(this.components);
             this.pnlHeader.SuspendLayout();
@@ -106,6 +108,7 @@ namespace mtc_app.features.stock.presentation.screens
             this.pnlFilters.Controls.Add(this.btnSortAsc);
             this.pnlFilters.Controls.Add(this.lblSortLabel);
             this.pnlFilters.Controls.Add(this.btnFilterAll);
+            this.pnlFilters.Controls.Add(this.btnFilterRejected);
             this.pnlFilters.Controls.Add(this.btnFilterReady);
             this.pnlFilters.Controls.Add(this.btnFilterPending);
             this.pnlFilters.Controls.Add(this.lblFilterLabel);
@@ -163,6 +166,18 @@ namespace mtc_app.features.stock.presentation.screens
             this.btnFilterAll.Text = "📋 Semua";
             this.btnFilterAll.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Secondary;
             this.btnFilterAll.Click += new System.EventHandler(this.btnFilterAll_Click);
+            
+            // 
+            // btnFilterRejected
+            // 
+            this.btnFilterRejected.Font = new System.Drawing.Font("Segoe UI", 11F);
+            this.btnFilterRejected.Location = new System.Drawing.Point(500, 15);
+            this.btnFilterRejected.Name = "btnFilterRejected";
+            this.btnFilterRejected.Size = new System.Drawing.Size(130, 50);
+            this.btnFilterRejected.TabIndex = 7;
+            this.btnFilterRejected.Text = "❌ Ditolak";
+            this.btnFilterRejected.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Secondary;
+            this.btnFilterRejected.Click += new System.EventHandler(this.btnFilterRejected_Click);
             
             // 
             // lblSortLabel
@@ -243,6 +258,7 @@ namespace mtc_app.features.stock.presentation.screens
             // pnlActions
             // 
             this.pnlActions.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(249)))), ((int)(((byte)(250)))));
+            this.pnlActions.Controls.Add(this.btnReject);
             this.pnlActions.Controls.Add(this.btnReady);
             this.pnlActions.Controls.Add(this.btnRefresh);
             this.pnlActions.Dock = System.Windows.Forms.DockStyle.Bottom;
@@ -276,6 +292,19 @@ namespace mtc_app.features.stock.presentation.screens
             this.btnReady.Text = "✓ TANDAI SIAP";
             this.btnReady.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Primary;
             this.btnReady.Click += new System.EventHandler(this.btnReady_Click);
+
+            // 
+            // btnReject
+            // 
+            this.btnReject.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnReject.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.btnReject.Location = new System.Drawing.Point(845, 20);
+            this.btnReject.Name = "btnReject";
+            this.btnReject.Size = new System.Drawing.Size(160, 50);
+            this.btnReject.TabIndex = 2;
+            this.btnReject.Text = "❌ TOLAK REQ";
+            this.btnReject.Type = mtc_app.shared.presentation.components.AppButton.ButtonType.Danger;
+            this.btnReject.Click += new System.EventHandler(this.btnReject_Click);
             
             // 
             // timerRefresh
@@ -323,6 +352,7 @@ namespace mtc_app.features.stock.presentation.screens
         private mtc_app.shared.presentation.components.AppButton btnFilterPending;
         private mtc_app.shared.presentation.components.AppButton btnFilterReady;
         private mtc_app.shared.presentation.components.AppButton btnFilterAll;
+        private mtc_app.shared.presentation.components.AppButton btnFilterRejected;
         private System.Windows.Forms.Label lblSortLabel;
         private mtc_app.shared.presentation.components.AppButton btnSortAsc;
         private mtc_app.shared.presentation.components.AppButton btnSortDesc;
@@ -331,6 +361,7 @@ namespace mtc_app.features.stock.presentation.screens
 
         private System.Windows.Forms.Panel pnlActions;
         private mtc_app.shared.presentation.components.AppButton btnReady;
+        private mtc_app.shared.presentation.components.AppButton btnReject;
         private mtc_app.shared.presentation.components.AppButton btnRefresh;
         private System.Windows.Forms.Timer timerRefresh;
     }

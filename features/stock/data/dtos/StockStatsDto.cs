@@ -5,5 +5,6 @@ namespace mtc_app.features.stock.data.dtos
         public int TotalRequests { get; set; }
         public int PendingCount { get; set; }
         public int ReadyCount { get; set; }
+        public int RejectedCount { get; set; }
     }
 }
