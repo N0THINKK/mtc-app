@@ -350,6 +350,7 @@ namespace mtc_app.features.technician.presentation.components
 
         private string FormatDuration(TimeSpan d)
         {
+            if (d.TotalMinutes < 0) return "0m";
             if (d.TotalHours >= 1) return $"{(int)d.TotalHours}h {d.Minutes}m";
             return $"{d.Minutes}m";
         }
