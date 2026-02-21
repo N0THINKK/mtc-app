@@ -131,7 +131,6 @@ namespace mtc_app.features.technician.presentation.components
                 Padding = new Padding(0)
             };
 
-
             // Stats Control (Shop-wide totals)
             statsControl = new TechnicianStatsControl
             {
@@ -220,7 +219,8 @@ namespace mtc_app.features.technician.presentation.components
             {
                 Dock = DockStyle.Fill,
                 BackColor = AppColors.CardBackground,
-                Padding = new Padding(AppDimens.MarginLarge)
+                Padding = new Padding(AppDimens.MarginLarge),
+                AutoScroll = true // MENCEGAH TEKS TABRAKAN SAAT RESIZE
             };
             chart.Paint += ChartPanel_Paint;
 
@@ -239,7 +239,7 @@ namespace mtc_app.features.technician.presentation.components
         }
 
         // ========================================================
-        // Chart Rendering (Logic Modified for Vertical Layout)
+        // Chart Rendering
         // ========================================================
         private void SortAndRenderChart()
         {
@@ -282,39 +282,39 @@ namespace mtc_app.features.technician.presentation.components
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.Clear(AppColors.CardBackground);
+            
+            // Translasi untuk AutoScroll
+            g.TranslateTransform(chartPanel.AutoScrollPosition.X, chartPanel.AutoScrollPosition.Y);
 
             // Layout Parameters for Vertical Chart
             int padding = 20;
             int bottomLabelHeight = 60; // Space for Rank and Name at bottom
-            int topValueHeight = 40;    // Space for Value label at top
+            int topValueHeight = 40;    // DIPERBESAR UNTUK FONT BESAR
             
-            int chartLeft = padding;
-            int chartRight = chartPanel.Width - padding;
-            int chartTop = padding + topValueHeight;
             int chartBottom = chartPanel.Height - padding - bottomLabelHeight;
-            
-            int chartWidth = chartRight - chartLeft;
-            int chartHeight = chartBottom - chartTop;
+            int chartHeight = chartBottom - (padding + topValueHeight);
 
-            if (chartWidth < 100 || chartHeight < 50) return;
+            if (chartHeight < 50) return;
 
             // Get max value for current metric
             double maxValue = GetMaxValue();
             if (maxValue == 0) maxValue = 1;
 
             int barCount = Math.Min(_leaderboardData.Count, 10); // Top 10
-            int gap = 20; // Gap between vertical bars
             
-            // Calculate bar width
-            int barWidth = (chartWidth - (gap * (barCount - 1))) / barCount;
+            // LEBAR DAN JARAK BAR DIBUAT TETAP
+            int gap = 45; 
+            int barWidth = 65;
+
+            int totalBarsWidth = (barWidth * barCount) + (gap * (barCount - 1));
+            chartPanel.AutoScrollMinSize = new Size(totalBarsWidth + (padding * 2), 0);
             
-            // Constrain bar width to look good
-            if (barWidth < 15) barWidth = 15; // Minimum width
-            if (barWidth > 80) barWidth = 80; // Maximum width cap
-            
-            // Re-calculate start X to center the chart group
-            int totalContentWidth = (barWidth * barCount) + (gap * (barCount - 1));
-            int startX = chartLeft + (chartWidth - totalContentWidth) / 2;
+            // Tengahkan posisi X jika ruang layar masih lebih lebar dari konten
+            int startX = padding;
+            if (chartPanel.ClientSize.Width > totalBarsWidth + (padding * 2))
+            {
+                startX = (chartPanel.ClientSize.Width - totalBarsWidth) / 2;
+            }
 
             // Draw bars
             for (int i = 0; i < barCount; i++)
@@ -346,12 +346,12 @@ namespace mtc_app.features.technician.presentation.components
                 {
                     float centerX = x + barWidth / 2f;
 
-                    // 2. Draw Value Label (Above Bar)
+                    // 2. Draw Value Label (Above Bar) - FONT DIPERBESAR (12F)
                     string valueText = GetFormattedValue(value);
                     using (var font = new Font("Segoe UI Semibold", 12F, FontStyle.Bold))
                     using (var brush = new SolidBrush(AppColors.TextPrimary))
                     {
-                        // Position slightly above the bar top
+                        // Posisi ditarik ke atas sedikit agar tidak nabrak (y - 25)
                         g.DrawString(valueText, font, brush, centerX, y - 25, centerFormat);
                     }
 
@@ -364,7 +364,6 @@ namespace mtc_app.features.technician.presentation.components
 
                     // 4. Draw Name (Below Rank)
                     string name = item.TechnicianName ?? "Unknown";
-                    // Simple truncate if name is too long for the bar width
                     int maxNameChars = Math.Max(5, barWidth / 7); // Approx char width
                     if (name.Length > maxNameChars) name = name.Substring(0, maxNameChars - 2) + "..";
                     
