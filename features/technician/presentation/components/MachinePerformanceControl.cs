@@ -296,14 +296,14 @@ namespace mtc_app.features.technician.presentation.components
 
             g.TranslateTransform(chartPanel.AutoScrollPosition.X, chartPanel.AutoScrollPosition.Y);
 
-            // --- Layout Parameters (BIGGER) ---
+            // --- Layout Parameters ---
             int padding = 20;
-            int bottomLabelHeight = 90; // Lebih tinggi sedikit untuk nama mesin panjang
-            int topValueHeight = 50;    // Lebih tinggi untuk font besar
+            int bottomLabelHeight = 90; 
+            int topValueHeight = 50;    // DIPERBESAR (sebelumnya 35)
             
-            // UKURAN BAR & GAP (Diperbesar)
-            int barWidth = 85;          // Naik dari 45
-            int gap = 35;               // Naik dari 20
+            // UKURAN BAR & GAP
+            int barWidth = 85;          
+            int gap = 55;               // DIPERBESAR agar teks tidak tabrakan (sebelumnya 35)
             
             int availableHeight = chartPanel.Height - padding - bottomLabelHeight - topValueHeight;
             if (availableHeight < 150) availableHeight = 150; // Min height area gambar
@@ -323,8 +323,7 @@ namespace mtc_app.features.technician.presentation.components
             // Helper function untuk gambar teks di dalam bar (FONT BESAR)
             void DrawSegmentLabel(double seconds, int x, int y, int h, bool isDarkBackground = true)
             {
-                // Jangan gambar teks jika tinggi bar terlalu pendek (kurang dari 14px)
-                // Biarkan warnanya saja yang terlihat agar rapi
+                // Jangan gambar teks jika tinggi bar terlalu pendek
                 if (h < 14) return; 
 
                 TimeSpan t = TimeSpan.FromSeconds(seconds);
@@ -335,7 +334,7 @@ namespace mtc_app.features.technician.presentation.components
 
                 Color textColor = isDarkBackground ? Color.White : Color.Black;
 
-                // FONT: 9pt Bold (Naik dari 6pt)
+                // FONT: 9pt Bold 
                 using (var font = new Font("Segoe UI", 9F, FontStyle.Bold)) 
                 using (var brush = new SolidBrush(textColor))
                 using (var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
@@ -397,23 +396,24 @@ namespace mtc_app.features.technician.presentation.components
                     DrawSegmentLabel(item.OperatorWaitDurationSeconds, currentX, currentY, hOp, true);
                 }
 
-                // 4. Draw Total Time Label (Top) - FONT 10pt Bold
+                // 4. Draw Total Time Label (Top) - FONT DIPERBESAR JADI 13pt
                 TimeSpan totalTime = TimeSpan.FromSeconds(item.TotalDowntimeSeconds);
                 string totalStr = totalTime.TotalHours >= 1 
                     ? $"{(int)totalTime.TotalHours}h" 
                     : $"{totalTime.Minutes}m";
 
-                using (var font = new Font("Segoe UI", 13F, FontStyle.Bold)) // Font Besar
+                using (var font = new Font("Segoe UI", 13F, FontStyle.Bold)) 
                 using (var brush = new SolidBrush(Color.Black))
                 using (var format = new StringFormat { Alignment = StringAlignment.Center })
                 {
+                    // Posisi ditarik sedikit lebih tinggi agar aman
                     g.DrawString(totalStr, font, brush, currentX + (barWidth / 2), currentY - 28, format);
                 }
 
-                // 5. Draw Machine Name (Bottom) - FONT 9pt
+                // 5. Draw Machine Name (Bottom)
                 string machineName = item.MachineName ?? "-";
                 RectangleF textRect = new RectangleF(currentX - 5, chartBottomY + 8, barWidth + 10, bottomLabelHeight);
-                using (var font = new Font("Segoe UI", 9F)) // Font Standar
+                using (var font = new Font("Segoe UI", 9F)) 
                 using (var brush = new SolidBrush(AppColors.TextSecondary))
                 using (var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Near })
                 {

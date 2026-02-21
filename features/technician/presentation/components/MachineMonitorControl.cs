@@ -327,7 +327,6 @@ namespace mtc_app.features.technician.presentation.components
                         machineList = machineList.OrderByDescending(x => x.TotalPieces).ToList();
                 }
 
-                // [UPDATE] HANYA kirimkan currentHourCount, jangan maxShiftHours agar grafiknya tidak kebablasan!
                 UpdateChart(machineList, selectedMetric, currentHourCount);
                 
                 string namaShift = (shiftStart.Hour == 7) ? "Shift Pagi" : "Shift Malam";
@@ -339,10 +338,24 @@ namespace mtc_app.features.technician.presentation.components
             }
         }
 
-        // Parameter ketiga sekarang adalah currentHourCount
         private void UpdateChart(List<MachineData> data, string mode, int currentHourCount)
         {
-            int requiredWidth = Math.Max(_pnlChartContainer.Width, data.Count * 120);
+            int requiredWidth = _pnlChartContainer.Width;
+
+            // KALKULASI RUANG YANG DIBUTUHKAN AGAR TIDAK TABRAKAN SAAT RESIZE LAYAR KECIL
+            if (mode.Contains("Output"))
+            {
+                // Beri ruang 50px untuk setiap 1 batang jam per mesin
+                int spaceNeeded = data.Count * currentHourCount * 50; 
+                requiredWidth = Math.Max(_pnlChartContainer.Width, spaceNeeded);
+            }
+            else
+            {
+                // Mode efisiensi (hanya 2 bar per mesin)
+                int spaceNeeded = data.Count * 160; 
+                requiredWidth = Math.Max(_pnlChartContainer.Width, spaceNeeded);
+            }
+
             _chart.Width = requiredWidth;
 
             _chart.Series.Clear();
@@ -367,7 +380,6 @@ namespace mtc_app.features.technician.presentation.components
                     Color.FromArgb(52, 73, 94),   Color.FromArgb(44, 62, 80)    // Jam 13-14
                 };
 
-                // [UPDATE] Looping hanya sebatas jam yang sedang berjalan
                 for (int i = 0; i < currentHourCount; i++)
                 {
                     var s = new Series($"Jam {i + 1}") 
@@ -386,14 +398,13 @@ namespace mtc_app.features.technician.presentation.components
                     MarkerStyle = MarkerStyle.None, 
                     Color = Color.Transparent,
                     IsValueShownAsLabel = true,
-                    Font = new Font("Segoe UI", 11F, FontStyle.Bold)
+                    Font = new Font("Segoe UI", 12F, FontStyle.Bold) // FONT DIPERBESAR
                 };
                 sAvg["LabelStyle"] = "Top";
                 _chart.Series.Add(sAvg);
 
                 foreach (var item in data)
                 {
-                    // [UPDATE] Mengisi data titik (points) HANYA sebatas jam yang berjalan
                     for (int i = 0; i < currentHourCount; i++)
                     {
                         int pIdx = _chart.Series[i].Points.AddXY(item.MachineName, item.HourlyPieces[i]);
@@ -426,7 +437,7 @@ namespace mtc_app.features.technician.presentation.components
                 
                 var sEffLabel = new Series("Eff %") { ChartType = SeriesChartType.Point, Color = Color.Transparent, IsValueShownAsLabel = true };
                 sEffLabel["LabelStyle"] = "Top"; 
-                sEffLabel.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
+                sEffLabel.Font = new Font("Segoe UI", 12F, FontStyle.Bold); // FONT DIPERBESAR
 
                 foreach (var item in data)
                 {
