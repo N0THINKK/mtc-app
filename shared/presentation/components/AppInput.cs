@@ -351,6 +351,12 @@ namespace mtc_app.shared.presentation.components
                 {
                     var filtered = _originalItems.Where(x => x.IndexOf(typedText, StringComparison.OrdinalIgnoreCase) >= 0).ToArray();
                     
+                    // FIXED: Modifying ComboBox items while DroppedDown can cause 
+                    // 'InvalidArgument=Value of '0' is not valid for 'index'' exception in WinForms.
+                    bool wasDroppedDown = comboInput.DroppedDown;
+                    if (wasDroppedDown)
+                        comboInput.DroppedDown = false;
+
                     comboInput.BeginUpdate();
                     comboInput.Items.Clear();
                     if (string.IsNullOrEmpty(typedText))
@@ -359,12 +365,13 @@ namespace mtc_app.shared.presentation.components
                         comboInput.Items.AddRange(filtered);
                     comboInput.EndUpdate();
 
-                    // Restore text and cursor
-                    comboInput.Text = typedText;
-                    comboInput.SelectionStart = typedText.Length;
-                    
                     if (comboInput.Items.Count > 0 && this.ContainsFocus && !string.IsNullOrEmpty(typedText))
                          comboInput.DroppedDown = true;
+
+                    // Restore text and cursor AFTER dropping down to prevent auto-selecting all text
+                    comboInput.Text = typedText;
+                    comboInput.SelectionStart = Math.Max(0, typedText.Length);
+                    comboInput.SelectionLength = 0;
                 }
             }
             catch { }
