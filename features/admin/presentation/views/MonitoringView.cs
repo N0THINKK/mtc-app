@@ -95,8 +95,8 @@ namespace mtc_app.features.admin.presentation.views
             // [FIX] Explicitly enable WrapMode for Problem Column
             var colMasalah = new DataGridViewTextBoxColumn 
             { 
-                Name = "Masalah", 
-                HeaderText = "Masalah", 
+                Name = "Problem", 
+                HeaderText = "Problem", 
                 DataPropertyName = "Detail Masalah", 
                 FillWeight = 200 
             };
@@ -193,7 +193,7 @@ namespace mtc_app.features.admin.presentation.views
                     $"No Tiket: {row.Cells["No Tiket"].Value}\n" +
                     $"Status: {row.Cells["Status"].Value}\n\n" +
                     $"Mesin: {row.Cells["Mesin"].Value}\n" +
-                    $"Masalah: {row.Cells["Masalah"].Value}\n" +
+                    $"Problem: {row.Cells["Problem"].Value}\n" +
                     $"Teknisi: {row.Cells["Teknisi"].Value}\n" +
                     $"Operator: {row.Cells["Operator"].Value}\n\n" +
                     $"Waktu Lapor: {row.Cells["Waktu Lapor"].Value}\n" +
@@ -290,7 +290,7 @@ namespace mtc_app.features.admin.presentation.views
             string colName = gridTickets.Columns[e.ColumnIndex].Name;
 
             // [FIX] Multiline Problem Display with Numbering
-            if (colName == "Masalah" && e.Value != null)
+            if (colName == "Problem" && e.Value != null)
             {
                 string raw = e.Value.ToString();
                 // Split by common separators

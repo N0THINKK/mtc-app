@@ -731,7 +731,7 @@ namespace mtc_app.features.admin.presentation.views
             this.subFailures.Controls.Add(gridFailures); this.subFailures.Controls.Add(pnlFail); gridFailures.Dock = DockStyle.Fill; gridFailures.BringToFront();
 
             // Sub-Tab 2: Causes
-            this.subCauses = new TabPage("Penyebab Masalah");
+            this.subCauses = new TabPage("Penyebab Problem");
             var pnlCause = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
             var flowCause = new FlowLayoutPanel { Dock = DockStyle.Fill };
             this.txtCauseName = new AppInput { LabelText = "Nama Penyebab", Width = 400 };
@@ -765,10 +765,10 @@ namespace mtc_app.features.admin.presentation.views
             this.subActions.Controls.Add(gridActions); this.subActions.Controls.Add(pnlAction); gridActions.Dock = DockStyle.Fill; gridActions.BringToFront();
 
             // Sub-Tab 4: Types
-            this.subTypes = new TabPage("Kategori Masalah");
+            this.subTypes = new TabPage("Kategori Problem");
             var pnlType = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
             var flowType = new FlowLayoutPanel { Dock = DockStyle.Fill };
-            this.txtTypeName = new AppInput { LabelText = "Kategori Masalah", Width = 400 };
+            this.txtTypeName = new AppInput { LabelText = "Kategori Problem", Width = 400 };
             this.btnAddType = new AppButton { Text = "Tambah", Width = 90, Margin = new Padding(5,35,5,5) };
             this.btnUpdateType = new AppButton { Text = "Update", Width = 90, Margin = new Padding(5,35,5,5), Enabled=false };
             this.btnDeleteType = new AppButton { Text = "Hapus", Width = 90, Margin = new Padding(5,35,5,5), Enabled=false, Type=AppButton.ButtonType.Danger };
@@ -777,7 +777,7 @@ namespace mtc_app.features.admin.presentation.views
             pnlType.Controls.Add(flowType);
             this.gridTypes = CreateGrid();
             this.gridTypes.Columns.Add(new DataGridViewTextBoxColumn { Name="type_id", DataPropertyName="type_id", Visible=false });
-            this.gridTypes.Columns.Add(new DataGridViewTextBoxColumn { Name="type_name", DataPropertyName="type_name", HeaderText="Kategori Masalah" });
+            this.gridTypes.Columns.Add(new DataGridViewTextBoxColumn { Name="type_name", DataPropertyName="type_name", HeaderText="Kategori Problem" });
             this.gridTypes.CellClick += GridTypes_CellClick;
             this.subTypes.Controls.Add(gridTypes); this.subTypes.Controls.Add(pnlType); gridTypes.Dock = DockStyle.Fill; gridTypes.BringToFront();
 

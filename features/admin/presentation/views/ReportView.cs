@@ -101,12 +101,12 @@ namespace mtc_app.features.admin.presentation.views
                 string colName = "Detail Masalah"; 
                 if (dataTable.Columns.Contains(colName))
                 {
-                    dataTable.Columns.Add("Jenis Masalah", typeof(string));
+                    dataTable.Columns.Add("Jenis Problem", typeof(string));
                     dataTable.Columns.Add("Deskripsi Detail", typeof(string));
                     dataTable.Columns.Add("Nomor Aplikator", typeof(string));
 
                     int colIndex = dataTable.Columns[colName].Ordinal;
-                    dataTable.Columns["Jenis Masalah"].SetOrdinal(colIndex);
+                    dataTable.Columns["Jenis Problem"].SetOrdinal(colIndex);
                     dataTable.Columns["Deskripsi Detail"].SetOrdinal(colIndex + 1);
                     dataTable.Columns["Nomor Aplikator"].SetOrdinal(colIndex + 2);
 
@@ -132,7 +132,7 @@ namespace mtc_app.features.admin.presentation.views
                             deskripsi = rawData.Trim(); 
                         }
 
-                        row["Jenis Masalah"] = jenis;
+                        row["Jenis Problem"] = jenis;
                         row["Deskripsi Detail"] = deskripsi;
                         row["Nomor Aplikator"] = aplikator;
                     }
@@ -162,7 +162,7 @@ namespace mtc_app.features.admin.presentation.views
                     SELECT 
                         DATE_FORMAT(t.created_at, '%M %Y') AS 'Bulan',
                         CONCAT(IFNULL(mt.type_name, ''), '-', IFNULL(ma.area_name, ''), '.', IFNULL(m.machine_number, '')) AS 'Nama Mesin',
-                        COUNT(t.ticket_id) AS 'Total Tiket Masalah',
+                        COUNT(t.ticket_id) AS 'Total Tiket Problem',
                         IFNULL(SUM(TIMESTAMPDIFF(MINUTE, t.created_at, IFNULL(t.production_resumed_at, t.technician_finished_at))), 0) AS 'Total Downtime (Menit)'
                     FROM tickets t
                     LEFT JOIN machines m ON t.machine_id = m.machine_id

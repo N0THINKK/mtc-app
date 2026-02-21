@@ -365,13 +365,29 @@ namespace mtc_app.shared.presentation.components
                         comboInput.Items.AddRange(filtered);
                     comboInput.EndUpdate();
 
-                    if (comboInput.Items.Count > 0 && this.ContainsFocus && !string.IsNullOrEmpty(typedText))
+                    bool willDropDown = comboInput.Items.Count > 0 && this.ContainsFocus && !string.IsNullOrEmpty(typedText);
+                    
+                    if (willDropDown)
                          comboInput.DroppedDown = true;
 
-                    // Restore text and cursor AFTER dropping down to prevent auto-selecting all text
+                    // Restore text synchronously while _isFiltering is true to prevent recursive loops
                     comboInput.Text = typedText;
-                    comboInput.SelectionStart = Math.Max(0, typedText.Length);
-                    comboInput.SelectionLength = 0;
+                    
+                    if (willDropDown)
+                    {
+                         // WinForms internally selects all text or resets cursor when DroppedDown becomes true.
+                         // Deferred invocation bypasses this quirk after the animation sequence.
+                         this.BeginInvoke(new Action(() =>
+                         {
+                             comboInput.SelectionStart = Math.Max(0, comboInput.Text.Length);
+                             comboInput.SelectionLength = 0;
+                         }));
+                    }
+                    else
+                    {
+                         comboInput.SelectionStart = Math.Max(0, typedText.Length);
+                         comboInput.SelectionLength = 0;
+                    }
                 }
             }
             catch { }

@@ -31,6 +31,7 @@ namespace mtc_app.features.technician.presentation.components
         private TicketDto _currentTicket;
         public event EventHandler<long> OnCardClick;
         private DateTime _lastClickTime = DateTime.MinValue;
+        private Color _baseBackColor = AppColors.CardBackground;
 
         public TechnicianTicketCardControl()
         {
@@ -205,7 +206,7 @@ namespace mtc_app.features.technician.presentation.components
                 if (!this.pnlMain.ClientRectangle.Contains(p))
                 {
                     this.Cursor = Cursors.Default;
-                    this.pnlMain.BackColor = AppColors.CardBackground;
+                    this.pnlMain.BackColor = _baseBackColor;
                 }
             };
             foreach (Control child in control.Controls) HookEvents(child);
@@ -263,19 +264,39 @@ namespace mtc_app.features.technician.presentation.components
             if (ticket.StatusId == 3) // Done
             {
                  if (ticket.FinishedAt.HasValue)
-                     this.lblTime.Text = FormatFinishedTime(ticket.FinishedAt.Value);
+                 {
+                     TimeSpan totalDowntime = ticket.FinishedAt.Value - ticket.CreatedAt;
+                     this.lblTime.Text = $"{FormatFinishedTime(ticket.FinishedAt.Value)} ({FormatDuration(totalDowntime)})";
+                 }
                  else
+                 {
                      this.lblTime.Text = FormatTime(ticket.CreatedAt);
+                 }
 
-                 // this.starRating.Visible = true; // Removed
-                 // this.starRating.Rating = ticket.GlRatingScore ?? 0;
+                 _baseBackColor = AppColors.CardBackground;
+                 this.pnlMain.BackColor = _baseBackColor;
             }
             else
             {
                  // Open/Repairing
-                 TimeSpan duration = DateTime.Now - (ticket.StartedAt ?? ticket.CreatedAt);
+                 TimeSpan duration = DateTime.Now - ticket.CreatedAt;
                  this.lblTime.Text = FormatDuration(duration);
-                 // this.starRating.Visible = false;
+                 
+                 if (duration.TotalHours >= 2)
+                 {
+                     _baseBackColor = Color.FromArgb(254, 226, 226); // Light Red
+                     this.pnlMain.BackColor = _baseBackColor;
+                 }
+                 else if (duration.TotalHours >= 1)
+                 {
+                     _baseBackColor = Color.FromArgb(254, 249, 195); // Light Yellow
+                     this.pnlMain.BackColor = _baseBackColor;
+                 }
+                 else
+                 {
+                     _baseBackColor = AppColors.CardBackground;
+                     this.pnlMain.BackColor = _baseBackColor;
+                 }
             }
             
             // Adjust visibility if problem text is empty to avoid gap?

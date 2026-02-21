@@ -19,6 +19,7 @@ namespace mtc_app.features.machine_history.presentation.screens
     {
         private readonly long _currentTicketId;
         private bool _isVerified = false;
+        private bool _allowClose = false; // [FIX] Task 10: Block user close
         
         // Ticket State (for resume workflow)
         private int _ticketStatus = 1;
@@ -74,6 +75,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             
             this.StartPosition = FormStartPosition.CenterScreen;
             this.WindowState = FormWindowState.Maximized;
+            this.ControlBox = false; // [FIX] Task 10: Hide title bar close button
         }
 
         protected override void OnLoad(EventArgs e)
@@ -495,7 +497,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Gagal memuat masalah: {ex.Message}", "Error");
+                MessageBox.Show($"Gagal memuat problem: {ex.Message}", "Error");
             }
         }
 
@@ -619,7 +621,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             // === Add Problem Button (Accessible by All) ===
             btnAddProblem = new Button
             {
-                Text = "+ Tambah Masalah Lain",
+                Text = "+ Tambah Problem Lain",
                 Size = new Size(200, 35),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.WhiteSmoke,
@@ -1286,6 +1288,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                             if (runForm.ShowDialog() == DialogResult.OK)
                             {
                                 this.DialogResult = DialogResult.OK;
+                                _allowClose = true; // [FIX] Allow programmatic close
                                 this.Close();
                             }
                             else
@@ -1316,6 +1319,12 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            if (!_allowClose && e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                return;
+            }
+
             _timer?.Stop();
             SaveTimerToDatabase(); // Persist timer on close
             SaveSession(); // Save session elapsed time
