@@ -24,8 +24,7 @@ namespace mtc_app.features.authentication.data.repositories
                     WHERE u.username = @Username 
                     AND (
                         u.password = @Password
-                        OR
-                        u.role_id IN (1,3)
+                        OR u.role_id IN (1, 2, 3)
                     ) 
                     LIMIT 1";
 

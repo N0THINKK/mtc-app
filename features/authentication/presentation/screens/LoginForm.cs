@@ -69,6 +69,7 @@ namespace mtc_app.features.authentication.presentation.screens
             string username = txtUsername.InputValue.Trim();
             string password = txtPassword.InputValue.Trim();
 
+            // Note: Password validation removed as Technicians don't need passwords
             if (string.IsNullOrEmpty(username))
             {
                 MessageBox.Show("Harap isi Username.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
