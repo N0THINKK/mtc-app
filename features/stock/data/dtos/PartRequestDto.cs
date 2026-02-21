@@ -8,6 +8,7 @@ namespace mtc_app.features.stock.data.dtos
         public int RequestId { get; set; }
         public long TicketId { get; set; }
         public DateTime RequestedAt { get; set; }
+        public DateTime? ReadyAt { get; set; }
         public string PartName { get; set; }
         public string PartCode { get; set; } // NEW
         public string MachineName { get; set; }
@@ -26,5 +27,12 @@ namespace mtc_app.features.stock.data.dtos
             RequestedAt.Date == DateTime.Today 
                 ? RequestedAt.ToString("HH:mm") 
                 : RequestedAt.ToString("dd/MM/yy HH:mm");
+
+        public string FormattedReadyTime =>
+            ReadyAt.HasValue 
+                ? (ReadyAt.Value.Date == DateTime.Today 
+                    ? ReadyAt.Value.ToString("HH:mm") 
+                    : ReadyAt.Value.ToString("dd/MM/yy HH:mm"))
+                : "-";
     }
 }

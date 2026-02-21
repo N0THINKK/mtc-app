@@ -73,12 +73,32 @@ namespace mtc_app.features.stock.data.decorators
                 defaultValue: true // Optimistic: assume success when queued
             );
         }
+        public async Task<bool> RejectRequestAsync(int requestId)
+        {
+            var payload = new RejectRequestPayload { RequestId = requestId };
+
+            return await ExecuteWithOfflineFallbackAsync(
+                () => _innerRepository.RejectRequestAsync(requestId),
+                "UPDATE",
+                "part_requests",
+                payload,
+                defaultValue: true // Optimistic: assume success when queued
+            );
+        }
     }
 
     /// <summary>
     /// Payload for mark as ready sync.
     /// </summary>
     public class MarkAsReadyPayload
+    {
+        public int RequestId { get; set; }
+    }
+
+    /// <summary>
+    /// Payload for reject request sync.
+    /// </summary>
+    public class RejectRequestPayload
     {
         public int RequestId { get; set; }
     }

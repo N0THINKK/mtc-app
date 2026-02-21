@@ -789,24 +789,42 @@ namespace mtc_app.features.machine_history.presentation.screens
                                 
                                 int statusId = (int)request.status_id;
                                 
-                                if (_lastPartStatusId != -1 && _lastPartStatusId != statusId && statusId == 2)
+                                if (_lastPartStatusId != -1 && _lastPartStatusId != statusId)
                                 {
-                                    _lastPartStatusId = statusId; // Save state first to prevent multiple popups!
-                                    
-                                    // Status changed to Ready
-                                    _timerNotifSound.Start();
-                                    
-                                    using (var notifForm = new mtc_app.features.machine_history.presentation.components.SparepartReadyNotificationForm())
+                                    if (statusId == 2)
                                     {
-                                        notifForm.ShowDialog();
+                                        _lastPartStatusId = statusId; // Save state first to prevent multiple popups!
+                                        
+                                        // Status changed to Ready
+                                        _timerNotifSound.Start();
+                                        
+                                        using (var notifForm = new mtc_app.features.machine_history.presentation.components.SparepartReadyNotificationForm())
+                                        {
+                                            notifForm.ShowDialog();
+                                        }
+                                        
+                                        _timerNotifSound.Stop();
                                     }
-                                    
-                                    _timerNotifSound.Stop();
+                                    else if (statusId == 4)
+                                    {
+                                        _lastPartStatusId = statusId; 
+                                        
+                                        // Status changed to Rejected
+                                        _timerNotifSound.Start();
+                                        
+                                        using (var notifForm = new mtc_app.features.machine_history.presentation.components.SparepartRejectedNotificationForm())
+                                        {
+                                            notifForm.ShowDialog();
+                                        }
+                                        
+                                        _timerNotifSound.Stop();
+                                    }
                                 }
                                 _lastPartStatusId = statusId;
                                 
                                 if (statusId == 1) { buttonRequestSparepart.Text = "PERMINTAAN DIPROSES"; buttonRequestSparepart.BackColor = Color.Gray; }
                                 else if (statusId == 2) { buttonRequestSparepart.Text = "BARANG SIAP DI GUDANG"; buttonRequestSparepart.BackColor = AppColors.Success; }
+                                else if (statusId == 4) { buttonRequestSparepart.Text = "REQUEST DITOLAK"; buttonRequestSparepart.BackColor = AppColors.Danger; }
                                 else { buttonRequestSparepart.Text = "REQUEST DITUTUP"; buttonRequestSparepart.BackColor = Color.DarkGray; }
                             }
                             else
