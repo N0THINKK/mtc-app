@@ -23,11 +23,13 @@ namespace mtc_app.features.machine_history.presentation.screens
         // Ticket State (for resume workflow)
         private int _ticketStatus = 1;
         private int _isMachineRunning = 0;
+        private int _lastPartStatusId = -1; // Track previous sparepart status
         
         // Accumulated Timer (DB-persisted, counts only while form is open)
         private int _arrivalSeconds = 0;  // Loaded from DB, incremented while form open
         private int _repairSeconds = 0;   // Loaded from DB, incremented while form open
         private Timer _timer;
+        private Timer _timerNotifSound;
         
         // Session Tracking (for multi-technician support)
         // private long _currentSessionId = 0; // REPLACED
@@ -195,6 +197,9 @@ namespace mtc_app.features.machine_history.presentation.screens
             _timer.Tick += Timer_Tick;
             _timer.Start();
             
+            _timerNotifSound = new Timer { Interval = 1500 }; // 1.5 second loop
+            _timerNotifSound.Tick += (s, e) => System.Media.SystemSounds.Asterisk.Play();
+
             // Initial display
             UpdateTimerDisplay();
         }
@@ -783,6 +788,23 @@ namespace mtc_app.features.machine_history.presentation.screens
                                 buttonRequestSparepart.Enabled = false;
                                 
                                 int statusId = (int)request.status_id;
+                                
+                                if (_lastPartStatusId != -1 && _lastPartStatusId != statusId && statusId == 2)
+                                {
+                                    _lastPartStatusId = statusId; // Save state first to prevent multiple popups!
+                                    
+                                    // Status changed to Ready
+                                    _timerNotifSound.Start();
+                                    
+                                    using (var notifForm = new mtc_app.features.machine_history.presentation.components.SparepartReadyNotificationForm())
+                                    {
+                                        notifForm.ShowDialog();
+                                    }
+                                    
+                                    _timerNotifSound.Stop();
+                                }
+                                _lastPartStatusId = statusId;
+                                
                                 if (statusId == 1) { buttonRequestSparepart.Text = "PERMINTAAN DIPROSES"; buttonRequestSparepart.BackColor = Color.Gray; }
                                 else if (statusId == 2) { buttonRequestSparepart.Text = "BARANG SIAP DI GUDANG"; buttonRequestSparepart.BackColor = AppColors.Success; }
                                 else { buttonRequestSparepart.Text = "REQUEST DITUTUP"; buttonRequestSparepart.BackColor = Color.DarkGray; }
