@@ -18,6 +18,7 @@ namespace mtc_app.features.technician.presentation.components
         private List<MachinePerformanceDto> _data = new List<MachinePerformanceDto>();
         private DateTime _lastStart = DateTime.Now.AddDays(-7);
         private DateTime _lastEnd = DateTime.Now;
+        private bool _sortAscending = false;
         
         // Layout
         private TableLayoutPanel mainLayout;
@@ -26,6 +27,7 @@ namespace mtc_app.features.technician.presentation.components
         private Label lblTitle;
         private Label lblNoData;
         private ComboBox cmbArea;
+        private ComboBox cmbSort;
 
         public MachinePerformanceControl(ITechnicianRepository repository)
         {
@@ -67,7 +69,7 @@ namespace mtc_app.features.technician.presentation.components
                 var result = await _repository.GetMachinePerformanceAsync(start, end, area);
                 _data = result?.ToList() ?? new List<MachinePerformanceDto>();
                 
-                chartPanel.Invalidate();
+                SortData(); // Applies sort and invalidates chart
             }
             catch (Exception ex)
             {
@@ -121,7 +123,8 @@ namespace mtc_app.features.technician.presentation.components
             var header = new Panel
             {
                 Dock = DockStyle.Fill,
-                Height = AppDimens.HeaderHeight,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 BackColor = AppColors.CardBackground,
                 Padding = new Padding(AppDimens.MarginLarge)
             };
@@ -165,6 +168,31 @@ namespace mtc_app.features.technician.presentation.components
             };
             cmbArea.SelectedIndexChanged += async (s, e) => await LoadDataAsync(_lastStart, _lastEnd);
             flowTitleRow.Controls.Add(cmbArea);
+
+            var lblSort = new Label 
+            { 
+                Text = "Urutkan:", 
+                Font = AppFonts.BodySmall, 
+                AutoSize = true,
+                Margin = new Padding(AppDimens.MarginLarge, 7, AppDimens.MarginSmall, 0)
+            };
+            flowTitleRow.Controls.Add(lblSort);
+
+            cmbSort = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = AppFonts.BodySmall, 
+                Width = 110,
+                Margin = new Padding(0, 3, 0, 0)
+            };
+            cmbSort.Items.AddRange(new object[] { "↓ Tertinggi", "↑ Terendah" });
+            cmbSort.SelectedIndex = 0;
+            cmbSort.SelectedIndexChanged += (s, e) =>
+            {
+                _sortAscending = cmbSort.SelectedIndex == 1;
+                SortData();
+            };
+            flowTitleRow.Controls.Add(cmbSort);
 
             flowVertical.Controls.Add(flowTitleRow);
 
@@ -242,6 +270,18 @@ namespace mtc_app.features.technician.presentation.components
         // ========================================================
         // Chart Rendering (BIG SIZE VERSION)
         // ========================================================
+        private void SortData()
+        {
+            if (_data == null || _data.Count == 0) return;
+
+            if (_sortAscending)
+                _data = _data.OrderBy(x => x.TotalDowntimeSeconds).ToList();
+            else
+                _data = _data.OrderByDescending(x => x.TotalDowntimeSeconds).ToList();
+
+            chartPanel.Invalidate();
+        }
+
         private void ChartPanel_Paint(object sender, PaintEventArgs e)
         {
             if (_data.Count == 0)

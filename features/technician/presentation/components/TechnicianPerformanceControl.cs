@@ -25,7 +25,7 @@ namespace mtc_app.features.technician.presentation.components
         private Panel headerPanel;
         private TechnicianStatsControl statsControl;
         private ComboBox cmbMetric;
-        private Button btnSort;
+        private ComboBox cmbSort;
         private Label lblTitle;
 
         // Chart Area
@@ -182,24 +182,30 @@ namespace mtc_app.features.technician.presentation.components
             };
             flowFilterRow.Controls.Add(cmbMetric);
 
-            btnSort = new Button
+            var lblSort = new Label
             {
-                Text = "↓ Tertinggi",
-                Font = AppFonts.Body,
-                Size = new Size(120, 32),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(248, 250, 252),
-                ForeColor = AppColors.TextPrimary,
-                Margin = new Padding(0, 2, 0, 0)
+                Text = "Urutkan:",
+                Font = AppFonts.Title,
+                AutoSize = true,
+                Margin = new Padding(AppDimens.MarginLarge, 7, AppDimens.MarginSmall, 0)
             };
-            btnSort.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
-            btnSort.Click += (s, e) =>
+            flowFilterRow.Controls.Add(lblSort);
+
+            cmbSort = new ComboBox
             {
-                _sortAscending = !_sortAscending;
-                btnSort.Text = _sortAscending ? "↑ Terendah" : "↓ Tertinggi";
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = AppFonts.Title,
+                Size = new Size(130, 28),
+                Margin = new Padding(0, 3, 0, 0)
+            };
+            cmbSort.Items.AddRange(new object[] { "↓ Tertinggi", "↑ Terendah" });
+            cmbSort.SelectedIndex = 0;
+            cmbSort.SelectedIndexChanged += (s, e) =>
+            {
+                _sortAscending = cmbSort.SelectedIndex == 1;
                 SortAndRenderChart();
             };
-            flowFilterRow.Controls.Add(btnSort);
+            flowFilterRow.Controls.Add(cmbSort);
 
             flowVertical.Controls.Add(flowFilterRow);
 
