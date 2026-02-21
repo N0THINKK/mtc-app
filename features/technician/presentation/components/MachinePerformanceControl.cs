@@ -299,7 +299,7 @@ namespace mtc_app.features.technician.presentation.components
             // --- Layout Parameters (BIGGER) ---
             int padding = 20;
             int bottomLabelHeight = 90; // Lebih tinggi sedikit untuk nama mesin panjang
-            int topValueHeight = 35;    // Lebih tinggi untuk font besar
+            int topValueHeight = 50;    // Lebih tinggi untuk font besar
             
             // UKURAN BAR & GAP (Diperbesar)
             int barWidth = 85;          // Naik dari 45
@@ -403,11 +403,11 @@ namespace mtc_app.features.technician.presentation.components
                     ? $"{(int)totalTime.TotalHours}h" 
                     : $"{totalTime.Minutes}m";
 
-                using (var font = new Font("Segoe UI", 10F, FontStyle.Bold)) // Font Besar
+                using (var font = new Font("Segoe UI", 13F, FontStyle.Bold)) // Font Besar
                 using (var brush = new SolidBrush(Color.Black))
                 using (var format = new StringFormat { Alignment = StringAlignment.Center })
                 {
-                    g.DrawString(totalStr, font, brush, currentX + (barWidth / 2), currentY - 20, format);
+                    g.DrawString(totalStr, font, brush, currentX + (barWidth / 2), currentY - 28, format);
                 }
 
                 // 5. Draw Machine Name (Bottom) - FONT 9pt
