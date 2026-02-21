@@ -21,6 +21,8 @@ namespace mtc_app.features.technician.presentation.components
         private ComboBox _comboMetric;
         private ComboBox _comboArea;
         private Label _lblStatus;
+        private ComboBox _comboSort;
+        private bool _sortAscending = false;
         
         private System.ComponentModel.IContainer components = null;
 
@@ -96,7 +98,7 @@ namespace mtc_app.features.technician.presentation.components
 
         private Panel BuildHeaderPanel()
         {
-            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = AppDimens.RowHeight + 10 };
+            var pnlHeader = new Panel { Dock = DockStyle.Top, AutoSize = true, MinimumSize = new Size(0, AppDimens.RowHeight + 15) };
             var headerLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, BackColor = Color.Transparent };
             headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
             headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
@@ -118,6 +120,24 @@ namespace mtc_app.features.technician.presentation.components
             _comboArea.SelectedIndexChanged += async (s, e) => await LoadData();
             var lblArea = new Label { Text = "Area:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
 
+            _comboSort = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = AppFonts.BodySmall,
+                Width = 110,
+                Margin = new Padding(0, 10, 20, 0)
+            };
+            _comboSort.Items.AddRange(new object[] { "↓ Tertinggi", "↑ Terendah" });
+            _comboSort.SelectedIndex = 0;
+            _comboSort.SelectedIndexChanged += async (s, e) =>
+            {
+                _sortAscending = _comboSort.SelectedIndex == 1;
+                await LoadData();
+            };
+            var lblSort = new Label { Text = "Urutkan:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
+
+            flowRight.Controls.Add(_comboSort);
+            flowRight.Controls.Add(lblSort);
             flowRight.Controls.Add(_comboMetric);
             flowRight.Controls.Add(lblMetric);
             flowRight.Controls.Add(_comboArea);
@@ -293,9 +313,19 @@ namespace mtc_app.features.technician.presentation.components
                 var machineList = machines.Values.ToList();
 
                 if (selectedMetric.Contains("Efisiensi"))
-                    machineList = machineList.OrderByDescending(x => x.Efficiency).ToList();
+                {
+                    if (_sortAscending)
+                        machineList = machineList.OrderBy(x => x.Efficiency).ToList();
+                    else
+                        machineList = machineList.OrderByDescending(x => x.Efficiency).ToList();
+                }
                 else
-                    machineList = machineList.OrderByDescending(x => x.TotalPieces).ToList();
+                {
+                    if (_sortAscending)
+                        machineList = machineList.OrderBy(x => x.TotalPieces).ToList();
+                    else
+                        machineList = machineList.OrderByDescending(x => x.TotalPieces).ToList();
+                }
 
                 // [UPDATE] HANYA kirimkan currentHourCount, jangan maxShiftHours agar grafiknya tidak kebablasan!
                 UpdateChart(machineList, selectedMetric, currentHourCount);
