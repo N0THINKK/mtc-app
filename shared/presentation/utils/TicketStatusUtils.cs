@@ -12,6 +12,8 @@ namespace mtc_app.shared.presentation.utils
                     return (Color.FromArgb(254, 242, 242), Color.FromArgb(185, 28, 28));
                 case 2: // Sedang Diperbaiki (Repairing) - Orange
                     return (Color.FromArgb(255, 247, 237), Color.FromArgb(194, 65, 12));
+                case 4: // Menunggu Inspeksi (Waiting Inspection) - Purple
+                    return (Color.FromArgb(243, 232, 255), Color.FromArgb(126, 34, 206)); 
                 case 3: // Selesai (Done) - Green
                     return (Color.FromArgb(240, 253, 244), Color.FromArgb(21, 128, 61));
                 default: // Unknown - Gray
@@ -25,6 +27,7 @@ namespace mtc_app.shared.presentation.utils
             {
                 case 1: return Color.FromArgb(239, 68, 68); // Red
                 case 2: return Color.FromArgb(249, 115, 22); // Orange
+                case 4: return Color.FromArgb(168, 85, 247); // Purple
                 case 3: return Color.FromArgb(34, 197, 94);  // Green
                 default: return Color.Gray;
             }
@@ -36,6 +39,7 @@ namespace mtc_app.shared.presentation.utils
             {
                 case 1: return "Belum Ditangani";
                 case 2: return "Sedang Diperbaiki";
+                case 4: return "Menunggu Inspeksi";
                 case 3: return "Selesai";
                 default: return "Unknown";
             }
