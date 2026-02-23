@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
-using System.Threading.Tasks; // [FIX] Added for Task.Rundows.Forms;
+using System.Threading.Tasks; 
 using System.Windows.Forms;
 using System.Data;
 using Dapper;
@@ -19,7 +19,7 @@ namespace mtc_app.features.machine_history.presentation.screens
     {
         private readonly long _currentTicketId;
         private bool _isVerified = false;
-        private bool _allowClose = false; // [FIX] Task 10: Block user close
+        private bool _allowClose = false; 
         
         // Ticket State (for resume workflow)
         private int _ticketStatus = 1;
@@ -27,26 +27,23 @@ namespace mtc_app.features.machine_history.presentation.screens
         private int _lastPartStatusId = -1; // Track previous sparepart status
         
         // Accumulated Timer (DB-persisted, counts only while form is open)
-        private int _arrivalSeconds = 0;  // Loaded from DB, incremented while form open
-        private int _repairSeconds = 0;   // Loaded from DB, incremented while form open
+        private int _arrivalSeconds = 0;  
+        private int _repairSeconds = 0;   
+        private int _inspectionSeconds = 0; // Waktu inspeksi
         private Timer _timer;
         private Timer _timerNotifSound;
         
-        // Session Tracking (for multi-technician support)
-        // private long _currentSessionId = 0; // REPLACED
-        // private int _currentTechnicianId = 0; // REPLACED
-        // private int _sessionElapsedSeconds = 0; // REPLACED
-        
+        // Session Tracking
         private List<long> _activeSessionIds = new List<long>();
         private List<int> _activeTechnicianIds = new List<int>();
         private Dictionary<long, int> _sessionElapsedMap = new Dictionary<long, int>();
 
         // UI Controls
-        private Label _lblPreviousTechnicians; // Shows previous technician sessions
+        private Label _lblPreviousTechnicians; 
         private AppInput inputNIK;
-        private FlowLayoutPanel pnlActiveTechs; // List of active technician chips
+        private FlowLayoutPanel pnlActiveTechs; 
         private AppButton btnVerify;
-        private AppButton btnAddTechnician; // New button for concurrent sessions
+        private AppButton btnAddTechnician; 
         
         // Multi-Problem List
         private FlowLayoutPanel pnlProblems;
@@ -65,12 +62,12 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             _currentTicketId = ticketId;
             InitializeComponent();
-            LoadTicketStatus(); // MUST be first to get status/timestamps
+            LoadTicketStatus(); 
             SetupTimer();
             SetupInputs();
             LoadTicketProblems();
             LoadOfflineTicketState();
-            LoadActiveSessions(); // [FIX] Rehydrate active sessions for online tickets
+            LoadActiveSessions(); 
             UpdateUIState();
             
             this.StartPosition = FormStartPosition.CenterScreen;
@@ -88,6 +85,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 myCp.ClassStyle = myCp.ClassStyle | CP_NOCLOSE_BUTTON;
                 return myCp;
             }
+            this.ControlBox = false; 
         }
 
         protected override void OnLoad(EventArgs e)
@@ -96,12 +94,9 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.OnResize(EventArgs.Empty);
         }
 
-        /// <summary>
-        /// Load ticket status and accumulated timer values from database.
-        /// </summary>
         private void LoadTicketStatus()
         {
-            if (_currentTicketId <= 0) return; // Skip for offline tickets
+            if (_currentTicketId <= 0) return; 
             
             try
             {
@@ -112,6 +107,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                         SELECT status_id AS StatusId, 
                                IFNULL(arrival_elapsed_seconds, 0) AS ArrivalSeconds,
                                IFNULL(repair_elapsed_seconds, 0) AS RepairSeconds,
+                               IFNULL(inspection_elapsed_seconds, 0) AS InspectionSeconds,
                                IFNULL(is_machine_running, 0) AS IsMachineRunning
                         FROM tickets WHERE ticket_id = @Id",
                         new { Id = _currentTicketId });
@@ -121,13 +117,10 @@ namespace mtc_app.features.machine_history.presentation.screens
                         _ticketStatus = (int)ticket.StatusId;
                         _arrivalSeconds = (int)ticket.ArrivalSeconds;
                         _repairSeconds = (int)ticket.RepairSeconds;
+                        _inspectionSeconds = (int)ticket.InspectionSeconds;
                         _isMachineRunning = (int)ticket.IsMachineRunning;
                         
-                        // Update the Run/Stop indicator in the header
                         UpdateMachineStateIndicator();
-                        
-                        // NOTE: Do NOT auto-set _isVerified for Status 2
-                        // The new technician must verify themselves to create a session
                     }
                 }
             }
@@ -137,99 +130,79 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-    /// <summary>
-    /// Update the Run/Stop indicator in the header based on _isMachineRunning.
-    /// </summary>
-    private void UpdateMachineStateIndicator()
-    {
-        if (_isMachineRunning == 1)
+        private void UpdateMachineStateIndicator()
         {
-            lblMachineState.Text = "\u25b6 RUN";
-            lblMachineState.ForeColor = System.Drawing.Color.FromArgb(34, 197, 94); // Green
-        }
-        else
-        {
-            lblMachineState.Text = "\u25a0 STOP";
-            lblMachineState.ForeColor = System.Drawing.Color.FromArgb(239, 68, 68); // Red
-        }
-    }
-
-    /// <summary>
-    /// Toggle machine state between Run and Stop.
-    /// Persists to database immediately (online) or to pending ticket (offline).
-    /// </summary>
-    private async void LblMachineState_Click(object sender, EventArgs e)
-    {
-        int newState = (_isMachineRunning == 1) ? 0 : 1;
-        string stateText = newState == 1 ? "RUN" : "STOP";
-
-        var confirm = MessageBox.Show(
-            $"Ubah status mesin menjadi {stateText}?",
-            "Konfirmasi",
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Question);
-
-        if (confirm != DialogResult.Yes) return;
-
-        try
-        {
-            if (_currentTicketId > 0)
+            if (_isMachineRunning == 1)
             {
-                // Online mode: update database
-                await Task.Run(() =>
-                {
-                    using (var conn = DatabaseHelper.GetConnection())
-                    {
-                        conn.Open();
-                        conn.Execute(
-                            "UPDATE tickets SET is_machine_running = @State WHERE ticket_id = @Id",
-                            new { State = newState, Id = _currentTicketId });
-                    }
-                });
+                lblMachineState.Text = "\u25b6 RUN";
+                lblMachineState.ForeColor = System.Drawing.Color.FromArgb(34, 197, 94); // Green
             }
             else
             {
-                // Offline mode: state updated in-memory, will be persisted on sync
+                lblMachineState.Text = "\u25a0 STOP";
+                lblMachineState.ForeColor = System.Drawing.Color.FromArgb(239, 68, 68); // Red
             }
-
-            _isMachineRunning = newState;
-            UpdateMachineStateIndicator();
         }
-        catch (Exception ex)
-        {
-            MessageBox.Show(
-                $"Gagal mengubah status mesin: {ex.Message}",
-                "Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
-        }
-    }
 
-    private void SetupTimer()
+        private async void LblMachineState_Click(object sender, EventArgs e)
         {
-            _timer = new Timer { Interval = 1000 }; // 1 second interval
+            int newState = (_isMachineRunning == 1) ? 0 : 1;
+            string stateText = newState == 1 ? "RUN" : "STOP";
+
+            var confirm = MessageBox.Show(
+                $"Ubah status mesin menjadi {stateText}?",
+                "Konfirmasi",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (confirm != DialogResult.Yes) return;
+
+            try
+            {
+                if (_currentTicketId > 0)
+                {
+                    await Task.Run(() =>
+                    {
+                        using (var conn = DatabaseHelper.GetConnection())
+                        {
+                            conn.Open();
+                            conn.Execute(
+                                "UPDATE tickets SET is_machine_running = @State WHERE ticket_id = @Id",
+                                new { State = newState, Id = _currentTicketId });
+                        }
+                    });
+                }
+                _isMachineRunning = newState;
+                UpdateMachineStateIndicator();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Gagal mengubah status mesin: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void SetupTimer()
+        {
+            _timer = new Timer { Interval = 1000 }; 
             _timer.Tick += Timer_Tick;
             _timer.Start();
             
-            _timerNotifSound = new Timer { Interval = 1500 }; // 1.5 second loop
+            _timerNotifSound = new Timer { Interval = 1500 }; 
             _timerNotifSound.Tick += (s, e) => System.Media.SystemSounds.Asterisk.Play();
 
-            // Initial display
             UpdateTimerDisplay();
         }
 
         private int _tickCounter = 0;
         private void Timer_Tick(object sender, EventArgs e)
         {
-            // INCREMENT accumulated timer (counts only while form is open)
             if (!_isVerified)
             {
                 _arrivalSeconds++;
             }
-            else
+            else if (_ticketStatus == 2)
             {
                 _repairSeconds++;
-                // Update all active sessions
                 foreach (var sessionId in _activeSessionIds)
                 {
                     if (_sessionElapsedMap.ContainsKey(sessionId))
@@ -238,10 +211,13 @@ namespace mtc_app.features.machine_history.presentation.screens
                     }
                 }
             }
+            else if (_ticketStatus == 4)
+            {
+                _inspectionSeconds++;
+            }
 
             UpdateTimerDisplay();
 
-            // Poll for part status every 3 seconds
             _tickCounter++;
             if (_isVerified && _tickCounter % 3 == 0 && _currentTicketId > 0)
             {
@@ -255,13 +231,9 @@ namespace mtc_app.features.machine_history.presentation.screens
             labelFinished.Text = TimeSpan.FromSeconds(_repairSeconds).ToString(@"hh\:mm\:ss");
         }
 
-        /// <summary>
-        /// Save accumulated timer values to database.
-        /// Called on form close and on verify/complete.
-        /// </summary>
         private void SaveTimerToDatabase()
         {
-            if (_currentTicketId <= 0) return; // Skip for offline tickets
+            if (_currentTicketId <= 0) return; 
             
             try
             {
@@ -270,9 +242,11 @@ namespace mtc_app.features.machine_history.presentation.screens
                     conn.Open();
                     conn.Execute(@"
                         UPDATE tickets 
-                        SET arrival_elapsed_seconds = @Arrival, repair_elapsed_seconds = @Repair 
+                        SET arrival_elapsed_seconds = @Arrival, 
+                            repair_elapsed_seconds = @Repair,
+                            inspection_elapsed_seconds = @Inspect
                         WHERE ticket_id = @Id",
-                        new { Arrival = _arrivalSeconds, Repair = _repairSeconds, Id = _currentTicketId });
+                        new { Arrival = _arrivalSeconds, Repair = _repairSeconds, Inspect = _inspectionSeconds, Id = _currentTicketId });
                 }
             }
             catch (Exception ex)
@@ -281,14 +255,10 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        /// <summary>
-        /// Create a new technician session when technician verifies.
-        /// </summary>
         private void CreateSession(int technicianId)
         {
-            if (_currentTicketId <= 0) return; // Skip for offline tickets
+            if (_currentTicketId <= 0) return; 
             
-            // Prevent duplicate active session for same technician
             if (_activeTechnicianIds.Contains(technicianId))
             {
                 MessageBox.Show("Teknisi ini sudah aktif dalam sesi ini.", "Info");
@@ -300,36 +270,25 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
-                    
-                    // Insert new session (shift_id set to NULL for now)
                     conn.Execute(@"
                         INSERT INTO ticket_technician_sessions 
                         (ticket_id, technician_id, shift_id, started_at, elapsed_seconds, is_completing_session)
                         VALUES (@TicketId, @TechId, NULL, NOW(), 0, 0)",
                         new { TicketId = _currentTicketId, TechId = technicianId });
                     
-                    // Get inserted session ID
                     long newSessionId = conn.QueryFirstOrDefault<long>("SELECT LAST_INSERT_ID()");
                     
-                    // Add to active lists
                     _activeSessionIds.Add(newSessionId);
                     _activeTechnicianIds.Add(technicianId);
                     _sessionElapsedMap[newSessionId] = 0;
-                    
-                    System.Diagnostics.Debug.WriteLine($"[FormTechnician] Created session {newSessionId} for technician {technicianId}");
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error creating session: {ex.Message}");
-                MessageBox.Show($"Error creating session: {ex.Message}", "Debug");
             }
         }
 
-        /// <summary>
-        /// Save current session elapsed time to database.
-        /// Called on form close.
-        /// </summary>
         private void SaveSession()
         {
             if (_activeSessionIds.Count == 0) return;
@@ -339,7 +298,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
-                    
                     foreach (var sessionId in _activeSessionIds)
                     {
                         if (_sessionElapsedMap.ContainsKey(sessionId))
@@ -352,8 +310,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                                 new { Elapsed = elapsed, Id = sessionId });
                         }
                     }
-                    
-                    System.Diagnostics.Debug.WriteLine($"[FormTechnician] Saved {_activeSessionIds.Count} active sessions");
                 }
             }
             catch (Exception ex)
@@ -362,10 +318,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        /// <summary>
-        /// End current session and mark as completing session.
-        /// Called when technician completes the repair.
-        /// </summary>
         private void EndSessionAsCompleted()
         {
             if (_activeSessionIds.Count == 0) return;
@@ -375,7 +327,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
-                    
                     foreach (var sessionId in _activeSessionIds)
                     {
                         if (_sessionElapsedMap.ContainsKey(sessionId))
@@ -388,8 +339,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                                 new { Elapsed = elapsed, Id = sessionId });
                         }
                     }
-                    
-                    System.Diagnostics.Debug.WriteLine($"[FormTechnician] Completed {_activeSessionIds.Count} sessions");
                 }
             }
             catch (Exception ex)
@@ -398,9 +347,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        /// <summary>
-        /// Load and display previous technician sessions for this ticket.
-        /// </summary>
         private void LoadPreviousSessions()
         {
             if (_currentTicketId <= 0) return;
@@ -457,7 +403,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 if (_currentTicketId < 0)
                 {
-                    // Offline Mode: Load from SQLite Pending Tickets
                     int pendingId = (int)Math.Abs(_currentTicketId);
                     var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
                     
@@ -466,7 +411,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                         foreach (var prob in request.Problems)
                         {
                             var control = new TechnicianProblemItemControl(
-                                0, // Dummy ID for offline
+                                0, 
                                 prob.ProblemTypeName ?? "", 
                                 prob.FailureName ?? "", 
                                 _isVerified
@@ -478,7 +423,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                     return;
                 }
 
-                // Online Mode
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
@@ -530,7 +474,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                         {
                             _ticketStatus = 2;
                         }
-
                     }
                 }
                 catch { /* Ignore */ }
@@ -539,14 +482,12 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void BtnAddProblem_Click(object sender, EventArgs e)
         {
-            var control = new TechnicianProblemItemControl(0, "", "", _isVerified); // ID 0 for new
+            var control = new TechnicianProblemItemControl(0, "", "", _isVerified); 
             _problemControls.Add(control);
             pnlProblems.Controls.Add(control);
             
-            // Re-apply enabled state logic (Cause/Action disabled if not verified)
             control.SetEnabled(_isVerified);
             
-            // Adjust width
             if (mainLayout != null)
             {
                  int contentWidth = mainLayout.ClientSize.Width - 80;
@@ -557,7 +498,6 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void SetupInputs()
         {
-            // === Previous Technicians (if any) ===
             _lblPreviousTechnicians = new Label
             {
                 Text = "",
@@ -568,9 +508,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Visible = false
             };
             mainLayout.Controls.Add(_lblPreviousTechnicians);
-            LoadPreviousSessions(); // Load and display previous technician sessions
+            LoadPreviousSessions(); 
             
-            // === Technician NIK ===
             inputNIK = new AppInput 
             { 
                 LabelText = "Inisial Teknisi", 
@@ -580,7 +519,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
             mainLayout.Controls.Add(inputNIK);
 
-            // === Active Technicians List ===
             pnlActiveTechs = new FlowLayoutPanel
             {
                 AutoSize = true,
@@ -601,18 +539,16 @@ namespace mtc_app.features.machine_history.presentation.screens
             btnVerify.Click += BtnVerify_Click;
             mainLayout.Controls.Add(btnVerify);
 
-            // === Add Technician Button (Concurrent Support) ===
             btnAddTechnician = new AppButton 
             { 
                 Text = "+ Tambah Teknisi (Pendamping)", 
                 Type = AppButton.ButtonType.Secondary, 
                 Margin = new Padding(0, 0, 0, 15),
-                Visible = false // Initially hidden
+                Visible = false 
             };
             btnAddTechnician.Click += BtnAddTechnician_Click;
             mainLayout.Controls.Add(btnAddTechnician);
 
-            // === Problem List ===
             var lblProblems = new Label 
             { 
                 Text = "Daftar Perbaikan:", 
@@ -630,7 +566,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
             mainLayout.Controls.Add(pnlProblems);
 
-            // === Add Problem Button (Accessible by All) ===
             btnAddProblem = new Button
             {
                 Text = "+ Tambah Problem Lain",
@@ -647,7 +582,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             btnAddProblem.Click += BtnAddProblem_Click;
             mainLayout.Controls.Add(btnAddProblem);
 
-            // === 4M Analysis ===
             var panel4M = new FlowLayoutPanel
             {
                 AutoSize = true,
@@ -662,7 +596,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                 AutoSize = true,
                 Margin = new Padding(0, 0, 0, 5)
             };
-            // Checkbox row using horizontal FlowLayoutPanel
             var pnlCheckboxes = new FlowLayoutPanel
             {
                 AutoSize = true,
@@ -686,16 +619,13 @@ namespace mtc_app.features.machine_history.presentation.screens
             panel4M.Controls.AddRange(new Control[] { lbl4M, pnlCheckboxes });
             mainLayout.Controls.Add(panel4M);
 
-            // === Counter ===
             inputCounter = new AppInput { LabelText = "Jumlah Counter", InputType = AppInput.InputTypeEnum.Text, IsRequired = false };
             mainLayout.Controls.Add(inputCounter);
 
-            // === Sparepart ===
             inputSparepart = new AppInput { LabelText = "Permintaan Sparepart", InputType = AppInput.InputTypeEnum.Dropdown, IsRequired = false, AllowCustomText = true };
             mainLayout.Controls.Add(inputSparepart);
             LoadParts();
 
-            // === Rating ===
             var panelRating = new FlowLayoutPanel
             {
                 AutoSize = true,
@@ -708,7 +638,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             panelRating.Controls.AddRange(new Control[] { lblRating, ratingOperator });
             mainLayout.Controls.Add(panelRating);
 
-            // === Notes ===
             inputOperatorNote = new AppInput { LabelText = "Catatan : ", InputType = AppInput.InputTypeEnum.Text, IsRequired = false };
             mainLayout.Controls.Add(inputOperatorNote);
             var spacer = new Panel { Height = 30, Width = 10, BackColor = Color.Transparent };
@@ -754,24 +683,19 @@ namespace mtc_app.features.machine_history.presentation.screens
             btnVerify.Enabled = !enabled;
             btnVerify.Visible = !enabled;
             
-            // [UI-FIX] Hide "Add Problem" button when technician is verified
-            
-            // [UI-FIX] Hide "Add Problem" button when technician is verified
             if (btnAddProblem != null)
             {
                 btnAddProblem.Visible = !enabled;
             }
 
-            // Concurrent Tech Support
             if (btnAddTechnician != null)
             {
-                btnAddTechnician.Visible = enabled; // Visible ONLY when verified
+                btnAddTechnician.Visible = enabled; 
             }
         }
 
         private void UpdatePartRequestStatus()
         {
-            // Skip DB check for offline tickets - just enable sparepart input
             if (_currentTicketId < 0)
             {
                 if (this.IsHandleCreated && !this.IsDisposed)
@@ -807,30 +731,24 @@ namespace mtc_app.features.machine_history.presentation.screens
                                 {
                                     if (statusId == 2)
                                     {
-                                        _lastPartStatusId = statusId; // Save state first to prevent multiple popups!
+                                        _lastPartStatusId = statusId; 
                                         
-                                        // Status changed to Ready
                                         _timerNotifSound.Start();
-                                        
                                         using (var notifForm = new mtc_app.features.machine_history.presentation.components.SparepartReadyNotificationForm())
                                         {
                                             notifForm.ShowDialog();
                                         }
-                                        
                                         _timerNotifSound.Stop();
                                     }
                                     else if (statusId == 4)
                                     {
                                         _lastPartStatusId = statusId; 
                                         
-                                        // Status changed to Rejected
                                         _timerNotifSound.Start();
-                                        
                                         using (var notifForm = new mtc_app.features.machine_history.presentation.components.SparepartRejectedNotificationForm())
                                         {
                                             notifForm.ShowDialog();
                                         }
-                                        
                                         _timerNotifSound.Stop();
                                     }
                                 }
@@ -865,11 +783,9 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             if (_currentTicketId < 0)
             {
-                // Offline Logic
                 var user = ServiceLocator.OfflineRepo.GetUserByNik(nik);
                 if (user != null)
                 {
-                    // Basic Offline Role Check (assuming RoleId is available in offline User model)
                     if (user.RoleId != 2)
                     {
                         MessageBox.Show("Hanya teknisi yang dapat melakukan verifikasi.", "Akses Ditolak");
@@ -880,22 +796,20 @@ namespace mtc_app.features.machine_history.presentation.screens
                     var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
                     if (request != null)
                     {
-                        // Update Local State
                         request.TechnicianNik = nik;
                         request.StartedAt = DateTime.Now;
-                        request.StatusId = 2; // In Progress
-                        request.IsMachineRunning = 0; // Auto-stop machine
+                        request.StatusId = 2; 
+                        request.IsMachineRunning = 0; 
                         
                         ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
 
                         _isVerified = true;
                         _ticketStatus = 2;
-                        _isMachineRunning = 0; // Ensure UI state matches DB auto-stop
-                        // Note: For offline, timer values are stored locally until sync
+                        _isMachineRunning = 0; 
 
                         AutoClosingMessageBox.Show($"Verifikasi Berhasil (Offline)!\nSelamat bekerja, {user.FullName}.", "Sukses", 2000);
                         UpdateUIState();
-                        UpdateMachineStateIndicator(); // Refresh Top Banner
+                        UpdateMachineStateIndicator(); 
                     }
                 }
                 else
@@ -910,7 +824,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
-                    // [FIX] Validating role_id = 2 (Technician)
                     var tech = conn.QueryFirstOrDefault("SELECT user_id, full_name, nik FROM users WHERE nik = @Nik AND role_id = 2", new { Nik = nik });
                     
                     if (tech != null)
@@ -920,18 +833,17 @@ namespace mtc_app.features.machine_history.presentation.screens
                         
                         _isVerified = true;
                         _ticketStatus = 2;
-                        _isMachineRunning = 0; // Ensure UI state matches DB auto-stop
+                        _isMachineRunning = 0; 
                         
-                        SaveTimerToDatabase(); // Save arrival time before switching to repair
-                        CreateSession((int)tech.user_id); // Start tracking session for this technician
+                        SaveTimerToDatabase(); 
+                        CreateSession((int)tech.user_id); 
                         
-                        // Add visual chip for Lead Technician
                         AddTechnicianChip(tech.nik, tech.full_name, (int)tech.user_id, _activeSessionIds.Last());
 
                         AutoClosingMessageBox.Show($"Verifikasi Berhasil!\nSelamat bekerja, {tech.full_name}.", "Sukses", 2000);
-                        LoadPreviousSessions(); // Refresh list to show new session
+                        LoadPreviousSessions(); 
                         UpdateUIState();
-                        UpdateMachineStateIndicator(); // Refresh Top Banner
+                        UpdateMachineStateIndicator(); 
                     }
                     else
                     {
@@ -950,7 +862,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             string nik = ShowTechnicianEntryDialog();
             if (string.IsNullOrWhiteSpace(nik)) return;
 
-            // Offline Logic handling
             if (_currentTicketId < 0)
             {
                 MessageBox.Show("Penambahan teknisi hanya tersedia saat online.", "Info");
@@ -962,7 +873,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
-                    // [FIX] Validating role_id = 2 (Technician)
                     var tech = conn.QueryFirstOrDefault("SELECT user_id, full_name, nik FROM users WHERE nik = @Nik AND role_id = 2", new { Nik = nik });
                     
                     if (tech != null)
@@ -974,12 +884,10 @@ namespace mtc_app.features.machine_history.presentation.screens
                         }
 
                         CreateSession((int)tech.user_id);
-                        
-                        // Add visual chip for Additional Technician
                         AddTechnicianChip(tech.nik, tech.full_name, (int)tech.user_id, _activeSessionIds.Last());
 
                         AutoClosingMessageBox.Show($"Teknisi {tech.full_name} berhasil ditambahkan.", "Sukses", 2000);
-                        LoadPreviousSessions(); // Refresh list to show new technician
+                        LoadPreviousSessions(); 
                     }
                     else
                     {
@@ -995,20 +903,17 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void AddTechnicianChip(string nik, string name, int techId, long sessionId)
         {
-            // Create AppInput matching the main "Inisial Teknisi" style
             var techInput = new AppInput
             {
                 LabelText = "Teknisi Pendamping",
                 InputValue = $"{nik} - {name}",
                 InputType = AppInput.InputTypeEnum.Text,
-                Width = inputNIK.Width, // Match main input width
-                Enabled = false, // Read-only display
+                Width = inputNIK.Width, 
+                Enabled = false, 
                 Margin = new Padding(0, 0, 0, 10)
             };
             
-            // Store reference for identification
             techInput.Tag = new { SessionId = sessionId, TechId = techId };
-            
             pnlActiveTechs.Controls.Add(techInput);
             pnlActiveTechs.Visible = true;
         }
@@ -1056,9 +961,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             if (MessageBox.Show("Lanjutkan request sparepart?", "Konfirmasi", MessageBoxButtons.YesNo) != DialogResult.Yes)
                 return;
 
-            // ═══════════════════════════════════════════════════════════════════
-            // OFFLINE MODE: Save sparepart request locally
-            // ═══════════════════════════════════════════════════════════════════
             if (_currentTicketId < 0)
             {
                 try
@@ -1068,7 +970,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                     
                     if (request != null)
                     {
-                        // Add sparepart request to pending ticket data
                         if (request.SparepartRequests == null)
                             request.SparepartRequests = new List<string>();
                         request.SparepartRequests.Add(val);
@@ -1089,9 +990,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
-            // ═══════════════════════════════════════════════════════════════════
-            // ONLINE MODE: Send directly to database
-            // ═══════════════════════════════════════════════════════════════════
             try
             {
                 using (var conn = DatabaseHelper.GetConnection())
@@ -1136,7 +1034,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             
             if (!chk4M.Checked && !chkTidak4M.Checked)
             {
-                MessageBox.Show("Pilih opsi 4M.", "Validasi");
+                MessageBox.Show("Pilih opsi Pergantian Blade/Crimping Dies.", "Validasi");
                 return;
             }
             
@@ -1162,6 +1060,100 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
+            // MULAILAH MODE INSPEKSI
+            _ticketStatus = 4; // Berubah jadi status 4 (Waiting Inspection)
+            _timer.Stop();
+            SaveTimerToDatabase(); // Simpan waktu perbaikan yang sudah berlalu
+
+            if (_currentTicketId > 0)
+            {
+                try {
+                    using(var conn = DatabaseHelper.GetConnection()) {
+                        conn.Execute("UPDATE tickets SET status_id = 4 WHERE ticket_id = @Id", new { Id = _currentTicketId });
+                    }
+                } catch(Exception ex) {
+                    MessageBox.Show("Gagal update status inspeksi: " + ex.Message);
+                }
+            }
+            
+            _timer.Start(); // Timer utama mulai menghitung _inspectionSeconds
+
+            // TAMPILKAN POPUP INSPEKTUR SEDERHANA DENGAN COUNTER
+            bool isApproved = false;
+
+            using (Form prompt = new Form())
+            {
+                // Ukuran sedikit dilebarkan ke bawah untuk memuat teks waktu
+                prompt.Width = 350; prompt.Height = 180; 
+                prompt.FormBorderStyle = FormBorderStyle.FixedDialog;
+                prompt.Text = "Inspeksi Perbaikan";
+                prompt.StartPosition = FormStartPosition.CenterParent;
+                prompt.ControlBox = false; // Memaksa untuk klik tombol
+
+                Label lblInfo = new Label() { Left = 0, Top = 15, Width = 350, TextAlign = ContentAlignment.MiddleCenter, Text = "Perbaikan sudah sesuai?", Font = AppFonts.Subtitle };
+                
+                // Label untuk Counter Waktu Inspeksi
+                Label lblTimer = new Label() { Left = 0, Top = 45, Width = 350, TextAlign = ContentAlignment.MiddleCenter, Text = "00:00:00", Font = new Font(AppFonts.Subtitle.FontFamily, 14, FontStyle.Bold), ForeColor = Color.DarkOrange };
+
+                Button btnApprove = new Button() { Text = "OK", Left = 20, Width = 140, Top = 90, Height = 40, BackColor = AppColors.Success, ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+                btnApprove.FlatAppearance.BorderSize = 0;
+                
+                Button btnReject = new Button() { Text = "NG", Left = 170, Width = 140, Top = 90, Height = 40, BackColor = AppColors.Danger, ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+                btnReject.FlatAppearance.BorderSize = 0;
+
+                // Timer lokal untuk memperbarui UI text label setiap detik
+                Timer popupTimer = new Timer() { Interval = 1000 };
+                popupTimer.Tick += (s, ev) => {
+                    // Memformat _inspectionSeconds (yang di-increment oleh _timer utama) menjadi hh:mm:ss
+                    lblTimer.Text = TimeSpan.FromSeconds(_inspectionSeconds).ToString(@"hh\:mm\:ss");
+                };
+
+                btnApprove.Click += (s, ev) => { 
+                    isApproved = true; 
+                    popupTimer.Stop(); // Hentikan timer lokal
+                    prompt.DialogResult = DialogResult.OK; 
+                };
+
+                btnReject.Click += (s, ev) => {
+                    isApproved = false; 
+                    popupTimer.Stop(); // Hentikan timer lokal
+                    prompt.DialogResult = DialogResult.OK; 
+                };
+
+                // Tambahkan komponen ke dalam prompt
+                prompt.Controls.AddRange(new Control[] { lblInfo, lblTimer, btnApprove, btnReject });
+                
+                popupTimer.Start(); // Mulai timer UI popup
+                prompt.ShowDialog(); // Tampilkan popup (mem-blok eksekusi ke bawah sampai ditutup)
+                popupTimer.Dispose(); // Bersihkan timer setelah ditutup
+            }
+
+            _timer.Stop(); // Hentikan timer utama lagi setelah popup tertutup
+            SaveTimerToDatabase(); // Simpan waktu inspeksi ke database
+
+            // TINDAK LANJUT HASIL INSPEKSI
+            if (isApproved)
+            {
+                ProcessFinalSaveAndRun(); // Lanjut ke layar biru tanpa NIK Inspektur
+            }
+            else
+            {
+                // REJECT: Kembalikan ke mode Repairing
+                _ticketStatus = 2;
+                if (_currentTicketId > 0) {
+                    try {
+                        using(var conn = DatabaseHelper.GetConnection()) {
+                            conn.Execute("UPDATE tickets SET status_id = 2 WHERE ticket_id = @Id", new { Id = _currentTicketId });
+                        }
+                    } catch { /* ignore */ }
+                }
+                MessageBox.Show("Perbaikan dinilai NG oleh inspektur. Silakan perbaiki mesin kembali.", "Inspeksi Gagal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                _timer.Start(); // Timer Repairing jalan lagi
+            }
+        }
+
+        private void ProcessFinalSaveAndRun()
+        {
             // ═══════════════════════════════════════════════════════════════════
             // OFFLINE MODE: Save completion data locally
             // ═══════════════════════════════════════════════════════════════════
@@ -1174,15 +1166,13 @@ namespace mtc_app.features.machine_history.presentation.screens
                     
                     if (request != null)
                     {
-                        // Update Ticket Completion Info
-                        request.StatusId = 3; // Completed
+                        request.StatusId = 3; 
                         request.FinishedAt = DateTime.Now;
                         request.CounterStroke = int.TryParse(inputCounter.InputValue, out int cnt) ? cnt : 0;
                         request.Is4M = chk4M.Checked;
                         request.TechRatingScore = ratingOperator.Rating;
                         request.TechRatingNote = inputOperatorNote.InputValue;
                         
-                        // Update Problem Details with Cause/Action
                         for (int i = 0; i < _problemControls.Count && i < request.Problems.Count; i++)
                         {
                             request.Problems[i].CauseName = _problemControls[i].InputCause.InputValue;
@@ -1208,7 +1198,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                         }
                         else
                         {
-                            // Resume if cancelled
                             _timer.Start();
                         }
                     }
@@ -1236,20 +1225,19 @@ namespace mtc_app.features.machine_history.presentation.screens
                     {
                         try
                         {
-                            // Update Ticket Header
+                            // inspector_id dibiarkan NULL saja
                             string sql = @"UPDATE tickets SET status_id = 3, technician_finished_at = NOW(), 
-                                counter_stroke = @Cnt, is_4m = @Is4M, tech_rating_score = @Sc, tech_rating_note = @Nt 
+                                counter_stroke = @Cnt, is_4m = @Is4M, tech_rating_score = @Sc, tech_rating_note = @Nt
                                 WHERE ticket_id = @Id";
                             
                             conn.Execute(sql, new { 
                                 Cnt = int.TryParse(inputCounter.InputValue, out int c) ? c : 0, 
                                 Is4M = chk4M.Checked ? 1 : 0, 
                                 Sc = ratingOperator.Rating, 
-                                Nt = inputOperatorNote.InputValue, 
+                                Nt = inputOperatorNote.InputValue,
                                 Id = _currentTicketId 
                             }, trans);
 
-                            // Update Problem Details (AUTO-LEARNING LOGIC APPLIED HERE)
                             string detailSql = @"UPDATE ticket_problems SET 
                                 problem_type_id = @TId, problem_type_remarks = @TRem,
                                 failure_id = @FId, failure_remarks = @FRem,
@@ -1259,30 +1247,16 @@ namespace mtc_app.features.machine_history.presentation.screens
                             
                             foreach (var prob in _problemControls)
                             {
-                                // 1. Problem Type (Auto-Add to Master)
                                 int? tId = GetOrCreateMasterData(conn, trans, "problem_types", "type_id", "type_name", prob.InputProblemType.InputValue);
-
-                                // 2. Failure/Detail (Auto-Add to Master)
                                 int? fId = GetOrCreateMasterData(conn, trans, "failures", "failure_id", "failure_name", prob.InputProblemDetail.InputValue);
-
-                                // 3. Root Cause (Auto-Add to Master)
                                 int? cId = GetOrCreateMasterData(conn, trans, "failure_causes", "cause_id", "cause_name", prob.InputCause.InputValue);
-
-                                // 4. Action (Auto-Add to Master)
                                 int? aId = GetOrCreateMasterData(conn, trans, "actions", "action_id", "action_name", prob.InputAction.InputValue);
                                 
-                                // Execute Update:
-                                // Karena kita sudah memanggil GetOrCreateMasterData, ID pasti ada (jika input tidak kosong).
-                                // Maka Remarks kita set NULL agar data bersih dan masuk ke Master.
                                 conn.Execute(detailSql, new {
-                                    TId = tId,
-                                    TRem = (string)null, 
-                                    FId = fId,
-                                    FRem = (string)null,
-                                    CId = cId, 
-                                    CRem = (string)null,
-                                    AId = aId, 
-                                    ARem = (string)null,
+                                    TId = tId, TRem = (string)null, 
+                                    FId = fId, FRem = (string)null,
+                                    CId = cId, CRem = (string)null,
+                                    AId = aId, ARem = (string)null,
                                     PId = prob.ProblemId
                                 }, trans);
                             }
@@ -1300,12 +1274,11 @@ namespace mtc_app.features.machine_history.presentation.screens
                             if (runForm.ShowDialog() == DialogResult.OK)
                             {
                                 this.DialogResult = DialogResult.OK;
-                                _allowClose = true; // [FIX] Allow programmatic close
+                                _allowClose = true; 
                                 this.Close();
                             }
                             else
                             {
-                                // Resume the session locally since DB was reverted in MachineRunForm
                                 _timer.Start();
                             }
                         }
@@ -1338,8 +1311,8 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
 
             _timer?.Stop();
-            SaveTimerToDatabase(); // Persist timer on close
-            SaveSession(); // Save session elapsed time
+            SaveTimerToDatabase(); 
+            SaveSession(); 
             _timer?.Dispose();
             base.OnFormClosing(e);
         }
@@ -1348,16 +1321,15 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             base.OnResize(e);
     
-    // Center the Run/Stop indicator in panelHeader
-    if (panelHeader != null && lblMachineState != null && lblMachineStateTitle != null)
-    {
-        int centerX = panelHeader.ClientSize.Width / 2;
-        lblMachineStateTitle.Location = new Point(centerX - lblMachineStateTitle.Width / 2, 10);
-        lblMachineState.Location = new Point(centerX - lblMachineState.Width / 2, 35);
-    }
-    
-    if (mainLayout == null) return;
+            if (panelHeader != null && lblMachineState != null && lblMachineStateTitle != null)
+            {
+                int centerX = panelHeader.ClientSize.Width / 2;
+                lblMachineStateTitle.Location = new Point(centerX - lblMachineStateTitle.Width / 2, 10);
+                lblMachineState.Location = new Point(centerX - lblMachineState.Width / 2, 35);
+            }
             
+            if (mainLayout == null) return;
+                    
             int contentWidth = mainLayout.ClientSize.Width - 80;
             if (contentWidth < 300) contentWidth = 300;
             
@@ -1377,7 +1349,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                 }
             }
 
-            // Resize teknisi pendamping chips
             if (pnlActiveTechs != null)
             {
                 foreach (Control child in pnlActiveTechs.Controls)
@@ -1386,7 +1357,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                 }
             }
 
-            // Responsive footer buttons
             if (panelFooter != null && buttonRequestSparepart != null && buttonRepairComplete != null)
             {
                 int footerPad = 20;
@@ -1404,9 +1374,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        /// <summary>
-        /// Restore active sessions from database (for online tickets).
-        /// </summary>
         private void LoadActiveSessions()
         {
             if (_currentTicketId <= 0) return;
@@ -1416,7 +1383,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
-                    // Get sessions that are NOT ended
                     string sql = @"
                         SELECT tts.session_id, tts.technician_id, tts.elapsed_seconds, 
                                u.nik, u.full_name
@@ -1436,18 +1402,15 @@ namespace mtc_app.features.machine_history.presentation.screens
                             int tId = (int)s.technician_id;
                             int elapsed = (int)s.elapsed_seconds;
                             
-                            // 1. Populate Lists (if not already present)
                             if (!_activeSessionIds.Contains(sId))
                             {
                                 _activeSessionIds.Add(sId);
                                 _activeTechnicianIds.Add(tId);
                                 _sessionElapsedMap[sId] = elapsed;
                                 
-                                // 2. Add Visual Chip
                                 AddTechnicianChip((string)s.nik, (string)s.full_name, tId, sId);
                             }
 
-                            // 3. Set Lead Info (First Active Tech)
                             if (isFirst)
                             {
                                 _isVerified = true;
@@ -1463,31 +1426,27 @@ namespace mtc_app.features.machine_history.presentation.screens
                 System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error active sessions: {ex.Message}");
             }
         }
-        // --- HELPER SAKTI: FORMATTING & AUTO-ADD TO MASTER DATA ---
+
         private int? GetOrCreateMasterData(IDbConnection conn, IDbTransaction trans, string tableName, string idCol, string nameCol, string rawValue)
         {
             if (string.IsNullOrWhiteSpace(rawValue)) return null;
 
-            // 1. FORMATTING INPUT SEBELUM SAVE
             string formattedValue = FormatInputText(rawValue);
 
-            // 2. Cek apakah sudah ada?
             string checkSql = $"SELECT {idCol} FROM {tableName} WHERE {nameCol} = @Name";
             var existingId = conn.QueryFirstOrDefault<int?>(checkSql, new { Name = formattedValue }, trans);
 
             if (existingId.HasValue)
             {
-                return existingId.Value; // Sudah ada, kembalikan ID lama
+                return existingId.Value; 
             }
 
-            // 3. Belum ada -> Insert Baru ke Tabel Master
             string insertSql = $"INSERT INTO {tableName} ({nameCol}) VALUES (@Name); SELECT LAST_INSERT_ID();";
             int newId = conn.ExecuteScalar<int>(insertSql, new { Name = formattedValue }, trans);
 
-            return newId; // Kembalikan ID baru
+            return newId; 
         }
 
-        // --- LOGIKA FORMATTING (Copy paste agar konsisten) ---
         private string FormatInputText(string input)
         {
             if (string.IsNullOrWhiteSpace(input)) return input;
