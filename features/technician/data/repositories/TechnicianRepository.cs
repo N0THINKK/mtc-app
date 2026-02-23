@@ -56,7 +56,10 @@ namespace mtc_app.features.technician.data.repositories
                             END
                          FROM ticket_technician_sessions tts
                          WHERE tts.ticket_id = t.ticket_id
-                        ) AS TechnicianName
+                        ) AS TechnicianName,
+                        
+                        t.arrival_elapsed_seconds AS ArrivalSeconds,
+                        t.repair_elapsed_seconds AS RepairSeconds
 
                     FROM tickets t
                     JOIN machines m ON t.machine_id = m.machine_id

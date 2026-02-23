@@ -260,13 +260,23 @@ namespace mtc_app.features.technician.presentation.components
             UpdateStatusVisuals(ticket.StatusId);
             UpdateMachineStateVisuals(ticket.IsMachineRunning);
 
-            // Time & Rating Logic
+            // Calculate Active Duration based on exactly what is recorded in the DB form timers
+            TimeSpan activeDuration = TimeSpan.FromSeconds(ticket.ArrivalSeconds + ticket.RepairSeconds);
+
             if (ticket.StatusId == 3) // Done
             {
                  if (ticket.FinishedAt.HasValue)
                  {
-                     TimeSpan totalDowntime = ticket.FinishedAt.Value - ticket.CreatedAt;
-                     this.lblTime.Text = $"{FormatFinishedTime(ticket.FinishedAt.Value)} ({FormatDuration(totalDowntime)})";
+                     if (ticket.FinishedAt.Value.Date == DateTime.Now.Date)
+                     {
+                         // Same day: Just show duration without parentheses
+                         this.lblTime.Text = FormatDuration(activeDuration);
+                     }
+                     else
+                     {
+                         // Different day: Show Date + Duration without parentheses
+                         this.lblTime.Text = $"{FormatFinishedTime(ticket.FinishedAt.Value)} {FormatDuration(activeDuration)}";
+                     }
                  }
                  else
                  {
@@ -279,15 +289,15 @@ namespace mtc_app.features.technician.presentation.components
             else
             {
                  // Open/Repairing
-                 TimeSpan duration = DateTime.Now - ticket.CreatedAt;
-                 this.lblTime.Text = FormatDuration(duration);
+                 this.lblTime.Text = FormatDuration(activeDuration);
                  
-                 if (duration.TotalHours >= 2)
+                 // Card Color logic SLA based on the exact same activeDuration used for display
+                 if (activeDuration.TotalHours >= 2)
                  {
                      _baseBackColor = Color.FromArgb(254, 226, 226); // Light Red
                      this.pnlMain.BackColor = _baseBackColor;
                  }
-                 else if (duration.TotalHours >= 1)
+                 else if (activeDuration.TotalHours >= 1)
                  {
                      _baseBackColor = Color.FromArgb(254, 249, 195); // Light Yellow
                      this.pnlMain.BackColor = _baseBackColor;
@@ -361,12 +371,13 @@ namespace mtc_app.features.technician.presentation.components
         }
         private string FormatFinishedTime(DateTime time)
         {
-            return time.ToString("dd MMM HH:mm");
+            // [FIX] User specifically asked to just show the date if it's a different day, and drop the clock time entirely
+            return time.ToString("dd MMM");
         }
 
         private string FormatTime(DateTime time)
         {
-            return time.ToString("dd MMM HH:mm");
+            return time.ToString("dd MMM");
         }
 
         private string FormatDuration(TimeSpan d)
