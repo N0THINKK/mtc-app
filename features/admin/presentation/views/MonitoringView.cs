@@ -22,10 +22,6 @@ namespace mtc_app.features.admin.presentation.views
         private MetricCard cardValidate;
         private AppLabel lblLastUpdate;
 
-        // Constructor for Designer (if needed) or Parameterless fallback
-        // But for DI we need constructor with param. 
-        // WinForms Designer creates restrictions. Usually we need parameterless.
-        // But since we instantiate this manually in AdminMainForm, param ctor is fine.
         public MonitoringView(IAdminRepository repository)
         {
             _repository = repository;
@@ -53,7 +49,7 @@ namespace mtc_app.features.admin.presentation.views
             cardOpen = CreateMetricCard("Open Tickets", AppColors.Danger);
             cardValidate = CreateMetricCard("Need Validation", AppColors.Warning);
 
-            // Layout Cards (Simple Flow or Manual Position)
+            // Layout Cards 
             cardTotal.Location = new Point(20, 20);
             cardMachines.Location = new Point(260, 20);
             cardOpen.Location = new Point(500, 20);
@@ -85,31 +81,38 @@ namespace mtc_app.features.admin.presentation.views
                 ReadOnly = true,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                AutoGenerateColumns = false // Disable auto-generation to prevent duplicates
+                AutoGenerateColumns = false 
             };
 
-            // Manual Column Definition - MUST MATCH 'view_admin_report' aliases
+            // ════ PERBAIKAN: SESUAIKAN DENGAN NAMA KOLOM SQL VIEW YANG BARU ════
+            
+            // Ini biasanya didapat dari JOIN dengan tabel status (pastikan nama aliasnya benar di Repository Anda)
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Status", HeaderText = "Status", DataPropertyName = "Status Terkini", FillWeight = 80 });
+            
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Mesin", HeaderText = "Mesin", DataPropertyName = "Nama Mesin" });
             
-            // [FIX] Explicitly enable WrapMode for Problem Column
+            // Kolom Problem sekarang memanggil "Deskripsi Detail" agar aplikator tidak ikut tercetak
             var colMasalah = new DataGridViewTextBoxColumn 
             { 
                 Name = "Problem", 
                 HeaderText = "Problem", 
-                DataPropertyName = "Detail Masalah", 
+                DataPropertyName = "Deskripsi Detail", // Telah diubah
                 FillWeight = 200 
             };
             colMasalah.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
             gridTickets.Columns.Add(colMasalah);
 
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Teknisi", HeaderText = "Teknisi", DataPropertyName = "Nama Teknisi" });
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Total Downtime", HeaderText = "Total Downtime", DataPropertyName = "Total Downtime" });
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Durasi Respon", HeaderText = "Durasi Respon", DataPropertyName = "Durasi Respon" });
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Durasi Perbaikan", HeaderText = "Durasi Perbaikan", DataPropertyName = "Durasi Perbaikan" });
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Waktu Tunggu Part", HeaderText = "Tunggu Part", DataPropertyName = "Waktu Tunggu Part" });
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Waktu Tunggu Operator", HeaderText = "Tunggu Operator", DataPropertyName = "Durasi Trial Run" });
             
+            // KPI Waktu (Telah disesuaikan)
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Total Downtime", HeaderText = "Total Downtime", DataPropertyName = "Total Downtime" });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Durasi Respon", HeaderText = "Durasi Respon", DataPropertyName = "Tunggu Teknisi" }); // Diubah
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Durasi Perbaikan", HeaderText = "Durasi Perbaikan", DataPropertyName = "Durasi Perbaikan" });
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Waktu Tunggu Part", HeaderText = "Tunggu Part", DataPropertyName = "Tunggu Part" }); // Diubah
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Waktu Tunggu Operator", HeaderText = "Tunggu Operator", DataPropertyName = "Tunggu Operator" }); // Diubah
+            
+            // ══════════════════════════════════════════════════════════════════════
+
             // Action Button Column
             var btnCol = new DataGridViewButtonColumn
             {
@@ -121,15 +124,15 @@ namespace mtc_app.features.admin.presentation.views
             };
             gridTickets.Columns.Add(btnCol);
 
-            // Hidden Columns for Detail Popup - MUST MATCH view_admin_report aliases
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "No Tiket", DataPropertyName = "No Tiket", Visible = false });
-            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Operator", DataPropertyName = "Operator Pelapor", Visible = false });
+            // Hidden Columns for Detail Popup 
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "No Tiket", DataPropertyName = "ID Tiket", Visible = false }); // Diubah
+            gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Operator", DataPropertyName = "Nama Operator", Visible = false }); // Diubah
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Waktu Lapor", DataPropertyName = "Waktu Lapor", Visible = false });
 
             // Grid Styling
             gridTickets.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(248, 249, 250);
             gridTickets.ColumnHeadersDefaultCellStyle.ForeColor = AppColors.TextSecondary;
-            gridTickets.ColumnHeadersDefaultCellStyle.Font = AppFonts.BodySmall; // or Bold
+            gridTickets.ColumnHeadersDefaultCellStyle.Font = AppFonts.BodySmall; 
             gridTickets.ColumnHeadersDefaultCellStyle.Padding = new Padding(10);
             gridTickets.ColumnHeadersHeight = 40;
 
@@ -137,16 +140,10 @@ namespace mtc_app.features.admin.presentation.views
             gridTickets.DefaultCellStyle.SelectionForeColor = AppColors.TextPrimary;
             gridTickets.DefaultCellStyle.Padding = new Padding(10);
             gridTickets.RowTemplate.Height = 50;
-            // [FIX] Auto Size Rows for Multiline Content
             gridTickets.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             
-            // Event for Formatting Status
             gridTickets.CellFormatting += GridTickets_CellFormatting;
-            
-            // Event for Button Click
             gridTickets.CellContentClick += GridTickets_CellContentClick;
-            
-            // [FIX] Custom Painting for Button to prevent stretching
             gridTickets.CellPainting += GridTickets_CellPainting;
 
             this.Controls.Add(gridTickets);
@@ -159,21 +156,16 @@ namespace mtc_app.features.admin.presentation.views
             {
                 e.PaintBackground(e.CellBounds, true);
 
-                // Settings
                 int btnHeight = 28;
                 int paddingX = 10;
                 
-                // Calculate Centered Rectangle
                 int btnWidth = e.CellBounds.Width - (paddingX * 2);
                 int btnY = e.CellBounds.Y + (e.CellBounds.Height - btnHeight) / 2;
                 int btnX = e.CellBounds.X + paddingX;
 
                 Rectangle btnRect = new Rectangle(btnX, btnY, btnWidth, btnHeight);
 
-                // Draw Button
                 ButtonRenderer.DrawButton(e.Graphics, btnRect, System.Windows.Forms.VisualStyles.PushButtonState.Normal);
-
-                // Draw Text
                 TextRenderer.DrawText(e.Graphics, "Lihat", e.CellStyle.Font, btnRect, SystemColors.ControlText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
 
                 e.Handled = true;
@@ -182,7 +174,6 @@ namespace mtc_app.features.admin.presentation.views
 
         private void GridTickets_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            // Check if Detail button clicked
             if (e.RowIndex >= 0 && gridTickets.Columns[e.ColumnIndex].Name == "Detail")
             {
                 var row = gridTickets.Rows[e.RowIndex];
@@ -220,11 +211,10 @@ namespace mtc_app.features.admin.presentation.views
 
         private void InitializeTimer()
         {
-            _timerRefresh = new Timer { Interval = 15000 }; // 15s
+            _timerRefresh = new Timer { Interval = 15000 }; 
             _timerRefresh.Tick += async (s, e) => await LoadDataAsync();
         }
 
-        // Public method to be called when view is shown
         public async void OnViewLoad()
         {
             await LoadDataAsync();
@@ -250,10 +240,8 @@ namespace mtc_app.features.admin.presentation.views
         {
             try
             {
-                // Optional: Show loading indicator if initial load
                 if (gridTickets.Rows.Count == 0) this.Cursor = Cursors.WaitCursor;
 
-                // 1. Fetch Stats
                 var stats = await _repository.GetSummaryStatsAsync();
                 if (stats != null)
                 {
@@ -263,19 +251,15 @@ namespace mtc_app.features.admin.presentation.views
                     cardValidate.Value = stats.NeedValidation.ToString();
                 }
 
-                // 2. Fetch Monitoring List
                 var data = await _repository.GetMonitoringDataAsync();
-                
-                // Simple rebind (Columns are manually defined now)
                 gridTickets.DataSource = data;
                 
-                // Update Timestamp
                 lblLastUpdate.Text = $"Last update: {DateTime.Now:HH:mm:ss}";
             }
             catch (Exception ex)
             {
-                // Show error to help debug why columns aren't hiding
-                MessageBox.Show($"Error UI Monitoring: {ex.Message}");
+                // Silenced error to avoid spam, but useful for debug
+                // MessageBox.Show($"Error UI Monitoring: {ex.Message}");
             }
             finally
             {
@@ -293,12 +277,11 @@ namespace mtc_app.features.admin.presentation.views
             if (colName == "Problem" && e.Value != null)
             {
                 string raw = e.Value.ToString();
-                // Split by common separators
-                string[] parts = raw.Split(new[] { " | ", "|" }, StringSplitOptions.RemoveEmptyEntries);
+                // SQL View is now using '\n' as separator, so we split by it
+                string[] parts = raw.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
                 
                 if (parts.Length > 0)
                 {
-                    // Add numbering: "1. Problem A", "2. Problem B"
                     for (int i = 0; i < parts.Length; i++)
                     {
                         parts[i] = $"{i + 1}. {parts[i].Trim()}";
@@ -315,8 +298,7 @@ namespace mtc_app.features.admin.presentation.views
             {
                 string status = e.Value.ToString();
                 
-                // Simpler logic than Utils if we don't have ID, matching text for now.
-                if (status.Contains("Open") || status.Contains("Pending")) 
+                if (status.Contains("Open") || status.Contains("Pending") || status.Contains("Belum")) 
                     e.CellStyle.ForeColor = AppColors.Danger;
                 else if (status.Contains("Proses") || status.Contains("Repair")) 
                     e.CellStyle.ForeColor = AppColors.Warning;
@@ -330,4 +312,3 @@ namespace mtc_app.features.admin.presentation.views
         }
     }
 }
-
