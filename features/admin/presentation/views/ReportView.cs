@@ -34,7 +34,6 @@ namespace mtc_app.features.admin.presentation.views
                 {
                     try
                     {
-                        // Tarik 3 Jenis Data dari Database
                         var dataDetail = FetchDataForReport(dateStart.Value, dateEnd.Value);
                         var dataRekapBulanan = FetchMonthlyDowntimeSummary(dateStart.Value, dateEnd.Value);
                         var dataOutputHarian = FetchDailyOutputSummary(dateStart.Value, dateEnd.Value);
@@ -46,13 +45,20 @@ namespace mtc_app.features.admin.presentation.views
                             // =========================================================
                             var wsDetail = workbook.Worksheets.Add("Detail Tiket");
                             wsDetail.Cell("A1").InsertTable(dataDetail);
+                            
+                            // ═══ PENTING: AGAR TEXT TIDAK MENUMPUK, KITA WRAP TEXT ═══
+                            wsDetail.Rows().Style.Alignment.WrapText = true; 
+                            wsDetail.Row(1).Style.Alignment.WrapText = false; // Header jangan di-wrap
+                            wsDetail.Rows().Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                            // ═════════════════════════════════════════════════════════
+
                             wsDetail.Row(1).Style.Font.Bold = true;
                             wsDetail.Row(1).Style.Fill.BackgroundColor = XLColor.FromColor(AppColors.Primary);
                             wsDetail.Row(1).Style.Font.FontColor = XLColor.White;
                             wsDetail.Columns().AdjustToContents();
 
                             // =========================================================
-                            // SHEET 2: REKAP DOWNTIME BULANAN (Untuk Grafik Bar)
+                            // SHEET 2: REKAP DOWNTIME BULANAN 
                             // =========================================================
                             var wsBulanan = workbook.Worksheets.Add("Rekap Downtime (Bulan)");
                             wsBulanan.Cell("A1").InsertTable(dataRekapBulanan);
@@ -62,7 +68,7 @@ namespace mtc_app.features.admin.presentation.views
                             wsBulanan.Columns().AdjustToContents();
 
                             // =========================================================
-                            // SHEET 3: REKAP OUTPUT HARIAN (Untuk Grafik Garis)
+                            // SHEET 3: REKAP OUTPUT HARIAN & EFISIENSI
                             // =========================================================
                             var wsHarian = workbook.Worksheets.Add("Output Harian");
                             wsHarian.Cell("A1").InsertTable(dataOutputHarian);
@@ -84,69 +90,25 @@ namespace mtc_app.features.admin.presentation.views
             }
         }
         
-        // FUNGSI 1: DATA DETAIL
+        // FUNGSI 1: DATA DETAIL (KODE SUDAH SANGAT BERSIH)
         private DataTable FetchDataForReport(DateTime startDate, DateTime endDate)
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
+                // Semua kolom sudah diatur rapi oleh SQL View, C# tinggal narik datanya saja.
                 string sql = @"
-                    SELECT * FROM view_admin_report 
-                    WHERE `Waktu Lapor` BETWEEN @StartDate AND @EndDate
-                    ORDER BY `Waktu Lapor` DESC";
+                    SELECT v.* FROM view_admin_report v
+                    JOIN tickets t ON v.`ID Tiket` = t.ticket_id
+                    WHERE t.created_at BETWEEN @StartDate AND @EndDate
+                    ORDER BY t.created_at DESC";
                 
                 var reader = connection.ExecuteReader(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1) });
                 var dataTable = new DataTable();
                 dataTable.Load(reader);
 
-                string colName = "Detail Masalah"; 
-                if (dataTable.Columns.Contains(colName))
+                if (dataTable.Columns.Contains("Status Terkini"))
                 {
-                    dataTable.Columns.Add("Jenis Problem", typeof(string));
-                    dataTable.Columns.Add("Deskripsi Detail", typeof(string));
-                    dataTable.Columns.Add("Nomor Aplikator", typeof(string));
-
-                    int colIndex = dataTable.Columns[colName].Ordinal;
-                    dataTable.Columns["Jenis Problem"].SetOrdinal(colIndex);
-                    dataTable.Columns["Deskripsi Detail"].SetOrdinal(colIndex + 1);
-                    dataTable.Columns["Nomor Aplikator"].SetOrdinal(colIndex + 2);
-
-                    foreach (DataRow row in dataTable.Rows)
-                    {
-                        string rawData = row[colName]?.ToString() ?? "";
-                        string jenis = "-", deskripsi = "-", aplikator = "-";
-
-                        if (rawData.Contains("(App: "))
-                        {
-                            int appIndex = rawData.IndexOf("(App: ");
-                            aplikator = rawData.Substring(appIndex + 6).TrimEnd(')'); 
-                            rawData = rawData.Substring(0, appIndex).Trim(); 
-                        }
-                        if (rawData.Contains(": "))
-                        {
-                            int colonIndex = rawData.IndexOf(": ");
-                            jenis = rawData.Substring(0, colonIndex).Trim();
-                            deskripsi = rawData.Substring(colonIndex + 2).Trim();
-                        }
-                        else
-                        {
-                            deskripsi = rawData.Trim(); 
-                        }
-
-                        row["Jenis Problem"] = jenis;
-                        row["Deskripsi Detail"] = deskripsi;
-                        row["Nomor Aplikator"] = aplikator;
-                    }
-                    dataTable.Columns.Remove(colName);
-                }
-
-                if (dataTable.Columns.Contains("Durasi Respon")) dataTable.Columns["Durasi Respon"].ColumnName = "Tunggu Teknisi";
-                if (dataTable.Columns.Contains("Waktu Tunggu Part")) dataTable.Columns["Waktu Tunggu Part"].ColumnName = "Tunggu Part";
-                if (dataTable.Columns.Contains("Durasi Trial Run")) dataTable.Columns["Durasi Trial Run"].ColumnName = "Tunggu Operator";
-
-                if (dataTable.Columns.Contains("Durasi Perbaikan") && dataTable.Columns.Contains("Tunggu Part"))
-                {
-                    int perbaikanIndex = dataTable.Columns["Durasi Perbaikan"].Ordinal;
-                    dataTable.Columns["Tunggu Part"].SetOrdinal(perbaikanIndex);
+                    dataTable.Columns.Remove("Status Terkini");
                 }
 
                 return dataTable;
@@ -179,32 +141,24 @@ namespace mtc_app.features.admin.presentation.views
             }
         }
 
-        // FUNGSI 3: REKAP OUTPUT HARIAN & SHIFT (SINKRON DENGAN MONITOR DASHBOARD)
+        // FUNGSI 3: REKAP OUTPUT HARIAN & EFISIENSI
         private DataTable FetchDailyOutputSummary(DateTime startDate, DateTime endDate)
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // LOGIKA SQL YANG BARU (Sesuai dengan MachineMonitorControl.cs):
-                // 1. INTERVAL 7 HOUR -> Jam 00:00 s/d 06:59 pagi akan dihitung sebagai tanggal kemarin.
-                // 2. HOUR >= 7 AND HOUR < 19 -> Shift Pagi (07:00 - 18:59)
-                // 3. HOUR < 7 OR HOUR >= 19 -> Shift Malam (19:00 - 06:59)
-
                 string sql = @"
                     SELECT 
                         DATE_FORMAT(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR), '%d %M %Y') AS 'Tanggal Produksi',
                         CONCAT(IFNULL(mt.type_name, ''), '-', IFNULL(ma.area_name, ''), '.', IFNULL(m.machine_number, '')) AS 'Nama Mesin',
                         
-                        -- Output Shift Pagi (07.00 - 18.59)
-                        MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND HOUR(mpl.created_at) < 19 THEN mpl.produced_pieces ELSE 0 END) AS 'Output Pagi (Pcs)',
+                        MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND HOUR(mpl.created_at) < 19 THEN mpl.produced_pieces ELSE 0 END) AS 'Output Pagi',
+                        MAX(CASE WHEN HOUR(mpl.created_at) < 7 OR HOUR(mpl.created_at) >= 19 THEN mpl.produced_pieces ELSE 0 END) AS 'Output Malam',
                         
-                        -- Output Shift Malam (19.00 - 06.59 besoknya)
-                        MAX(CASE WHEN HOUR(mpl.created_at) < 7 OR HOUR(mpl.created_at) >= 19 THEN mpl.produced_pieces ELSE 0 END) AS 'Output Malam (Pcs)',
-                        
-                        -- Total Harian (Pagi + Malam)
-                        (
-                            MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND HOUR(mpl.created_at) < 19 THEN mpl.produced_pieces ELSE 0 END) +
-                            MAX(CASE WHEN HOUR(mpl.created_at) < 7 OR HOUR(mpl.created_at) >= 19 THEN mpl.produced_pieces ELSE 0 END)
-                        ) AS 'Total Output Harian (Pcs)'
+                        (MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND HOUR(mpl.created_at) < 19 THEN mpl.auto_time ELSE 0 END) +
+                         MAX(CASE WHEN HOUR(mpl.created_at) < 7 OR HOUR(mpl.created_at) >= 19 THEN mpl.auto_time ELSE 0 END)) AS 'RawAutoSec',
+                         
+                        (MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND HOUR(mpl.created_at) < 19 THEN mpl.monitor_time ELSE 0 END) +
+                         MAX(CASE WHEN HOUR(mpl.created_at) < 7 OR HOUR(mpl.created_at) >= 19 THEN mpl.monitor_time ELSE 0 END)) AS 'RawMonitorSec'
                         
                     FROM machine_process_logs mpl
                     JOIN machines m ON mpl.machine_id = m.machine_id
@@ -218,16 +172,49 @@ namespace mtc_app.features.admin.presentation.views
                 var reader = connection.ExecuteReader(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1) });
                 var dataTable = new DataTable();
                 dataTable.Load(reader);
+
+                dataTable.Columns.Add("Total Output (Pcs)", typeof(long));
+                dataTable.Columns.Add("Rata-rata / Jam (Pcs)", typeof(long));
+                dataTable.Columns.Add("Production Time (Menit)", typeof(long));
+                dataTable.Columns.Add("Loss Time (Menit)", typeof(long));
+                dataTable.Columns.Add("Efisiensi (%)", typeof(string));
+
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    long outPagi = row["Output Pagi"] != DBNull.Value ? Convert.ToInt64(row["Output Pagi"]) : 0;
+                    long outMalam = row["Output Malam"] != DBNull.Value ? Convert.ToInt64(row["Output Malam"]) : 0;
+                    long totalOut = outPagi + outMalam;
+                    
+                    long autoSec = row["RawAutoSec"] != DBNull.Value ? Convert.ToInt64(row["RawAutoSec"]) : 0;
+                    long monSec = row["RawMonitorSec"] != DBNull.Value ? Convert.ToInt64(row["RawMonitorSec"]) : 0;
+                    
+                    long autoMin = autoSec / 60;
+                    long monMin = monSec / 60;
+                    long lossMin = monMin > autoMin ? monMin - autoMin : 0;
+                    
+                    double eff = monMin > 0 ? ((double)autoMin / monMin) * 100 : 0;
+
+                    row["Total Output (Pcs)"] = totalOut;
+                    row["Rata-rata / Jam (Pcs)"] = totalOut / 24; 
+                    row["Production Time (Menit)"] = autoMin;
+                    row["Loss Time (Menit)"] = lossMin;
+                    row["Efisiensi (%)"] = eff.ToString("F1") + " %";
+                }
+
+                dataTable.Columns.Remove("RawAutoSec");
+                dataTable.Columns.Remove("RawMonitorSec");
+
+                int outPagiIdx = dataTable.Columns["Output Pagi"].Ordinal;
+                dataTable.Columns["Total Output (Pcs)"].SetOrdinal(outPagiIdx + 2);
+                dataTable.Columns["Rata-rata / Jam (Pcs)"].SetOrdinal(outPagiIdx + 3);
+
                 return dataTable;
             }
         }
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
+            if (disposing && (components != null)) components.Dispose();
             base.Dispose(disposing);
         }
 
@@ -242,38 +229,32 @@ namespace mtc_app.features.admin.presentation.views
             this.dateEnd = new DateTimePicker();
             this.btnExport = new AppButton();
 
-            // Title
             this.lblTitle.AutoSize = true;
             this.lblTitle.Font = AppFonts.Header3;
             this.lblTitle.ForeColor = AppColors.TextPrimary;
             this.lblTitle.Location = new Point(0, 0);
             this.lblTitle.Text = "Buat Laporan Tiket (Excel)";
             
-            // Date Start Label
             this.lblDateStart.AutoSize = true;
             this.lblDateStart.Font = AppFonts.BodySmall;
             this.lblDateStart.Location = new Point(0, 50);
             this.lblDateStart.Text = "Tanggal Mulai:";
 
-            // Date Start Picker
             this.dateStart.Location = new Point(0, 75);
             this.dateStart.Size = new Size(200, 25);
             this.dateStart.Font = AppFonts.BodySmall;
             this.dateStart.Format = DateTimePickerFormat.Short;
 
-            // Date End Label
             this.lblDateEnd.AutoSize = true;
             this.lblDateEnd.Font = AppFonts.BodySmall;
             this.lblDateEnd.Location = new Point(220, 50);
             this.lblDateEnd.Text = "Tanggal Akhir:";
 
-            // Date End Picker
             this.dateEnd.Location = new Point(220, 75);
             this.dateEnd.Size = new Size(200, 25);
             this.dateEnd.Font = AppFonts.BodySmall;
             this.dateEnd.Format = DateTimePickerFormat.Short;
 
-            // Export Button
             this.btnExport.Text = "Generate & Export Excel";
             this.btnExport.Location = new Point(0, 120);
             this.btnExport.Size = new Size(250, 50);
