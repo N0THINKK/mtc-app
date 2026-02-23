@@ -223,6 +223,12 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 Task.Run(() => UpdatePartRequestStatus());
             }
+
+            // Sync timer to DB every 5 seconds so Dashboard can see "Live" updates
+            if (_tickCounter % 5 == 0 && _currentTicketId > 0)
+            {
+                Task.Run(() => SaveTimerToDatabase());
+            }
         }
 
         private void UpdateTimerDisplay()
