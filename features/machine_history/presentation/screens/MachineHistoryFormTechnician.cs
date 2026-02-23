@@ -75,7 +75,19 @@ namespace mtc_app.features.machine_history.presentation.screens
             
             this.StartPosition = FormStartPosition.CenterScreen;
             this.WindowState = FormWindowState.Maximized;
-            this.ControlBox = false; // [FIX] Task 10: Hide title bar close button
+            // this.ControlBox = false; // Removed to allow minimizing
+        }
+
+        // [FIX] Disables the Close (X) button but keeps Minimize/Maximize
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                const int CP_NOCLOSE_BUTTON = 0x200;
+                CreateParams myCp = base.CreateParams;
+                myCp.ClassStyle = myCp.ClassStyle | CP_NOCLOSE_BUTTON;
+                return myCp;
+            }
         }
 
         protected override void OnLoad(EventArgs e)
