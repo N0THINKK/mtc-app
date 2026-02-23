@@ -85,7 +85,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                 myCp.ClassStyle = myCp.ClassStyle | CP_NOCLOSE_BUTTON;
                 return myCp;
             }
-            this.ControlBox = false; 
         }
 
         protected override void OnLoad(EventArgs e)
