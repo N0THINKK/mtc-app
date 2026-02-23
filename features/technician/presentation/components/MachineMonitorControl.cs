@@ -72,10 +72,19 @@ namespace mtc_app.features.technician.presentation.components
             _pnlChartContainer = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White };
             
             _chart = new Chart();
-            _chart.Dock = DockStyle.Left;  
-            _chart.BackColor = Color.White;
-            _chart.Height = _pnlChartContainer.Height - 20; 
             
+            // ════ FIX BUG SCROLL WINFORMS (Bagian 1) ════
+            _chart.Dock = DockStyle.None;  // Lepas docking agar AutoScroll tidak error
+            _chart.Location = new Point(0, 0); // Kunci di pojok kiri atas
+            _chart.BackColor = Color.White;
+
+            // Buat tinggi chart selalu mengikuti tinggi panel secara otomatis
+            _pnlChartContainer.Resize += (s, e) => {
+                if (_chart != null)
+                    _chart.Height = _pnlChartContainer.ClientSize.Height;
+            };
+            // ═════════════════════════════════════════════
+
             var chartArea = new ChartArea("MainArea");
             chartArea.AxisX.Interval = 1;
             chartArea.AxisX.LabelStyle.Angle = -45;
@@ -342,21 +351,28 @@ namespace mtc_app.features.technician.presentation.components
         {
             int requiredWidth = _pnlChartContainer.Width;
 
-            // KALKULASI RUANG YANG DIBUTUHKAN AGAR TIDAK TABRAKAN SAAT RESIZE LAYAR KECIL
             if (mode.Contains("Output"))
             {
-                // Beri ruang 50px untuk setiap 1 batang jam per mesin
-                int spaceNeeded = data.Count * currentHourCount * 50; 
+                // Beri ruang MINIMAL 250px per mesin agar tulisan "Rata-rata & Total" tidak berdempetan.
+                int spacePerMachine = Math.Max(250, currentHourCount * 45); 
+                int spaceNeeded = data.Count * spacePerMachine; 
+                
                 requiredWidth = Math.Max(_pnlChartContainer.Width, spaceNeeded);
             }
             else
             {
-                // Mode efisiensi (hanya 2 bar per mesin)
-                int spaceNeeded = data.Count * 160; 
+                // Mode efisiensi (hanya 2 bar per mesin), beri minimal 200px per mesin
+                int spaceNeeded = data.Count * 200; 
                 requiredWidth = Math.Max(_pnlChartContainer.Width, spaceNeeded);
             }
 
+            // ════ FIX BUG SCROLL WINFORMS (Bagian 2) ════
+            // Kembalikan posisi scroll ke paling kiri (0,0) SEBELUM mengubah lebar
+            _pnlChartContainer.AutoScrollPosition = new Point(0, 0);
+            
             _chart.Width = requiredWidth;
+            _chart.Height = _pnlChartContainer.ClientSize.Height; // Pastikan tinggi tidak terpotong
+            // ═════════════════════════════════════════════
 
             _chart.Series.Clear();
             var area = _chart.ChartAreas[0];
