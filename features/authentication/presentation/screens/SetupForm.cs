@@ -17,6 +17,18 @@ namespace mtc_app.features.authentication.presentation.screens
             InitializeComponent();
             _repository = new SetupRepository();
             LoadDropdownData();
+            
+            // Make button layout interactive/dynamic
+            this.Resize += (s, e) => CenterExitButton();
+        }
+
+        private void CenterExitButton()
+        {
+            if (pnlMain != null && btnExit != null)
+            {
+                btnExit.Top = btnSave.Bottom + 15;
+                btnExit.Left = (pnlMain.Width - btnExit.Width) / 2;
+            }
         }
 
         private async void LoadDropdownData()
@@ -105,5 +117,11 @@ namespace mtc_app.features.authentication.presentation.screens
         
         // Empty handler for designer compatibility
         private void btnSave_Click(object sender, EventArgs e) { }
+        
+        private void btnExit_Click(object sender, EventArgs e)
+        {
+            this.DialogResult = DialogResult.Cancel;
+            this.Close();
+        }
     }
 }

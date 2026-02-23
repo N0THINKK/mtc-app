@@ -13,6 +13,7 @@ namespace mtc_app.features.authentication.presentation.screens
         private AppInput comboMachineArea;
         private AppInput txtMachineNumber;
         private AppButton btnSave;
+        private AppButton btnExit;
         private Panel pnlMain;
 
         protected override void Dispose(bool disposing)
@@ -33,6 +34,7 @@ namespace mtc_app.features.authentication.presentation.screens
             this.comboMachineArea = new AppInput();
             this.txtMachineNumber = new AppInput();
             this.btnSave = new AppButton();
+            this.btnExit = new AppButton();
             this.pnlMain = new Panel();
             this.pnlMain.SuspendLayout();
             this.SuspendLayout();
@@ -46,6 +48,7 @@ namespace mtc_app.features.authentication.presentation.screens
             this.pnlMain.Controls.Add(this.comboMachineArea);
             this.pnlMain.Controls.Add(this.txtMachineNumber);
             this.pnlMain.Controls.Add(this.btnSave);
+            this.pnlMain.Controls.Add(this.btnExit);
             this.pnlMain.Location = new System.Drawing.Point(100, 30); 
             this.pnlMain.Size = new System.Drawing.Size(600, 500); 
             this.pnlMain.Name = "pnlMain";
@@ -101,6 +104,17 @@ namespace mtc_app.features.authentication.presentation.screens
             this.btnSave.Text = "SIMPAN & LANJUTKAN";
             this.btnSave.Type = AppButton.ButtonType.Primary;
             this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
+            
+            // 
+            // btnExit
+            // 
+            this.btnExit.Location = new System.Drawing.Point(240, 430);
+            this.btnExit.Name = "btnExit";
+            this.btnExit.Size = new System.Drawing.Size(120, 40);
+            this.btnExit.TabIndex = 5;
+            this.btnExit.Text = "Kembali";
+            this.btnExit.Type = AppButton.ButtonType.Secondary;
+            this.btnExit.Click += new System.EventHandler(this.btnExit_Click);
             
             // 
             // SetupForm
