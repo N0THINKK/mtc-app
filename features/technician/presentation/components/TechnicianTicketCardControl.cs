@@ -344,7 +344,7 @@ namespace mtc_app.features.technician.presentation.components
                     stripColor = AppColors.Primary;
                     badgeBgColor = AppColors.Separator;
                     badgeTextColor = AppColors.TextPrimary;
-                    badgeText = "Unknown";
+                    badgeText = "Inspeksi";
                     break;
             }
 
