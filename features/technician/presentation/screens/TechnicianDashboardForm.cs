@@ -273,25 +273,25 @@ namespace mtc_app.features.technician.presentation.screens
 
             switch (_autoSwitchStage)
             {
-                case 0: // Tab 1: Work Queue
+                case 0: // Monitor - Output
                     tabControl.SelectedIndex = 0;
-                    break;
-                case 1: // Tab 2: Data Part
-                    tabControl.SelectedIndex = 1;
-                    break;
-                case 2: // Tab 3: Performance
-                    tabControl.SelectedIndex = 2;
-                    break;
-                case 3: // Tab 4: Machine Analysis
-                    tabControl.SelectedIndex = 3;
-                    break;
-                case 4: // Tab 5: Monitor - Output
-                    tabControl.SelectedIndex = 4;
                     machineMonitorControl?.SetMetric(0);
                     break;
-                case 5: // Tab 5: Monitor - Efficiency
-                    tabControl.SelectedIndex = 4;
+                case 1: // Monitor - Efficiency
+                    tabControl.SelectedIndex = 0;
                     machineMonitorControl?.SetMetric(1);
+                    break;
+                case 2: // Work Queue
+                    tabControl.SelectedIndex = 1;
+                    break;
+                case 3: // Data Part
+                    tabControl.SelectedIndex = 2;
+                    break;
+                case 4: // Performance
+                    tabControl.SelectedIndex = 3;
+                    break;
+                case 5: // Machine Analysis
+                    tabControl.SelectedIndex = 4;
                     break;
             }
         }
@@ -304,15 +304,15 @@ namespace mtc_app.features.technician.presentation.screens
             DateTime start = dtpStart.Value.Date;
             DateTime end = dtpEnd.Value.Date.AddDays(1).AddSeconds(-1); 
 
-            if (tabControl.SelectedIndex == 1) // Data Part
+            if (tabControl.SelectedIndex == 2) // Data Part
             {
                 await stockDataControl.LoadDataAsync(start, end);
             }
-            else if (tabControl.SelectedIndex == 2) // Performa
+            else if (tabControl.SelectedIndex == 3) // Performa
             {
                 await performanceControl.LoadDataAsync(start, end);
             }
-            else if (tabControl.SelectedIndex == 3) // Analisis Mesin
+            else if (tabControl.SelectedIndex == 4) // Analisis Mesin
             {
                 await machinePerformanceControl.LoadDataAsync(start, end);
             }
@@ -355,17 +355,17 @@ namespace mtc_app.features.technician.presentation.screens
             machineMonitorControl = new MachineMonitorControl { Dock = DockStyle.Fill };
             tabMonitor.Controls.Add(machineMonitorControl);
 
+            tabControl.TabPages.Add(tabMonitor);
             tabControl.TabPages.Add(tabWorkQueue);
             tabControl.TabPages.Add(tabStockData);
             tabControl.TabPages.Add(tabPerformance);
             tabControl.TabPages.Add(tabMachine);
-            tabControl.TabPages.Add(tabMonitor);
 
             // Load data when tab changes
             tabControl.SelectedIndexChanged += (s, e) =>
             {
                 // Manage Real-time monitoring
-                if (tabControl.SelectedIndex == 4) // Monitor tab
+                if (tabControl.SelectedIndex == 0) // Monitor tab
                 {
                     machineMonitorControl.StartMonitoring();
                 }
