@@ -74,21 +74,20 @@ namespace mtc_app.features.technician.presentation.components
             _chart = new Chart();
             
             // ════ FIX BUG SCROLL WINFORMS (Bagian 1) ════
-            _chart.Dock = DockStyle.None;  // Lepas docking agar AutoScroll tidak error
-            _chart.Location = new Point(0, 0); // Kunci di pojok kiri atas
+            _chart.Dock = DockStyle.Fill;  // Gunakan Fill agar mengikuti kontainer
             _chart.BackColor = Color.White;
-
-            // Buat tinggi chart selalu mengikuti tinggi panel secara otomatis
-            _pnlChartContainer.Resize += (s, e) => {
-                if (_chart != null)
-                    _chart.Height = _pnlChartContainer.ClientSize.Height;
-            };
             // ═════════════════════════════════════════════
 
             var chartArea = new ChartArea("MainArea");
             chartArea.AxisX.Interval = 1;
             chartArea.AxisX.LabelStyle.Angle = -45;
             chartArea.AxisX.MajorGrid.LineColor = Color.LightGray;
+            
+            // Konfigurasi Scrollbar Native Chart
+            chartArea.AxisX.ScrollBar.Enabled = true;
+            chartArea.AxisX.ScrollBar.IsPositionedInside = false; // Agar scrollbar tidak tertutup label
+            chartArea.AxisX.ScrollBar.Size = 14;
+
             chartArea.AxisY.MajorGrid.LineColor = Color.LightGray;
             
             _chart.ChartAreas.Add(chartArea);
@@ -349,29 +348,8 @@ namespace mtc_app.features.technician.presentation.components
 
         private void UpdateChart(List<MachineData> data, string mode, int currentHourCount)
         {
-            int requiredWidth = _pnlChartContainer.Width;
-
-            if (mode.Contains("Output"))
-            {
-                // Beri ruang MINIMAL 250px per mesin agar tulisan "Rata-rata & Total" tidak berdempetan.
-                int spacePerMachine = Math.Max(250, currentHourCount * 45); 
-                int spaceNeeded = data.Count * spacePerMachine; 
-                
-                requiredWidth = Math.Max(_pnlChartContainer.Width, spaceNeeded);
-            }
-            else
-            {
-                // Mode efisiensi (hanya 2 bar per mesin), beri minimal 200px per mesin
-                int spaceNeeded = data.Count * 200; 
-                requiredWidth = Math.Max(_pnlChartContainer.Width, spaceNeeded);
-            }
-
             // ════ FIX BUG SCROLL WINFORMS (Bagian 2) ════
-            // Kembalikan posisi scroll ke paling kiri (0,0) SEBELUM mengubah lebar
-            _pnlChartContainer.AutoScrollPosition = new Point(0, 0);
-            
-            _chart.Width = requiredWidth;
-            _chart.Height = _pnlChartContainer.ClientSize.Height; // Pastikan tinggi tidak terpotong
+            // HAPUS SEMUA LOGIKA WIDTH & AUTOSCROLL MANUAL
             // ═════════════════════════════════════════════
 
             _chart.Series.Clear();
@@ -380,6 +358,18 @@ namespace mtc_app.features.technician.presentation.components
             area.AxisY.Maximum = Double.NaN;
             area.AxisY.Minimum = 0;
             area.AxisY.Title = "";
+            
+            // Batasi view ke 10 mesin maksimal. Sisanya bisa digeser via scrollbar native
+            if (data.Count > 10)
+            {
+                area.AxisX.ScaleView.Zoomable = true;
+                area.AxisX.ScaleView.Size = 10;
+            }
+            else
+            {
+                area.AxisX.ScaleView.ZoomReset();
+            }
+
             area.RecalculateAxesScale();
 
             if (mode.Contains("Output"))
