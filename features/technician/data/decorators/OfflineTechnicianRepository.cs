@@ -200,5 +200,26 @@ namespace mtc_app.features.technician.data.decorators
                 return Enumerable.Empty<MachinePerformanceDto>();
             }
         }
+
+        // ═════════ [BARU] IMPLEMENTASI METODE RUN MESIN ═════════
+        /// <summary>
+        /// Gets running machine stats. Returns (0,0) when offline.
+        /// </summary>
+        public async Task<(int Running, int Total)> GetMachineRunStatsAsync()
+        {
+            if (!_networkMonitor.IsOnline)
+            {
+                return (0, 0); // Jika offline, fallback kembalikan 0
+            }
+
+            try
+            {
+                return await _innerRepository.GetMachineRunStatsAsync();
+            }
+            catch (Exception ex) when (IsNetworkException(ex))
+            {
+                return (0, 0); // Fallback ke 0 jika gagal jaringan saat proses
+            }
+        }
     }
 }

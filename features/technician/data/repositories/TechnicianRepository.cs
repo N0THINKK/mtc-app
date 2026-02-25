@@ -13,9 +13,6 @@ namespace mtc_app.features.technician.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // PERBAIKAN: Mengambil data failure/masalah dari tabel ticket_problems
-                // [FIX] Menggunakan GROUP_CONCAT untuk menampilkan SEMUA masalah.
-                // [FIX] Menggunakan GROUP_CONCAT untuk menampilkan SEMUA teknisi (Concurrent Support)
                 string sql = @"
                     SELECT 
                         t.ticket_id AS TicketId,
@@ -42,7 +39,6 @@ namespace mtc_app.features.technician.data.repositories
                         t.gl_rating_score AS GlRatingScore,
                         t.gl_validated_at AS GlValidatedAt,
                         
-                        -- [NEW] Aggregate Technician Names
                         (SELECT 
                             CASE 
                                 WHEN COUNT(DISTINCT tts.technician_id) > 1 
@@ -83,14 +79,12 @@ namespace mtc_app.features.technician.data.repositories
                         CONCAT(m_type.type_name, '.', m_area.area_name, '-', m.machine_number) AS MachineName,
                         op.full_name AS OperatorName,
                         
-                        -- [FIXED] Aggregate Technician Names for Detail View (Comma Separated)
                         (SELECT GROUP_CONCAT(DISTINCT u_tech.full_name SEPARATOR ', ')
                          FROM ticket_technician_sessions tts
                          JOIN users u_tech ON tts.technician_id = u_tech.user_id
                          WHERE tts.ticket_id = t.ticket_id
                         ) AS TechnicianName,
                         
-                        -- [FIXED] Subquery FailureDetails (Multi-Problem Support)
                         (SELECT GROUP_CONCAT(
                             CONCAT(
                                 IF(pt.type_name IS NOT NULL, CONCAT(pt.type_name, ': '), ''), 
@@ -103,7 +97,6 @@ namespace mtc_app.features.technician.data.repositories
                          WHERE tp.ticket_id = t.ticket_id
                         ) AS FailureDetails,
                         
-                        -- [FIXED] Subquery ActionDetails (Multi-Action Support)
                         (SELECT GROUP_CONCAT(
                             CONCAT(
                                 IFNULL(act.action_name, IFNULL(tp.action_details_manual, '-')),
@@ -122,16 +115,15 @@ namespace mtc_app.features.technician.data.repositories
                         t.gl_rating_score AS GlRatingScore,
                         t.gl_rating_note AS GlRatingNote,
 
-                -- [NEW] Subquery SparepartRequests
-                (SELECT GROUP_CONCAT(
-                    CONCAT(COALESCE(p.part_name, pr.part_name_manual), ' x', pr.qty)
-                    SEPARATOR ', ')
-                 FROM part_requests pr
-                 LEFT JOIN parts p ON pr.part_id = p.part_id
-                 WHERE pr.ticket_id = t.ticket_id
-                ) AS SparepartRequests
+                        (SELECT GROUP_CONCAT(
+                            CONCAT(COALESCE(p.part_name, pr.part_name_manual), ' x', pr.qty)
+                            SEPARATOR ', ')
+                         FROM part_requests pr
+                         LEFT JOIN parts p ON pr.part_id = p.part_id
+                         WHERE pr.ticket_id = t.ticket_id
+                        ) AS SparepartRequests
 
-            FROM tickets t
+                    FROM tickets t
                     JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN machine_types m_type ON m.type_id = m_type.type_id
                     LEFT JOIN machine_areas m_area ON m.area_id = m_area.area_id
@@ -160,7 +152,6 @@ namespace mtc_app.features.technician.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // [FIXED] Updated to use ticket_technician_sessions for concurrent support
                 string sql = @"
                     SELECT 
                         COUNT(DISTINCT t.ticket_id) AS CompletedRepairs,
@@ -177,10 +168,6 @@ namespace mtc_app.features.technician.data.repositories
 
         public async Task<IEnumerable<TechnicianPerformanceDto>> GetLeaderboardAsync(DateTime start, DateTime end)
         {
-            // [FIXED] Updated query to:
-            // 1. Join ticket_technician_sessions (Concurrent support)
-            // 2. Remove gl_validated_at check (Show ratings even if GL approval pending)
-            // 3. Use DISTINCT ticket counting per technician
             const string sql = @"
                 SELECT 
                     T.TechnicianName,
@@ -247,6 +234,24 @@ namespace mtc_app.features.technician.data.repositories
             {
                 var data = await connection.QueryAsync<MachinePerformanceDto>(sql, new { Start = start, End = end, Area = area });
                 return data;
+            }
+        }
+
+        // [BARU] Logika untuk menghitung a/b dari tabel log efisiensi
+        public async Task<(int Running, int Total)> GetMachineRunStatsAsync()
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        (SELECT COUNT(DISTINCT machine_id) 
+                         FROM machine_process_logs 
+                         WHERE created_at >= NOW() - INTERVAL 10 MINUTE) as Running,
+                         
+                        (SELECT COUNT(*) FROM machines) as Total
+                ";
+                
+                return await connection.QueryFirstOrDefaultAsync<(int, int)>(sql);
             }
         }
     }

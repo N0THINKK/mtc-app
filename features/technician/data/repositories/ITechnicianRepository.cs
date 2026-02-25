@@ -13,5 +13,8 @@ namespace mtc_app.features.technician.data.repositories
         Task<IEnumerable<TechnicianPerformanceDto>> GetLeaderboardAsync(DateTime start, DateTime end);
         Task<IEnumerable<MachinePerformanceDto>> GetMachinePerformanceAsync(DateTime start, DateTime end, string area = null);
         Task UpdateOperatorRatingAsync(long ticketId, int rating, string note);
+        
+        // [BARU] Metode untuk mengambil status Run mesin berdasarkan efisiensi
+        Task<(int Running, int Total)> GetMachineRunStatsAsync();
     }
 }

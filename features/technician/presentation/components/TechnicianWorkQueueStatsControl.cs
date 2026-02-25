@@ -26,30 +26,26 @@ namespace mtc_app.features.technician.presentation.components
         private Label lblDoneLabel;
         private PictureBox iconDone;
 
-        // Machine State Cards
+        // Machine State Cards (HANYA RUN SEKARANG)
         private Panel pnlRun;
-        private Panel pnlStop;
-
         private Label lblRunValue;
         private Label lblRunLabel;
         private PictureBox iconRun;
-
-        private Label lblStopValue;
-        private Label lblStopLabel;
-        private PictureBox iconStop;
 
         public TechnicianWorkQueueStatsControl()
         {
             InitializeComponent();
         }
 
-        public void UpdateStats(int openCount, int repairCount, int doneCount, int runCount, int stopCount)
+        // UPDATE PARAMETER: format a/b untuk mesin beroperasi
+        public void UpdateStats(int openCount, int repairCount, int doneCount, int runCount, int totalMachine)
         {
             lblOpenValue.Text = openCount.ToString();
             lblRepairValue.Text = repairCount.ToString();
             lblDoneValue.Text = doneCount.ToString();
-            lblRunValue.Text = runCount.ToString();
-            lblStopValue.Text = stopCount.ToString();
+            
+            // Tampilkan rasio a/b
+            lblRunValue.Text = $"{runCount}/{totalMachine}";
         }
 
         private void InitializeComponent()
@@ -58,7 +54,6 @@ namespace mtc_app.features.technician.presentation.components
             this.pnlRepairing = new Panel();
             this.pnlDone = new Panel();
             this.pnlRun = new Panel();
-            this.pnlStop = new Panel();
             
             this.lblOpenValue = new Label();
             this.lblOpenLabel = new Label();
@@ -75,10 +70,6 @@ namespace mtc_app.features.technician.presentation.components
             this.lblRunValue = new Label();
             this.lblRunLabel = new Label();
             this.iconRun = new PictureBox();
-
-            this.lblStopValue = new Label();
-            this.lblStopLabel = new Label();
-            this.iconStop = new PictureBox();
 
             this.SuspendLayout();
             
@@ -121,15 +112,11 @@ namespace mtc_app.features.technician.presentation.components
             };
             flowCards.Controls.Add(separator);
 
-            // ═══ Group 2: Machine State ═══
+            // ═══ Group 2: Machine State (HANYA RUN) ═══
             SetupStatCard(pnlRun, iconRun, lblRunValue, lblRunLabel,
-                "0", "Run", Color.FromArgb(34, 197, 94), Color.FromArgb(240, 253, 244));
-
-            SetupStatCard(pnlStop, iconStop, lblStopValue, lblStopLabel,
-                "0", "Stop", Color.FromArgb(107, 114, 128), Color.FromArgb(249, 250, 251));
+                "0/0", "Mesin Beroperasi", Color.FromArgb(34, 197, 94), Color.FromArgb(240, 253, 244));
 
             flowCards.Controls.Add(pnlRun);
-            flowCards.Controls.Add(pnlStop);
 
             this.Controls.Add(flowCards);
 
@@ -154,10 +141,8 @@ namespace mtc_app.features.technician.presentation.components
                 icon.Paint += (s, e) => DrawAlertIcon(e.Graphics, accentColor);
             else if (labelText.Contains("Sedang"))
                 icon.Paint += (s, e) => DrawWrenchIcon(e.Graphics, accentColor);
-            else if (labelText == "Run")
+            else if (labelText.Contains("Run") || labelText.Contains("Beroperasi"))
                 icon.Paint += (s, e) => DrawRunIcon(e.Graphics, accentColor);
-            else if (labelText == "Stop")
-                icon.Paint += (s, e) => DrawStopIcon(e.Graphics, accentColor);
             else
                 icon.Paint += (s, e) => DrawCheckCircleIcon(e.Graphics, accentColor);
 
@@ -194,15 +179,11 @@ namespace mtc_app.features.technician.presentation.components
         private void DrawStatCard(Graphics g, Rectangle bounds, Color accentColor)
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
-
-            // Card background with rounded corners
             using (GraphicsPath path = GraphicsUtils.GetRoundedRectangle(new Rectangle(0, 0, bounds.Width - 1, bounds.Height - 1), 8))
             {
                 g.FillPath(new SolidBrush(AppColors.CardBackground), path);
                 g.DrawPath(new Pen(Color.FromArgb(230, 230, 230), 1), path);
             }
-
-            // Top accent line
             using (Pen accentPen = new Pen(accentColor, 3))
             {
                 g.DrawLine(accentPen, 8, 0, bounds.Width - 8, 0);
@@ -214,11 +195,9 @@ namespace mtc_app.features.technician.presentation.components
             g.SmoothingMode = SmoothingMode.AntiAlias;
             using (Pen pen = new Pen(color, 3))
             {
-                // Triangle
                 g.DrawLine(pen, 24, 4, 44, 40);
                 g.DrawLine(pen, 44, 40, 4, 40);
                 g.DrawLine(pen, 4, 40, 24, 4);
-                // Exclamation
                 g.DrawLine(pen, 24, 16, 24, 28);
                 g.DrawLine(pen, 24, 32, 24, 34);
             }
@@ -229,9 +208,7 @@ namespace mtc_app.features.technician.presentation.components
             g.SmoothingMode = SmoothingMode.AntiAlias;
             using (Pen pen = new Pen(color, 3))
             {
-                // Wrench handle
                 g.DrawLine(pen, 12, 36, 24, 24);
-                // Head
                 g.DrawArc(pen, 20, 8, 20, 20, 270, 270); 
             }
         }
@@ -241,19 +218,8 @@ namespace mtc_app.features.technician.presentation.components
             g.SmoothingMode = SmoothingMode.AntiAlias;
             using (Brush brush = new SolidBrush(color))
             {
-                // Play Triangle
                 Point[] points = { new Point(16, 12), new Point(16, 36), new Point(38, 24) };
                 g.FillPolygon(brush, points);
-            }
-        }
-
-        private void DrawStopIcon(Graphics g, Color color)
-        {
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            using (Brush brush = new SolidBrush(color))
-            {
-                // Stop Square
-                g.FillRectangle(brush, 12, 12, 24, 24);
             }
         }
 
