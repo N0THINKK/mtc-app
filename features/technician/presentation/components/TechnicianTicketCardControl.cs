@@ -22,11 +22,10 @@ namespace mtc_app.features.technician.presentation.components
         private Label lblProblem;
         private Label lblTechnicianName;
         private Label lblTime;
-        private Label lblStatusBadge; // Now a button-like label
-        private Label lblMachineState; // Run/Stop badge
+        private Label lblStatusBadge; 
+        private Label lblMachineState; 
         private PictureBox iconMachine;
         private PictureBox iconClock;
-        // private AppStarRating starRating; // Removed
         
         private TicketDto _currentTicket;
         public event EventHandler<long> OnCardClick;
@@ -51,88 +50,72 @@ namespace mtc_app.features.technician.presentation.components
             this.lblMachineState = new Label();
             this.iconMachine = new PictureBox();
             this.iconClock = new PictureBox();
-            // this.starRating = new AppStarRating(); // Removed
             
             this.SuspendLayout();
             this.pnlMain.SuspendLayout();
             
-            // 
             // Main UserControl
-            // 
             this.BackColor = Color.Transparent;
             this.AutoSize = true;
             this.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             this.Margin = new Padding(0);
-            this.Padding = new Padding(0, 0, 0, AppDimens.GapStandard); // Spacing between cards
+            this.Padding = new Padding(0, 0, 0, AppDimens.GapStandard);
             this.Dock = DockStyle.Top;
 
-            // 
             // Main Panel
-            // 
             this.pnlMain.BackColor = AppColors.CardBackground;
             this.pnlMain.Dock = DockStyle.Fill;
             this.pnlMain.Padding = new Padding(0);
             this.pnlMain.AutoSize = true;
             this.pnlMain.Paint += PnlMain_Paint;
 
-            // 
             // Color Strip
-            // 
             this.pnlColorStrip.Dock = DockStyle.Left;
             this.pnlColorStrip.Width = 6;
 
-            // 
             // TableLayoutPanel (Horizontal Layout)
-            // 
-            // TableLayoutPanel (Horizontal Layout)
-            // 
             this.layoutTable.ColumnCount = 7;
             this.layoutTable.RowCount = 1;
             this.layoutTable.Dock = DockStyle.Top;
-            this.layoutTable.Padding = new Padding(AppDimens.PaddingStandard); // Bigger padding
+            this.layoutTable.Padding = new Padding(AppDimens.PaddingStandard);
             this.layoutTable.AutoSize = true;
             this.layoutTable.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             
-            // Columns: Icon | Machine | Tech | Problem | Time | StatusBadge | MachineState
-            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40F)); // Icon
-            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Machine
-            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Technician
-            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F)); // Problem (Fills gap)
-            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Time
-            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Status Badge
-            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // Machine State
+            // Columns
+            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40F)); 
+            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); 
+            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); 
+            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F)); 
+            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); 
+            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); 
+            this.layoutTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); 
             
-            // Row styling (single row, center vertically)
             this.layoutTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            // 
-            // Controls
-            // 
-
             // 1. Icon
-            this.iconMachine.Size = new Size(32, 32); // Bigger icon
+            this.iconMachine.Size = new Size(32, 32);
             this.iconMachine.BackColor = Color.Transparent;
             this.iconMachine.SizeMode = PictureBoxSizeMode.CenterImage;
             this.iconMachine.Paint += (s, e) => DrawMachineIcon(e.Graphics);
             this.layoutTable.Controls.Add(this.iconMachine, 0, 0);
 
-            // 2. Machine Name (Bigger Font)
+            // 2. Machine Name 
             this.lblMachineName.Font = AppFonts.MetricSmall;
             this.lblMachineName.ForeColor = AppColors.TextPrimary;
             this.lblMachineName.AutoSize = true;
             this.lblMachineName.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            this.lblMachineName.Margin = new Padding(0, 0, AppDimens.MarginLarge, 0); // Spacing
+            this.lblMachineName.Margin = new Padding(0, 0, AppDimens.MarginLarge, 0); 
             this.layoutTable.Controls.Add(this.lblMachineName, 1, 0);
 
             // 3. Technician Name
             this.lblTechnicianName.Font = AppFonts.Header3;
-            this.lblTechnicianName.ForeColor = AppColors.TextPrimary; // Darker
+            this.lblTechnicianName.ForeColor = AppColors.TextPrimary;
             this.lblTechnicianName.AutoSize = true;
             this.lblTechnicianName.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             this.lblTechnicianName.Margin = new Padding(0, 0, AppDimens.MarginLarge, 0);
             this.layoutTable.Controls.Add(this.lblTechnicianName, 2, 0);
 
-            // 4. Problem (Truncated if too long, fills middle)
+            // 4. Problem
             this.lblProblem.Font = AppFonts.Title;
             this.lblProblem.ForeColor = AppColors.TextSecondary;
             this.lblProblem.AutoSize = true;
@@ -140,14 +123,7 @@ namespace mtc_app.features.technician.presentation.components
             this.lblProblem.Margin = new Padding(0, 0, AppDimens.MarginLarge, 0);
             this.layoutTable.Controls.Add(this.lblProblem, 3, 0);
 
-            // 5. Star Rating - Removed
-            // this.starRating.IsReadOnly = true;
-            // this.starRating.Visible = false;
-            // this.starRating.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            // this.starRating.Margin = new Padding(0, 0, AppDimens.MarginLarge, 0);
-            // this.layoutTable.Controls.Add(this.starRating, 4, 0);
-
-            // 6. Time (Icon + Text)
+            // 5. Time 
             var pnlTime = new Panel { AutoSize = true, Anchor = AnchorStyles.Left | AnchorStyles.Right };
             this.iconClock.Size = new Size(16, 16);
             this.iconClock.Location = new Point(0, 4);
@@ -160,21 +136,17 @@ namespace mtc_app.features.technician.presentation.components
             
             pnlTime.Controls.Add(this.iconClock);
             pnlTime.Controls.Add(this.lblTime);
-            this.layoutTable.Controls.Add(pnlTime, 4, 0); // Index shifted 5 -> 4
+            this.layoutTable.Controls.Add(pnlTime, 4, 0);
 
-            // 7. Status Badge
+            // 6. Status Badge
             this.lblStatusBadge.Font = AppFonts.Subtitle;
             this.lblStatusBadge.AutoSize = true;
-            this.lblStatusBadge.Padding = new Padding(AppDimens.PaddingStandard, AppDimens.PaddingSmall, AppDimens.PaddingStandard, AppDimens.PaddingSmall); // Bigger badge
+            this.lblStatusBadge.Padding = new Padding(AppDimens.PaddingStandard, AppDimens.PaddingSmall, AppDimens.PaddingStandard, AppDimens.PaddingSmall);
             this.lblStatusBadge.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             this.lblStatusBadge.TextAlign = ContentAlignment.MiddleCenter;
-            // Set rounded corners? Standard label doesn't support it easily without paint, 
-            // but user loved the flat badge look in previous request.
-            // Screenshot shows an Orange Button-like thing "Belum Direview".
-            // So we use background color.
             this.layoutTable.Controls.Add(this.lblStatusBadge, 5, 0);
 
-            // 8. Machine State Badge (Run/Stop)
+            // 7. Machine State Badge (Run/Stop)
             this.lblMachineState.Font = AppFonts.Subtitle;
             this.lblMachineState.AutoSize = true;
             this.lblMachineState.Padding = new Padding(AppDimens.PaddingStandard, AppDimens.PaddingSmall, AppDimens.PaddingStandard, AppDimens.PaddingSmall);
@@ -216,7 +188,7 @@ namespace mtc_app.features.technician.presentation.components
         {
             if ((DateTime.Now - _lastClickTime).TotalMilliseconds < 500) return;
             _lastClickTime = DateTime.Now;
-            OnCardClick?.Invoke(this, _currentTicket?.TicketId ?? 0); // Technician uses Long ID
+            OnCardClick?.Invoke(this, _currentTicket?.TicketId ?? 0); 
         }
 
         public void UpdateDisplay(TicketDto ticket)
@@ -226,7 +198,6 @@ namespace mtc_app.features.technician.presentation.components
 
             this.lblMachineName.Text = ticket.MachineName ?? "-";
             
-            // [UI-FIX] Format multi-problem strings into a numbered list
             if (!string.IsNullOrEmpty(ticket.FailureDetails))
             {
                 var problems = ticket.FailureDetails.Split(new[] { " | " }, StringSplitOptions.None);
@@ -245,7 +216,6 @@ namespace mtc_app.features.technician.presentation.components
                 this.lblProblem.Text = "-";
             }
             
-            // Technician Name
              if (!string.IsNullOrEmpty(ticket.TechnicianName))
             {
                 this.lblTechnicianName.Text = ticket.TechnicianName;
@@ -256,25 +226,36 @@ namespace mtc_app.features.technician.presentation.components
                 this.lblTechnicianName.Visible = false;
             }
 
-            // Status
             UpdateStatusVisuals(ticket.StatusId);
             UpdateMachineStateVisuals(ticket.IsMachineRunning);
 
-            // Calculate Active Duration based on exactly what is recorded in the DB form timers
-            TimeSpan activeDuration = TimeSpan.FromSeconds(ticket.ArrivalSeconds + ticket.RepairSeconds);
+            // ═════════════ [LOGIKA WAKTU MURNI ELAPSED TIME] ═════════════
+            TimeSpan activeDuration;
 
-            if (ticket.StatusId == 3) // Done
+            if (ticket.StatusId == 1) // Belum Ditangani (Open)
+            {
+                // Belum ada teknisi/fase awal. Waktu terus berdetak real-time dari saat tiket lapor.
+                activeDuration = DateTime.Now - ticket.CreatedAt;
+            }
+            else 
+            {
+                // Status 2 (Repairing), Status 4 (Inspeksi), dan Status 3 (Selesai)
+                // Menggunakan murni total detik elapsed dari database untuk menunjang fitur PAUSE.
+                // Total Downtime = Kedatangan + Perbaikan + Inspeksi
+                activeDuration = TimeSpan.FromSeconds(ticket.ArrivalSeconds + ticket.RepairSeconds + ticket.InspectionSeconds);
+            }
+            // ═════════════════════════════════════════════════════════════
+
+            if (ticket.StatusId == 3) // Selesai
             {
                  if (ticket.FinishedAt.HasValue)
                  {
                      if (ticket.FinishedAt.Value.Date == DateTime.Now.Date)
                      {
-                         // Same day: Just show duration without parentheses
                          this.lblTime.Text = FormatDuration(activeDuration);
                      }
                      else
                      {
-                         // Different day: Show Date + Duration without parentheses
                          this.lblTime.Text = $"{FormatFinishedTime(ticket.FinishedAt.Value)} {FormatDuration(activeDuration)}";
                      }
                  }
@@ -286,20 +267,19 @@ namespace mtc_app.features.technician.presentation.components
                  _baseBackColor = AppColors.CardBackground;
                  this.pnlMain.BackColor = _baseBackColor;
             }
-            else
+            else // Selain Selesai (Open/Repairing/Inspection)
             {
-                 // Open/Repairing
                  this.lblTime.Text = FormatDuration(activeDuration);
                  
-                 // Card Color logic SLA based on the exact same activeDuration used for display
+                 // Logika peringatan warna (SLA)
                  if (activeDuration.TotalHours >= 2)
                  {
-                     _baseBackColor = Color.FromArgb(254, 226, 226); // Light Red
+                     _baseBackColor = Color.FromArgb(254, 226, 226); // Merah Muda
                      this.pnlMain.BackColor = _baseBackColor;
                  }
                  else if (activeDuration.TotalHours >= 1)
                  {
-                     _baseBackColor = Color.FromArgb(254, 249, 195); // Light Yellow
+                     _baseBackColor = Color.FromArgb(254, 249, 195); // Kuning Muda
                      this.pnlMain.BackColor = _baseBackColor;
                  }
                  else
@@ -308,9 +288,6 @@ namespace mtc_app.features.technician.presentation.components
                      this.pnlMain.BackColor = _baseBackColor;
                  }
             }
-            
-            // Adjust visibility if problem text is empty to avoid gap?
-            // TableLayoutPanel handles distinct columns.
         }
 
         private void UpdateStatusVisuals(int statusId)
@@ -329,22 +306,28 @@ namespace mtc_app.features.technician.presentation.components
                     badgeText = "Open";
                     break;
                 case 2: // Repairing
-                    stripColor = Color.FromArgb(234, 179, 8); // Yellow/Gold
-                    badgeBgColor = Color.FromArgb(254, 252, 232); // Light Yellow
-                    badgeTextColor = Color.FromArgb(161, 98, 7); // Dark Yellow/Brown
+                    stripColor = Color.FromArgb(234, 179, 8); // Kuning
+                    badgeBgColor = Color.FromArgb(254, 252, 232); 
+                    badgeTextColor = Color.FromArgb(161, 98, 7); 
                     badgeText = "Sedang Diperbaiki";
                     break;
                 case 3: // Done
                     stripColor = Color.FromArgb(34, 197, 94);
                     badgeBgColor = Color.FromArgb(240, 253, 244);
                     badgeTextColor = Color.FromArgb(21, 128, 61);
+                    badgeText = "Inspeksi";
+                    break;
+                case 4: // Inspeksi (Menunggu Verifikasi)
+                    stripColor = Color.FromArgb(168, 85, 247);    // Ungu
+                    badgeBgColor = Color.FromArgb(250, 245, 255); // Ungu Muda
+                    badgeTextColor = Color.FromArgb(126, 34, 206); // Ungu Gelap
                     badgeText = "Selesai";
                     break;
                 default:
                     stripColor = AppColors.Primary;
                     badgeBgColor = AppColors.Separator;
                     badgeTextColor = AppColors.TextPrimary;
-                    badgeText = "Inspeksi";
+                    badgeText = "Unknown";
                     break;
             }
 
@@ -358,20 +341,20 @@ namespace mtc_app.features.technician.presentation.components
         {
             if (isMachineRunning == 1)
             {
-                this.lblMachineState.BackColor = Color.FromArgb(240, 253, 244); // Light Green
-                this.lblMachineState.ForeColor = Color.FromArgb(21, 128, 61);   // Dark Green
+                this.lblMachineState.BackColor = Color.FromArgb(240, 253, 244); 
+                this.lblMachineState.ForeColor = Color.FromArgb(21, 128, 61);   
                 this.lblMachineState.Text = "▶ Run";
             }
             else
             {
-                this.lblMachineState.BackColor = Color.FromArgb(243, 244, 246); // Light Grey
-                this.lblMachineState.ForeColor = Color.FromArgb(107, 114, 128); // Grey
+                this.lblMachineState.BackColor = Color.FromArgb(243, 244, 246); 
+                this.lblMachineState.ForeColor = Color.FromArgb(107, 114, 128); 
                 this.lblMachineState.Text = "■ Stop";
             }
         }
+        
         private string FormatFinishedTime(DateTime time)
         {
-            // [FIX] User specifically asked to just show the date if it's a different day, and drop the clock time entirely
             return time.ToString("dd MMM");
         }
 
@@ -404,7 +387,6 @@ namespace mtc_app.features.technician.presentation.components
              g.SmoothingMode = SmoothingMode.AntiAlias;
             using (Pen pen = new Pen(AppColors.Primary, 2))
             {
-                // Bigger Icon Drawing for 32x32
                 g.DrawRectangle(pen, 6, 6, 20, 20);
                 g.DrawLine(pen, 11, 6, 11, 3);
                 g.DrawLine(pen, 21, 6, 21, 3);

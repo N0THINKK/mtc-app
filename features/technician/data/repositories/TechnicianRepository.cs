@@ -55,7 +55,8 @@ namespace mtc_app.features.technician.data.repositories
                         ) AS TechnicianName,
                         
                         t.arrival_elapsed_seconds AS ArrivalSeconds,
-                        t.repair_elapsed_seconds AS RepairSeconds
+                        t.repair_elapsed_seconds AS RepairSeconds,
+                        t.inspection_elapsed_seconds AS InspectionSeconds
 
                     FROM tickets t
                     JOIN machines m ON t.machine_id = m.machine_id

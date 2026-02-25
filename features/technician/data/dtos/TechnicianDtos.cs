@@ -21,6 +21,7 @@ namespace mtc_app.features.technician.data.dtos
         // Exact DB Timers matching the Technician Form
         public int ArrivalSeconds { get; set; }
         public int RepairSeconds { get; set; }
+        public int InspectionSeconds { get; set; }
         
         // Machine State (separate from ticket workflow status)
         public int IsMachineRunning { get; set; }

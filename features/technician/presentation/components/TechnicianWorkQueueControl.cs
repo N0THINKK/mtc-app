@@ -63,6 +63,9 @@ namespace mtc_app.features.technician.presentation.components
             _timerRefresh.Stop();
         }
 
+        // ========================================================
+        // UI Construction
+        // ========================================================
         private void InitializeComponent()
         {
             this.Dock = DockStyle.Fill;
@@ -192,8 +195,9 @@ namespace mtc_app.features.technician.presentation.components
                 Font = AppFonts.Body,
                 Margin = new Padding(0, 20, AppDimens.MarginLarge, 0)
             };
-            // [UPDATE] Opsi 'Stop' dihapus karena indikatornya sudah dihilangkan
-            cmbFilterStatus.Items.AddRange(new object[] { "Semua", "Belum Ditangani", "Sedang Diperbaiki", "Selesai", "Mesin Error (Run=0)" });
+            
+            // [UPDATE] Menambahkan "Inspeksi" ke dalam dropdown
+            cmbFilterStatus.Items.AddRange(new object[] { "Semua", "Belum Ditangani", "Sedang Diperbaiki", "Inspeksi", "Selesai" });
             cmbFilterStatus.SelectedIndex = 0;
 
             var lblSortBy = new Label 
@@ -277,6 +281,9 @@ namespace mtc_app.features.technician.presentation.components
             return ticketList;
         }
 
+        // ========================================================
+        // Event Handlers
+        // ========================================================
         private void SetupEventHandlers()
         {
             cmbFilterStatus.SelectedIndexChanged += (s, e) => RenderTickets();
@@ -294,7 +301,10 @@ namespace mtc_app.features.technician.presentation.components
             };
         }
 
-        // [UPDATE PENTING] Dijadikan 'async' untuk menunggu data real-time dari database
+        // ========================================================
+        // Data Loading & Rendering
+        // ========================================================
+        // [UPDATE] Mempertahankan fitur Mesin Beroperasi (a/b)
         public async void LoadData()
         {
             try
@@ -307,10 +317,9 @@ namespace mtc_app.features.technician.presentation.components
                 int processCount = _allTickets.Count(t => t.StatusId == 2);
                 int doneCount = _allTickets.Count(t => t.StatusId == 3);
                 
-                // Panggil data metrik A/B efisiensi
+                // Ambil indikator Run/Total Mesin 10 menit
                 var machineStats = await _repository.GetMachineRunStatsAsync();
 
-                // Lemparkan 5 parameter (3 status tiket, a, dan b)
                 statsControl.UpdateStats(openCount, processCount, doneCount, machineStats.Running, machineStats.Total);
                 lblLastUpdate.Text = $"Terakhir diperbarui: {DateTime.Now:HH:mm:ss}";
                 
@@ -333,7 +342,7 @@ namespace mtc_app.features.technician.presentation.components
             
             foreach (Control ctrl in pnlTicketList.Controls)
             {
-                if (ctrl != panelEmptyState)
+                if (ctrl != panelEmptyState) 
                 {
                     ctrl.Dispose();
                 }
@@ -343,20 +352,29 @@ namespace mtc_app.features.technician.presentation.components
             var filtered = _allTickets.AsEnumerable();
 
             int statusIndex = cmbFilterStatus.SelectedIndex;
-            if (statusIndex == 1) filtered = filtered.Where(t => t.StatusId == 1);       
-            else if (statusIndex == 2) filtered = filtered.Where(t => t.StatusId == 2);  
-            else if (statusIndex == 3) filtered = filtered.Where(t => t.StatusId == 3);  
-            else if (statusIndex == 4) filtered = filtered.Where(t => t.IsMachineRunning == 0); // Mesin Error filter
+            if (statusIndex == 1) filtered = filtered.Where(t => t.StatusId == 1);       // Belum Ditangani
+            else if (statusIndex == 2) filtered = filtered.Where(t => t.StatusId == 2);  // Sedang Diperbaiki
+            else if (statusIndex == 3) filtered = filtered.Where(t => t.StatusId == 3);  // Inspeksi [BARU]
+            else if (statusIndex == 4) filtered = filtered.Where(t => t.StatusId == 4);  // Selesai
+            else if (statusIndex == 5) filtered = filtered.Where(t => t.IsMachineRunning == 0); // Mesin Error (Run=0)
 
             int sortIndex = cmbSortBy.SelectedIndex;
             List<TicketDto> sortedList;
 
+            // [UPDATE PENTING] Custom OrderBy untuk Urgensi
             if (sortIndex == 0)
+            {
+                // Urutan dipaksa menjadi: Open (1) -> Sedang Diperbaiki (2) -> Inspeksi (4) -> Selesai (3)
                 sortedList = filtered.OrderByDescending(t => t.StatusId).ThenByDescending(t => t.CreatedAt).ToList();
+            }
             else if (sortIndex == 1)
+            {
                 sortedList = filtered.OrderBy(t => t.CreatedAt).ToList();
+            }
             else
+            {
                 sortedList = filtered.OrderByDescending(t => t.CreatedAt).ToList();
+            }
 
             if (sortedList.Count == 0)
             {
@@ -390,6 +408,9 @@ namespace mtc_app.features.technician.presentation.components
             }
         }
 
+        // ========================================================
+        // Status & UI Helpers
+        // ========================================================
         private void UpdateStatusIndicator(bool isActive)
         {
             _isSystemActive = isActive;
