@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using mtc_app.features.admin.data.repositories;
 using mtc_app.features.admin.presentation.views;
@@ -32,6 +33,13 @@ namespace mtc_app.features.admin.presentation.screens
             // Allow maximizing
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.WindowState = FormWindowState.Maximized;
+
+            this.Shown += AdminMainForm_Shown;
+        }
+
+        private async void AdminMainForm_Shown(object sender, EventArgs e)
+        {
+            await Task.Delay(50);
 
             // Load default View
             LoadView(_monitoringView);

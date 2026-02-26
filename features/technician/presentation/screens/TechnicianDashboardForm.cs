@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Threading.Tasks;
 using mtc_app.features.stock.data.repositories;
 using mtc_app.features.technician.data.repositories;
 // using mtc_app.features.technician.logic; // <-- HAPUS INI
@@ -68,6 +69,8 @@ namespace mtc_app.features.technician.presentation.screens
             InitializeTabs();
             tabControl.BringToFront(); 
 
+            this.Shown += TechnicianDashboardForm_Shown;
+
             // [HAPUS BAGIAN INI] 
             // 3. Start Background Logger (Every 5 Mins)
             // timerLogger = new Timer { Interval = 300000 }; 
@@ -80,6 +83,12 @@ namespace mtc_app.features.technician.presentation.screens
             // CATATAN:
             // Sekarang logging dilakukan oleh Windows Service "MtcMachineLogger".
             // Dashboard ini hanya bertugas MENAMPILKAN data (Read-Only).
+        }
+
+        private async void TechnicianDashboardForm_Shown(object sender, EventArgs e)
+        {
+            await Task.Delay(50); // Delay kecil untuk memastikan UI sudah siap
+            LoadCurrentTabData(); // Load data untuk tab yang aktif saat ini
         }
 
         // ========================================================
