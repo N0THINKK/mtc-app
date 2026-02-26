@@ -20,8 +20,10 @@ namespace mtc_app.features.technician.presentation.components
         private Panel _pnlChartContainer;
         private ComboBox _comboMetric;
         private ComboBox _comboArea;
-        private Label _lblStatus;
         private ComboBox _comboSort;
+        private ComboBox _comboShift;
+        private DateTimePicker _dtpDateFilter;
+        private Label _lblStatus;
         private bool _sortAscending = false;
         
         private System.ComponentModel.IContainer components = null;
@@ -73,10 +75,9 @@ namespace mtc_app.features.technician.presentation.components
             
             _chart = new Chart();
             
-            // ════ FIX BUG SCROLL WINFORMS (Bagian 1) ════
-            _chart.Dock = DockStyle.Fill;  // Gunakan Fill agar mengikuti kontainer
+            // ════ FIX BUG SCROLL WINFORMS ════
+            _chart.Dock = DockStyle.Fill;  
             _chart.BackColor = Color.White;
-            // ═════════════════════════════════════════════
 
             var chartArea = new ChartArea("MainArea");
             chartArea.AxisX.Interval = 1;
@@ -85,7 +86,7 @@ namespace mtc_app.features.technician.presentation.components
             
             // Konfigurasi Scrollbar Native Chart
             chartArea.AxisX.ScrollBar.Enabled = true;
-            chartArea.AxisX.ScrollBar.IsPositionedInside = false; // Agar scrollbar tidak tertutup label
+            chartArea.AxisX.ScrollBar.IsPositionedInside = false; 
             chartArea.AxisX.ScrollBar.Size = 14;
 
             chartArea.AxisY.MajorGrid.LineColor = Color.LightGray;
@@ -100,56 +101,72 @@ namespace mtc_app.features.technician.presentation.components
             _pnlChartContainer.Controls.Add(_chart);
             this.Controls.Add(_pnlChartContainer);
 
-            var lblTitle = new Label { Text = "Monitoring Output", Font = AppFonts.PageTitle, ForeColor = AppColors.TextPrimary, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Top, Height = 40 };
+            var lblTitle = new Label { Text = "Monitoring Output & Efisiensi", Font = AppFonts.PageTitle, ForeColor = AppColors.TextPrimary, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Top, Height = 40 };
             this.Controls.Add(lblTitle);
         }
 
         private Panel BuildHeaderPanel()
         {
-            var pnlHeader = new Panel { Dock = DockStyle.Top, AutoSize = true, MinimumSize = new Size(0, AppDimens.RowHeight + 15) };
+            var pnlHeader = new Panel { Dock = DockStyle.Top, AutoSize = true, MinimumSize = new Size(0, 60) };
             var headerLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, BackColor = Color.Transparent };
-            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
-            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70F)); // Kolom kanan diperlebar untuk filter
             
             var flowLeft = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Dock = DockStyle.Fill, BackColor = Color.Transparent };
             _lblStatus = new Label { Text = "Memuat data...", Font = AppFonts.BodySmall, ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(0, 10, 0, 0) };
             flowLeft.Controls.Add(_lblStatus);
             headerLayout.Controls.Add(flowLeft, 0, 0);
 
-            var flowRight = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill, BackColor = Color.Transparent };
+            var flowRight = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, WrapContents = true, Dock = DockStyle.Fill, BackColor = Color.Transparent };
             
-            _comboMetric = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 160, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, 0, 0) };
+            // 1. Sort
+            _comboSort = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = AppFonts.BodySmall, Width = 100, Margin = new Padding(0, 10, 10, 0) };
+            _comboSort.Items.AddRange(new object[] { "↓ Tertinggi", "↑ Terendah" });
+            _comboSort.SelectedIndex = 0;
+            _comboSort.SelectedIndexChanged += async (s, e) => { _sortAscending = _comboSort.SelectedIndex == 1; await LoadData(); };
+            var lblSort = new Label { Text = "Urutkan:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
+
+            // 2. Metric
+            _comboMetric = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 140, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, 10, 0) };
             _comboMetric.Items.AddRange(new object[] { "Output Per Jam", "Efisiensi Mesin" });
             _comboMetric.SelectedIndex = 0;
             _comboMetric.SelectedIndexChanged += async (s, e) => await LoadData();
             var lblMetric = new Label { Text = "Metrik:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
 
-            _comboArea = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, 15, 0) };
+            // 3. Area
+            _comboArea = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 110, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, 10, 0) };
             _comboArea.SelectedIndexChanged += async (s, e) => await LoadData();
             var lblArea = new Label { Text = "Area:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
 
-            _comboSort = new ComboBox
+            // 4. Shift (BARU)
+            _comboShift = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, 10, 0) };
+            _comboShift.Items.AddRange(new object[] { "Waktu Aktual", "Shift Pagi", "Shift Malam" });
+            _comboShift.SelectedIndex = 0;
+            _comboShift.SelectedIndexChanged += async (s, e) => 
             {
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = AppFonts.BodySmall,
-                Width = 110,
-                Margin = new Padding(0, 10, 20, 0)
-            };
-            _comboSort.Items.AddRange(new object[] { "↓ Tertinggi", "↑ Terendah" });
-            _comboSort.SelectedIndex = 0;
-            _comboSort.SelectedIndexChanged += async (s, e) =>
-            {
-                _sortAscending = _comboSort.SelectedIndex == 1;
+                // Jika Auto, kalender dinonaktifkan
+                _dtpDateFilter.Enabled = _comboShift.SelectedIndex != 0;
                 await LoadData();
             };
-            var lblSort = new Label { Text = "Urutkan:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
+            var lblShift = new Label { Text = "Shift:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
 
+            // 5. Date Picker (BARU)
+            _dtpDateFilter = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, 10, 0) };
+            _dtpDateFilter.Enabled = false; // Default off karena mode Auto
+            _dtpDateFilter.ValueChanged += async (s, e) => await LoadData();
+            var lblDate = new Label { Text = "Tanggal:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
+
+            // Karena RightToLeft, tambahkan dari yang paling kanan ke kiri
             flowRight.Controls.Add(_comboSort);
             flowRight.Controls.Add(lblSort);
             flowRight.Controls.Add(_comboMetric);
             flowRight.Controls.Add(lblMetric);
             flowRight.Controls.Add(_comboArea);
             flowRight.Controls.Add(lblArea);
+            flowRight.Controls.Add(_comboShift);
+            flowRight.Controls.Add(lblShift);
+            flowRight.Controls.Add(_dtpDateFilter);
+            flowRight.Controls.Add(lblDate);
             
             headerLayout.Controls.Add(flowRight, 1, 0);
             pnlHeader.Controls.Add(headerLayout);
@@ -167,25 +184,57 @@ namespace mtc_app.features.technician.presentation.components
         public void StopMonitoring() { _timer.Stop(); }
         public void SetMetric(int index) { if (index >= 0 && index < _comboMetric.Items.Count) _comboMetric.SelectedIndex = index; }
 
-        private DateTime GetCurrentShiftStart()
+        // [MODIFIKASI] Logika Cerdas Pencarian Titik Start Shift
+        private DateTime GetShiftTimeRange(out DateTime shiftEnd, out bool isPastShift, out string shiftName)
         {
             DateTime now = DateTime.Now;
-            
-            // Shift Pagi (07:00 - 18:59)
-            if (now.Hour >= 7 && now.Hour < 19) 
+            DateTime selectedDate = _dtpDateFilter.Value.Date;
+            bool isAuto = _comboShift.SelectedIndex == 0;
+            bool isPagi = _comboShift.SelectedIndex == 1;
+
+            DateTime shiftStart;
+
+            if (isAuto)
             {
-                return now.Date.AddHours(7);
+                // MODE REAL-TIME
+                isPastShift = false;
+                if (now.Hour >= 7 && now.Hour < 19) 
+                {
+                    shiftName = "Shift Pagi";
+                    shiftStart = now.Date.AddHours(7);
+                }
+                else if (now.Hour >= 19) 
+                {
+                    shiftName = "Shift Malam";
+                    shiftStart = now.Date.AddHours(19);
+                }
+                else 
+                {
+                    shiftName = "Shift Malam";
+                    shiftStart = now.Date.AddDays(-1).AddHours(19); 
+                }
             }
-            // Shift Malam (19:00 - 23:59)
-            else if (now.Hour >= 19) 
+            else
             {
-                return now.Date.AddHours(19);
+                // MODE MANUAL (Menjelajah Waktu)
+                if (isPagi)
+                {
+                    shiftName = "Shift Pagi";
+                    shiftStart = selectedDate.AddHours(7);
+                }
+                else
+                {
+                    shiftName = "Shift Malam";
+                    shiftStart = selectedDate.AddHours(19);
+                }
+                
+                // Cek apakah shift ini sudah selesai di masa lalu
+                isPastShift = now >= shiftStart.AddHours(12);
             }
-            // Shift Malam Lintas Hari Pagi Subuh (00:00 - 06:59)
-            else 
-            {
-                return now.Date.AddDays(-1).AddHours(19); 
-            }
+
+            // Durasi Shift selalu 12 Jam
+            shiftEnd = shiftStart.AddHours(12);
+            return shiftStart;
         }
 
         private async Task LoadData()
@@ -193,9 +242,13 @@ namespace mtc_app.features.technician.presentation.components
             try
             {
                 string selectedArea = _comboArea.SelectedItem?.ToString() ?? "Semua Area";
-                DateTime shiftStart = GetCurrentShiftStart();
-                
                 int maxShiftHours = 12;
+
+                // Hitung rentang waktu berdasarkan filter UI
+                DateTime shiftEnd;
+                bool isPastShift;
+                string namaShift;
+                DateTime shiftStart = GetShiftTimeRange(out shiftEnd, out isPastShift, out namaShift);
 
                 string sql = @"
                     SELECT m.machine_id, 
@@ -225,14 +278,15 @@ namespace mtc_app.features.technician.presentation.components
                     LEFT JOIN machine_areas a ON m.area_id = a.area_id
                     JOIN machine_process_logs p ON m.machine_id = p.machine_id
                     WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
-                      AND p.created_at >= @ShiftStart
+                      AND p.created_at >= @ShiftStart 
+                      AND p.created_at < @ShiftEnd  -- MENCEGAH DATA BOCOR DARI SHIFT BERIKUTNYA
                     GROUP BY m.machine_id, type_name, area_name, m.machine_number, hour_index
                     ORDER BY machine_id, hour_index;";
                 
                 IEnumerable<dynamic> rows;
                 using (var conn = DatabaseHelper.GetConnection())
                 {
-                    rows = await conn.QueryAsync(sql, new { Area = selectedArea, ShiftStart = shiftStart });
+                    rows = await conn.QueryAsync(sql, new { Area = selectedArea, ShiftStart = shiftStart, ShiftEnd = shiftEnd });
                 }
 
                 var rawData = new Dictionary<int, long[]>();
@@ -262,9 +316,19 @@ namespace mtc_app.features.technician.presentation.components
                     }
                 }
 
-                int currentHourCount = (int)(DateTime.Now - shiftStart).TotalHours + 1;
-                if (currentHourCount > maxShiftHours) currentHourCount = maxShiftHours;
-                if (currentHourCount < 1) currentHourCount = 1;
+                int currentHourCount;
+                if (isPastShift)
+                {
+                    // Jika data hari kemarin, kunci grafik full 12 Jam
+                    currentHourCount = maxShiftHours;
+                }
+                else
+                {
+                    // Jika real-time, grafik berjalan sesuai umur shift
+                    currentHourCount = (int)(DateTime.Now - shiftStart).TotalHours + 1;
+                    if (currentHourCount > maxShiftHours) currentHourCount = maxShiftHours;
+                    if (currentHourCount < 1) currentHourCount = 1;
+                }
 
                 foreach (var kvp in machines)
                 {
@@ -337,8 +401,8 @@ namespace mtc_app.features.technician.presentation.components
 
                 UpdateChart(machineList, selectedMetric, currentHourCount);
                 
-                string namaShift = (shiftStart.Hour == 7) ? "Shift Pagi" : "Shift Malam";
-                _lblStatus.Text = $"Update: {DateTime.Now:HH:mm:ss} | {namaShift} | Berjalan: Jam ke-{currentHourCount}";
+                string stateText = isPastShift ? "Selesai" : $"Berjalan: Jam ke-{currentHourCount}";
+                _lblStatus.Text = $"Update: {DateTime.Now:HH:mm:ss} | {namaShift} ({shiftStart:dd MMM yyyy}) | {stateText}";
             }
             catch (Exception ex)
             {
@@ -348,10 +412,6 @@ namespace mtc_app.features.technician.presentation.components
 
         private void UpdateChart(List<MachineData> data, string mode, int currentHourCount)
         {
-            // ════ FIX BUG SCROLL WINFORMS (Bagian 2) ════
-            // HAPUS SEMUA LOGIKA WIDTH & AUTOSCROLL MANUAL
-            // ═════════════════════════════════════════════
-
             _chart.Series.Clear();
             var area = _chart.ChartAreas[0];
 
@@ -359,7 +419,6 @@ namespace mtc_app.features.technician.presentation.components
             area.AxisY.Minimum = 0;
             area.AxisY.Title = "";
             
-            // Batasi view ke 10 mesin maksimal. Sisanya bisa digeser via scrollbar native
             if (data.Count > 10)
             {
                 area.AxisX.ScaleView.Zoomable = true;
@@ -404,7 +463,7 @@ namespace mtc_app.features.technician.presentation.components
                     MarkerStyle = MarkerStyle.None, 
                     Color = Color.Transparent,
                     IsValueShownAsLabel = true,
-                    Font = new Font("Segoe UI", 12F, FontStyle.Bold) // FONT DIPERBESAR
+                    Font = new Font("Segoe UI", 12F, FontStyle.Bold)
                 };
                 sAvg["LabelStyle"] = "Top";
                 _chart.Series.Add(sAvg);
@@ -443,7 +502,7 @@ namespace mtc_app.features.technician.presentation.components
                 
                 var sEffLabel = new Series("Eff %") { ChartType = SeriesChartType.Point, Color = Color.Transparent, IsValueShownAsLabel = true };
                 sEffLabel["LabelStyle"] = "Top"; 
-                sEffLabel.Font = new Font("Segoe UI", 12F, FontStyle.Bold); // FONT DIPERBESAR
+                sEffLabel.Font = new Font("Segoe UI", 12F, FontStyle.Bold); 
 
                 foreach (var item in data)
                 {
