@@ -24,12 +24,12 @@ namespace mtc_app.features.machine_history.presentation.screens
         // Ticket State (for resume workflow)
         private int _ticketStatus = 1;
         private int _isMachineRunning = 0;
-        private int _lastPartStatusId = -1; // Track previous sparepart status
+        private int _lastPartStatusId = -1; 
         
         // Accumulated Timer (DB-persisted, counts only while form is open)
         private int _arrivalSeconds = 0;  
         private int _repairSeconds = 0;   
-        private int _inspectionSeconds = 0; // Waktu inspeksi
+        private int _inspectionSeconds = 0; 
         private Timer _timer;
         private Timer _timerNotifSound;
         
@@ -72,10 +72,8 @@ namespace mtc_app.features.machine_history.presentation.screens
             
             this.StartPosition = FormStartPosition.CenterScreen;
             this.WindowState = FormWindowState.Maximized;
-            // this.ControlBox = false; // Removed to allow minimizing
         }
 
-        // [FIX] Disables the Close (X) button but keeps Minimize/Maximize
         protected override CreateParams CreateParams
         {
             get
@@ -134,12 +132,12 @@ namespace mtc_app.features.machine_history.presentation.screens
             if (_isMachineRunning == 1)
             {
                 lblMachineState.Text = "\u25b6 RUN";
-                lblMachineState.ForeColor = System.Drawing.Color.FromArgb(34, 197, 94); // Green
+                lblMachineState.ForeColor = System.Drawing.Color.FromArgb(34, 197, 94); 
             }
             else
             {
                 lblMachineState.Text = "\u25a0 STOP";
-                lblMachineState.ForeColor = System.Drawing.Color.FromArgb(239, 68, 68); // Red
+                lblMachineState.ForeColor = System.Drawing.Color.FromArgb(239, 68, 68); 
             }
         }
 
@@ -223,8 +221,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Task.Run(() => UpdatePartRequestStatus());
             }
 
-            // Sync timer to DB every 5 seconds so Dashboard can see "Live" updates
-            if (_tickCounter % 5 == 0 && _currentTicketId > 0)
+            // Sync timer to DB every 10 seconds so Dashboard can see "Live" updates
+            if (_tickCounter % 10 == 0 && _currentTicketId > 0)
             {
                 Task.Run(() => SaveTimerToDatabase());
             }
@@ -1065,10 +1063,9 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
-            // MULAILAH MODE INSPEKSI
-            _ticketStatus = 4; // Berubah jadi status 4 (Waiting Inspection)
+            _ticketStatus = 4; 
             _timer.Stop();
-            SaveTimerToDatabase(); // Simpan waktu perbaikan yang sudah berlalu
+            SaveTimerToDatabase(); 
 
             if (_currentTicketId > 0)
             {
@@ -1081,23 +1078,20 @@ namespace mtc_app.features.machine_history.presentation.screens
                 }
             }
             
-            _timer.Start(); // Timer utama mulai menghitung _inspectionSeconds
+            _timer.Start(); 
 
-            // TAMPILKAN POPUP INSPEKTUR SEDERHANA DENGAN COUNTER
             bool isApproved = false;
 
             using (Form prompt = new Form())
             {
-                // Ukuran sedikit dilebarkan ke bawah untuk memuat teks waktu
                 prompt.Width = 350; prompt.Height = 180; 
                 prompt.FormBorderStyle = FormBorderStyle.FixedDialog;
                 prompt.Text = "Inspeksi Perbaikan";
                 prompt.StartPosition = FormStartPosition.CenterParent;
-                prompt.ControlBox = false; // Memaksa untuk klik tombol
+                prompt.ControlBox = false; 
 
                 Label lblInfo = new Label() { Left = 0, Top = 15, Width = 350, TextAlign = ContentAlignment.MiddleCenter, Text = "Perbaikan sudah sesuai?", Font = AppFonts.Subtitle };
                 
-                // Label untuk Counter Waktu Inspeksi
                 Label lblTimer = new Label() { Left = 0, Top = 45, Width = 350, TextAlign = ContentAlignment.MiddleCenter, Text = "00:00:00", Font = new Font(AppFonts.Subtitle.FontFamily, 14, FontStyle.Bold), ForeColor = Color.DarkOrange };
 
                 Button btnApprove = new Button() { Text = "OK", Left = 20, Width = 140, Top = 90, Height = 40, BackColor = AppColors.Success, ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
@@ -1109,41 +1103,37 @@ namespace mtc_app.features.machine_history.presentation.screens
                 // Timer lokal untuk memperbarui UI text label setiap detik
                 Timer popupTimer = new Timer() { Interval = 1000 };
                 popupTimer.Tick += (s, ev) => {
-                    // Memformat _inspectionSeconds (yang di-increment oleh _timer utama) menjadi hh:mm:ss
                     lblTimer.Text = TimeSpan.FromSeconds(_inspectionSeconds).ToString(@"hh\:mm\:ss");
                 };
 
                 btnApprove.Click += (s, ev) => { 
                     isApproved = true; 
-                    popupTimer.Stop(); // Hentikan timer lokal
+                    popupTimer.Stop(); 
                     prompt.DialogResult = DialogResult.OK; 
                 };
 
                 btnReject.Click += (s, ev) => {
                     isApproved = false; 
-                    popupTimer.Stop(); // Hentikan timer lokal
+                    popupTimer.Stop(); 
                     prompt.DialogResult = DialogResult.OK; 
                 };
 
-                // Tambahkan komponen ke dalam prompt
                 prompt.Controls.AddRange(new Control[] { lblInfo, lblTimer, btnApprove, btnReject });
                 
-                popupTimer.Start(); // Mulai timer UI popup
-                prompt.ShowDialog(); // Tampilkan popup (mem-blok eksekusi ke bawah sampai ditutup)
-                popupTimer.Dispose(); // Bersihkan timer setelah ditutup
+                popupTimer.Start(); 
+                prompt.ShowDialog(); 
+                popupTimer.Dispose(); 
             }
 
-            _timer.Stop(); // Hentikan timer utama lagi setelah popup tertutup
-            SaveTimerToDatabase(); // Simpan waktu inspeksi ke database
+            _timer.Stop(); 
+            SaveTimerToDatabase(); 
 
-            // TINDAK LANJUT HASIL INSPEKSI
             if (isApproved)
             {
-                ProcessFinalSaveAndRun(); // Lanjut ke layar biru tanpa NIK Inspektur
+                ProcessFinalSaveAndRun(); 
             }
             else
             {
-                // REJECT: Kembalikan ke mode Repairing
                 _ticketStatus = 2;
                 if (_currentTicketId > 0) {
                     try {
@@ -1153,15 +1143,12 @@ namespace mtc_app.features.machine_history.presentation.screens
                     } catch { /* ignore */ }
                 }
                 MessageBox.Show("Perbaikan dinilai NG oleh inspektur. Silakan perbaiki mesin kembali.", "Inspeksi Gagal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                _timer.Start(); // Timer Repairing jalan lagi
+                _timer.Start(); 
             }
         }
 
         private void ProcessFinalSaveAndRun()
         {
-            // ═══════════════════════════════════════════════════════════════════
-            // OFFLINE MODE: Save completion data locally
-            // ═══════════════════════════════════════════════════════════════════
             if (_currentTicketId < 0)
             {
                 try
@@ -1203,6 +1190,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                         }
                         else
                         {
+                            _ticketStatus = 2; 
                             _timer.Start();
                         }
                     }
@@ -1218,9 +1206,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
-            // ═══════════════════════════════════════════════════════════════════
-            // ONLINE MODE: Save directly to database (WITH AUTO-LEARNING)
-            // ═══════════════════════════════════════════════════════════════════
             try
             {
                 using (var conn = DatabaseHelper.GetConnection())
@@ -1230,7 +1215,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                     {
                         try
                         {
-                            // inspector_id dibiarkan NULL saja
                             string sql = @"UPDATE tickets SET status_id = 3, technician_finished_at = NOW(), 
                                 counter_stroke = @Cnt, is_4m = @Is4M, tech_rating_score = @Sc, tech_rating_note = @Nt
                                 WHERE ticket_id = @Id";
@@ -1284,6 +1268,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                             }
                             else
                             {
+                                _ticketStatus = 2; 
                                 _timer.Start();
                             }
                         }
