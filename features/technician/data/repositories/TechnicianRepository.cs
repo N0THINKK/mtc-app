@@ -161,7 +161,7 @@ namespace mtc_app.features.technician.data.repositories
                     FROM ticket_technician_sessions tts
                     JOIN tickets t ON tts.ticket_id = t.ticket_id
                     WHERE tts.technician_id = @TechnicianId
-                      AND t.status_id = 3";
+                      AND t.status_id = 4";
                 
                 return connection.QueryFirstOrDefault<TechnicianStatsDto>(sql, new { TechnicianId = technicianId });
             }
@@ -184,7 +184,7 @@ namespace mtc_app.features.technician.data.repositories
                     FROM ticket_technician_sessions tts
                     JOIN tickets t ON tts.ticket_id = t.ticket_id
                     JOIN users u ON tts.technician_id = u.user_id
-                    WHERE t.status_id = 3 
+                    WHERE t.status_id = 4 
                       AND t.created_at BETWEEN @Start AND @End
                 ) AS T
                 GROUP BY T.user_id, T.TechnicianName
@@ -219,7 +219,7 @@ namespace mtc_app.features.technician.data.repositories
                 JOIN machine_types mt ON m.type_id = mt.type_id
                 JOIN machine_areas ma ON m.area_id = ma.area_id
                 JOIN tickets t ON m.machine_id = t.machine_id
-                WHERE t.status_id = 3 
+                WHERE t.status_id = 4 
                   AND t.created_at BETWEEN @Start AND @End";
 
             if (!string.IsNullOrEmpty(area) && area != "All")

@@ -13,7 +13,7 @@ namespace mtc_app.features.technician.presentation.components
 {
     public class MachineMonitorControl : UserControl
     {
-        private const int REFRESH_RATE_MS = 5000; 
+        private const int REFRESH_RATE_MS = 30000; 
 
         private Timer _timer;
         private Chart _chart;

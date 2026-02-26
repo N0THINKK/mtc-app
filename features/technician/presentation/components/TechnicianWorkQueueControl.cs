@@ -42,7 +42,7 @@ namespace mtc_app.features.technician.presentation.components
             _repository = repository;
             
             _timerRefresh = new Timer();
-            _timerRefresh.Interval = 10000;
+            _timerRefresh.Interval = 30000;
             _timerRefresh.Tick += (s, e) => LoadData();
 
             InitializeComponent();
