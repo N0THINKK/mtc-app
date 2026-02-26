@@ -10,6 +10,7 @@ namespace mtc_app.features.machine_history.presentation.screens
     public partial class MachineRunForm : Form
     {
         private long _ticketId;
+        private int _initialElapsedSeconds = 0;
         private System.ComponentModel.IContainer components = null;
         private Label lblTitle;
         private Label lblSubtitle;
@@ -146,7 +147,33 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void MachineRunForm_Shown(object sender, EventArgs e)
         {
+            LoadElapsedSeconds();
             StartStopwatch();
+        }
+
+        private void LoadElapsedSeconds()
+        {
+            try
+            {
+                if (_ticketId < 0)
+                {
+                    int pendingId = (int)Math.Abs(_ticketId);
+                    var request = mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+                    if (request != null)
+                    {
+                        _initialElapsedSeconds = request.RunElapsedSeconds;
+                    }
+                }
+                else if (_ticketId > 0)
+                {
+                    using (var connection = DatabaseHelper.GetConnection())
+                    {
+                        connection.Open();
+                        _initialElapsedSeconds = connection.ExecuteScalar<int>("SELECT COALESCE(run_elapsed_seconds, 0) FROM tickets WHERE ticket_id = @Id", new { Id = _ticketId });
+                    }
+                }
+            }
+            catch { /* Ignore error and start from 0 */ }
         }
 
         private void StartStopwatch()
@@ -165,7 +192,8 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             if (stopwatch != null && stopwatch.IsRunning && lblStopwatch != null)
             {
-                lblStopwatch.Text = stopwatch.Elapsed.ToString(@"hh\:mm\:ss");
+                int totalSeconds = _initialElapsedSeconds + (int)stopwatch.Elapsed.TotalSeconds;
+                lblStopwatch.Text = TimeSpan.FromSeconds(totalSeconds).ToString(@"hh\:mm\:ss");
             }
         }
 
@@ -185,6 +213,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     {
                         request.IsMachineRunning = 1; // Machine is Running
                         request.ProductionResumedAt = DateTime.Now;
+                        request.RunElapsedSeconds = _initialElapsedSeconds + (int)(stopwatch?.Elapsed.TotalSeconds ?? 0);
                         mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
                     }
                     
@@ -218,8 +247,9 @@ namespace mtc_app.features.machine_history.presentation.screens
                     connection.Open();
                     
                     // 1. Update Ticket: Set Production Resumed Time AND Machine State to Running
-                    string sqlTicket = "UPDATE tickets SET production_resumed_at = NOW(), is_machine_running = 1 WHERE ticket_id = @Id";
-                    connection.Execute(sqlTicket, new { Id = _ticketId });
+                    int totalSeconds = _initialElapsedSeconds + (int)(stopwatch?.Elapsed.TotalSeconds ?? 0);
+                    string sqlTicket = "UPDATE tickets SET production_resumed_at = NOW(), is_machine_running = 1, run_elapsed_seconds = @Secs WHERE ticket_id = @Id";
+                    connection.Execute(sqlTicket, new { Id = _ticketId, Secs = totalSeconds });
 
                     // 2. Update Machine Status: Set to RUNNING (1)
                     // First, get the machine_id for this ticket
@@ -254,16 +284,30 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             try
             {
+                int totalSeconds = _initialElapsedSeconds + (int)(stopwatch?.Elapsed.TotalSeconds ?? 0);
+                
                 if (_ticketId > 0)
                 {
                     using (var connection = DatabaseHelper.GetConnection())
                     {
                         connection.Open();
                         // Revert ticket status to 2 (Repairing) and remove finished_at
-                        connection.Execute("UPDATE tickets SET status_id = 2, technician_finished_at = NULL WHERE ticket_id = @Id", new { Id = _ticketId });
+                        connection.Execute("UPDATE tickets SET status_id = 2, technician_finished_at = NULL, run_elapsed_seconds = @Secs WHERE ticket_id = @Id", new { Id = _ticketId, Secs = totalSeconds });
                         
                         // Revert the session to not completing and ended_at to NULL so timer continues correctly
                         connection.Execute("UPDATE ticket_technician_sessions SET is_completing_session = 0, ended_at = NULL WHERE ticket_id = @Id AND is_completing_session = 1", new { Id = _ticketId });
+                    }
+                }
+                else if (_ticketId < 0)
+                {
+                    int pendingId = (int)Math.Abs(_ticketId);
+                    var request = mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+                    if (request != null)
+                    {
+                        request.StatusId = 2; // Revert locally
+                        request.FinishedAt = null;
+                        request.RunElapsedSeconds = totalSeconds;
+                        mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
                     }
                 }
                 
