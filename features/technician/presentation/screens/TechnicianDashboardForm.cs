@@ -184,7 +184,7 @@ namespace mtc_app.features.technician.presentation.screens
 
             // Timer Setup
             timerTabSwitch = new Timer();
-            timerTabSwitch.Interval = 10000; // 10 Seconds default
+            timerTabSwitch.Interval = 60000; // 10 Seconds default
             timerTabSwitch.Tick += AutoSwitch_Tick;
 
             // Button (added first because FlowDirection is RightToLeft)
@@ -237,7 +237,7 @@ namespace mtc_app.features.technician.presentation.screens
             btnSetInterval.Click += (s, e) =>
             {
                 timerTabSwitch.Interval = (int)nudInterval.Value * 1000;
-                MessageBox.Show($"Auto switch interval set to {nudInterval.Value} seconds.", "Pengaturan Tersimpan", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"Auto switch setiap {nudInterval.Value} detik.", "Pengaturan Tersimpan", MessageBoxButtons.OK, MessageBoxIcon.Information);
             };
 
             // Interval NumericUpDown
@@ -254,7 +254,7 @@ namespace mtc_app.features.technician.presentation.screens
             // Interval Label
             var lblInterval = new Label 
             { 
-                Text = "Interval (s):", 
+                Text = "Interval (detik):", 
                 AutoSize = true, 
                 Font = AppFonts.Body,
                 Margin = new Padding(0, 10, 0, 0)
