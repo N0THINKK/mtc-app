@@ -62,7 +62,7 @@ namespace mtc_app.features.machine_history.presentation.components
             { 
                 LabelText = "Jenis Problem (silahkan pilih jenis problem)", 
                 InputType = AppInput.InputTypeEnum.Dropdown,
-                AllowCustomText = true,
+                AllowCustomText = false,
                 IsRequired = true,
                 Enabled = isEnabled,
                 Location = new Point(0, yPos)
