@@ -173,6 +173,10 @@ namespace mtc_app.shared.presentation.components
 
         public void SetDropdownItems(string[] items)
         {
+            string savedCache = _cachedText; // Pertahankan nilai sebelum di-clear
+            _isFiltering = true; // Hentikan event listener sementara
+            
+            comboInput.BeginUpdate();
             comboInput.Items.Clear();
             if (items != null)
             {
@@ -183,7 +187,22 @@ namespace mtc_app.shared.presentation.components
             {
                 _originalItems = new List<string>();
             }
-        }
+            comboInput.EndUpdate();
+            
+            _isFiltering = false;
+            _cachedText = savedCache;
+            
+            // Restore previously set value if it exists in the new data
+            if (!string.IsNullOrEmpty(_cachedText) && _inputType == InputTypeEnum.Dropdown)
+            {
+                _isFiltering = true; // Hentikan lagi untuk mencegah loop
+                if (comboInput.Items.Contains(_cachedText))
+                    comboInput.SelectedItem = _cachedText;
+                else if (AllowCustomText)
+                    comboInput.Text = _cachedText;
+                _isFiltering = false;
+            }
+        }    
 
         public bool ValidateInput()
         {
@@ -365,7 +384,8 @@ namespace mtc_app.shared.presentation.components
                         comboInput.Items.AddRange(filtered);
                     comboInput.EndUpdate();
 
-                    bool willDropDown = comboInput.Items.Count > 0 && this.ContainsFocus && !string.IsNullOrEmpty(typedText);
+                    bool isExactMatch = _originalItems.Any(x => string.Equals(x, typedText, StringComparison.OrdinalIgnoreCase));
+                    bool willDropDown = comboInput.Items.Count > 0 && this.ContainsFocus && !string.IsNullOrEmpty(typedText) && !isExactMatch;
                     
                     if (willDropDown)
                          comboInput.DroppedDown = true;
