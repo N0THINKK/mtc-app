@@ -59,10 +59,13 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.KeyDown += HandleKeyDown;
         }
 
-        protected override async void OnLoad(EventArgs e)
+        protected override async void OnShown(EventArgs e)
         {
-            base.OnLoad(e);
+            base.OnShown(e);
             this.OnResize(EventArgs.Empty);
+
+            await Task.Delay(50); 
+
             LoadAreas();
             await CheckForPendingTicketAsync();
         }

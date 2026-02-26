@@ -43,7 +43,18 @@ namespace mtc_app.features.stock.presentation.screens
             InitializeComponent();
             InitializeCustomComponents();
             InitializeNotificationTimer();
+
+            this.Shown += StockDashboardForm_Shown;
+        }
+
+        private async void StockDashboardForm_Shown(object sender, EventArgs e)
+        {
+            await Task.Delay(50);
             InitializeDashboard();
+            
+             // Focus on the grid for better UX
+            // Focus on the grid for better UX
+            gridRequests.Focus();
         }
 
         private void InitializeNotificationTimer()
