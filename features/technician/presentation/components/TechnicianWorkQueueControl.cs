@@ -17,6 +17,7 @@ namespace mtc_app.features.technician.presentation.components
         private readonly Timer _timerRefresh;
         private List<TicketDto> _allTickets = new List<TicketDto>();
         private bool _isSystemActive = true;
+        private bool _isLoading = false;
 
         // UI Controls
         private Panel panelHeader;
@@ -307,6 +308,8 @@ namespace mtc_app.features.technician.presentation.components
         // [UPDATE] Mempertahankan fitur Mesin Beroperasi (a/b)
         public async void LoadData()
         {
+            if (_isLoading) return;
+            _isLoading = true;
             try
             {
                 _allTickets = _repository.GetActiveTickets().ToList();
@@ -333,6 +336,10 @@ namespace mtc_app.features.technician.presentation.components
                 _timerRefresh.Stop();
                 UpdateStatusIndicator(false);
                 MessageBox.Show($"Gagal memuat daftar tiket: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _isLoading = false;
             }
         }
 

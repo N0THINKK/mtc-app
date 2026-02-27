@@ -25,6 +25,7 @@ namespace mtc_app.features.technician.presentation.components
         private DateTimePicker _dtpDateFilter;
         private Label _lblStatus;
         private bool _sortAscending = false;
+        private bool _isLoading = false;
         
         private System.ComponentModel.IContainer components = null;
 
@@ -239,6 +240,8 @@ namespace mtc_app.features.technician.presentation.components
 
         private async Task LoadData()
         {
+            if (_isLoading) return;
+            _isLoading = true;
             try
             {
                 string selectedArea = _comboArea.SelectedItem?.ToString() ?? "Semua Area";
@@ -286,6 +289,7 @@ namespace mtc_app.features.technician.presentation.components
                 IEnumerable<dynamic> rows;
                 using (var conn = DatabaseHelper.GetConnection())
                 {
+                    conn.Open(); // Explicitly open the connection
                     rows = await conn.QueryAsync(sql, new { Area = selectedArea, ShiftStart = shiftStart, ShiftEnd = shiftEnd });
                 }
 
@@ -406,7 +410,11 @@ namespace mtc_app.features.technician.presentation.components
             }
             catch (Exception ex)
             {
-                _lblStatus.Text = "Error: " + ex.Message;
+                _lblStatus.Text = $"Error: {ex.Message}";
+            }
+            finally
+            {
+                _isLoading = false;
             }
         }
 
