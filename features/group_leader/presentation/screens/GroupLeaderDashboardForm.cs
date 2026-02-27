@@ -20,6 +20,7 @@ namespace mtc_app.features.group_leader.presentation.screens
         private readonly IGroupLeaderRepository _repository;
         private List<GroupLeaderTicketDto> _allTickets = new List<GroupLeaderTicketDto>();
         private bool _isSystemActive = true;
+        private bool _isLoading = false;
         private Timer timerRefresh;
 
         // Composition Root: Default constructor uses ServiceLocator for offline support
@@ -48,7 +49,8 @@ namespace mtc_app.features.group_leader.presentation.screens
 
         private async Task LoadDataAsync()
         {
-            if (this.IsDisposed) return;
+            if (this.IsDisposed || _isLoading) return;
+            _isLoading = true;
 
             try
             {
@@ -71,6 +73,10 @@ namespace mtc_app.features.group_leader.presentation.screens
                 timerRefresh.Stop(); // Stop refreshing if error persists
                 UpdateStatusIndicator(false);
                 MessageBox.Show($"Gagal memuat data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _isLoading = false;
             }
         }
 

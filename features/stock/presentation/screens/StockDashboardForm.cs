@@ -27,6 +27,7 @@ namespace mtc_app.features.stock.presentation.screens
         private Timer _timerNotifSound;
         private int _previousPendingCount = 0;
         private bool _isNotificationShowing = false;
+        private bool _isLoading = false;
         
         // Custom UI components (replacing designer placeholders if needed)
         private StatCard cardPendingNew;
@@ -232,6 +233,8 @@ namespace mtc_app.features.stock.presentation.screens
 
         private async Task LoadDataAsync(bool isInitialLoad = false)
         {
+            if (_isLoading) return;
+            _isLoading = true;
             try
             {
                 // Parallel execution for stats and list
@@ -277,6 +280,10 @@ namespace mtc_app.features.stock.presentation.screens
             {
                 if (!timerRefresh.Enabled)
                     MessageBox.Show($"Error memuat data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _isLoading = false;
             }
         }
 
