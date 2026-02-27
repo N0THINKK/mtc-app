@@ -490,7 +490,7 @@ namespace mtc_app.features.technician.presentation.components
                     
                     if (item.TotalPieces > 0)
                     {
-                        sAvg.Points[pAvg].Label = $"Rata-rata: {item.AveragePerHour:N0} / jam\nTotal: {item.TotalPieces:N0}";
+                        sAvg.Points[pAvg].Label = $"Avg: {item.AveragePerHour:N0} /j\nTotal: {item.TotalPieces:N0}";
                     }
                     else
                     {
