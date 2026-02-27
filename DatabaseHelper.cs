@@ -73,5 +73,30 @@ namespace mtc_app
             // Reload configuration in memory
             LoadConfig();
         }
+        public static string GetAppSetting(string key)
+        {
+            LoadConfig();
+            return _configuration[$"AppSettings:{key}"];
+        }
+
+        public static void SetAppSetting(string key, string value)
+        {
+            var processModule = Process.GetCurrentProcess().MainModule;
+            var basePath = Path.GetDirectoryName(processModule?.FileName);
+            string path = Path.Combine(basePath, "appsettings.json");
+            
+            string json = File.Exists(path) ? File.ReadAllText(path) : "{}";
+            JObject jsonObj = JObject.Parse(json);
+            
+            if (jsonObj["AppSettings"] == null)
+            {
+                jsonObj["AppSettings"] = new JObject();
+            }
+
+            jsonObj["AppSettings"][key] = value;
+
+            File.WriteAllText(path, jsonObj.ToString());
+            LoadConfig();
+        }
     }
 }

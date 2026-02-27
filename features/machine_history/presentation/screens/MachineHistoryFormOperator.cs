@@ -13,6 +13,7 @@ using mtc_app.shared.presentation.styles;
 using mtc_app.shared.infrastructure;
 using mtc_app.shared.data.repositories;
 using mtc_app.features.authentication.presentation.screens; // [BARU] Tambahkan ini untuk akses LoginForm
+using System.IO;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
@@ -225,6 +226,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             inputNIK.AllowCustomText = true;
             inputNIK.DropdownOpened += (s, e) => LoadOperatorsFromDB();
             LoadOperatorsFromDB();
+            
             AddToForm(inputNIK);
 
             // 2. Shift
@@ -350,10 +352,29 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             try
             {
-                var niks = await _masterDataRepository.GetOperatorsAsync();
-                inputNIK.SetDropdownItems(niks.ToArray());
+                var dbNiks = await _masterDataRepository.GetOperatorsAsync() ?? new List<string>();
+                var recentNiks = GetRecentNiks();
+                
+                // Combine recent local NIKs with DB NIKs, prioritizing local
+                var combined = recentNiks.Concat(dbNiks).Distinct().ToArray();
+                inputNIK.SetDropdownItems(combined);
             }
             catch { /* Ignore */ }
+        }
+
+        private List<string> GetRecentNiks()
+        {
+            try
+            {
+                string configPath = @"C:\MTC_System\Config\operator_niks.csv";
+                if (File.Exists(configPath))
+                {
+                    return File.ReadAllText(configPath).Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                               .Select(n => n.Trim()).Where(n => !string.IsNullOrEmpty(n)).Distinct().ToList();
+                }
+            }
+            catch { }
+            return new List<string>();
         }
 
         private async void LoadShiftsFromDB()
@@ -447,6 +468,23 @@ namespace mtc_app.features.machine_history.presentation.screens
                 };
 
                 var result = await _repository.CreateTicketAsync(request);
+
+                try 
+                {
+                    string dirPath = @"C:\MTC_System\Config";
+                    if (!Directory.Exists(dirPath))
+                    {
+                        Directory.CreateDirectory(dirPath);
+                    }
+                    string filePath = Path.Combine(dirPath, "operator_niks.csv");
+                    var recentNiks = GetRecentNiks();
+                    
+                    recentNiks.Insert(0, request.OperatorNik);
+                    var uniqueNiks = recentNiks.Distinct().Take(10);
+                    
+                    File.WriteAllText(filePath, string.Join(",", uniqueNiks));
+                } 
+                catch { /* Ignore config write error */ }
 
                 string successMsg = (result.TicketId < 0) 
                     ? "Tiket Disimpan Offline.\nMenunggu Sinkronisasi." 
