@@ -66,7 +66,8 @@ namespace mtc_app.features.technician.data.repositories
                     WHERE t.status_id >= 1
                     ORDER BY t.created_at DESC";
                 
-                return connection.Query<TicketDto>(sql);
+                // Timeout 120 detik agar aman
+                return connection.Query<TicketDto>(sql, commandTimeout: 120);
             }
         }
 
@@ -131,7 +132,7 @@ namespace mtc_app.features.technician.data.repositories
                     LEFT JOIN users op ON t.operator_id = op.user_id
                     WHERE t.ticket_id = @TicketId";
 
-                return await connection.QueryFirstOrDefaultAsync<TechnicianTicketDetailDto>(sql, new { TicketId = ticketId });
+                return await connection.QueryFirstOrDefaultAsync<TechnicianTicketDetailDto>(sql, new { TicketId = ticketId }, commandTimeout: 120);
             }
         }
 
@@ -145,7 +146,7 @@ namespace mtc_app.features.technician.data.repositories
                         tech_rating_note = @Note
                     WHERE ticket_id = @TicketId";
                 
-                await connection.ExecuteAsync(sql, new { TicketId = ticketId, Rating = rating, Note = note });
+                await connection.ExecuteAsync(sql, new { TicketId = ticketId, Rating = rating, Note = note }, commandTimeout: 60);
             }
         }
 
@@ -163,7 +164,7 @@ namespace mtc_app.features.technician.data.repositories
                     WHERE tts.technician_id = @TechnicianId
                       AND t.status_id = 4";
                 
-                return connection.QueryFirstOrDefault<TechnicianStatsDto>(sql, new { TechnicianId = technicianId });
+                return connection.QueryFirstOrDefault<TechnicianStatsDto>(sql, new { TechnicianId = technicianId }, commandTimeout: 120);
             }
         }
 
@@ -192,7 +193,7 @@ namespace mtc_app.features.technician.data.repositories
 
             using (var connection = DatabaseHelper.GetConnection())
             {
-                var data = await connection.QueryAsync<TechnicianPerformanceDto>(sql, new { Start = start, End = end });
+                var data = await connection.QueryAsync<TechnicianPerformanceDto>(sql, new { Start = start, End = end }, commandTimeout: 120);
                 return data;
             }
         }
@@ -212,7 +213,10 @@ namespace mtc_app.features.technician.data.repositories
                     (SELECT COALESCE(SUM(TIMESTAMPDIFF(SECOND, pr.requested_at, pr.ready_at)), 0)
                      FROM part_requests pr 
                      JOIN tickets t_sub ON pr.ticket_id = t_sub.ticket_id
-                     WHERE t_sub.machine_id = m.machine_id AND pr.ready_at IS NOT NULL
+                     WHERE t_sub.machine_id = m.machine_id 
+                       AND t_sub.status_id = 4 
+                       AND t_sub.created_at BETWEEN @Start AND @End
+                       AND pr.ready_at IS NOT NULL
                     ) AS PartWaitDurationSeconds
 
                 FROM machines m
@@ -233,12 +237,16 @@ namespace mtc_app.features.technician.data.repositories
 
             using (var connection = DatabaseHelper.GetConnection())
             {
-                var data = await connection.QueryAsync<MachinePerformanceDto>(sql, new { Start = start, End = end, Area = area });
+                // Timeout diperpanjang jadi 120 agar aman saat ganti area/tanggal
+                var data = await connection.QueryAsync<MachinePerformanceDto>(
+                    sql, 
+                    new { Start = start, End = end, Area = area }, 
+                    commandTimeout: 120
+                );
                 return data;
             }
         }
 
-        // [BARU] Logika untuk menghitung a/b dari tabel log efisiensi
         public async Task<(int Running, int Total)> GetMachineRunStatsAsync()
         {
             using (var connection = DatabaseHelper.GetConnection())
@@ -252,7 +260,8 @@ namespace mtc_app.features.technician.data.repositories
                         (SELECT COUNT(*) FROM machines) as Total
                 ";
                 
-                return await connection.QueryFirstOrDefaultAsync<(int, int)>(sql);
+                // Timeout 60 detik untuk tab monitoring real-time
+                return await connection.QueryFirstOrDefaultAsync<(int, int)>(sql, commandTimeout: 60);
             }
         }
     }
