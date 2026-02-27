@@ -7,36 +7,79 @@ using Dapper;
 using ClosedXML.Excel;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
+using mtc_app.shared.infrastructure; // Pastikan namespace untuk DatabaseHelper
 
 namespace mtc_app.features.admin.presentation.views
 {
     public partial class ReportView : UserControl
     {
         private System.ComponentModel.IContainer components = null;
-        private Label lblTitle, lblDateStart, lblDateEnd;
+        private Label lblTitle, lblDateStart, lblDateEnd, lblArea;
         private DateTimePicker dateStart, dateEnd;
+        private ComboBox cmbArea;
         private AppButton btnExport;
 
         public ReportView()
         {
             InitializeComponent();
+            LoadAreasFromDatabase(); // Ambil Area langsung dari DB saat form dibuka
+        }
+
+        // =========================================================
+        // AMBIL DATA AREA MURNI DARI DATABASE
+        // =========================================================
+        private void LoadAreasFromDatabase()
+        {
+            try
+            {
+                using (var connection = DatabaseHelper.GetConnection())
+                {
+                    // Ambil semua nama area dari tabel machine_areas
+                    var areas = connection.Query<string>("SELECT area_name FROM machine_areas ORDER BY area_name ASC").ToList();
+                    
+                    cmbArea.Items.Clear();
+                    cmbArea.Items.Add("Semua Area"); // Pilihan Default
+                    
+                    foreach (var area in areas) 
+                    {
+                        cmbArea.Items.Add(area);
+                    }
+                    
+                    cmbArea.SelectedIndex = 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Jika DB bermasalah, beri tahu Admin
+                cmbArea.Items.Add("Semua Area");
+                cmbArea.SelectedIndex = 0;
+                MessageBox.Show($"Gagal memuat daftar Area dari Database:\n{ex.Message}", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private void BtnExport_Click(object sender, EventArgs e)
         {
             using (var saveFileDialog = new SaveFileDialog())
             {
+                string areaName = cmbArea.SelectedItem?.ToString() ?? "Semua Area";
+                string safeArea = areaName == "Semua Area" ? "SemuaArea" : areaName;
+                
                 saveFileDialog.Filter = "Excel Workbook (*.xlsx)|*.xlsx";
                 saveFileDialog.Title = "Simpan Laporan Excel";
-                saveFileDialog.FileName = $"Laporan_Maintenance_{dateStart.Value:yyyy-MM-dd}_hingga_{dateEnd.Value:yyyy-MM-dd}.xlsx";
+                saveFileDialog.FileName = $"Laporan_Maintenance_{safeArea}_{dateStart.Value:yyyy-MM-dd}_hingga_{dateEnd.Value:yyyy-MM-dd}.xlsx";
 
                 if (saveFileDialog.ShowDialog() == DialogResult.OK)
                 {
                     try
                     {
-                        var dataDetail = FetchDataForReport(dateStart.Value, dateEnd.Value);
-                        var dataRekapBulanan = FetchMonthlyDowntimeSummary(dateStart.Value, dateEnd.Value);
-                        var dataOutputHarian = FetchDailyOutputSummary(dateStart.Value, dateEnd.Value);
+                        btnExport.Enabled = false;
+                        btnExport.Text = "Memproses Data...";
+                        Application.DoEvents(); // Agar UI tidak lag
+
+                        // Melempar parameter 'areaName' ke dalam fungsi fetch data
+                        var dataDetail = FetchDataForReport(dateStart.Value, dateEnd.Value, areaName);
+                        var dataRekapBulanan = FetchMonthlyDowntimeSummary(dateStart.Value, dateEnd.Value, areaName);
+                        var dataOutputHarian = FetchDailyOutputSummary(dateStart.Value, dateEnd.Value, areaName);
 
                         using (var workbook = new XLWorkbook())
                         {
@@ -46,11 +89,9 @@ namespace mtc_app.features.admin.presentation.views
                             var wsDetail = workbook.Worksheets.Add("Detail Tiket");
                             wsDetail.Cell("A1").InsertTable(dataDetail);
                             
-                            // ═══ PENTING: AGAR TEXT TIDAK MENUMPUK, KITA WRAP TEXT ═══
                             wsDetail.Rows().Style.Alignment.WrapText = true; 
-                            wsDetail.Row(1).Style.Alignment.WrapText = false; // Header jangan di-wrap
+                            wsDetail.Row(1).Style.Alignment.WrapText = false; 
                             wsDetail.Rows().Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-                            // ═════════════════════════════════════════════════════════
 
                             wsDetail.Row(1).Style.Font.Bold = true;
                             wsDetail.Row(1).Style.Fill.BackgroundColor = XLColor.FromColor(AppColors.Primary);
@@ -86,23 +127,38 @@ namespace mtc_app.features.admin.presentation.views
                     {
                         MessageBox.Show($"Terjadi kesalahan saat membuat laporan: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
+                    finally
+                    {
+                        btnExport.Enabled = true;
+                        btnExport.Text = "Generate & Export Excel";
+                    }
                 }
             }
         }
         
-        // FUNGSI 1: DATA DETAIL (KODE SUDAH SANGAT BERSIH)
-        private DataTable FetchDataForReport(DateTime startDate, DateTime endDate)
+        // =========================================================
+        // FUNGSI 1: DATA DETAIL
+        // =========================================================
+        private DataTable FetchDataForReport(DateTime startDate, DateTime endDate, string area)
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // Semua kolom sudah diatur rapi oleh SQL View, C# tinggal narik datanya saja.
                 string sql = @"
                     SELECT v.* FROM view_admin_report v
                     JOIN tickets t ON v.`ID Tiket` = t.ticket_id
-                    WHERE t.created_at BETWEEN @StartDate AND @EndDate
-                    ORDER BY t.created_at DESC";
+                    LEFT JOIN machines m ON t.machine_id = m.machine_id
+                    LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                    LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
+                    WHERE t.created_at BETWEEN @StartDate AND @EndDate";
+
+                if (area != "Semua Area") {
+                    sql += " AND ma.area_name = @Area";
+                }
+
+                // URUTAN KHUSUS: Tipe -> Area -> Angka (Casting String ke Integer) -> Waktu Terbaru
+                sql += " ORDER BY mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC, t.created_at DESC";
                 
-                var reader = connection.ExecuteReader(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1) });
+                var reader = connection.ExecuteReader(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 120);
                 var dataTable = new DataTable();
                 dataTable.Load(reader);
 
@@ -115,41 +171,51 @@ namespace mtc_app.features.admin.presentation.views
             }
         }
 
+        // =========================================================
         // FUNGSI 2: REKAP DOWNTIME BULANAN
-        private DataTable FetchMonthlyDowntimeSummary(DateTime startDate, DateTime endDate)
+        // =========================================================
+        private DataTable FetchMonthlyDowntimeSummary(DateTime startDate, DateTime endDate, string area)
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
                 string sql = @"
                     SELECT 
                         DATE_FORMAT(t.created_at, '%M %Y') AS 'Bulan',
-                        CONCAT(IFNULL(mt.type_name, ''), '-', IFNULL(ma.area_name, ''), '.', IFNULL(m.machine_number, '')) AS 'Nama Mesin',
+                        CONCAT(IFNULL(mt.type_name, ''), '.', IFNULL(ma.area_name, ''), '-', LPAD(m.machine_number, 2, '0')) AS 'Nama Mesin',
                         COUNT(t.ticket_id) AS 'Total Tiket Problem',
                         IFNULL(SUM(TIMESTAMPDIFF(MINUTE, t.created_at, IFNULL(t.production_resumed_at, t.technician_finished_at))), 0) AS 'Total Downtime (Menit)'
                     FROM tickets t
                     LEFT JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN machine_types mt ON m.type_id = mt.type_id
                     LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
-                    WHERE t.created_at BETWEEN @StartDate AND @EndDate
-                    GROUP BY DATE_FORMAT(t.created_at, '%M %Y'), YEAR(t.created_at), MONTH(t.created_at), m.machine_id
-                    ORDER BY YEAR(t.created_at) DESC, MONTH(t.created_at) DESC, 'Nama Mesin' ASC";
+                    WHERE t.created_at BETWEEN @StartDate AND @EndDate";
+
+                if (area != "Semua Area") {
+                    sql += " AND ma.area_name = @Area";
+                }
+
+                sql += @"
+                    GROUP BY DATE_FORMAT(t.created_at, '%M %Y'), YEAR(t.created_at), MONTH(t.created_at), m.machine_id, mt.type_name, ma.area_name, m.machine_number
+                    ORDER BY YEAR(t.created_at) DESC, MONTH(t.created_at) DESC, mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC";
                 
-                var reader = connection.ExecuteReader(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1) });
+                var reader = connection.ExecuteReader(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 120);
                 var dataTable = new DataTable();
                 dataTable.Load(reader);
                 return dataTable;
             }
         }
 
+        // =========================================================
         // FUNGSI 3: REKAP OUTPUT HARIAN & EFISIENSI
-        private DataTable FetchDailyOutputSummary(DateTime startDate, DateTime endDate)
+        // =========================================================
+        private DataTable FetchDailyOutputSummary(DateTime startDate, DateTime endDate, string area)
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
                 string sql = @"
                     SELECT 
                         DATE_FORMAT(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR), '%d %M %Y') AS 'Tanggal Produksi',
-                        CONCAT(IFNULL(mt.type_name, ''), '-', IFNULL(ma.area_name, ''), '.', IFNULL(m.machine_number, '')) AS 'Nama Mesin',
+                        CONCAT(IFNULL(mt.type_name, ''), '.', IFNULL(ma.area_name, ''), '-', LPAD(m.machine_number, 2, '0')) AS 'Nama Mesin',
                         
                         MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND HOUR(mpl.created_at) < 19 THEN mpl.produced_pieces ELSE 0 END) AS 'Output Pagi',
                         MAX(CASE WHEN HOUR(mpl.created_at) < 7 OR HOUR(mpl.created_at) >= 19 THEN mpl.produced_pieces ELSE 0 END) AS 'Output Malam',
@@ -164,12 +230,17 @@ namespace mtc_app.features.admin.presentation.views
                     JOIN machines m ON mpl.machine_id = m.machine_id
                     LEFT JOIN machine_types mt ON m.type_id = mt.type_id
                     LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
-                    WHERE mpl.created_at BETWEEN @StartDate AND @EndDate
-                    
-                    GROUP BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)), m.machine_id
-                    ORDER BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)) DESC, 'Nama Mesin' ASC";
+                    WHERE mpl.created_at BETWEEN @StartDate AND @EndDate";
+
+                if (area != "Semua Area") {
+                    sql += " AND ma.area_name = @Area";
+                }
+
+                sql += @"
+                    GROUP BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)), m.machine_id, mt.type_name, ma.area_name, m.machine_number
+                    ORDER BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)) DESC, mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC";
                 
-                var reader = connection.ExecuteReader(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1) });
+                var reader = connection.ExecuteReader(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 300);
                 var dataTable = new DataTable();
                 dataTable.Load(reader);
 
@@ -218,6 +289,9 @@ namespace mtc_app.features.admin.presentation.views
             base.Dispose(disposing);
         }
 
+        // =========================================================
+        // UI COMPONENTS (Tampilan Filter Baru)
+        // =========================================================
         private void InitializeComponent()
         {
             this.SuspendLayout();
@@ -227,6 +301,8 @@ namespace mtc_app.features.admin.presentation.views
             this.dateStart = new DateTimePicker();
             this.lblDateEnd = new Label();
             this.dateEnd = new DateTimePicker();
+            this.lblArea = new Label();
+            this.cmbArea = new ComboBox();
             this.btnExport = new AppButton();
 
             this.lblTitle.AutoSize = true;
@@ -241,19 +317,30 @@ namespace mtc_app.features.admin.presentation.views
             this.lblDateStart.Text = "Tanggal Mulai:";
 
             this.dateStart.Location = new Point(0, 75);
-            this.dateStart.Size = new Size(200, 25);
+            this.dateStart.Size = new Size(180, 25);
             this.dateStart.Font = AppFonts.BodySmall;
             this.dateStart.Format = DateTimePickerFormat.Short;
 
             this.lblDateEnd.AutoSize = true;
             this.lblDateEnd.Font = AppFonts.BodySmall;
-            this.lblDateEnd.Location = new Point(220, 50);
+            this.lblDateEnd.Location = new Point(200, 50);
             this.lblDateEnd.Text = "Tanggal Akhir:";
 
-            this.dateEnd.Location = new Point(220, 75);
-            this.dateEnd.Size = new Size(200, 25);
+            this.dateEnd.Location = new Point(200, 75);
+            this.dateEnd.Size = new Size(180, 25);
             this.dateEnd.Font = AppFonts.BodySmall;
             this.dateEnd.Format = DateTimePickerFormat.Short;
+
+            // Tambahan Dropdown Area
+            this.lblArea.AutoSize = true;
+            this.lblArea.Font = AppFonts.BodySmall;
+            this.lblArea.Location = new Point(400, 50);
+            this.lblArea.Text = "Filter Area:";
+
+            this.cmbArea.Location = new Point(400, 75);
+            this.cmbArea.Size = new Size(180, 25);
+            this.cmbArea.Font = AppFonts.BodySmall;
+            this.cmbArea.DropDownStyle = ComboBoxStyle.DropDownList;
 
             this.btnExport.Text = "Generate & Export Excel";
             this.btnExport.Location = new Point(0, 120);
@@ -265,7 +352,10 @@ namespace mtc_app.features.admin.presentation.views
             this.Controls.Add(this.dateStart);
             this.Controls.Add(this.lblDateEnd);
             this.Controls.Add(this.dateEnd);
+            this.Controls.Add(this.lblArea);
+            this.Controls.Add(this.cmbArea);
             this.Controls.Add(this.btnExport);
+            
             this.Name = "ReportView";
             this.Dock = DockStyle.Fill;
             this.ResumeLayout(false);
