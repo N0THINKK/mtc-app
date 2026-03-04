@@ -1,6 +1,6 @@
 using System;
 using System.Drawing;
-using System.Threading.Tasks;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using mtc_app.features.authentication.data.repositories;
 using mtc_app.shared.data.dtos;
@@ -8,9 +8,10 @@ using mtc_app.shared.data.session;
 using mtc_app.shared.infrastructure;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.navigation;
-using mtc_app.features.technician.presentation.screens; 
+using mtc_app.shared.presentation.styles;
+using mtc_app.features.technician.presentation.screens;
 using mtc_app.features.stock.presentation.screens;
-using mtc_app.features.machine_history.presentation.screens; // Ditambahkan untuk akses Checksheet
+using mtc_app.features.machine_history.presentation.screens;
 
 namespace mtc_app.features.authentication.presentation.screens
 {
@@ -19,97 +20,169 @@ namespace mtc_app.features.authentication.presentation.screens
         private readonly IAuthRepository _authRepository;
         private readonly ISetupRepository _setupRepository;
         private Label lblMachineName;
-        
-        private ComboBox cmbRole;
-        private Label lblRoleTitle;
 
-        public LoginForm() : this(ServiceLocator.CreateAuthRepository(), ServiceLocator.CreateSetupRepository())
+        private static readonly string[] KnownRoles = { "Operator", "Teknisi", "Stock" };
+
+        public LoginForm() : this(
+            ServiceLocator.CreateAuthRepository(),
+            ServiceLocator.CreateSetupRepository())
         {
         }
 
         public LoginForm(IAuthRepository authRepository, ISetupRepository setupRepository)
         {
-            InitializeComponent();
             _authRepository = authRepository;
             _setupRepository = setupRepository;
 
+            InitializeComponent();
+            SetupForm();
+        }
+
+        // =====================================================================
+        // SETUP
+        // =====================================================================
+
+        private void SetupForm()
+        {
             this.KeyPreview = true;
             this.KeyDown += LoginForm_KeyDown;
-            
+
+            StyleCardPanel();
+            ConfigureRoleDropdown();
+            SizeCardToContent();
+
             InitializeMachineNameLabel();
             LoadMachineNameAsync();
 
-            InitializeRoleDropdown();
-            
-            cmbRole.Text = "Operator"; 
+            this.Resize += (s, e) => CenterCard();
+            tblLayout.SizeChanged += (s, e) => SizeCardToContent();
         }
 
-        private void InitializeRoleDropdown()
+        // =====================================================================
+        // CARD STYLING (rounded corners + border)
+        // =====================================================================
+
+        private void StyleCardPanel()
         {
-            this.AutoSize = false;
-            this.AutoSizeMode = AutoSizeMode.GrowOnly;
-            panel1.Size = new Size(440, 450);
-            this.ClientSize = new Size(440, 450);
+            pnlCard.Paint += PnlCard_Paint;
+            pnlCard.Resize += (s, e) => ApplyCardRegion();
+            ApplyCardRegion();
 
-            lblRoleTitle = new Label
-            {
-                Text = "Login Sebagai / Username:",
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                ForeColor = Color.DimGray,
-                AutoSize = true,
-                Location = new Point(40, 60)
-            };
-
-            cmbRole = new ComboBox
-            {
-                DropDownStyle = ComboBoxStyle.DropDown, 
-                Font = new Font("Segoe UI", 12F),
-                Size = new Size(360, 35),
-                Location = new Point(40, 85)
-            };
-            
-            cmbRole.Items.AddRange(new string[] { "Operator", "Teknisi", "Stock" });
-            
-            panel1.Controls.Add(lblRoleTitle);
-            panel1.Controls.Add(cmbRole);
-
-            txtUsername.Location = new Point(40, 140);
-            txtPassword.Location = new Point(40, 140);
-
-            btnLogin.Location = new Point(40, 240);
-            btnExit.Location = new Point(170, 300);
-
-            cmbRole.TextChanged += CmbRole_TextChanged;
+            // Set wrapper panel height to match the AppInput's natural height
+            pnlInputSwap.Height = txtIdentity.Height;
         }
 
-        private void CmbRole_TextChanged(object sender, EventArgs e)
+        private void PnlCard_Paint(object sender, PaintEventArgs e)
         {
-            string input = cmbRole.Text.Trim();
-
-            if (input == "Operator" || input == "Teknisi" || input == "Stock")
+            var rect = new Rectangle(0, 0, pnlCard.Width - 1, pnlCard.Height - 1);
+            using (var path = BuildRoundedPath(rect, AppDimens.CardCornerRadius))
+            using (var pen = new Pen(AppColors.Border, 1f))
             {
-                txtPassword.Visible = false;      
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                e.Graphics.DrawPath(pen, path);
+            }
+        }
+
+        private void ApplyCardRegion()
+        {
+            var rect = new Rectangle(0, 0, pnlCard.Width, pnlCard.Height);
+            using (var path = BuildRoundedPath(rect, AppDimens.CardCornerRadius))
+                pnlCard.Region = new Region(path);
+        }
+
+        private static GraphicsPath BuildRoundedPath(Rectangle rect, int radius)
+        {
+            var path = new GraphicsPath();
+            int d = radius * 2;
+            path.AddArc(rect.X, rect.Y, d, d, 180, 90);
+            path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
+            path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
+        // =====================================================================
+        // RESPONSIVE CARD SIZING
+        // =====================================================================
+
+        /// <summary>
+        /// Card width is proportional to the form. Height adapts to content.
+        /// No hardcoded pixel positions — the TableLayoutPanel handles stacking.
+        /// </summary>
+        private void SizeCardToContent()
+        {
+            int cardWidth = Math.Min(460, (int)(this.ClientSize.Width * 0.55));
+            cardWidth = Math.Max(380, cardWidth);
+
+            int cardHeight = tblLayout.PreferredSize.Height + pnlCard.Padding.Vertical;
+
+            pnlCard.Size = new Size(cardWidth, cardHeight);
+            CenterCard();
+        }
+
+        private void CenterCard()
+        {
+            pnlCard.Location = new Point(
+                Math.Max(0, (ClientSize.Width - pnlCard.Width) / 2),
+                Math.Max(0, (ClientSize.Height - pnlCard.Height) / 2));
+        }
+
+        // =====================================================================
+        // ROLE DROPDOWN
+        // =====================================================================
+
+        private void ConfigureRoleDropdown()
+        {
+            drpRole.SetDropdownItems(KnownRoles);
+            drpRole.InputValueChanged += OnRoleChanged;
+            drpRole.InputValue = "Operator";
+            OnRoleChanged(drpRole, EventArgs.Empty);
+        }
+
+        private void OnRoleChanged(object sender, EventArgs e)
+        {
+            string role = drpRole.InputValue.Trim();
+
+            if (IsKnownRole(role))
+            {
+                txtPassword.Visible = false;
                 txtPassword.InputValue = "";
-
-                if (input == "Operator")
-                    txtUsername.LabelText = "NIK Operator";
-                else if (input == "Teknisi")
-                    txtUsername.LabelText = "Inisial / NIK (Kosongi utk ke Dashboard)";
-                else
-                    txtUsername.LabelText = "NIK / Nama Petugas Stock";
-
-                txtUsername.Visible = true;
-                txtUsername.BringToFront(); 
+                txtIdentity.LabelText = GetIdentityLabel(role);
+                txtIdentity.Visible = true;
+                txtIdentity.BringToFront();
             }
             else
             {
-                txtUsername.Visible = false;
-                txtUsername.InputValue = "";
-                
+                txtIdentity.Visible = false;
+                txtIdentity.InputValue = "";
                 txtPassword.Visible = true;
                 txtPassword.BringToFront();
             }
         }
+
+        private static bool IsKnownRole(string role)
+        {
+            foreach (string r in KnownRoles)
+                if (string.Equals(r, role, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            return false;
+        }
+
+        private static string GetIdentityLabel(string role)
+        {
+            switch (role)
+            {
+                case "Operator": return "NIK Operator";
+                case "Teknisi":  return "Inisial / NIK (Kosongi utk ke Dashboard)";
+                case "Stock":    return "NIK / Nama Petugas Stock";
+                default:         return "Username";
+            }
+        }
+
+        // =====================================================================
+        // LOGIN
+        // =====================================================================
 
         private void LoginForm_KeyDown(object sender, KeyEventArgs e)
         {
@@ -118,81 +191,69 @@ namespace mtc_app.features.authentication.presentation.screens
                 if (this.ActiveControl == btnLogin) return;
                 this.SelectNextControl(this.ActiveControl, true, true, true, true);
                 e.Handled = true;
-                e.SuppressKeyPress = true; 
+                e.SuppressKeyPress = true;
             }
         }
 
         private async void btnLogin_Click(object sender, EventArgs e)
         {
-            string roleOrUser = cmbRole.Text.Trim(); 
-            string identitasTambahan = txtUsername.InputValue.Trim(); 
-            string passwordInput = txtPassword.InputValue.Trim();
+            string roleOrUser = drpRole.InputValue.Trim();
+            string identity = txtIdentity.InputValue.Trim();
+            string password = txtPassword.InputValue.Trim();
 
-            // ---------------------------------------------------------
-            // ALUR 1: TANPA PASSWORD (OPERATOR, TEKNISI, STOCK)
-            // ---------------------------------------------------------
-            if (roleOrUser == "Operator" || roleOrUser == "Teknisi" || roleOrUser == "Stock")
+            if (IsKnownRole(roleOrUser))
+                await HandleRoleLoginAsync(roleOrUser, identity);
+            else
+                await HandleAdminLoginAsync(roleOrUser, password);
+        }
+
+        private async System.Threading.Tasks.Task HandleRoleLoginAsync(string role, string identity)
+        {
+            if (role == "Operator" && string.IsNullOrEmpty(identity))
             {
-                if (roleOrUser == "Operator" && string.IsNullOrEmpty(identitasTambahan))
-                {
-                    MessageBox.Show("Harap isi NIK Operator.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-
-                UserSession.SetUser(new UserDto { 
-                    Username = string.IsNullOrEmpty(identitasTambahan) ? roleOrUser : identitasTambahan, 
-                    RoleName = roleOrUser 
-                });
-
-                this.Hide();
-
-                if (roleOrUser == "Teknisi" && string.IsNullOrEmpty(identitasTambahan))
-                {
-                    var techDashboard = new TechnicianDashboardForm();
-                    techDashboard.FormClosed += (s, args) => { this.Show(); cmbRole.Focus(); };
-                    techDashboard.Show();
-                }
-                else if (roleOrUser == "Teknisi" && !string.IsNullOrEmpty(identitasTambahan))
-                {
-                    // TAHAP 4 SELESAI: Masuk ke Checksheet Teknisi
-                    var techCheckForm = new ChecksheetForm(isTeknisiMode: true);
-                    techCheckForm.FormClosed += (s, args) => { 
-                        this.Show(); 
-                        txtUsername.InputValue = ""; // Bersihkan NIK saat kembali
-                        cmbRole.Focus(); 
-                    };
-                    techCheckForm.Show(); 
-                }
-                else if (roleOrUser == "Operator")
-                {
-                    // TAHAP 3 SELESAI: Masuk ke Menu Operator
-                    var operatorMenu = new OperatorMainMenuForm();
-                    operatorMenu.FormClosed += (s, args) => { 
-                        this.Show(); 
-                        txtUsername.InputValue = ""; // Bersihkan NIK saat kembali
-                        cmbRole.Focus(); 
-                    };
-                    operatorMenu.Show();
-                }
-                else if (roleOrUser == "Stock")
-                {
-                    var stockDashboard = new StockDashboardForm();
-                    stockDashboard.FormClosed += (s, args) => { 
-                        this.Show(); 
-                        txtUsername.InputValue = ""; 
-                        cmbRole.Focus(); 
-                    };
-                    stockDashboard.Show();
-                }
+                MessageBox.Show("Harap isi NIK Operator.", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            // ---------------------------------------------------------
-            // ALUR 2: LAINNYA / ADMIN (DATABASE DAN PASSWORD)
-            // ---------------------------------------------------------
-            if (string.IsNullOrEmpty(roleOrUser))
+            UserSession.SetUser(new UserDto
             {
-                MessageBox.Show("Harap isi Username.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                Username = string.IsNullOrEmpty(identity) ? role : identity,
+                RoleName = role
+            });
+
+            this.Hide();
+            Form nextForm = CreateFormForRole(role, identity);
+            if (nextForm != null)
+            {
+                nextForm.FormClosed += OnChildFormClosed;
+                nextForm.Show();
+            }
+        }
+
+        private Form CreateFormForRole(string role, string identity)
+        {
+            switch (role)
+            {
+                case "Teknisi" when string.IsNullOrEmpty(identity):
+                    return new TechnicianDashboardForm();
+                case "Teknisi":
+                    return new ChecksheetForm(isTeknisiMode: true);
+                case "Operator":
+                    return new OperatorMainMenuForm();
+                case "Stock":
+                    return new StockDashboardForm();
+                default:
+                    return null;
+            }
+        }
+
+        private async System.Threading.Tasks.Task HandleAdminLoginAsync(string username, string password)
+        {
+            if (string.IsNullOrEmpty(username))
+            {
+                MessageBox.Show("Harap isi Username.", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -202,21 +263,23 @@ namespace mtc_app.features.authentication.presentation.screens
 
             try
             {
-                UserDto user = await _authRepository.LoginAsync(roleOrUser, passwordInput);
-
+                UserDto user = await _authRepository.LoginAsync(username, password);
                 if (user != null)
                 {
-                    if (user.IsOfflineLogin) ToastNotification.ShowWarning("Login Offline - synced data only", 4000);
+                    if (user.IsOfflineLogin)
+                        ToastNotification.ShowWarning("Login Offline - synced data only", 4000);
                     HandleLoginSuccess(user);
                 }
                 else
                 {
-                    MessageBox.Show("Username atau Password salah!", "Login Gagal", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("Username atau Password salah!", "Login Gagal",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Terjadi kesalahan database:\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Terjadi kesalahan database:\n{ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
@@ -229,29 +292,41 @@ namespace mtc_app.features.authentication.presentation.screens
         private void HandleLoginSuccess(UserDto user)
         {
             UserSession.SetUser(user);
-            ToastNotification.ShowSuccess($"Login Berhasil! Selamat datang, {user.Username} ({user.RoleName})", 3000);
+            ToastNotification.ShowSuccess(
+                $"Login Berhasil! Selamat datang, {user.Username} ({user.RoleName})", 3000);
 
             this.Hide();
             Form nextForm = DashboardRouter.GetDashboardForUser(user);
-
             if (nextForm != null)
             {
-                nextForm.FormClosed += (s, args) => 
-                { 
-                    this.Show(); 
-                    txtPassword.InputValue = ""; 
-                    cmbRole.Focus();
-                };
+                nextForm.FormClosed += OnChildFormClosed;
                 nextForm.Show();
             }
             else
             {
-                MessageBox.Show($"Dashboard untuk role '{user.RoleName}' belum tersedia.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"Dashboard untuk role '{user.RoleName}' belum tersedia.",
+                    "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 this.Show();
             }
         }
 
-        private void btnExit_Click(object sender, EventArgs e) { Application.Exit(); }
+        // =====================================================================
+        // CHILD FORM LIFECYCLE
+        // =====================================================================
+
+        private void OnChildFormClosed(object sender, FormClosedEventArgs e)
+        {
+            this.Show();
+            txtIdentity.InputValue = "";
+            txtPassword.InputValue = "";
+            drpRole.Focus();
+        }
+
+        private void btnExit_Click(object sender, EventArgs e) => Application.Exit();
+
+        // =====================================================================
+        // MACHINE NAME LABEL (bottom-right)
+        // =====================================================================
 
         private void InitializeMachineNameLabel()
         {
@@ -264,13 +339,20 @@ namespace mtc_app.features.authentication.presentation.screens
                 Cursor = Cursors.Hand,
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Right
             };
-            
-            lblMachineName.Location = new Point(this.ClientSize.Width - 150, this.ClientSize.Height - 20);
+
+            lblMachineName.Location = new Point(
+                ClientSize.Width - 150, ClientSize.Height - 20);
             lblMachineName.Click += (s, e) => OpenSetupForm();
             this.Controls.Add(lblMachineName);
-            lblMachineName.BringToFront(); 
+            lblMachineName.BringToFront();
 
-            this.Resize += (s, e) => { if (lblMachineName != null) lblMachineName.Location = new Point(this.ClientSize.Width - lblMachineName.Width - 10, this.ClientSize.Height - lblMachineName.Height - 5); };
+            this.Resize += (s, e) =>
+            {
+                if (lblMachineName != null)
+                    lblMachineName.Location = new Point(
+                        ClientSize.Width - lblMachineName.Width - 10,
+                        ClientSize.Height - lblMachineName.Height - 5);
+            };
         }
 
         private async void LoadMachineNameAsync()
@@ -284,36 +366,42 @@ namespace mtc_app.features.authentication.presentation.screens
                     if (!string.IsNullOrEmpty(name))
                     {
                         lblMachineName.Text = name;
-                        lblMachineName.Location = new Point(this.ClientSize.Width - lblMachineName.Width - 10, this.ClientSize.Height - lblMachineName.Height - 5);
-                        
+                        lblMachineName.Location = new Point(
+                            ClientSize.Width - lblMachineName.Width - 10,
+                            ClientSize.Height - lblMachineName.Height - 5);
+
                         string lowerName = name.ToLower();
-                        if (lowerName.Contains("teknisi")) cmbRole.Text = "Teknisi";
-                        else if (lowerName.Contains("stock") || lowerName.Contains("gudang")) cmbRole.Text = "Stock";
-                        else cmbRole.Text = "Operator";
+                        if (lowerName.Contains("teknisi"))
+                            drpRole.InputValue = "Teknisi";
+                        else if (lowerName.Contains("stock") || lowerName.Contains("gudang"))
+                            drpRole.InputValue = "Stock";
+                        else
+                            drpRole.InputValue = "Operator";
                     }
                     else
                     {
-                         lblMachineName.Text = "Machine: Unknown";
-                         cmbRole.Text = "Operator";
+                        lblMachineName.Text = "Machine: Unknown";
+                        drpRole.InputValue = "Operator";
                     }
                 }
                 else
                 {
                     lblMachineName.Text = "Machine: Not Configured";
-                    cmbRole.Text = "Operator";
+                    drpRole.InputValue = "Operator";
                 }
             }
             catch
             {
                 lblMachineName.Text = "Machine: Error";
-                cmbRole.Text = "Operator";
+                drpRole.InputValue = "Operator";
             }
         }
 
         private void OpenSetupForm()
         {
             var setupForm = new SetupForm();
-            if (setupForm.ShowDialog() == DialogResult.OK) LoadMachineNameAsync();
+            if (setupForm.ShowDialog() == DialogResult.OK)
+                LoadMachineNameAsync();
         }
     }
 }

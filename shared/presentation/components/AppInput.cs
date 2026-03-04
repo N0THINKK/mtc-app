@@ -28,6 +28,7 @@ namespace mtc_app.shared.presentation.components
         private string _cachedText = ""; 
 
         public event EventHandler DropdownOpened;
+        public event EventHandler InputValueChanged;
 
         // Visual Constants
         private int _inputAreaTop => labelTitle.Height + 6; // Dynamic: Use Height not Bottom to handle Font scaling
@@ -250,6 +251,7 @@ namespace mtc_app.shared.presentation.components
             textInput.BackColor = AppColors.Surface; 
             textInput.Enter += (s, e) => { _isFocused = true; this.Invalidate(); };
             textInput.Leave += (s, e) => { _isFocused = false; this.Invalidate(); };
+            textInput.TextChanged += (s, e) => InputValueChanged?.Invoke(this, EventArgs.Empty);
             textInput.SizeChanged += (s, e) => { RepositionControls(); this.Invalidate(); };
             this.Controls.Add(textInput);
 
@@ -262,7 +264,7 @@ namespace mtc_app.shared.presentation.components
             comboInput.Enter += (s, e) => { _isFocused = true; this.Invalidate(); };
             comboInput.Leave += (s, e) => { _isFocused = false; this.Invalidate(); };
             
-            comboInput.TextChanged += (s, e) => { try { _cachedText = comboInput.Text; } catch { } };
+            comboInput.TextChanged += (s, e) => { try { _cachedText = comboInput.Text; InputValueChanged?.Invoke(this, EventArgs.Empty); } catch { } };
             // Simple filtering logic embedded
             comboInput.TextChanged += ComboInput_TextChanged; 
             comboInput.DropDown += (s, e) => DropdownOpened?.Invoke(this, EventArgs.Empty);
