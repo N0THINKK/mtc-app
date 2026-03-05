@@ -16,5 +16,10 @@ namespace mtc_app.features.technician.data.repositories
         
         // [BARU] Metode untuk mengambil status Run mesin berdasarkan efisiensi
         Task<(int Running, int Total)> GetMachineRunStatsAsync();
+        
+        // [BARU] Patroli Checksheet
+        Task<IEnumerable<PatrolNgDto>> GetPatrolNgListAsync(string filterStatus, string sortOrder, DateTime start, DateTime end);
+        Task<PatrolNgStatsDto> GetPatrolNgStatsAsync(DateTime start, DateTime end);
+        Task<bool> MarkPatrolNgAsResolvedAsync(int detailId);
     }
 }

@@ -25,6 +25,7 @@ namespace mtc_app.features.technician.presentation.screens
         private MachinePerformanceControl machinePerformanceControl;
         private MachineMonitorControl machineMonitorControl;
         private StockDataControl stockDataControl;
+        private TechnicianPatrolControl patrolControl;
         
         // Auto Switch Feature
         private Timer timerTabSwitch;
@@ -277,7 +278,7 @@ namespace mtc_app.features.technician.presentation.screens
         {
             if (tabControl.TabCount <= 0) return;
 
-            const int totalStages = 6; 
+            const int totalStages = 7; 
             _autoSwitchStage = (_autoSwitchStage + 1) % totalStages;
 
             switch (_autoSwitchStage)
@@ -302,6 +303,9 @@ namespace mtc_app.features.technician.presentation.screens
                 case 5: // Machine Analysis
                     tabControl.SelectedIndex = 4;
                     break;
+                case 6: // Patroli Checksheet
+                    tabControl.SelectedIndex = 5;
+                    break;
             }
         }
 
@@ -324,6 +328,10 @@ namespace mtc_app.features.technician.presentation.screens
             else if (tabControl.SelectedIndex == 4) // Analisis Mesin
             {
                 await machinePerformanceControl.LoadDataAsync(start, end);
+            }
+            else if (tabControl.SelectedIndex == 5) // Patroli Checksheet
+            {
+                await patrolControl.LoadDataAsync(start, end);
             }
         }
 
@@ -358,8 +366,13 @@ namespace mtc_app.features.technician.presentation.screens
             var tabMachine = new TabPage("Downtime") { BackColor = AppColors.CardBackground };
             machinePerformanceControl = new MachinePerformanceControl(_repository) { Dock = DockStyle.Fill };
             tabMachine.Controls.Add(machinePerformanceControl);
+            
+            // Tab 5: Patroli Checksheet
+            var tabPatroli = new TabPage("Patroli NG") { BackColor = AppColors.CardBackground };
+            patrolControl = new TechnicianPatrolControl(_repository) { Dock = DockStyle.Fill };
+            tabPatroli.Controls.Add(patrolControl);
 
-            // Tab 5: Machine Monitor (Real-time)
+            // Tab 6: Machine Monitor (Real-time)
             var tabMonitor = new TabPage("Output") { BackColor = AppColors.CardBackground };
             machineMonitorControl = new MachineMonitorControl { Dock = DockStyle.Fill };
             tabMonitor.Controls.Add(machineMonitorControl);
@@ -369,6 +382,7 @@ namespace mtc_app.features.technician.presentation.screens
             tabControl.TabPages.Add(tabStockData);
             tabControl.TabPages.Add(tabPerformance);
             tabControl.TabPages.Add(tabMachine);
+            tabControl.TabPages.Add(tabPatroli);
 
             // Load data when tab changes
             tabControl.SelectedIndexChanged += (s, e) =>
