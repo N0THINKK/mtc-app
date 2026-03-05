@@ -28,11 +28,11 @@ namespace mtc_app.features.admin.presentation.views
 
         // Machine Tab Controls
         private TabControl tabMachineSub;
-        private TabPage subMachineList, subMachineTypes, subMachineAreas, subChecksheetTemplates;
+        private TabPage subMachineList, subMachineTypes, subMachineAreas, subChecksheetTemplates, subChecksheetItems;
         
         // Machine List (Aggregate)
         private DataGridView gridMachines;
-        private AppInput txtMachineCode, txtMachineType, txtMachineArea, txtMachineNumber;
+        private AppInput txtMachineType, txtMachineArea, txtMachineNumber;
         private AppButton btnAddMachine, btnUpdateMachine, btnDeleteMachine;
         private int? _selectedMachineId = null;
 
@@ -48,11 +48,18 @@ namespace mtc_app.features.admin.presentation.views
         private AppButton btnAddMasterArea, btnUpdateMasterArea, btnDeleteMasterArea;
         private int? _selectedMasterAreaId = null;
 
-        // [BARU] Checksheet Templates Master
+        // Checksheet Templates Master
         private DataGridView gridTemplates;
         private AppInput txtTemplateName, cmbTemplateMachineType;
         private AppButton btnAddTemplate, btnUpdateTemplate, btnDeleteTemplate;
         private int? _selectedTemplateId = null;
+
+        // [BARU] Checksheet Items Master
+        private DataGridView gridChecksheetItems;
+        private AppInput cmbItemTemplate, cmbItemRole, txtItemName, txtItemStandard, txtItemMethod;
+        private AppButton btnAddItem, btnUpdateItem, btnDeleteItem;
+        private int? _selectedItemId = null;
+        private Dictionary<string, int> _templateNameToIdMap = new Dictionary<string, int>();
 
         // Part Tab Controls
         private DataGridView gridParts;
@@ -84,7 +91,8 @@ namespace mtc_app.features.admin.presentation.views
                 LoadMachines();
                 LoadMasterMachineTypes();
                 LoadMasterMachineAreas();
-                LoadChecksheetTemplates(); // Load templates on startup
+                LoadChecksheetTemplates(); 
+                LoadChecksheetItems(); // Load Items on startup
                 LoadParts();
                 LoadFailures();
                 LoadCauses();
@@ -242,7 +250,7 @@ namespace mtc_app.features.admin.presentation.views
                 var types = conn.Query<string>("SELECT type_name FROM machine_types ORDER BY type_name").ToArray();
                 var areas = conn.Query<string>("SELECT area_name FROM machine_areas ORDER BY area_name").ToArray();
                 txtMachineType.SetDropdownItems(types);
-                cmbTemplateMachineType.SetDropdownItems(types); // Bind juga ke dropdown template
+                cmbTemplateMachineType.SetDropdownItems(types); 
                 txtMachineArea.SetDropdownItems(areas);
             } catch { }
         }
@@ -345,7 +353,7 @@ namespace mtc_app.features.admin.presentation.views
         private void GridMasterAreas_CellClick(object sender, DataGridViewCellEventArgs e) { if(e.RowIndex>=0) { _selectedMasterAreaId=(int)gridMasterAreas.Rows[e.RowIndex].Cells["area_id"].Value; txtMasterAreaName.InputValue=gridMasterAreas.Rows[e.RowIndex].Cells["area_name"].Value.ToString(); btnUpdateMasterArea.Enabled=btnDeleteMasterArea.Enabled=true; } }
         private void ClearMasterAreaSelection() { _selectedMasterAreaId=null; txtMasterAreaName.InputValue=""; btnUpdateMasterArea.Enabled=btnDeleteMasterArea.Enabled=false; }
 
-        // --- [BARU] Master Checksheet Templates ---
+        // --- Master Checksheet Templates ---
         private void LoadChecksheetTemplates()
         {
             try { 
@@ -359,6 +367,7 @@ namespace mtc_app.features.admin.presentation.views
                 } 
             } catch { }
             ClearTemplateSelection();
+            RefreshTemplateDropdownForItem(); // Update data di tab pertanyaan
         }
 
         private void BtnAddTemplate_Click(object sender, EventArgs e)
@@ -426,6 +435,141 @@ namespace mtc_app.features.admin.presentation.views
             _selectedTemplateId = null;
             txtTemplateName.InputValue = "";
             btnUpdateTemplate.Enabled = btnDeleteTemplate.Enabled = false;
+        }
+
+        // --- [BARU] Master Checksheet ITEMS (Pertanyaan) ---
+        private void RefreshTemplateDropdownForItem()
+        {
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    var templates = conn.Query(@"
+                        SELECT t.template_id, CONCAT(mt.type_name, ' - ', t.template_name) as display_name 
+                        FROM checksheet_templates t 
+                        JOIN machine_types mt ON t.machine_type_id = mt.type_id
+                        ORDER BY mt.type_name, t.template_name").ToList();
+                    
+                    _templateNameToIdMap.Clear();
+                    var list = new List<string>();
+                    foreach (var t in templates)
+                    {
+                        list.Add(t.display_name);
+                        _templateNameToIdMap[t.display_name] = (int)t.template_id;
+                    }
+                    cmbItemTemplate.SetDropdownItems(list.ToArray());
+                }
+            }
+            catch { }
+        }
+
+        private void LoadChecksheetItems()
+        {
+            try
+            {
+                using (var c = DatabaseHelper.GetConnection())
+                {
+                    gridChecksheetItems.DataSource = c.Query(@"
+                        SELECT i.item_id, CONCAT(mt.type_name, ' - ', t.template_name) as template_display,
+                               i.role_target, i.item_name, i.check_method, i.standard_judgment
+                        FROM checksheet_items i
+                        JOIN checksheet_templates t ON i.template_id = t.template_id
+                        JOIN machine_types mt ON t.machine_type_id = mt.type_id
+                        ORDER BY mt.type_name, t.template_name, i.role_target, i.item_id").ToList();
+                }
+            }
+            catch { }
+            ClearItemSelection();
+        }
+
+        private void BtnAddItem_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtItemName.InputValue) || string.IsNullOrWhiteSpace(cmbItemTemplate.InputValue)) return;
+            if (!_templateNameToIdMap.TryGetValue(cmbItemTemplate.InputValue, out int tplId)) return;
+
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Execute(@"INSERT INTO checksheet_items (template_id, role_target, item_name, standard_judgment, check_method) 
+                                   VALUES (@TId, @Role, @Name, @Std, @Method)", 
+                                 new { 
+                                     TId = tplId, 
+                                     Role = cmbItemRole.InputValue, 
+                                     Name = txtItemName.InputValue, 
+                                     Std = txtItemStandard.InputValue, 
+                                     Method = txtItemMethod.InputValue 
+                                 });
+                    AutoClosingMessageBox.Show("Pertanyaan ditambahkan!", "Sukses", 1000);
+                    LoadChecksheetItems();
+                }
+            } catch (Exception ex) { MessageBox.Show(ex.Message); }
+        }
+
+        private void BtnUpdateItem_Click(object sender, EventArgs e)
+        {
+            if (_selectedItemId == null || string.IsNullOrWhiteSpace(txtItemName.InputValue)) return;
+            if (!_templateNameToIdMap.TryGetValue(cmbItemTemplate.InputValue, out int tplId)) return;
+
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Execute(@"UPDATE checksheet_items 
+                                   SET template_id = @TId, role_target = @Role, item_name = @Name, standard_judgment = @Std, check_method = @Method 
+                                   WHERE item_id = @Id", 
+                                 new { 
+                                     TId = tplId, 
+                                     Role = cmbItemRole.InputValue, 
+                                     Name = txtItemName.InputValue, 
+                                     Std = txtItemStandard.InputValue, 
+                                     Method = txtItemMethod.InputValue,
+                                     Id = _selectedItemId.Value 
+                                 });
+                    AutoClosingMessageBox.Show("Pertanyaan diupdate!", "Sukses", 1000);
+                    LoadChecksheetItems();
+                }
+            } catch (Exception ex) { MessageBox.Show(ex.Message); }
+        }
+
+        private void BtnDeleteItem_Click(object sender, EventArgs e)
+        {
+            if (_selectedItemId == null) return;
+            if (MessageBox.Show("Hapus pertanyaan ini?", "Konfirmasi", MessageBoxButtons.YesNo) == DialogResult.Yes)
+            {
+                try
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        conn.Execute("DELETE FROM checksheet_items WHERE item_id = @Id", new { Id = _selectedItemId.Value });
+                        AutoClosingMessageBox.Show("Pertanyaan dihapus!", "Sukses", 1000);
+                        LoadChecksheetItems();
+                    }
+                } catch (Exception ex) { MessageBox.Show(ex.Message); }
+            }
+        }
+
+        private void GridChecksheetItems_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0)
+            {
+                var row = gridChecksheetItems.Rows[e.RowIndex];
+                _selectedItemId = (int)row.Cells["item_id"].Value;
+                cmbItemTemplate.InputValue = row.Cells["template_display"].Value?.ToString();
+                cmbItemRole.InputValue = row.Cells["role_target"].Value?.ToString();
+                txtItemName.InputValue = row.Cells["item_name"].Value?.ToString();
+                txtItemMethod.InputValue = row.Cells["check_method"].Value?.ToString();
+                txtItemStandard.InputValue = row.Cells["standard_judgment"].Value?.ToString();
+                
+                btnUpdateItem.Enabled = btnDeleteItem.Enabled = true;
+            }
+        }
+
+        private void ClearItemSelection()
+        {
+            _selectedItemId = null;
+            txtItemName.InputValue = txtItemStandard.InputValue = txtItemMethod.InputValue = "";
+            btnUpdateItem.Enabled = btnDeleteItem.Enabled = false;
         }
 
         #endregion
@@ -587,7 +731,7 @@ namespace mtc_app.features.admin.presentation.views
             this.gridMasterAreas.CellClick += GridMasterAreas_CellClick;
             this.subMachineAreas.Controls.Add(gridMasterAreas); this.subMachineAreas.Controls.Add(pnlArea);
 
-            // 4. [BARU] MASTER TEMPLATE CHECKSHEET
+            // 4. MASTER TEMPLATE CHECKSHEET
             this.subChecksheetTemplates = new TabPage("Master Template Checksheet");
             var pnlTpl = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(10) };
             var flowTpl = new FlowLayoutPanel { Dock = DockStyle.Fill };
@@ -606,8 +750,55 @@ namespace mtc_app.features.admin.presentation.views
             this.gridTemplates.CellClick += GridTemplates_CellClick;
             this.subChecksheetTemplates.Controls.Add(gridTemplates); this.subChecksheetTemplates.Controls.Add(pnlTpl);
 
+            // 5. [BARU] MASTER PERTANYAAN CHECKSHEET
+            this.subChecksheetItems = new TabPage("Master Pertanyaan Checksheet");
+            
+            // --- Panel Atas (Form Input) ---
+            var pnlItemForm = new Panel { Dock = DockStyle.Top, Height = 180, Padding = new Padding(10) };
+            var flowItem1 = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 80, WrapContents = false };
+            var flowItem2 = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 80, WrapContents = false };
+
+            this.cmbItemTemplate = new AppInput { LabelText = "Pilih Template Pekerjaan", InputType = AppInput.InputTypeEnum.Dropdown, Width = 300, AllowCustomText = false };
+            this.cmbItemRole = new AppInput { LabelText = "Target Role", InputType = AppInput.InputTypeEnum.Dropdown, Width = 150, AllowCustomText = false };
+            this.cmbItemRole.SetDropdownItems(new string[] { "Operator", "Teknisi" });
+            this.txtItemName = new AppInput { LabelText = "Poin Inspeksi (Contoh: Tekanan Udara)", Width = 350 };
+            
+            this.txtItemMethod = new AppInput { LabelText = "Metode (Cth: Visual)", Width = 150 };
+            this.txtItemStandard = new AppInput { LabelText = "Standar OK (Cth: 0.45 MPa)", Width = 300 };
+
+            this.btnAddItem = new AppButton { Text = "Tambah", Width = 90, Height = 35, Margin = new Padding(5, 35, 5, 5) };
+            this.btnUpdateItem = new AppButton { Text = "Update", Width = 90, Height = 35, Margin = new Padding(5, 35, 5, 5), Enabled = false };
+            this.btnDeleteItem = new AppButton { Text = "Hapus", Width = 90, Height = 35, Margin = new Padding(5, 35, 5, 5), Enabled = false, Type = AppButton.ButtonType.Danger };
+            
+            btnAddItem.Click += BtnAddItem_Click; 
+            btnUpdateItem.Click += BtnUpdateItem_Click; 
+            btnDeleteItem.Click += BtnDeleteItem_Click;
+
+            // Baris 1
+            flowItem1.Controls.AddRange(new Control[] { cmbItemTemplate, cmbItemRole, txtItemName });
+            // Baris 2
+            flowItem2.Controls.AddRange(new Control[] { txtItemMethod, txtItemStandard, btnAddItem, btnUpdateItem, btnDeleteItem });
+            
+            pnlItemForm.Controls.Add(flowItem2);
+            pnlItemForm.Controls.Add(flowItem1);
+
+            // --- Panel Bawah (Grid Data) ---
+            this.gridChecksheetItems = CreateGrid();
+            this.gridChecksheetItems.Columns.Add(new DataGridViewTextBoxColumn { Name="item_id", DataPropertyName="item_id", Visible=false });
+            this.gridChecksheetItems.Columns.Add(new DataGridViewTextBoxColumn { Name="template_display", DataPropertyName="template_display", HeaderText="Template Pekerjaan", FillWeight = 20 });
+            this.gridChecksheetItems.Columns.Add(new DataGridViewTextBoxColumn { Name="role_target", DataPropertyName="role_target", HeaderText="Role", FillWeight = 10 });
+            this.gridChecksheetItems.Columns.Add(new DataGridViewTextBoxColumn { Name="item_name", DataPropertyName="item_name", HeaderText="Poin Inspeksi", FillWeight = 30 });
+            this.gridChecksheetItems.Columns.Add(new DataGridViewTextBoxColumn { Name="check_method", DataPropertyName="check_method", HeaderText="Metode", FillWeight = 15 });
+            this.gridChecksheetItems.Columns.Add(new DataGridViewTextBoxColumn { Name="standard_judgment", DataPropertyName="standard_judgment", HeaderText="Standar OK", FillWeight = 25 });
+            this.gridChecksheetItems.CellClick += GridChecksheetItems_CellClick;
+            
+            var pnlItemGrid = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) }; 
+            pnlItemGrid.Controls.Add(gridChecksheetItems);
+            
+            this.subChecksheetItems.Controls.AddRange(new Control[] { pnlItemGrid, pnlItemForm });
+
             // Add Sub Tabs
-            this.tabMachineSub.Controls.AddRange(new Control[] { subMachineList, subMachineTypes, subMachineAreas, subChecksheetTemplates });
+            this.tabMachineSub.Controls.AddRange(new Control[] { subMachineList, subMachineTypes, subMachineAreas, subChecksheetTemplates, subChecksheetItems });
             this.tabMachines.Controls.Add(tabMachineSub);
         }
 
