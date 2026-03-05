@@ -221,5 +221,61 @@ namespace mtc_app.features.technician.data.decorators
                 return (0, 0); // Fallback ke 0 jika gagal jaringan saat proses
             }
         }
+
+        // ====================================================================================
+        // PATROLI CHECKSHEET (NG LIST)
+        // ====================================================================================
+
+        public async Task<IEnumerable<PatrolNgDto>> GetPatrolNgListAsync(string filterStatus, string sortOrder, DateTime start, DateTime end)
+        {
+            if (!_networkMonitor.IsOnline)
+            {
+                return Enumerable.Empty<PatrolNgDto>();
+            }
+
+            try
+            {
+                return await _innerRepository.GetPatrolNgListAsync(filterStatus, sortOrder, start, end);
+            }
+            catch (Exception ex) when (IsNetworkException(ex))
+            {
+                return Enumerable.Empty<PatrolNgDto>();
+            }
+        }
+
+        public async Task<PatrolNgStatsDto> GetPatrolNgStatsAsync(DateTime start, DateTime end)
+        {
+            if (!_networkMonitor.IsOnline)
+            {
+                return new PatrolNgStatsDto();
+            }
+
+            try
+            {
+                return await _innerRepository.GetPatrolNgStatsAsync(start, end);
+            }
+            catch (Exception ex) when (IsNetworkException(ex))
+            {
+                return new PatrolNgStatsDto();
+            }
+        }
+
+        public async Task<bool> MarkPatrolNgAsResolvedAsync(int detailId)
+        {
+            if (!_networkMonitor.IsOnline)
+            {
+                // Cannot resolve when offline currently
+                return false;
+            }
+
+            try
+            {
+                return await _innerRepository.MarkPatrolNgAsResolvedAsync(detailId);
+            }
+            catch (Exception ex) when (IsNetworkException(ex))
+            {
+                return false;
+            }
+        }
     }
 }

@@ -264,5 +264,79 @@ namespace mtc_app.features.technician.data.repositories
                 return await connection.QueryFirstOrDefaultAsync<(int, int)>(sql, commandTimeout: 60);
             }
         }
+
+        // ====================================================================================
+        // PATROLI CHECKSHEET (NG LIST)
+        // ====================================================================================
+
+        public async Task<IEnumerable<PatrolNgDto>> GetPatrolNgListAsync(string filterStatus, string sortOrder, DateTime start, DateTime end)
+        {
+            using (var conn = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        d.detail_id AS DetailId,
+                        l.log_id AS LogId,
+                        CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) AS MachineName,
+                        l.patrol_date AS PatrolDate,
+                        i.role_target AS RoleTarget,
+                        i.item_name AS ItemName,
+                        d.action_note AS ActionNote,
+                        d.status AS Status,
+                        d.is_ticket_created AS IsTicketCreated
+                    FROM patrol_log_details d
+                    JOIN patrol_logs l ON d.log_id = l.log_id
+                    JOIN machines m ON l.machine_id = m.machine_id
+                    LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                    LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
+                    JOIN checksheet_items i ON d.item_id = i.item_id
+                    WHERE l.patrol_date BETWEEN @Start AND @End ";
+
+                // Filter NOT_OK vs PERBAIKAN_OK vs Semua
+                if (filterStatus == "NG")
+                    sql += " AND d.status = 'NOT_OK' ";
+                else if (filterStatus == "Selesai")
+                    sql += " AND d.status = 'PERBAIKAN_OK' ";
+                else
+                    sql += " AND d.status IN ('NOT_OK', 'PERBAIKAN_OK') ";
+
+                if (sortOrder == "ASC")
+                    sql += " ORDER BY l.patrol_date ASC;";
+                else
+                    sql += " ORDER BY l.patrol_date DESC;";
+
+                return await conn.QueryAsync<PatrolNgDto>(sql, new { Start = start, End = end });
+            }
+        }
+
+        public async Task<PatrolNgStatsDto> GetPatrolNgStatsAsync(DateTime start, DateTime end)
+        {
+            using (var conn = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        SUM(CASE WHEN d.status = 'NOT_OK' THEN 1 ELSE 0 END) AS PendingCount,
+                        SUM(CASE WHEN d.status = 'PERBAIKAN_OK' THEN 1 ELSE 0 END) AS ResolvedCount
+                    FROM patrol_log_details d
+                    JOIN patrol_logs l ON d.log_id = l.log_id
+                    WHERE l.patrol_date BETWEEN @Start AND @End
+                      AND d.status IN ('NOT_OK', 'PERBAIKAN_OK');";
+
+                return await conn.QueryFirstOrDefaultAsync<PatrolNgStatsDto>(sql, new { Start = start, End = end });
+            }
+        }
+
+        public async Task<bool> MarkPatrolNgAsResolvedAsync(int detailId)
+        {
+            using (var conn = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    UPDATE patrol_log_details 
+                    SET status = 'PERBAIKAN_OK'
+                    WHERE detail_id = @DetailId AND status = 'NOT_OK'";
+                int rowsAffected = await conn.ExecuteAsync(sql, new { DetailId = detailId });
+                return rowsAffected > 0;
+            }
+        }
     }
 }
