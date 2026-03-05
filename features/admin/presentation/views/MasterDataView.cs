@@ -15,8 +15,12 @@ namespace mtc_app.features.admin.presentation.views
         private AppLabel lblTitle;
         private DataGridView gridData;
         private string _currentCategory = "";
+        private string _currentProblemSubCategory = "";
 
-        // Konstruktor sekarang wajib menerima IAdminRepository
+        // Komponen untuk Tab Problem
+        private FlowLayoutPanel pnlProblemTabs;
+        private AppButton btnTabJenis, btnTabDetail, btnTabPenyebab, btnTabTindakan;
+
         public MasterDataView(IAdminRepository repository)
         {
             _repository = repository;
@@ -30,18 +34,21 @@ namespace mtc_app.features.admin.presentation.views
             this.BackColor = AppColors.Surface;
             this.Padding = new Padding(24);
 
-            Panel pnlHeader = new Panel { Dock = DockStyle.Top, Height = 80, BackColor = Color.Transparent };
+            // ==========================================
+            // 1. HEADER SECTION
+            // ==========================================
+            Panel pnlHeader = new Panel { Dock = DockStyle.Top, Height = 60, BackColor = Color.Transparent };
 
-            lblTitle = new AppLabel { Text = "Master Data", Font = AppFonts.Header2, ForeColor = AppColors.TextPrimary, AutoSize = true, Location = new Point(0, 10) };
+            lblTitle = new AppLabel { Text = "Master Data", Font = AppFonts.Header2, ForeColor = AppColors.TextPrimary, AutoSize = true, Location = new Point(0, 0) };
 
             AppButton btnAdd = new AppButton
             {
                 Text = "+ Tambah Data", Type = AppButton.ButtonType.Primary, Width = 150, Height = 40,
-                Location = new Point(this.Width - 198, 10), Anchor = AnchorStyles.Top | AnchorStyles.Right
+                Location = new Point(this.Width - 198, 0), Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
-            btnAdd.Click += (s, e) => MessageBox.Show($"Form Tambah {_currentCategory} belum dibuat.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            btnAdd.Click += (s, e) => MessageBox.Show($"Form Tambah untuk {_currentCategory} {(_currentCategory == "Problem" ? $"({_currentProblemSubCategory})" : "")} belum dibuat.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-            Panel pnlSearch = new Panel { Width = 250, Height = 40, BackColor = AppColors.CardBackground, Location = new Point(this.Width - 465, 10), Anchor = AnchorStyles.Top | AnchorStyles.Right, Padding = new Padding(10) };
+            Panel pnlSearch = new Panel { Width = 250, Height = 40, BackColor = AppColors.CardBackground, Location = new Point(this.Width - 465, 0), Anchor = AnchorStyles.Top | AnchorStyles.Right, Padding = new Padding(10) };
             TextBox txtSearch = new TextBox { Text = "Pencarian...", ForeColor = AppColors.TextDisabled, BorderStyle = BorderStyle.None, Dock = DockStyle.Fill, Font = AppFonts.BodySmall, BackColor = AppColors.CardBackground };
             txtSearch.Enter += (s, e) => { if (txtSearch.Text == "Pencarian...") { txtSearch.Text = ""; txtSearch.ForeColor = AppColors.TextPrimary; } };
             txtSearch.Leave += (s, e) => { if (string.IsNullOrWhiteSpace(txtSearch.Text)) { txtSearch.Text = "Pencarian..."; txtSearch.ForeColor = AppColors.TextDisabled; } };
@@ -52,6 +59,30 @@ namespace mtc_app.features.admin.presentation.views
             pnlHeader.Controls.Add(pnlSearch);
             pnlHeader.Controls.Add(btnAdd);
 
+            // ==========================================
+            // 2. PROBLEM TABS SECTION (Sembunyi Default)
+            // ==========================================
+            pnlProblemTabs = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top, Height = 60, BackColor = Color.Transparent, 
+                FlowDirection = FlowDirection.LeftToRight, Visible = false, Padding = new Padding(0, 10, 0, 10)
+            };
+
+            btnTabJenis = CreateTabButton("Kategori Masalah");
+            btnTabDetail = CreateTabButton("Detail Problem");
+            btnTabPenyebab = CreateTabButton("Penyebab Problem");
+            btnTabTindakan = CreateTabButton("Tindakan Perbaikan");
+
+            btnTabJenis.Click += (s, e) => { HighlightTab(btnTabJenis); LoadProblemSubCategory("Kategori Masalah"); };
+            btnTabDetail.Click += (s, e) => { HighlightTab(btnTabDetail); LoadProblemSubCategory("Detail Problem"); };
+            btnTabPenyebab.Click += (s, e) => { HighlightTab(btnTabPenyebab); LoadProblemSubCategory("Penyebab Problem"); };
+            btnTabTindakan.Click += (s, e) => { HighlightTab(btnTabTindakan); LoadProblemSubCategory("Tindakan Perbaikan"); };
+
+            pnlProblemTabs.Controls.AddRange(new Control[] { btnTabJenis, btnTabDetail, btnTabPenyebab, btnTabTindakan });
+
+            // ==========================================
+            // 3. DATAGRID CONTAINER
+            // ==========================================
             AppCard cardGridContainer = new AppCard { Dock = DockStyle.Fill, ShowShadow = true, CornerRadius = 16, BackColor = AppColors.CardBackground, Padding = new Padding(20) };
 
             gridData = new DataGridView
@@ -82,15 +113,39 @@ namespace mtc_app.features.admin.presentation.views
             gridData.CellContentClick += GridData_CellContentClick;
 
             cardGridContainer.Controls.Add(gridData);
+            
+            // Urutan peletakan (Z-Order)
             this.Controls.Add(cardGridContainer);
+            this.Controls.Add(pnlProblemTabs);
             this.Controls.Add(pnlHeader);
             cardGridContainer.BringToFront();
 
             this.ResumeLayout(false);
         }
 
+        private AppButton CreateTabButton(string text)
+        {
+            return new AppButton
+            {
+                Text = text,
+                Type = AppButton.ButtonType.Secondary,
+                Height = 40, Width = 160,
+                Margin = new Padding(0, 0, 10, 0)
+            };
+        }
+
+        private void HighlightTab(AppButton activeBtn)
+        {
+            btnTabJenis.Type = AppButton.ButtonType.Secondary;
+            btnTabDetail.Type = AppButton.ButtonType.Secondary;
+            btnTabPenyebab.Type = AppButton.ButtonType.Secondary;
+            btnTabTindakan.Type = AppButton.ButtonType.Secondary;
+
+            activeBtn.Type = AppButton.ButtonType.Primary;
+        }
+
         // ==========================================
-        // FUNGSI LOAD DINAMIS DENGAN DATABASE (ASYNC)
+        // FUNGSI LOAD KATEGORI UTAMA (DARI SIDEBAR)
         // ==========================================
         public async void LoadCategory(string category)
         {
@@ -101,20 +156,32 @@ namespace mtc_app.features.admin.presentation.views
             gridData.DataSource = null;
             gridData.Columns.Clear();
 
-            // Atur Kolom
+            // Jika pilih "Problem", munculkan tab dan load sub-kategori pertama
+            if (category == "Problem")
+            {
+                pnlProblemTabs.Visible = true;
+                HighlightTab(btnTabJenis);
+                LoadProblemSubCategory("Kategori Masalah");
+                return; // Stop eksekusi, biarkan fungsi LoadProblemSubCategory yang bekerja
+            }
+
+            // Jika bukan Problem, sembunyikan Tab Problem
+            pnlProblemTabs.Visible = false;
+
+            // Atur Kolom Normal
             switch (category)
             {
                 case "User":
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", DataPropertyName = "id", FillWeight = 50 });
-                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "NIK / USERNAME", DataPropertyName = "nama", FillWeight = 150 });
-                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ROLE", DataPropertyName = "role", FillWeight = 100 });
-                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "STATUS", DataPropertyName = "status", FillWeight = 80 });
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Nama", DataPropertyName = "full_name", FillWeight = 150 });
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ROLE", DataPropertyName = "role", FillWeight = 80 });
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "NIK / INISIAL", DataPropertyName = "nik", FillWeight = 100 });
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "USERNAME", DataPropertyName = "username", FillWeight = 120 });
                     break;
                 case "Mesin":
-                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "KODE MESIN", DataPropertyName = "kode", FillWeight = 80 });
-                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "TIPE MESIN", DataPropertyName = "nama", FillWeight = 150 });
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "TIPE MESIN", DataPropertyName = "tipe", FillWeight = 150 });
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "AREA", DataPropertyName = "area", FillWeight = 100 });
-                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "KONDISI", DataPropertyName = "kondisi", FillWeight = 80 });
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "KODE MESIN", DataPropertyName = "kode", FillWeight = 80 });
                     break;
                 case "Sparepart":
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "KODE PART", DataPropertyName = "kode", FillWeight = 80 });
@@ -122,34 +189,48 @@ namespace mtc_app.features.admin.presentation.views
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "STOK", DataPropertyName = "stok", FillWeight = 60 });
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "LOKASI RAK", DataPropertyName = "lokasi", FillWeight = 80 });
                     break;
-                case "Problem":
-                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", DataPropertyName = "id", FillWeight = 50 });
-                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "KATEGORI MASALAH", DataPropertyName = "kategori", FillWeight = 150 });
-                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "TINGKAT KEPARAHAN", DataPropertyName = "level", FillWeight = 100 });
-                    break;
             }
 
-            // Tambah Tombol Edit & Hapus
             gridData.Columns.Add(new DataGridViewButtonColumn { Name = "Edit", HeaderText = "EDIT", Text = "Edit", UseColumnTextForButtonValue = true, FillWeight = 50 });
             gridData.Columns.Add(new DataGridViewButtonColumn { Name = "Delete", HeaderText = "HAPUS", Text = "Hapus", UseColumnTextForButtonValue = true, FillWeight = 50 });
 
-            // Fetch Data
             try
             {
                 this.Cursor = Cursors.WaitCursor;
                 if (category == "User") gridData.DataSource = await _repository.GetMasterUsersAsync();
                 else if (category == "Mesin") gridData.DataSource = await _repository.GetMasterMachinesAsync();
                 else if (category == "Sparepart") gridData.DataSource = await _repository.GetMasterSparepartsAsync();
-                else if (category == "Problem") gridData.DataSource = await _repository.GetMasterProblemsAsync();
             }
-            catch (Exception ex)
+            catch (Exception ex) { MessageBox.Show($"Gagal memuat {category}:\n" + ex.Message, "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            finally { this.Cursor = Cursors.Default; }
+        }
+
+        // ==========================================
+        // FUNGSI LOAD SUB-KATEGORI (KHUSUS PROBLEM)
+        // ==========================================
+        private async void LoadProblemSubCategory(string subCategory)
+        {
+            _currentProblemSubCategory = subCategory;
+
+            gridData.DataSource = null;
+            gridData.Columns.Clear();
+
+            gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", DataPropertyName = "id", FillWeight = 50 });
+            gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = subCategory.ToUpper(), DataPropertyName = "nama", FillWeight = 250 });
+            
+            gridData.Columns.Add(new DataGridViewButtonColumn { Name = "Edit", HeaderText = "EDIT", Text = "Edit", UseColumnTextForButtonValue = true, FillWeight = 50 });
+            gridData.Columns.Add(new DataGridViewButtonColumn { Name = "Delete", HeaderText = "HAPUS", Text = "Hapus", UseColumnTextForButtonValue = true, FillWeight = 50 });
+
+            try
             {
-                MessageBox.Show($"Gagal memuat data {category}:\n" + ex.Message, "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                this.Cursor = Cursors.WaitCursor;
+                if (subCategory == "Kategori Masalah") gridData.DataSource = await _repository.GetMasterProblemTypesAsync();
+                else if (subCategory == "Detail Problem") gridData.DataSource = await _repository.GetMasterFailuresAsync();
+                else if (subCategory == "Penyebab Problem") gridData.DataSource = await _repository.GetMasterCausesAsync();
+                else if (subCategory == "Tindakan Perbaikan") gridData.DataSource = await _repository.GetMasterActionsAsync();
             }
-            finally
-            {
-                this.Cursor = Cursors.Default;
-            }
+            catch (Exception ex) { MessageBox.Show($"Gagal memuat {subCategory}:\n" + ex.Message, "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            finally { this.Cursor = Cursors.Default; }
         }
 
         private void GridData_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
@@ -184,12 +265,11 @@ namespace mtc_app.features.admin.presentation.views
             if (e.RowIndex >= 0)
             {
                 string colName = gridData.Columns[e.ColumnIndex].Name;
-                if (colName == "Edit") MessageBox.Show($"Siapkan form untuk Edit data {_currentCategory} ini.", "Info");
+                if (colName == "Edit") MessageBox.Show($"Siapkan form Edit untuk {_currentCategory} {(_currentCategory == "Problem" ? $"({_currentProblemSubCategory})" : "")}", "Info");
                 else if (colName == "Delete")
                 {
                     if (MessageBox.Show($"Yakin ingin menghapus baris ini?", "Konfirmasi Hapus", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                     {
-                        // Implementasi Delete Dapper nanti di sini
                         MessageBox.Show("Sistem Delete sedang dibangun."); 
                     }
                 }

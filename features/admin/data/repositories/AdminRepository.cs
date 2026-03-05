@@ -68,15 +68,20 @@ namespace mtc_app.features.admin.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // Gunakan nik atau fullname dari db kamu
                 string sql = @"
                     SELECT 
-                        user_id as id, 
-                        nik as nama, 
+                        user_id as id,
+                        full_name as full_name,
                         CASE role_id 
-                            WHEN 1 THEN 'Operator' WHEN 2 THEN 'Teknisi' WHEN 3 THEN 'Group Leader' WHEN 4 THEN 'Admin' ELSE 'Stock Control' 
+                            WHEN 1 THEN 'Operator' 
+                            WHEN 2 THEN 'Teknisi' 
+                            WHEN 3 THEN 'Stock Control' 
+                            WHEN 4 THEN 'Admin' 
+                            WHEN 5 THEN 'Group Leader' 
+                            ELSE 'Lainnya' 
                         END as role, 
-                        'Aktif' as status 
+                        nik as nik,
+                        username as username
                     FROM users";
                 return await connection.QueryAsync(sql);
             }
@@ -89,13 +94,14 @@ namespace mtc_app.features.admin.data.repositories
                 string sql = @"
                     SELECT 
                         m.machine_number as kode, 
-                        mt.type_name as nama, 
+                        mt.type_name as tipe, 
                         ma.area_name as area, 
                         ms.status_name as kondisi 
                     FROM machines m
                     LEFT JOIN machine_types mt ON m.type_id = mt.type_id
                     LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
-                    LEFT JOIN machine_statuses ms ON m.current_status_id = ms.status_id";
+                    LEFT JOIN machine_statuses ms ON m.current_status_id = ms.status_id
+                    ORDER BY mt.type_name ASC, ma.area_name ASC, m.machine_number ASC";
                 return await connection.QueryAsync(sql);
             }
         }
@@ -115,17 +121,38 @@ namespace mtc_app.features.admin.data.repositories
             }
         }
 
-        public async Task<IEnumerable<dynamic>> GetMasterProblemsAsync()
+        // ==========================================
+        // 4 TABEL KHUSUS PROBLEM
+        // ==========================================
+        public async Task<IEnumerable<dynamic>> GetMasterProblemTypesAsync()
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                string sql = @"
-                    SELECT 
-                        failure_id as id, 
-                        failure_name as kategori, 
-                        'High' as level 
-                    FROM failures";
-                return await connection.QueryAsync(sql);
+                return await connection.QueryAsync("SELECT type_id as id, type_name as nama FROM problem_types ORDER BY type_name ASC");
+            }
+        }
+
+        public async Task<IEnumerable<dynamic>> GetMasterFailuresAsync()
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                return await connection.QueryAsync("SELECT failure_id as id, failure_name as nama FROM failures ORDER BY failure_name ASC");
+            }
+        }
+
+        public async Task<IEnumerable<dynamic>> GetMasterCausesAsync()
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                return await connection.QueryAsync("SELECT cause_id as id, cause_name as nama FROM failure_causes ORDER BY cause_name ASC");
+            }
+        }
+
+        public async Task<IEnumerable<dynamic>> GetMasterActionsAsync()
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                return await connection.QueryAsync("SELECT action_id as id, action_name as nama FROM actions ORDER BY action_name ASC");
             }
         }
     }

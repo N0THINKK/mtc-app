@@ -12,10 +12,13 @@ namespace mtc_app.features.admin.data.repositories
         Task<IEnumerable<dynamic>> GetReportDataAsync(DateTime start, DateTime end);
         IEnumerable<dynamic> GetMonthlyLogsForExport(int month, int year, string areaName);
 
-        // ==== TAMBAHAN UNTUK CRUD MASTER DATA ====
         Task<IEnumerable<dynamic>> GetMasterUsersAsync();
         Task<IEnumerable<dynamic>> GetMasterMachinesAsync();
         Task<IEnumerable<dynamic>> GetMasterSparepartsAsync();
-        Task<IEnumerable<dynamic>> GetMasterProblemsAsync();
+
+        Task<IEnumerable<dynamic>> GetMasterProblemTypesAsync();
+        Task<IEnumerable<dynamic>> GetMasterFailuresAsync();
+        Task<IEnumerable<dynamic>> GetMasterCausesAsync();
+        Task<IEnumerable<dynamic>> GetMasterActionsAsync();
     }
 }
