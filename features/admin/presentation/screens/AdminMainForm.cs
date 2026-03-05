@@ -22,9 +22,9 @@ namespace mtc_app.features.admin.presentation.screens
         private ReportView _reportView;
         private BackupView _backupView;
 
-        // Menyimpan status menu yang aktif
-        private AppButton _activeMenuButton;
-        private List<AppButton> _menuButtons = new List<AppButton>();
+        // Kita gunakan Button standar bawaan C# untuk menghindari konflik warna dari AppButton
+        private Button _activeMenuButton;
+        private List<Button> _menuButtons = new List<Button>();
 
         public AdminMainForm()
         {
@@ -34,19 +34,13 @@ namespace mtc_app.features.admin.presentation.screens
             
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.WindowState = FormWindowState.Maximized;
-
             this.Shown += AdminMainForm_Shown;
         }
 
         private async void AdminMainForm_Shown(object sender, EventArgs e)
         {
             await Task.Delay(50);
-
-            // Set default view dan aktifkan tombol pertama
-            if (_menuButtons.Count > 0)
-            {
-                SetActiveMenu(_menuButtons[0]);
-            }
+            if (_menuButtons.Count > 0) SetActiveMenu(_menuButtons[0]);
             LoadView(_monitoringView);
             _monitoringView.OnViewLoad();
         }
@@ -59,7 +53,7 @@ namespace mtc_app.features.admin.presentation.screens
         private void InitializeViews()
         {
             _monitoringView = new MonitoringView(_repository);
-            _masterDataView = new MasterDataView(); 
+            _masterDataView = new MasterDataView(_repository); 
             _reportView = new ReportView();
             _backupView = new BackupView();
         }
@@ -70,113 +64,80 @@ namespace mtc_app.features.admin.presentation.screens
             this.Text = "MTC System - Administrator Dashboard";
             this.BackColor = AppColors.Surface;
 
-            // 1. Sidebar Panel (Gunakan warna gelap atau putih bersih tergantung tema. Di sini pakai putih dengan border kanan tipis)
-            pnlSidebar = new Panel
-            {
-                Dock = DockStyle.Left,
-                Width = 260,
-                BackColor = AppColors.CardBackground
-            };
-
-            // Tambahkan garis pembatas halus di sisi kanan sidebar
-            Panel pnlSidebarBorder = new Panel
-            {
-                Dock = DockStyle.Right,
-                Width = 1,
-                BackColor = AppColors.Separator
-            };
-            pnlSidebar.Controls.Add(pnlSidebarBorder);
+            // 1. Sidebar Panel
+            pnlSidebar = new Panel { Dock = DockStyle.Left, Width = 260, BackColor = AppColors.CardBackground };
+            pnlSidebar.Controls.Add(new Panel { Dock = DockStyle.Right, Width = 1, BackColor = AppColors.Separator });
             
-            // Sidebar Header (Logo / Brand Area)
-            Panel pnlBrand = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 100,
-                Padding = new Padding(24, 30, 24, 20)
-            };
-
-            AppLabel lblBrand = new AppLabel 
-            {
-                Text = "Dashboard Admin",
-                Type = AppLabel.LabelType.Header3,
-                ForeColor = AppColors.PrimaryDark, // Gunakan warna brand
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            pnlBrand.Controls.Add(lblBrand);
+            Panel pnlBrand = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(24, 30, 24, 20) };
+            pnlBrand.Controls.Add(new AppLabel { Text = "MTC Admin", Type = AppLabel.LabelType.Header2, ForeColor = AppColors.PrimaryDark, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft });
             pnlSidebar.Controls.Add(pnlBrand);
 
-            // Container untuk Menu
-            var flowMenu = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents = false,
-                Padding = new Padding(12, 10, 12, 0), // Padding kiri-kanan agar tombol tidak menempel tepi
-                AutoScroll = true
-            };
-            
+            var flowMenu = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(12, 10, 12, 0), AutoScroll = true };
             pnlSidebar.Controls.Add(flowMenu);
             flowMenu.BringToFront();
 
-            // Tambahkan Menu Buttons
+            // ==========================================
+            // DEFINISI MENU & DROPDOWN
+            // ==========================================
             AddMenuButton("📊 Monitoring Widget", flowMenu, _monitoringView, () => _monitoringView.OnViewLoad());
-            AddMenuButton("📂 Master Data", flowMenu, _masterDataView);
+            
+            AddDropdownMenu("📂 Master Data", flowMenu, new Dictionary<string, Action>
+            {
+                { "👤 Data User", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("User"); } },
+                { "⚙️ Data Mesin", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Mesin"); } },
+                { "🔧 Data Sparepart", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Sparepart"); } },
+                { "⚠️ Data Problem", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Problem"); } }
+            });
+
             AddMenuButton("🖨️ Laporan / Export", flowMenu, _reportView);
             AddMenuButton("💾 Backup Database", flowMenu, _backupView);
             
-            // Logout Button (di bagian bawah)
-            Panel pnlFooter = new Panel
-            {
-                Dock = DockStyle.Bottom,
-                Height = 80,
-                Padding = new Padding(24, 0, 24, 24)
-            };
-
-            AppButton btnLogout = new AppButton
-            {
-                Text = "🚪 Logout",
-                Type = AppButton.ButtonType.Outline, // Menggunakan outline agar tidak terlalu mencolok seperti Danger
-                Dock = DockStyle.Fill,
-                ForeColor = AppColors.Danger
-            };
-            
-            // Override warna hover untuk tombol logout
-            btnLogout.MouseEnter += (s, e) => btnLogout.BackColor = Color.FromArgb(20, AppColors.Danger);
-            btnLogout.MouseLeave += (s, e) => btnLogout.BackColor = Color.Transparent;
-            
+            // Footer (Logout tetap pakai AppButton karena butuh border merah)
+            Panel pnlFooter = new Panel { Dock = DockStyle.Bottom, Height = 80, Padding = new Padding(24, 0, 24, 24) };
+            AppButton btnLogout = new AppButton { Text = "🚪 Logout", Type = AppButton.ButtonType.Outline, Dock = DockStyle.Fill, ForeColor = AppColors.Danger };
             btnLogout.Click += (s, e) => this.Close();
             pnlFooter.Controls.Add(btnLogout);
             pnlSidebar.Controls.Add(pnlFooter);
 
             // 2. Content Panel
-            pnlContent = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = AppColors.Surface, // Area konten menggunakan warna surface (abu-abu terang)
-                Padding = new Padding(0) // Padding diatur oleh masing-masing view (seperti di MonitoringView)
-            };
+            pnlContent = new Panel { Dock = DockStyle.Fill, BackColor = AppColors.Surface, Padding = new Padding(0) };
 
             this.Controls.Add(pnlContent);
             this.Controls.Add(pnlSidebar);
         }
 
-        private void AddMenuButton(string text, FlowLayoutPanel parent, UserControl targetView, Action onLoadAction = null)
+        // ==========================================
+        // HELPER: PEMBUAT TOMBOL SIDEBAR BEBAS BUG
+        // ==========================================
+        private Button CreateSidebarButton(string text, int width, bool isSubMenu = false)
         {
-            AppButton btn = new AppButton
+            Button btn = new Button
             {
                 Text = text,
-                Width = parent.Width - parent.Padding.Left - parent.Padding.Right - 5, // Sesuaikan lebar dengan kontainer
-                Height = 50,
-                Margin = new Padding(0, 0, 0, 8),
+                Width = width,
+                Height = isSubMenu ? 45 : 50,
+                Margin = new Padding(0, 0, 0, isSubMenu ? 0 : 8), // Sub-menu tidak punya jarak agar menempel
                 TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(16, 0, 0, 0),
-                Font = AppFonts.Body, // Font yang lebih modern
-                FlatStyle = FlatStyle.Flat
+                Padding = new Padding(isSubMenu ? 45 : 16, 0, 0, 0), // Sub-menu menjorok ke dalam
+                Font = isSubMenu ? AppFonts.BodySmall : AppFonts.Body,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.Transparent,
+                ForeColor = AppColors.TextSecondary,
+                Cursor = Cursors.Hand,
+                TabStop = false // Hilangkan garis putus-putus saat difokuskan
             };
+            
+            btn.FlatAppearance.BorderSize = 0;
+            btn.FlatAppearance.MouseOverBackColor = AppColors.SurfaceHover;
+            btn.FlatAppearance.MouseDownBackColor = AppColors.Separator;
 
-            // Styling default (Inactive State)
-            SetMenuButtonInactiveStyle(btn);
+            return btn;
+        }
+
+        private void AddMenuButton(string text, FlowLayoutPanel parent, UserControl targetView, Action onLoadAction = null)
+        {
+            int btnWidth = parent.Width - parent.Padding.Left - parent.Padding.Right - 5;
+            Button btn = CreateSidebarButton(text, btnWidth);
 
             btn.Click += (s, e) => 
             {
@@ -189,54 +150,66 @@ namespace mtc_app.features.admin.presentation.screens
             parent.Controls.Add(btn);
         }
 
-        private void SetActiveMenu(AppButton clickedButton)
+        private void AddDropdownMenu(string text, FlowLayoutPanel parent, Dictionary<string, Action> subMenuDict)
         {
-            // Reset semua tombol ke style inactive
+            int btnWidth = parent.Width - parent.Padding.Left - parent.Padding.Right - 5;
+
+            // 1. Tombol Utama
+            Button btnMain = CreateSidebarButton(text + "   ▼", btnWidth);
+            parent.Controls.Add(btnMain);
+
+            // 2. Buat anak-anak menu (Sub-menus) tapi langsung disembunyikan
+            List<Button> subButtons = new List<Button>();
+
+            foreach (var item in subMenuDict)
+            {
+                Button btnSub = CreateSidebarButton(item.Key, btnWidth, isSubMenu: true);
+                btnSub.Visible = false; // AWALNYA DISEMBUNYIKAN
+
+                btnSub.Click += (s, e) => 
+                {
+                    SetActiveMenu(btnSub);
+                    item.Value.Invoke();
+                };
+
+                _menuButtons.Add(btnSub);
+                subButtons.Add(btnSub);
+                parent.Controls.Add(btnSub);
+            }
+
+            // 3. Logika untuk memunculkan anak-anak menu saat tombol utama diklik
+            btnMain.Click += (s, e) => 
+            {
+                bool isCurrentlyHidden = !subButtons[0].Visible;
+                
+                // Ubah panah
+                btnMain.Text = isCurrentlyHidden ? text + "   ▲" : text + "   ▼";
+                btnMain.BackColor = isCurrentlyHidden ? AppColors.SurfaceHover : Color.Transparent;
+                btnMain.Margin = new Padding(0, 0, 0, isCurrentlyHidden ? 0 : 8); // Rapikan spasi
+
+                // Tampilkan / Sembunyikan sub-menu
+                foreach (var sub in subButtons)
+                {
+                    sub.Visible = isCurrentlyHidden;
+                }
+            };
+        }
+
+        private void SetActiveMenu(Button clickedButton)
+        {
+            // Kembalikan semua tombol ke warna abu-abu (tidak aktif)
             foreach (var btn in _menuButtons)
-            {
-                SetMenuButtonInactiveStyle(btn);
-            }
-
-            // Set tombol yang diklik ke style active
-            _activeMenuButton = clickedButton;
-            _activeMenuButton.BackColor = AppColors.PrimaryLight; // Background highlight
-            _activeMenuButton.ForeColor = AppColors.PrimaryDark;
-            _activeMenuButton.Font = new Font(AppFonts.Body, FontStyle.Bold); // Bold saat aktif
-            
-            // Override hover agar tidak berubah saat sedang aktif
-            _activeMenuButton.MouseEnter -= MenuButton_MouseEnter;
-            _activeMenuButton.MouseLeave -= MenuButton_MouseLeave;
-        }
-
-        private void SetMenuButtonInactiveStyle(AppButton btn)
-        {
-            btn.BackColor = Color.Transparent; // Background transparan menyatu dengan sidebar
-            btn.ForeColor = AppColors.TextSecondary; // Warna teks sekunder
-            btn.Font = AppFonts.Body;
-            
-            // Re-attach hover events
-            btn.MouseEnter -= MenuButton_MouseEnter;
-            btn.MouseLeave -= MenuButton_MouseLeave;
-            btn.MouseEnter += MenuButton_MouseEnter;
-            btn.MouseLeave += MenuButton_MouseLeave;
-        }
-
-        private void MenuButton_MouseEnter(object sender, EventArgs e)
-        {
-            if (sender is AppButton btn && btn != _activeMenuButton)
-            {
-                btn.BackColor = AppColors.SurfaceHover; // Efek hover ringan
-                btn.ForeColor = AppColors.TextPrimary;
-            }
-        }
-
-        private void MenuButton_MouseLeave(object sender, EventArgs e)
-        {
-            if (sender is AppButton btn && btn != _activeMenuButton)
             {
                 btn.BackColor = Color.Transparent;
                 btn.ForeColor = AppColors.TextSecondary;
+                btn.Font = new Font(AppFonts.Body.FontFamily, btn.Font.Size, FontStyle.Regular);
             }
+
+            // Beri warna biru untuk tombol yang sedang diklik
+            _activeMenuButton = clickedButton;
+            _activeMenuButton.BackColor = AppColors.PrimaryLight;
+            _activeMenuButton.ForeColor = AppColors.PrimaryDark;
+            _activeMenuButton.Font = new Font(_activeMenuButton.Font.FontFamily, _activeMenuButton.Font.Size, FontStyle.Bold);
         }
 
         private void LoadView(UserControl view)
