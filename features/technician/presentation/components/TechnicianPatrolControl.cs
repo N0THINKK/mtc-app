@@ -25,11 +25,14 @@ namespace mtc_app.features.technician.presentation.components
         private AppButton btnSortDesc;
         private AppButton btnSortAsc;
         private AppButton btnRefresh;
+        private AppButton btnMarkResolved;
         
         private DataGridView gridPatrols;
         private AppEmptyState emptyState;
         private Panel pnlContent;
         private Panel pnlTopBanner;
+        private Panel pnlFilters;
+        private Panel pnlActions;
 
         private DateTime _startDate;
         private DateTime _endDate;
@@ -42,28 +45,28 @@ namespace mtc_app.features.technician.presentation.components
 
         private void InitializeComponentLayout()
         {
+            this.Size = new Size(1200, 700);
             this.Dock = DockStyle.Fill;
             this.BackColor = AppColors.Background;
-            this.Padding = new Padding(20);
 
             // ==========================================
-            // TOP BANNER (Stats & Filters)
+            // TOP BANNER (Stats Cards)
             // ==========================================
             pnlTopBanner = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 150,
-                BackColor = Color.Transparent
+                Height = 180,
+                BackColor = Color.FromArgb(248, 249, 250), // Matches StockDashboard
+                Padding = new Padding(20, 25, 20, 25)
             };
             this.Controls.Add(pnlTopBanner);
 
-            // Stat Cards
             cardPending = new StatCard
             {
                 Title = "NG (Belum Diperbaiki)",
                 IconType = StatIconType.None,
                 AccentColor = AppColors.Danger,
-                Location = new Point(0, 0),
+                Location = new Point(25, 25),
                 Size = new Size(300, 140)
             };
             
@@ -72,38 +75,124 @@ namespace mtc_app.features.technician.presentation.components
                 Title = "NG (Selesai)",
                 IconType = StatIconType.Checklist,
                 AccentColor = AppColors.Success,
-                Location = new Point(320, 0),
+                Location = new Point(345, 25),
                 Size = new Size(300, 140)
             };
-
             pnlTopBanner.Controls.Add(cardPending);
             pnlTopBanner.Controls.Add(cardResolved);
 
-            // Filters & Actions (Right aligned)
-            FlowLayoutPanel flowFilters = new FlowLayoutPanel
+            // ==========================================
+            // FILTER PANEL
+            // ==========================================
+            pnlFilters = new Panel
             {
-                Dock = DockStyle.Right,
-                FlowDirection = FlowDirection.RightToLeft,
-                AutoSize = true,
-                WrapContents = false,
-                Padding = new Padding(0, 10, 0, 0)
+                Dock = DockStyle.Top,
+                Height = 90,
+                BackColor = AppColors.CardBackground
+            };
+            
+            pnlFilters.Paint += (s, e) =>
+            {
+                // Only draw top and bottom borders, leave left and right empty "plong sampe pojok"
+                using (Pen p = new Pen(AppColors.Border))
+                {
+                    e.Graphics.DrawLine(p, 0, 0, pnlFilters.Width, 0);
+                    e.Graphics.DrawLine(p, 0, pnlFilters.Height - 1, pnlFilters.Width, pnlFilters.Height - 1);
+                }
             };
 
-            btnRefresh = CreateActionButton("↻ Segarkan", () => LoadDataAsync(_startDate, _endDate));
-            btnSortAsc = CreateActionButton("↑ Terlama", () => { _currentSort = "ASC"; UpdateFilterButtons(); _ = LoadDataAsync(_startDate, _endDate); });
-            btnSortDesc = CreateActionButton("↓ Terbaru", () => { _currentSort = "DESC"; UpdateFilterButtons(); _ = LoadDataAsync(_startDate, _endDate); });
-            btnFilterAll = CreateActionButton("Tampilkan Semua", () => { _currentFilter = "Semua"; UpdateFilterButtons(); _ = LoadDataAsync(_startDate, _endDate); });
-            btnFilterResolved = CreateActionButton("Selesai", () => { _currentFilter = "Selesai"; UpdateFilterButtons(); _ = LoadDataAsync(_startDate, _endDate); });
-            btnFilterNg = CreateActionButton("Belum Diperbaiki", () => { _currentFilter = "NG"; UpdateFilterButtons(); _ = LoadDataAsync(_startDate, _endDate); });
+            FlowLayoutPanel flowLeft = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Left,
+                AutoSize = true,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Padding = new Padding(20, 22, 0, 0)
+            };
 
-            flowFilters.Controls.Add(btnRefresh);
-            flowFilters.Controls.Add(btnSortAsc);
-            flowFilters.Controls.Add(btnSortDesc);
-            flowFilters.Controls.Add(btnFilterAll);
-            flowFilters.Controls.Add(btnFilterResolved);
-            flowFilters.Controls.Add(btnFilterNg);
+            Label lblFilter = new Label
+            {
+                Text = "Filter:",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(73, 80, 87),
+                Margin = new Padding(0, 10, 10, 0)
+            };
+
+            btnFilterNg = CreateFilterButton("⏳ Belum Diperbaiki", 160, () => { _currentFilter = "NG"; UpdateFilterButtons(); _ = LoadDataAsync(_startDate, _endDate); });
+            btnFilterResolved = CreateFilterButton("✓ Selesai", 130, () => { _currentFilter = "Selesai"; UpdateFilterButtons(); _ = LoadDataAsync(_startDate, _endDate); });
+            btnFilterAll = CreateFilterButton("📋 Semua", 130, () => { _currentFilter = "Semua"; UpdateFilterButtons(); _ = LoadDataAsync(_startDate, _endDate); });
+
+            flowLeft.Controls.Add(lblFilter);
+            flowLeft.Controls.Add(btnFilterNg);
+            flowLeft.Controls.Add(btnFilterResolved);
+            flowLeft.Controls.Add(btnFilterAll);
+
+            FlowLayoutPanel flowRight = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Right,
+                AutoSize = true,
+                FlowDirection = FlowDirection.RightToLeft,
+                WrapContents = false,
+                Padding = new Padding(0, 22, 20, 0)
+            };
+
+            btnSortDesc = CreateFilterButton("↓ Terbaru", 120, () => { _currentSort = "DESC"; UpdateFilterButtons(); _ = LoadDataAsync(_startDate, _endDate); });
+            btnSortAsc = CreateFilterButton("↑ Terlama", 120, () => { _currentSort = "ASC"; UpdateFilterButtons(); _ = LoadDataAsync(_startDate, _endDate); });
             
-            pnlTopBanner.Controls.Add(flowFilters);
+            Label lblSort = new Label
+            {
+                Text = "Urutkan:",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(73, 80, 87),
+                Margin = new Padding(0, 10, 10, 0)
+            };
+
+            flowRight.Controls.Add(btnSortDesc);
+            flowRight.Controls.Add(btnSortAsc);
+            flowRight.Controls.Add(lblSort);
+
+            pnlFilters.Controls.Add(flowLeft);
+            pnlFilters.Controls.Add(flowRight);
+
+            // ==========================================
+            // BOTTOM ACTIONS PANEL
+            // ==========================================
+            pnlActions = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 90,
+                Width = 1200, // Force width for anchor calcs
+                BackColor = Color.FromArgb(248, 249, 250),
+                Padding = new Padding(25, 18, 25, 18)
+            };
+
+            btnRefresh = new AppButton
+            {
+                Text = "🔄 Refresh",
+                Type = AppButton.ButtonType.Secondary,
+                Location = new Point(25, 20),
+                Size = new Size(130, 50),
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
+            };
+            btnRefresh.Click += (s, e) => { _ = LoadDataAsync(_startDate, _endDate); };
+
+            btnMarkResolved = new AppButton
+            {
+                Text = "✓ TANDAI TELAH DIPERBAIKI",
+                Type = AppButton.ButtonType.Primary,
+                Location = new Point(pnlActions.Width - 275, 20),
+                Size = new Size(250, 50),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold)
+            };
+            btnMarkResolved.Click += BtnMarkResolved_Click;
+
+            pnlActions.Controls.Add(btnRefresh);
+            pnlActions.Controls.Add(btnMarkResolved);
 
             // ==========================================
             // CONTENT PANEL (Grid + Empty State)
@@ -111,10 +200,16 @@ namespace mtc_app.features.technician.presentation.components
             pnlContent = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(0, 20, 0, 0),
-                BackColor = Color.Transparent
+                BackColor = AppColors.CardBackground,
+                Padding = new Padding(25, 20, 25, 20)
             };
-            this.Controls.Add(pnlContent);
+            
+            // Re-order controls for correct docking behavior
+            this.Controls.Add(pnlContent); // Fill
+            this.Controls.Add(pnlFilters); // Top
+            this.Controls.Add(pnlActions); // Bottom
+            this.Controls.Add(pnlTopBanner); // Top
+
             pnlContent.BringToFront();
 
             emptyState = new AppEmptyState
@@ -136,74 +231,59 @@ namespace mtc_app.features.technician.presentation.components
                 ReadOnly = true,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 RowHeadersVisible = false,
-                GridColor = AppColors.Border,
-                Visible = false
+                GridColor = Color.FromArgb(222, 226, 230),
+                Visible = false,
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize,
+                EnableHeadersVisualStyles = false
             };
 
             // Grid Styling
-            gridPatrols.EnableHeadersVisualStyles = false;
-            gridPatrols.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
-            gridPatrols.ColumnHeadersDefaultCellStyle.BackColor = AppColors.Surface;
-            gridPatrols.ColumnHeadersDefaultCellStyle.ForeColor = AppColors.TextSecondary;
-            gridPatrols.ColumnHeadersDefaultCellStyle.Font = AppFonts.Header3;
-            gridPatrols.ColumnHeadersHeight = 50;
+            gridPatrols.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+            {
+                Font = AppFonts.Header3,
+                BackColor = Color.FromArgb(248, 250, 252),
+                ForeColor = AppColors.TextPrimary,
+                SelectionBackColor = Color.FromArgb(248, 250, 252),
+                SelectionForeColor = AppColors.TextPrimary,
+                Padding = new Padding(5)
+            };
             
-            gridPatrols.DefaultCellStyle.BackColor = AppColors.CardBackground;
-            gridPatrols.DefaultCellStyle.ForeColor = AppColors.TextPrimary;
-            gridPatrols.DefaultCellStyle.SelectionBackColor = AppColors.PrimaryLight;
-            gridPatrols.DefaultCellStyle.SelectionForeColor = AppColors.TextPrimary;
-            gridPatrols.DefaultCellStyle.Font = AppFonts.Body;
-            gridPatrols.RowTemplate.Height = 70;
+            gridPatrols.DefaultCellStyle = new DataGridViewCellStyle
+            {
+                Font = AppFonts.Header3,
+                ForeColor = AppColors.TextPrimary,
+                SelectionBackColor = Color.FromArgb(219, 234, 254),
+                SelectionForeColor = AppColors.TextPrimary
+            };
+            gridPatrols.RowTemplate.Height = 80;
 
             // Columns
-            gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "No", HeaderText = "No", Width = 60 });
-            gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "PatrolDate", HeaderText = "Waktu Laporkan", DataPropertyName = "FormattedPatrolDate", Width = 150 });
+            gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "No", HeaderText = "No", Width = 80 });
+            gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "PatrolDate", HeaderText = "Waktu Laporkan", DataPropertyName = "FormattedPatrolDate", Width = 180 });
             gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Machine", HeaderText = "Mesin", DataPropertyName = "MachineName", Width = 150 });
-            gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Reporter", HeaderText = "Pelapor", DataPropertyName = "RoleTarget", Width = 100 });
+            gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Reporter", HeaderText = "Pelapor", DataPropertyName = "RoleTarget", Width = 120 });
             gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Item", HeaderText = "Item NG", DataPropertyName = "ItemName", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
-            gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Note", HeaderText = "Keterangan", DataPropertyName = "ActionNote", Width = 200 });
+            gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Note", HeaderText = "Keterangan", DataPropertyName = "ActionNote", Width = 250 });
             gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Status", HeaderText = "Status", DataPropertyName = "Status", Width = 150 });
 
-            // Status Formatting
             gridPatrols.CellFormatting += GridPatrols_CellFormatting;
             pnlContent.Controls.Add(gridPatrols);
-
-            // ==========================================
-            // BOTTOM PANEL (Action Button)
-            // ==========================================
-            Panel pnlBottom = new Panel
-            {
-                Dock = DockStyle.Bottom,
-                Height = 80,
-                Padding = new Padding(0, 20, 0, 0),
-                BackColor = Color.Transparent
-            };
-            this.Controls.Add(pnlBottom);
-
-            AppButton btnMarkResolved = new AppButton
-            {
-                Text = "Tandai Telah Diperbaiki",
-                Type = AppButton.ButtonType.Primary,
-                Width = 250,
-                Height = 45,
-                Dock = DockStyle.Right,
-                Cursor = Cursors.Hand
-            };
-            btnMarkResolved.Click += BtnMarkResolved_Click;
-            pnlBottom.Controls.Add(btnMarkResolved);
 
             UpdateFilterButtons();
         }
 
-        private AppButton CreateActionButton(string text, Action onClick)
+        private AppButton CreateFilterButton(string text, int width, Action onClick)
         {
             var btn = new AppButton
             {
                 Text = text,
+                Size = new Size(width, 45),
                 Type = AppButton.ButtonType.Secondary,
-                AutoSize = true,
-                Margin = new Padding(0, 0, AppDimens.MarginSmall, 0),
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 11F, FontStyle.Regular),
+                Margin = new Padding(0, 0, 10, 0)
             };
             btn.Click += (s, e) => onClick();
             return btn;
