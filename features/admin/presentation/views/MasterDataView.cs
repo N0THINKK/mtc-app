@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Collections.Generic;
 using mtc_app.features.admin.data.repositories;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
@@ -46,7 +47,18 @@ namespace mtc_app.features.admin.presentation.views
                 Text = "+ Tambah Data", Type = AppButton.ButtonType.Primary, Width = 150, Height = 40,
                 Location = new Point(this.Width - 198, 0), Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
-            btnAdd.Click += (s, e) => MessageBox.Show($"Form Tambah untuk {_currentCategory} {(_currentCategory == "Problem" ? $"({_currentProblemSubCategory})" : "")} belum dibuat.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            btnAdd.Click += (s, e) => 
+            {
+                // Tambahkan _repository sebagai parameter pertama!
+                using (var form = new mtc_app.features.admin.presentation.screens.MasterDataEditorForm(_repository, _currentCategory, _currentProblemSubCategory))
+                {
+                    if (form.ShowDialog() == DialogResult.OK)
+                    {
+                        if (_currentCategory == "Problem") LoadProblemSubCategory(_currentProblemSubCategory);
+                        else LoadCategory(_currentCategory);
+                    }
+                }
+            };
 
             Panel pnlSearch = new Panel { Width = 250, Height = 40, BackColor = AppColors.CardBackground, Location = new Point(this.Width - 465, 0), Anchor = AnchorStyles.Top | AnchorStyles.Right, Padding = new Padding(10) };
             TextBox txtSearch = new TextBox { Text = "Pencarian...", ForeColor = AppColors.TextDisabled, BorderStyle = BorderStyle.None, Dock = DockStyle.Fill, Font = AppFonts.BodySmall, BackColor = AppColors.CardBackground };
@@ -260,17 +272,39 @@ namespace mtc_app.features.admin.presentation.views
             }
         }
 
-        private void GridData_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        private async void GridData_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0)
             {
                 string colName = gridData.Columns[e.ColumnIndex].Name;
-                if (colName == "Edit") MessageBox.Show($"Siapkan form Edit untuk {_currentCategory} {(_currentCategory == "Problem" ? $"({_currentProblemSubCategory})" : "")}", "Info");
+                var rowData = gridData.Rows[e.RowIndex].DataBoundItem; 
+
+                if (colName == "Edit")
+                {
+                    // Tambahkan _repository sebagai parameter pertama!
+                    using (var form = new mtc_app.features.admin.presentation.screens.MasterDataEditorForm(_repository, _currentCategory, _currentProblemSubCategory, rowData))
+                    {
+                        if (form.ShowDialog() == DialogResult.OK)
+                        {
+                            if (_currentCategory == "Problem") LoadProblemSubCategory(_currentProblemSubCategory);
+                            else LoadCategory(_currentCategory);
+                        }
+                    }
+                }
                 else if (colName == "Delete")
                 {
-                    if (MessageBox.Show($"Yakin ingin menghapus baris ini?", "Konfirmasi Hapus", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+                    if (MessageBox.Show($"Yakin ingin menghapus data ini secara permanen?", "Konfirmasi Hapus", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                     {
-                        MessageBox.Show("Sistem Delete sedang dibangun."); 
+                        var dataDict = rowData as IDictionary<string, object>;
+                        int idToDelete = Convert.ToInt32(dataDict["id"]);
+
+                        bool success = await _repository.DeleteMasterDataAsync(_currentCategory, _currentProblemSubCategory, idToDelete);
+                        if (success) {
+                            if (_currentCategory == "Problem") LoadProblemSubCategory(_currentProblemSubCategory);
+                            else LoadCategory(_currentCategory);
+                        } else {
+                            MessageBox.Show("Gagal menghapus data. Data mungkin sedang dipakai di tabel lain.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
                     }
                 }
             }

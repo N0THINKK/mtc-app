@@ -155,5 +155,61 @@ namespace mtc_app.features.admin.data.repositories
                 return await connection.QueryAsync("SELECT action_id as id, action_name as nama FROM actions ORDER BY action_name ASC");
             }
         }
+
+        // ==========================================
+        // EKSEKUSI CRUD (SIMPAN & HAPUS)
+        // ==========================================
+        public async Task<bool> SaveMasterDataAsync(string category, string subCategory, bool isEdit, IDictionary<string, object> data)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                if (category == "User")
+                {
+                    // Konversi text Role kembali menjadi role_id
+                    int roleId = data["role"].ToString() switch { "Operator" => 1, "Teknisi" => 2, "Stock Control" => 3, "Admin" => 4, "Group Leader" => 5, _ => 1 };
+                    
+                    if (isEdit) {
+                        string sql = "UPDATE users SET full_name=@f, nik=@n, username=@u, role_id=@r WHERE user_id=@id";
+                        return await connection.ExecuteAsync(sql, new { f = data["full_name"], n = data["nik"], u = data["username"], r = roleId, id = data["id"] }) > 0;
+                    } else {
+                        // Password default untuk user baru: 123456
+                        string sql = "INSERT INTO users (full_name, nik, username, role_id, password) VALUES (@f, @n, @u, @r, '123456')";
+                        return await connection.ExecuteAsync(sql, new { f = data["full_name"], n = data["nik"], u = data["username"], r = roleId }) > 0;
+                    }
+                }
+                else if (category == "Problem")
+                {
+                    // Deteksi tabel dan kolom yang benar berdasarkan Tab yang sedang terbuka
+                    string table = subCategory == "Kategori Masalah" ? "problem_types" : subCategory == "Detail Problem" ? "failures" : subCategory == "Penyebab Problem" ? "failure_causes" : "actions";
+                    string colId = subCategory == "Kategori Masalah" ? "type_id" : subCategory == "Detail Problem" ? "failure_id" : subCategory == "Penyebab Problem" ? "cause_id" : "action_id";
+                    string colName = subCategory == "Kategori Masalah" ? "type_name" : subCategory == "Detail Problem" ? "failure_name" : subCategory == "Penyebab Problem" ? "cause_name" : "action_name";
+
+                    if (isEdit) {
+                        return await connection.ExecuteAsync($"UPDATE {table} SET {colName}=@nama WHERE {colId}=@id", new { nama = data["nama"], id = data["id"] }) > 0;
+                    } else {
+                        return await connection.ExecuteAsync($"INSERT INTO {table} ({colName}) VALUES (@nama)", new { nama = data["nama"] }) > 0;
+                    }
+                }
+                
+                // TODO: Untuk Mesin dan Sparepart bisa ditambahkan polanya seperti di atas
+                return false;
+            }
+        }
+
+        public async Task<bool> DeleteMasterDataAsync(string category, string subCategory, int id)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                if (category == "User") {
+                    return await connection.ExecuteAsync("DELETE FROM users WHERE user_id=@id", new { id }) > 0;
+                }
+                else if (category == "Problem") {
+                    string table = subCategory == "Kategori Masalah" ? "problem_types" : subCategory == "Detail Problem" ? "failures" : subCategory == "Penyebab Problem" ? "failure_causes" : "actions";
+                    string colId = subCategory == "Kategori Masalah" ? "type_id" : subCategory == "Detail Problem" ? "failure_id" : subCategory == "Penyebab Problem" ? "cause_id" : "action_id";
+                    return await connection.ExecuteAsync($"DELETE FROM {table} WHERE {colId}=@id", new { id }) > 0;
+                }
+                return false;
+            }
+        }
     }
 }
