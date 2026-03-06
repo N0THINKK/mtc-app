@@ -2,6 +2,9 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using mtc_app.features.authentication.data.repositories;
 using mtc_app.shared.data.dtos;
 using mtc_app.shared.data.session;
@@ -56,6 +59,15 @@ namespace mtc_app.features.authentication.presentation.screens
 
             this.Resize += (s, e) => CenterCard();
             tblLayout.SizeChanged += (s, e) => SizeCardToContent();
+            this.VisibleChanged += LoginForm_VisibleChanged;
+        }
+
+        private void LoginForm_VisibleChanged(object sender, EventArgs e)
+        {
+            if (this.Visible && drpRole.InputValue?.Trim() == "Operator")
+            {
+                LoadOperatorNiks();
+            }
         }
 
         // =====================================================================
@@ -149,6 +161,18 @@ namespace mtc_app.features.authentication.presentation.screens
                 txtPassword.Visible = false;
                 txtPassword.InputValue = "";
                 txtIdentity.LabelText = GetIdentityLabel(role);
+                
+                if (role == "Operator")
+                {
+                    txtIdentity.InputType = AppInput.InputTypeEnum.Dropdown;
+                    txtIdentity.AllowCustomText = true;
+                    LoadOperatorNiks();
+                }
+                else
+                {
+                    txtIdentity.InputType = AppInput.InputTypeEnum.Text;
+                }
+                
                 txtIdentity.Visible = true;
                 txtIdentity.BringToFront();
             }
@@ -177,6 +201,61 @@ namespace mtc_app.features.authentication.presentation.screens
                 case "Teknisi":  return "Inisial / NIK (Kosongi utk ke Dashboard)";
                 case "Stock":    return "NIK / Nama Petugas Stock";
                 default:         return "Username";
+            }
+        }
+
+        private void LoadOperatorNiks()
+        {
+            try
+            {
+                string configPath = @"C:\MTC_System\Config\operator_niks.csv";
+                if (File.Exists(configPath))
+                {
+                    var niks = File.ReadAllText(configPath)
+                        .Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(n => n.Trim())
+                        .Where(n => !string.IsNullOrEmpty(n))
+                        .Distinct()
+                        .ToArray();
+                    txtIdentity.SetDropdownItems(niks);
+                }
+                else
+                {
+                    txtIdentity.SetDropdownItems(new string[0]);
+                }
+            }
+            catch { /* Ignore error on reading local CSV */ }
+        }
+
+        private void SaveOperatorNik(string nik)
+        {
+            try 
+            {
+                string dirPath = @"C:\MTC_System\Config";
+                if (!Directory.Exists(dirPath))
+                {
+                    Directory.CreateDirectory(dirPath);
+                }
+                string filePath = Path.Combine(dirPath, "operator_niks.csv");
+                
+                var recentNiks = new List<string>();
+                if (File.Exists(filePath))
+                {
+                    recentNiks.AddRange(File.ReadAllText(filePath)
+                        .Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(n => n.Trim())
+                        .Where(n => !string.IsNullOrEmpty(n)));
+                }
+                
+                recentNiks.Insert(0, nik);
+                var uniqueNiks = recentNiks.Distinct().Take(10);
+                
+                File.WriteAllText(filePath, string.Join(",", uniqueNiks));
+            } 
+            catch (Exception ex)
+            {
+                MessageBox.Show("Gagal menyimpan history NIK. Pastikan file 'operator_niks.csv' sedang TIDAK dibuka di Excel!\n\nDetail:\n" + ex.Message, 
+                    "Gagal Menyimpan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -214,6 +293,11 @@ namespace mtc_app.features.authentication.presentation.screens
                 MessageBox.Show("Harap isi NIK Operator.", "Peringatan",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
+            }
+
+            if (role == "Operator")
+            {
+                SaveOperatorNik(identity);
             }
 
             UserSession.SetUser(new UserDto

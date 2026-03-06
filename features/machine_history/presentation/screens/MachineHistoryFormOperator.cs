@@ -12,6 +12,7 @@ using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 using mtc_app.shared.infrastructure;
 using mtc_app.shared.data.repositories;
+using mtc_app.shared.data.session;
 using mtc_app.features.authentication.presentation.screens; // [BARU] Tambahkan ini untuk akses LoginForm
 using System.IO;
 
@@ -23,7 +24,6 @@ namespace mtc_app.features.machine_history.presentation.screens
         private readonly IMasterDataRepository _masterDataRepository;
         
         // Header Inputs
-        private AppInput inputNIK;
         private AppInput inputShift;
         private AppInput inputApplicator;
         
@@ -221,26 +221,18 @@ namespace mtc_app.features.machine_history.presentation.screens
                  _formLayout.Controls.Add(c, 0, _formLayout.RowCount++);
             }
 
-            // 1. NIK
-            inputNIK = CreateInput("NIK Operator", AppInput.InputTypeEnum.Dropdown, true);
-            inputNIK.AllowCustomText = true;
-            inputNIK.DropdownOpened += (s, e) => LoadOperatorsFromDB();
-            LoadOperatorsFromDB();
-            
-            AddToForm(inputNIK);
-
-            // 2. Shift
+            // 1. Shift
             inputShift = CreateInput("Shift", AppInput.InputTypeEnum.Dropdown, true);
             inputShift.AllowCustomText = false;
             LoadShiftsFromDB();
             AddToForm(inputShift);
 
-            // 3. Applicator
+            // 2. Applicator
             inputApplicator = CreateInput("No. Aplikator", AppInput.InputTypeEnum.Text, false);
             inputApplicator.CharacterCasing = CharacterCasing.Upper;
             AddToForm(inputApplicator);
 
-            // 4. Problems Label
+            // 3. Problems Label
             var lblProblems = new Label 
             {
                 Text = "Daftar Kerusakan:", 
@@ -348,35 +340,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
         }
 
-        private async void LoadOperatorsFromDB()
-        {
-            try
-            {
-                var dbNiks = await _masterDataRepository.GetOperatorsAsync() ?? new List<string>();
-                var recentNiks = GetRecentNiks();
-                
-                // Combine recent local NIKs with DB NIKs, prioritizing local
-                var combined = recentNiks.Concat(dbNiks).Distinct().ToArray();
-                inputNIK.SetDropdownItems(combined);
-            }
-            catch { /* Ignore */ }
-        }
-
-        private List<string> GetRecentNiks()
-        {
-            try
-            {
-                string configPath = @"C:\MTC_System\Config\operator_niks.csv";
-                if (File.Exists(configPath))
-                {
-                    return File.ReadAllText(configPath).Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
-                               .Select(n => n.Trim()).Where(n => !string.IsNullOrEmpty(n)).Distinct().ToList();
-                }
-            }
-            catch { }
-            return new List<string>();
-        }
-
         private async void LoadShiftsFromDB()
         {
             try
@@ -431,9 +394,9 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private async void SaveButton_Click(object sender, EventArgs e)
         {
-            if (!inputNIK.ValidateInput() || !inputShift.ValidateInput())
+            if (!inputShift.ValidateInput())
             {
-                MessageBox.Show("Mohon lengkapi data wajib (NIK & Shift).", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Mohon lengkapi data wajib (Shift).", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -456,7 +419,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
                 var request = new CreateTicketRequest
                 {
-                    OperatorNik = inputNIK.InputValue,
+                    OperatorNik = UserSession.CurrentUser?.Username ?? "Operator",
                     ShiftName = inputShift.InputValue,
                     ApplicatorCode = inputApplicator.InputValue,
                     MachineId = machineId,
@@ -468,23 +431,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                 };
 
                 var result = await _repository.CreateTicketAsync(request);
-
-                try 
-                {
-                    string dirPath = @"C:\MTC_System\Config";
-                    if (!Directory.Exists(dirPath))
-                    {
-                        Directory.CreateDirectory(dirPath);
-                    }
-                    string filePath = Path.Combine(dirPath, "operator_niks.csv");
-                    var recentNiks = GetRecentNiks();
-                    
-                    recentNiks.Insert(0, request.OperatorNik);
-                    var uniqueNiks = recentNiks.Distinct().Take(10);
-                    
-                    File.WriteAllText(filePath, string.Join(",", uniqueNiks));
-                } 
-                catch { /* Ignore config write error */ }
 
                 string successMsg = (result.TicketId < 0) 
                     ? "Tiket Disimpan Offline.\nMenunggu Sinkronisasi." 
