@@ -16,6 +16,8 @@ namespace mtc_app.features.admin.presentation.views
         private readonly IAdminRepository _repository;
         private AppLabel lblTitle;
         private DataGridView gridData;
+        private AppButton btnAdd; // <--- [MODIFIKASI] Jadikan btnAdd global agar teksnya bisa diganti dinamis
+        
         private string _currentCategory = "";
         private string _currentProblemSubCategory = "";
 
@@ -40,7 +42,7 @@ namespace mtc_app.features.admin.presentation.views
             this.BackColor = AppColors.Surface;
             this.Padding = new Padding(24);
 
-           // ==========================================
+            // ==========================================
             // 1. HEADER SECTION (DIPERBAIKI ANTI-HILANG)
             // ==========================================
             Panel pnlHeader = new Panel { Dock = DockStyle.Top, Height = 60, BackColor = Color.Transparent, Padding = new Padding(0, 0, 0, 15) };
@@ -49,18 +51,29 @@ namespace mtc_app.features.admin.presentation.views
             lblTitle = new AppLabel { Text = "Master Data", Font = AppFonts.Header2, ForeColor = AppColors.TextPrimary, AutoSize = true, Dock = DockStyle.Left };
 
             // Tombol Tambah (Akan menempel di pojok kanan)
-            AppButton btnAdd = new AppButton
+            btnAdd = new AppButton
             {
-                Text = "+ Tambah Data", Type = AppButton.ButtonType.Primary, Width = 150, Dock = DockStyle.Right
+                Text = "+ Tambah Data", Type = AppButton.ButtonType.Primary, Width = 250, Dock = DockStyle.Right // <--- [MODIFIKASI] Lebar ditambah agar teks panjang muat
             };
-            btnAdd.Click += (s, e) => 
+            btnAdd.Click += async (s, e) => // <--- [MODIFIKASI] Tambahkan async
             {
-                using (var form = new mtc_app.features.admin.presentation.screens.MasterDataEditorForm(_repository, _currentCategory, _currentProblemSubCategory))
+                // <--- [MODIFIKASI] Ambil daftar tipe mesin (Template) untuk form Checksheet
+                string[] extraData = null;
+                if (_currentCategory == "Checksheet") {
+                    this.Cursor = Cursors.WaitCursor;
+                    extraData = (await _repository.GetChecksheetTemplatesAsync()).ToArray();
+                    this.Cursor = Cursors.Default;
+                }
+
+                // <--- [MODIFIKASI] Lempar extraData ke constructor form
+                using (var form = new mtc_app.features.admin.presentation.screens.MasterDataEditorForm(_repository, _currentCategory, _currentProblemSubCategory, null, extraData))
                 {
                     if (form.ShowDialog() == DialogResult.OK)
                     {
-                        if (_currentCategory == "Problem") LoadProblemSubCategory(_currentProblemSubCategory);
-                        else LoadCategory(_currentCategory);
+                        if (_currentCategory == "Problem" || _currentCategory == "Checksheet") 
+                            LoadSubCategory(_currentProblemSubCategory);
+                        else 
+                            LoadCategory(_currentCategory);
                     }
                 }
             };
@@ -100,10 +113,10 @@ namespace mtc_app.features.admin.presentation.views
             btnTabPenyebab = CreateTabButton("Penyebab Problem");
             btnTabTindakan = CreateTabButton("Tindakan Perbaikan");
 
-            btnTabJenis.Click += (s, e) => { HighlightTab(btnTabJenis); LoadProblemSubCategory("Kategori Masalah"); };
-            btnTabDetail.Click += (s, e) => { HighlightTab(btnTabDetail); LoadProblemSubCategory("Detail Problem"); };
-            btnTabPenyebab.Click += (s, e) => { HighlightTab(btnTabPenyebab); LoadProblemSubCategory("Penyebab Problem"); };
-            btnTabTindakan.Click += (s, e) => { HighlightTab(btnTabTindakan); LoadProblemSubCategory("Tindakan Perbaikan"); };
+            btnTabJenis.Click += (s, e) => { HighlightTab(btnTabJenis); LoadSubCategory(btnTabJenis.Text); };
+            btnTabDetail.Click += (s, e) => { HighlightTab(btnTabDetail); LoadSubCategory(btnTabDetail.Text); };
+            btnTabPenyebab.Click += (s, e) => { HighlightTab(btnTabPenyebab); LoadSubCategory(btnTabPenyebab.Text); };
+            btnTabTindakan.Click += (s, e) => { HighlightTab(btnTabTindakan); LoadSubCategory(btnTabTindakan.Text); };
 
             pnlProblemTabs.Controls.AddRange(new Control[] { btnTabJenis, btnTabDetail, btnTabPenyebab, btnTabTindakan });
 
@@ -215,6 +228,7 @@ namespace mtc_app.features.admin.presentation.views
         {
             _currentCategory = category;
             lblTitle.Text = $"Kelola Data {category}";
+            btnAdd.Text = $"+ Tambah Data {category}"; // <--- [MODIFIKASI] Update teks tombol otomatis
 
             _originalData = null;
             gridData.DataSource = null;
@@ -224,9 +238,24 @@ namespace mtc_app.features.admin.presentation.views
             if (category == "Problem")
             {
                 pnlProblemTabs.Visible = true;
+                btnTabJenis.Visible = true; btnTabDetail.Visible = true; btnTabPenyebab.Visible = true; btnTabTindakan.Visible = true;
+                btnTabJenis.Text = "Kategori Masalah"; btnTabDetail.Text = "Detail Problem"; 
+                
                 HighlightTab(btnTabJenis);
-                LoadProblemSubCategory("Kategori Masalah");
+                LoadSubCategory("Kategori Masalah");
                 return; 
+            }
+            else if (category == "Checksheet") // <--- [MODIFIKASI] Munculkan tab untuk Checksheet
+            {
+                pnlProblemTabs.Visible = true;
+                btnTabJenis.Visible = true; btnTabDetail.Visible = true; 
+                btnTabPenyebab.Visible = false; btnTabTindakan.Visible = false;
+                
+                btnTabJenis.Text = "Operator"; btnTabDetail.Text = "Teknisi";
+                
+                HighlightTab(btnTabJenis);
+                LoadSubCategory("Checksheet Operator");
+                return;
             }
 
             pnlProblemTabs.Visible = false;
@@ -270,17 +299,37 @@ namespace mtc_app.features.admin.presentation.views
             finally { this.Cursor = Cursors.Default; }
         }
 
-        private async void LoadProblemSubCategory(string subCategory)
+        private async void LoadSubCategory(string subCategory)
         {
+            if (_currentCategory == "Checksheet" && (subCategory == "Operator" || subCategory == "Teknisi"))
+            {
+                subCategory = $"Checksheet {subCategory}";
+            }
             _currentProblemSubCategory = subCategory;
+
+            // <--- [MODIFIKASI] Ubah teks di Header berdasarkan Tab yang diklik
+            lblTitle.Text = $"Kelola Data {subCategory}";
+            btnAdd.Text = $"+ Tambah {subCategory}"; 
             
             _originalData = null;
             gridData.DataSource = null;
             gridData.Columns.Clear();
             ResetSearchBox();
 
-            gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", DataPropertyName = "id", FillWeight = 50 });
-            gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = subCategory.ToUpper(), DataPropertyName = "nama", FillWeight = 250 });
+            if (_currentCategory == "Checksheet")
+            {
+                gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", DataPropertyName = "id", FillWeight = 50 });
+                gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "TARGET", DataPropertyName = "role_target", FillWeight = 80 }); // <--- [MODIFIKASI] Tambah Kolom Target Role
+                gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "TIPE MESIN", DataPropertyName = "tipe_mesin", FillWeight = 100 });
+                gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ITEM PENGECEKAN", DataPropertyName = "item_pengecekan", FillWeight = 200 });
+                gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "STANDAR (JUDGMENT)", DataPropertyName = "standar", FillWeight = 150 });
+                gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "METODE", DataPropertyName = "metode", FillWeight = 100 });
+            }
+            else // Jika Problem
+            {
+                gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", DataPropertyName = "id", FillWeight = 50 });
+                gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = subCategory.ToUpper(), DataPropertyName = "nama", FillWeight = 250 });
+            }
             
             gridData.Columns.Add(new DataGridViewButtonColumn { Name = "Edit", HeaderText = "EDIT", Text = "Edit", UseColumnTextForButtonValue = true, FillWeight = 50 });
             gridData.Columns.Add(new DataGridViewButtonColumn { Name = "Delete", HeaderText = "HAPUS", Text = "Hapus", UseColumnTextForButtonValue = true, FillWeight = 50 });
@@ -288,10 +337,13 @@ namespace mtc_app.features.admin.presentation.views
             try
             {
                 this.Cursor = Cursors.WaitCursor;
+                
                 if (subCategory == "Kategori Masalah") _originalData = await _repository.GetMasterProblemTypesAsync();
                 else if (subCategory == "Detail Problem") _originalData = await _repository.GetMasterFailuresAsync();
                 else if (subCategory == "Penyebab Problem") _originalData = await _repository.GetMasterCausesAsync();
                 else if (subCategory == "Tindakan Perbaikan") _originalData = await _repository.GetMasterActionsAsync();
+                else if (subCategory == "Checksheet Operator") _originalData = await _repository.GetMasterChecksheetsAsync("Operator"); // <--- Panggil Data
+                else if (subCategory == "Checksheet Teknisi") _originalData = await _repository.GetMasterChecksheetsAsync("Teknisi"); // <--- Panggil Data
 
                 gridData.DataSource = _originalData?.ToList();
             }
@@ -335,12 +387,22 @@ namespace mtc_app.features.admin.presentation.views
 
                 if (colName == "Edit")
                 {
-                    using (var form = new mtc_app.features.admin.presentation.screens.MasterDataEditorForm(_repository, _currentCategory, _currentProblemSubCategory, rowData))
+                    // <--- [MODIFIKASI] Ambil Template untuk dikirim ke Editor
+                    string[] extraData = null;
+                    if (_currentCategory == "Checksheet") {
+                        this.Cursor = Cursors.WaitCursor;
+                        extraData = (await _repository.GetChecksheetTemplatesAsync()).ToArray();
+                        this.Cursor = Cursors.Default;
+                    }
+
+                    using (var form = new mtc_app.features.admin.presentation.screens.MasterDataEditorForm(_repository, _currentCategory, _currentProblemSubCategory, rowData, extraData))
                     {
                         if (form.ShowDialog() == DialogResult.OK)
                         {
-                            if (_currentCategory == "Problem") LoadProblemSubCategory(_currentProblemSubCategory);
-                            else LoadCategory(_currentCategory);
+                            if (_currentCategory == "Problem" || _currentCategory == "Checksheet") 
+                                LoadSubCategory(_currentProblemSubCategory);
+                            else 
+                                LoadCategory(_currentCategory);
                         }
                     }
                 }
@@ -353,8 +415,10 @@ namespace mtc_app.features.admin.presentation.views
 
                         bool success = await _repository.DeleteMasterDataAsync(_currentCategory, _currentProblemSubCategory, idToDelete);
                         if (success) {
-                            if (_currentCategory == "Problem") LoadProblemSubCategory(_currentProblemSubCategory);
-                            else LoadCategory(_currentCategory);
+                            if (_currentCategory == "Problem" || _currentCategory == "Checksheet") 
+                                LoadSubCategory(_currentProblemSubCategory);
+                            else 
+                                LoadCategory(_currentCategory);
                         } else {
                             MessageBox.Show("Gagal menghapus data. Data mungkin sedang dipakai di tabel lain.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }

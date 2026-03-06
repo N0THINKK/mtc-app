@@ -149,6 +149,34 @@ namespace mtc_app.features.admin.data.repositories
                 return await connection.QueryAsync("SELECT action_id as id, action_name as nama FROM actions WHERE is_deleted = 0 ORDER BY action_name ASC");
         }
 
+        public async Task<IEnumerable<dynamic>> GetMasterChecksheetsAsync(string roleTarget)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        ci.item_id as id,
+                        ci.role_target as role_target,
+                        ct.template_name as tipe_mesin,
+                        ci.item_name as item_pengecekan,
+                        ci.standard_judgment as standar,
+                        ci.check_method as metode
+                    FROM checksheet_items ci
+                    JOIN checksheet_templates ct ON ci.template_id = ct.template_id
+                    WHERE ci.role_target = @roleTarget AND ci.is_deleted = 0
+                    ORDER BY ct.template_name ASC, ci.item_id ASC";
+                return await connection.QueryAsync(sql, new { roleTarget });
+            }
+        }
+
+        public async Task<IEnumerable<string>> GetChecksheetTemplatesAsync()
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                return await connection.QueryAsync<string>("SELECT template_name FROM checksheet_templates ORDER BY template_name ASC");
+            }
+        }
+
         // ==========================================
         // EKSEKUSI CRUD (SIMPAN & HAPUS)
         // ==========================================
@@ -208,6 +236,19 @@ namespace mtc_app.features.admin.data.repositories
                     if (isEdit) return await connection.ExecuteAsync($"UPDATE {table} SET {colName}=@nama WHERE {colId}=@id", new { nama = data["nama"], id = data["id"] }) > 0;
                     else return await connection.ExecuteAsync($"INSERT INTO {table} ({colName}) VALUES (@nama)", new { nama = data["nama"] }) > 0;
                 }
+
+                else if (category == "Checksheet")
+                {
+                    string targetRole = subCategory == "Checksheet Operator" ? "Operator" : "Teknisi";
+                    
+                    if (isEdit) {
+                        string sql = "UPDATE checksheet_items SET item_name=@item, standard_judgment=@standar, check_method=@metode, template_id=(SELECT template_id FROM checksheet_templates WHERE template_name=@tipe LIMIT 1) WHERE item_id=@id";
+                        return await connection.ExecuteAsync(sql, new { item = data["item_pengecekan"], standar = data["standar"], metode = data["metode"], tipe = data["tipe_mesin"], id = data["id"] }) > 0;
+                    } else {
+                        string sql = "INSERT INTO checksheet_items (template_id, role_target, item_name, standard_judgment, check_method) VALUES ((SELECT template_id FROM checksheet_templates WHERE template_name=@tipe LIMIT 1), @targetRole, @item, @standar, @metode)";
+                        return await connection.ExecuteAsync(sql, new { targetRole, item = data["item_pengecekan"], standar = data["standar"], metode = data["metode"], tipe = data["tipe_mesin"] }) > 0;
+                    }
+                }
                 
                 return false;
             }
@@ -228,6 +269,11 @@ namespace mtc_app.features.admin.data.repositories
                     string colId = subCategory == "Kategori Masalah" ? "type_id" : subCategory == "Detail Problem" ? "failure_id" : subCategory == "Penyebab Problem" ? "cause_id" : "action_id";
                     
                     return await connection.ExecuteAsync($"UPDATE {table} SET is_deleted = 1 WHERE {colId}=@id", new { id }) > 0;
+                }
+                else if (category == "Checksheet")
+                {
+                    // Menghapus permanen karena items checksheet jarang terhubung ke histori log secara langsung
+                    return await connection.ExecuteAsync("UPDATE checksheet_items SET is_deleted = 1 WHERE item_id=@id", new { id }) > 0;
                 }
                 return false;
             }
