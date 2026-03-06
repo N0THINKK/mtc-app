@@ -82,7 +82,8 @@ namespace mtc_app.features.admin.data.repositories
                         END as role, 
                         nik as nik,
                         username as username
-                    FROM users";
+                    FROM users
+                    WHERE is_deleted = 0";
                 return await connection.QueryAsync(sql);
             }
         }
@@ -127,33 +128,25 @@ namespace mtc_app.features.admin.data.repositories
         public async Task<IEnumerable<dynamic>> GetMasterProblemTypesAsync()
         {
             using (var connection = DatabaseHelper.GetConnection())
-            {
-                return await connection.QueryAsync("SELECT type_id as id, type_name as nama FROM problem_types ORDER BY type_name ASC");
-            }
+                return await connection.QueryAsync("SELECT type_id as id, type_name as nama FROM problem_types WHERE is_deleted = 0 ORDER BY type_name ASC");
         }
 
         public async Task<IEnumerable<dynamic>> GetMasterFailuresAsync()
         {
             using (var connection = DatabaseHelper.GetConnection())
-            {
-                return await connection.QueryAsync("SELECT failure_id as id, failure_name as nama FROM failures ORDER BY failure_name ASC");
-            }
+                return await connection.QueryAsync("SELECT failure_id as id, failure_name as nama FROM failures WHERE is_deleted = 0 ORDER BY failure_name ASC");
         }
 
         public async Task<IEnumerable<dynamic>> GetMasterCausesAsync()
         {
             using (var connection = DatabaseHelper.GetConnection())
-            {
-                return await connection.QueryAsync("SELECT cause_id as id, cause_name as nama FROM failure_causes ORDER BY cause_name ASC");
-            }
+                return await connection.QueryAsync("SELECT cause_id as id, cause_name as nama FROM failure_causes WHERE is_deleted = 0 ORDER BY cause_name ASC");
         }
 
         public async Task<IEnumerable<dynamic>> GetMasterActionsAsync()
         {
             using (var connection = DatabaseHelper.GetConnection())
-            {
-                return await connection.QueryAsync("SELECT action_id as id, action_name as nama FROM actions ORDER BY action_name ASC");
-            }
+                return await connection.QueryAsync("SELECT action_id as id, action_name as nama FROM actions WHERE is_deleted = 0 ORDER BY action_name ASC");
         }
 
         // ==========================================
@@ -224,13 +217,17 @@ namespace mtc_app.features.admin.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                if (category == "User") {
-                    return await connection.ExecuteAsync("DELETE FROM users WHERE user_id=@id", new { id }) > 0;
+                // KITA GANTI DELETE MENJADI UPDATE is_deleted = 1
+                if (category == "User") 
+                {
+                    return await connection.ExecuteAsync("UPDATE users SET is_deleted = 1 WHERE user_id=@id", new { id }) > 0;
                 }
-                else if (category == "Problem") {
+                else if (category == "Problem") 
+                {
                     string table = subCategory == "Kategori Masalah" ? "problem_types" : subCategory == "Detail Problem" ? "failures" : subCategory == "Penyebab Problem" ? "failure_causes" : "actions";
                     string colId = subCategory == "Kategori Masalah" ? "type_id" : subCategory == "Detail Problem" ? "failure_id" : subCategory == "Penyebab Problem" ? "cause_id" : "action_id";
-                    return await connection.ExecuteAsync($"DELETE FROM {table} WHERE {colId}=@id", new { id }) > 0;
+                    
+                    return await connection.ExecuteAsync($"UPDATE {table} SET is_deleted = 1 WHERE {colId}=@id", new { id }) > 0;
                 }
                 return false;
             }
