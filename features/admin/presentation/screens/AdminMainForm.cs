@@ -22,15 +22,18 @@ namespace mtc_app.features.admin.presentation.screens
         private ReportView _reportView;
         private BackupView _backupView;
 
+        private UserControl _currentActiveView;
+
         // Kita gunakan Button standar bawaan C# untuk menghindari konflik warna dari AppButton
         private Button _activeMenuButton;
         private List<Button> _menuButtons = new List<Button>();
+        
 
         public AdminMainForm()
         {
-            SetupUI();
             InitializeServices();
-            InitializeViews(); 
+            InitializeViews();
+            SetupUI(); 
             
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.WindowState = FormWindowState.Maximized;
@@ -213,7 +216,7 @@ namespace mtc_app.features.admin.presentation.screens
         }
 
         private void LoadView(UserControl view)
-        {
+        {            
             pnlContent.Controls.Clear();
             view.Dock = DockStyle.Fill;
             pnlContent.Controls.Add(view);
