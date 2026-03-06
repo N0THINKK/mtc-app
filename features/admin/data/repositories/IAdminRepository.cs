@@ -20,5 +20,10 @@ namespace mtc_app.features.admin.data.repositories
         Task<IEnumerable<dynamic>> GetMasterFailuresAsync();
         Task<IEnumerable<dynamic>> GetMasterCausesAsync();
         Task<IEnumerable<dynamic>> GetMasterActionsAsync();
+        Task<IEnumerable<dynamic>> GetMasterChecksheetsAsync(string roleTarget);
+        Task<IEnumerable<string>> GetChecksheetTemplatesAsync();
+
+        Task<bool> SaveMasterDataAsync(string category, string subCategory, bool isEdit, IDictionary<string, object> data);
+        Task<bool> DeleteMasterDataAsync(string category, string subCategory, int id);
     }
 }
