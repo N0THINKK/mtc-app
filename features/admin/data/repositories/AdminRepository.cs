@@ -159,6 +159,9 @@ namespace mtc_app.features.admin.data.repositories
         // ==========================================
         // EKSEKUSI CRUD (SIMPAN & HAPUS)
         // ==========================================
+        // ==========================================
+        // EKSEKUSI CRUD (SIMPAN & HAPUS)
+        // ==========================================
         public async Task<bool> SaveMasterDataAsync(string category, string subCategory, bool isEdit, IDictionary<string, object> data)
         {
             using (var connection = DatabaseHelper.GetConnection())
@@ -168,30 +171,51 @@ namespace mtc_app.features.admin.data.repositories
                     // Konversi text Role kembali menjadi role_id
                     int roleId = data["role"].ToString() switch { "Operator" => 1, "Teknisi" => 2, "Stock Control" => 3, "Admin" => 4, "Group Leader" => 5, _ => 1 };
                     
-                    if (isEdit) {
-                        string sql = "UPDATE users SET full_name=@f, nik=@n, username=@u, role_id=@r WHERE user_id=@id";
-                        return await connection.ExecuteAsync(sql, new { f = data["full_name"], n = data["nik"], u = data["username"], r = roleId, id = data["id"] }) > 0;
-                    } else {
-                        // Password default untuk user baru: 123456
-                        string sql = "INSERT INTO users (full_name, nik, username, role_id, password) VALUES (@f, @n, @u, @r, '123456')";
-                        return await connection.ExecuteAsync(sql, new { f = data["full_name"], n = data["nik"], u = data["username"], r = roleId }) > 0;
+                    if (isEdit) 
+                    {
+                        // Cek apakah user mengisi kolom "new_password" (ingin ganti password)
+                        if (data.ContainsKey("new_password") && !string.IsNullOrWhiteSpace(data["new_password"]?.ToString()))
+                        {
+                            string oldPassInput = data.ContainsKey("old_password") ? data["old_password"]?.ToString() : "";
+                            
+                            // Tarik password yang sekarang aktif dari database
+                            string currentPass = await connection.QueryFirstOrDefaultAsync<string>("SELECT password FROM users WHERE user_id=@id", new { id = data["id"] });
+                            
+                            // Validasi: Tolak jika password lama salah
+                            if (currentPass != oldPassInput)
+                            {
+                                throw new Exception("Password lama yang Anda masukkan salah!");
+                            }
+                            
+                            // Jika benar, Update semua termasuk password baru
+                            string sql = "UPDATE users SET full_name=@f, nik=@n, username=@u, role_id=@r, password=@p WHERE user_id=@id";
+                            return await connection.ExecuteAsync(sql, new { f = data["full_name"], n = data["nik"], u = data["username"], r = roleId, p = data["new_password"], id = data["id"] }) > 0;
+                        }
+                        else 
+                        {
+                            // Jika kolom password dikosongi, Update data profilnya saja
+                            string sql = "UPDATE users SET full_name=@f, nik=@n, username=@u, role_id=@r WHERE user_id=@id";
+                            return await connection.ExecuteAsync(sql, new { f = data["full_name"], n = data["nik"], u = data["username"], r = roleId, id = data["id"] }) > 0;
+                        }
+                    } 
+                    else 
+                    {
+                        // Insert user baru (Gunakan password yang diisi, atau '123456' jika dibiarkan kosong)
+                        string newPass = data.ContainsKey("new_password") && !string.IsNullOrWhiteSpace(data["new_password"]?.ToString()) ? data["new_password"].ToString() : "123456";
+                        string sql = "INSERT INTO users (full_name, nik, username, role_id, password) VALUES (@f, @n, @u, @r, @p)";
+                        return await connection.ExecuteAsync(sql, new { f = data["full_name"], n = data["nik"], u = data["username"], r = roleId, p = newPass }) > 0;
                     }
                 }
                 else if (category == "Problem")
                 {
-                    // Deteksi tabel dan kolom yang benar berdasarkan Tab yang sedang terbuka
                     string table = subCategory == "Kategori Masalah" ? "problem_types" : subCategory == "Detail Problem" ? "failures" : subCategory == "Penyebab Problem" ? "failure_causes" : "actions";
                     string colId = subCategory == "Kategori Masalah" ? "type_id" : subCategory == "Detail Problem" ? "failure_id" : subCategory == "Penyebab Problem" ? "cause_id" : "action_id";
                     string colName = subCategory == "Kategori Masalah" ? "type_name" : subCategory == "Detail Problem" ? "failure_name" : subCategory == "Penyebab Problem" ? "cause_name" : "action_name";
 
-                    if (isEdit) {
-                        return await connection.ExecuteAsync($"UPDATE {table} SET {colName}=@nama WHERE {colId}=@id", new { nama = data["nama"], id = data["id"] }) > 0;
-                    } else {
-                        return await connection.ExecuteAsync($"INSERT INTO {table} ({colName}) VALUES (@nama)", new { nama = data["nama"] }) > 0;
-                    }
+                    if (isEdit) return await connection.ExecuteAsync($"UPDATE {table} SET {colName}=@nama WHERE {colId}=@id", new { nama = data["nama"], id = data["id"] }) > 0;
+                    else return await connection.ExecuteAsync($"INSERT INTO {table} ({colName}) VALUES (@nama)", new { nama = data["nama"] }) > 0;
                 }
                 
-                // TODO: Untuk Mesin dan Sparepart bisa ditambahkan polanya seperti di atas
                 return false;
             }
         }
