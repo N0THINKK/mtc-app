@@ -111,7 +111,7 @@ namespace mtc_app.features.technician.presentation.components
             var pnlHeader = new Panel { Dock = DockStyle.Top, AutoSize = true, MinimumSize = new Size(0, 60) };
             var headerLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, BackColor = Color.Transparent };
             headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
-            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70F)); // Kolom kanan diperlebar untuk filter
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70F)); 
             
             var flowLeft = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Dock = DockStyle.Fill, BackColor = Color.Transparent };
             _lblStatus = new Label { Text = "Memuat data...", Font = AppFonts.BodySmall, ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(0, 10, 0, 0) };
@@ -139,25 +139,23 @@ namespace mtc_app.features.technician.presentation.components
             _comboArea.SelectedIndexChanged += async (s, e) => await LoadData();
             var lblArea = new Label { Text = "Area:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
 
-            // 4. Shift (BARU)
+            // 4. Shift 
             _comboShift = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, 10, 0) };
             _comboShift.Items.AddRange(new object[] { "Waktu Aktual", "Shift Pagi", "Shift Malam" });
             _comboShift.SelectedIndex = 0;
             _comboShift.SelectedIndexChanged += async (s, e) => 
             {
-                // Jika Auto, kalender dinonaktifkan
                 _dtpDateFilter.Enabled = _comboShift.SelectedIndex != 0;
                 await LoadData();
             };
             var lblShift = new Label { Text = "Shift:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
 
-            // 5. Date Picker (BARU)
+            // 5. Date Picker
             _dtpDateFilter = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, 10, 0) };
-            _dtpDateFilter.Enabled = false; // Default off karena mode Auto
+            _dtpDateFilter.Enabled = false; 
             _dtpDateFilter.ValueChanged += async (s, e) => await LoadData();
             var lblDate = new Label { Text = "Tanggal:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
 
-            // Karena RightToLeft, tambahkan dari yang paling kanan ke kiri
             flowRight.Controls.Add(_comboSort);
             flowRight.Controls.Add(lblSort);
             flowRight.Controls.Add(_comboMetric);
@@ -185,7 +183,6 @@ namespace mtc_app.features.technician.presentation.components
         public void StopMonitoring() { _timer.Stop(); }
         public void SetMetric(int index) { if (index >= 0 && index < _comboMetric.Items.Count) _comboMetric.SelectedIndex = index; }
 
-        // [MODIFIKASI] Logika Cerdas Pencarian Titik Start Shift
         private DateTime GetShiftTimeRange(out DateTime shiftEnd, out bool isPastShift, out string shiftName)
         {
             DateTime now = DateTime.Now;
@@ -229,11 +226,9 @@ namespace mtc_app.features.technician.presentation.components
                     shiftStart = selectedDate.AddHours(19);
                 }
                 
-                // Cek apakah shift ini sudah selesai di masa lalu
                 isPastShift = now >= shiftStart.AddHours(12);
             }
 
-            // Durasi Shift selalu 12 Jam
             shiftEnd = shiftStart.AddHours(12);
             return shiftStart;
         }
@@ -247,19 +242,20 @@ namespace mtc_app.features.technician.presentation.components
                 string selectedArea = _comboArea.SelectedItem?.ToString() ?? "Semua Area";
                 int maxShiftHours = 12;
 
-                // Hitung rentang waktu berdasarkan filter UI
                 DateTime shiftEnd;
                 bool isPastShift;
                 string namaShift;
                 DateTime shiftStart = GetShiftTimeRange(out shiftEnd, out isPastShift, out namaShift);
 
+                // --- UPDATE SQL LOGIC ---
                 string sql = @"
                     SELECT m.machine_id, 
                            COALESCE(t.type_name, 'UNK') AS type_name, 
                            COALESCE(a.area_name, 'UNK') AS area_name, 
                            m.machine_number,
                            -1 AS hour_index,
-                           COALESCE((SELECT produced_pieces FROM machine_process_logs WHERE machine_id = m.machine_id AND created_at < @ShiftStart ORDER BY created_at DESC LIMIT 1), 0) AS max_pieces,
+                           (SELECT produced_pieces FROM machine_process_logs WHERE machine_id = m.machine_id AND created_at < @ShiftStart ORDER BY created_at DESC LIMIT 1) AS max_pieces,
+                           0 AS min_pieces,
                            0 AS curr_auto, 0 AS curr_mon
                     FROM machines m
                     LEFT JOIN machine_types t ON m.type_id = t.type_id
@@ -274,6 +270,7 @@ namespace mtc_app.features.technician.presentation.components
                            m.machine_number,
                            TIMESTAMPDIFF(HOUR, @ShiftStart, p.created_at) AS hour_index,
                            MAX(p.produced_pieces) AS max_pieces,
+                           MIN(p.produced_pieces) AS min_pieces, 
                            MAX(p.auto_time) AS curr_auto,
                            MAX(p.monitor_time) AS curr_mon
                     FROM machines m
@@ -282,18 +279,20 @@ namespace mtc_app.features.technician.presentation.components
                     JOIN machine_process_logs p ON m.machine_id = p.machine_id
                     WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
                       AND p.created_at >= @ShiftStart 
-                      AND p.created_at < @ShiftEnd  -- MENCEGAH DATA BOCOR DARI SHIFT BERIKUTNYA
+                      AND p.created_at < @ShiftEnd 
                     GROUP BY m.machine_id, type_name, area_name, m.machine_number, hour_index
                     ORDER BY machine_id, hour_index;";
                 
                 IEnumerable<dynamic> rows;
                 using (var conn = DatabaseHelper.GetConnection())
                 {
-                    conn.Open(); // Explicitly open the connection
+                    conn.Open(); 
                     rows = await conn.QueryAsync(sql, new { Area = selectedArea, ShiftStart = shiftStart, ShiftEnd = shiftEnd });
                 }
 
-                var rawData = new Dictionary<int, long[]>();
+                // --- UPDATE C# ALGORITHM ---
+                var rawMax = new Dictionary<int, long[]>();
+                var rawMin = new Dictionary<int, long[]>();
                 var machines = new Dictionary<int, MachineData>();
 
                 foreach (var row in rows)
@@ -303,14 +302,23 @@ namespace mtc_app.features.technician.presentation.components
                     {
                         machines[mId] = new MachineData { MachineName = $"{row.type_name}.{row.area_name}-{row.machine_number}" };
                         
-                        rawData[mId] = new long[maxShiftHours + 1]; 
-                        for(int i=0; i <= maxShiftHours; i++) rawData[mId][i] = -1; 
+                        rawMax[mId] = new long[maxShiftHours + 1]; 
+                        rawMin[mId] = new long[maxShiftHours + 1]; 
+                        for(int i=0; i <= maxShiftHours; i++) 
+                        {
+                            rawMax[mId][i] = -1; 
+                            rawMin[mId][i] = -1; 
+                        }
                     }
 
                     int hIndex = (int)row.hour_index;
                     if (hIndex >= -1 && hIndex < maxShiftHours) 
                     {
-                        rawData[mId][hIndex + 1] = (long)row.max_pieces;
+                        long? mx = row.max_pieces;
+                        long? mn = row.min_pieces;
+                        
+                        rawMax[mId][hIndex + 1] = mx ?? -1;
+                        rawMin[mId][hIndex + 1] = mn ?? -1;
                         
                         if (hIndex >= 0) 
                         {
@@ -323,12 +331,10 @@ namespace mtc_app.features.technician.presentation.components
                 int currentHourCount;
                 if (isPastShift)
                 {
-                    // Jika data hari kemarin, kunci grafik full 12 Jam
                     currentHourCount = maxShiftHours;
                 }
                 else
                 {
-                    // Jika real-time, grafik berjalan sesuai umur shift
                     currentHourCount = (int)(DateTime.Now - shiftStart).TotalHours + 1;
                     if (currentHourCount > maxShiftHours) currentHourCount = maxShiftHours;
                     if (currentHourCount < 1) currentHourCount = 1;
@@ -338,23 +344,40 @@ namespace mtc_app.features.technician.presentation.components
                 {
                     int mId = kvp.Key;
                     var machine = kvp.Value;
-                    var maxes = rawData[mId];
+                    var maxes = rawMax[mId];
+                    var mins = rawMin[mId];
 
-                    long lastKnown = maxes[0] != -1 ? maxes[0] : 0;
-                    for (int i = 0; i <= maxShiftHours; i++)
-                    {
-                        if (maxes[i] == -1) maxes[i] = lastKnown;
-                        else lastKnown = maxes[i];
-                    }
+                    long lastKnown = maxes[0]; 
 
                     long totalPiecesShiftIni = 0;
                     int firstActiveHour = -1; 
 
                     for (int i = 1; i <= maxShiftHours; i++)
                     {
-                        long diff = maxes[i] - maxes[i - 1];
-                        if (diff < 0) diff = maxes[i]; 
-                        
+                        if (maxes[i] == -1) 
+                        {
+                            machine.HourlyPieces[i - 1] = 0;
+                            continue;
+                        }
+
+                        long diff = 0;
+                        if (lastKnown == -1)
+                        {
+                            // Kondisi di mana tidak ada record sebelum shift. Gunakan Min Jam Ini
+                            diff = maxes[i] - mins[i];
+                        }
+                        else
+                        {
+                            // Kondisi normal: Max Jam Ini - Max Jam Lalu
+                            diff = maxes[i] - lastKnown;
+                        }
+
+                        // Jika file .ini mesin direset oleh operator
+                        if (diff < 0) 
+                        {
+                            diff = maxes[i]; 
+                        }
+
                         if (i <= currentHourCount)
                         {
                             machine.HourlyPieces[i - 1] = diff;
@@ -368,6 +391,8 @@ namespace mtc_app.features.technician.presentation.components
                         {
                             machine.HourlyPieces[i - 1] = 0; 
                         }
+
+                        lastKnown = maxes[i];
                     }
 
                     machine.TotalPieces = totalPiecesShiftIni;
@@ -444,13 +469,13 @@ namespace mtc_app.features.technician.presentation.components
                 area.AxisY.Title = "Output (Pcs)";
 
                 Color[] hourColors = new Color[] {
-                    Color.FromArgb(52, 152, 219), Color.FromArgb(41, 128, 185), // Jam 1-2
-                    Color.FromArgb(46, 204, 113), Color.FromArgb(39, 174, 96),  // Jam 3-4
-                    Color.FromArgb(241, 196, 15), Color.FromArgb(230, 126, 34), // Jam 5-6
-                    Color.FromArgb(231, 76, 60),  Color.FromArgb(192, 57, 43),  // Jam 7-8
-                    Color.FromArgb(155, 89, 182), Color.FromArgb(142, 68, 173), // Jam 9-10
-                    Color.FromArgb(26, 188, 156), Color.FromArgb(22, 160, 133), // Jam 11-12
-                    Color.FromArgb(52, 73, 94),   Color.FromArgb(44, 62, 80)    // Jam 13-14
+                    Color.FromArgb(52, 152, 219), Color.FromArgb(41, 128, 185), 
+                    Color.FromArgb(46, 204, 113), Color.FromArgb(39, 174, 96),  
+                    Color.FromArgb(241, 196, 15), Color.FromArgb(230, 126, 34), 
+                    Color.FromArgb(231, 76, 60),  Color.FromArgb(192, 57, 43),  
+                    Color.FromArgb(155, 89, 182), Color.FromArgb(142, 68, 173), 
+                    Color.FromArgb(26, 188, 156), Color.FromArgb(22, 160, 133), 
+                    Color.FromArgb(52, 73, 94),   Color.FromArgb(44, 62, 80)    
                 };
 
                 for (int i = 0; i < currentHourCount; i++)
