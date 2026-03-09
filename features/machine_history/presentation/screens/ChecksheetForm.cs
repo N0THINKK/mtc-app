@@ -20,9 +20,6 @@ namespace mtc_app.features.machine_history.presentation.screens
         private AppButton btnSave;
         private Label lblMachineInfo;
         
-        // Mengubah nama variabel agar lebih umum (bisa untuk NIK Operator atau Inisial Teknisi)
-        private TextBox txtPelaksana; 
-        
         private readonly bool _isTeknisiMode;
         private int _currentMachineId;
         private int _currentTemplateId;
@@ -46,38 +43,46 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.FormBorderStyle = FormBorderStyle.Sizable; 
 
             // --- HEADER ---
-            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = 80, BackColor = AppColors.CardBackground };
+            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = 100, BackColor = AppColors.CardBackground };
             Label lblTitle = new Label { Text = this.Text, Font = new Font("Segoe UI", 16F, FontStyle.Bold), ForeColor = AppColors.TextPrimary, AutoSize = true, Location = new Point(20, 15) };
             lblMachineInfo = new Label { Text = "Loading...", Font = new Font("Segoe UI", 11F), ForeColor = AppColors.TextSecondary, AutoSize = true, Location = new Point(20, 45) };
             
             // --- UI IDENTITAS PELAKSANA (DINAMIS) ---
-            Label lblPelaksana = new Label { 
-                // Jika teknisi, tampilkan "Inisial Teknisi:", jika tidak "NIK Patroli:"
-                Text = _isTeknisiMode ? "Inisial Teknisi:" : "NIK Patroli:", 
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold), 
-                AutoSize = true,
-                Location = new Point(this.Width - 310, 25), 
-                Anchor = AnchorStyles.Top | AnchorStyles.Right 
-            };
+            string pelaksanaLabel = _isTeknisiMode ? "Teknisi" : "NIK Operator";
+            string pelaksanaValue = UserSession.CurrentUser?.Username ?? "-";
             
-            txtPelaksana = new TextBox { 
-                Font = new Font("Segoe UI", 10F), 
-                Width = 180,
-                Location = new Point(this.Width - 210, 22),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
-            };
-
-            // AUTO-FILL IDENTITAS DARI SESI LOGIN SAAT INI
-            if (UserSession.IsLoggedIn)
+            if (_isTeknisiMode)
             {
-                // Username menyimpan NIK (untuk Operator) atau Inisial (untuk Teknisi) dari form login
-                txtPelaksana.Text = UserSession.CurrentUser?.Username ?? "";
+                string fullName = UserSession.CurrentUser?.FullName;
+                if (!string.IsNullOrWhiteSpace(fullName))
+                {
+                    var words = fullName.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (words.Length == 1)
+                    {
+                        pelaksanaValue = words[0];
+                    }
+                    else if (words.Length >= 2)
+                    {
+                        pelaksanaValue = $"{words[0]} {words[words.Length - 1]}";
+                    }
+                    
+                    // Convert to Title Case (e.g. RIZAL FIRMANSYAH -> Rizal Firmansyah)
+                    var textInfo = new System.Globalization.CultureInfo("id-ID", false).TextInfo;
+                    pelaksanaValue = textInfo.ToTitleCase(pelaksanaValue.ToLower());
+                }
             }
+
+            Label lblPelaksanaInfo = new Label { 
+                Text = $"{pelaksanaLabel}: {pelaksanaValue}", 
+                Font = new Font("Segoe UI", 11F), 
+                ForeColor = AppColors.TextSecondary, 
+                AutoSize = true, 
+                Location = new Point(20, 70) 
+            };
 
             pnlHeader.Controls.Add(lblTitle);
             pnlHeader.Controls.Add(lblMachineInfo);
-            pnlHeader.Controls.Add(lblPelaksana);
-            pnlHeader.Controls.Add(txtPelaksana);
+            pnlHeader.Controls.Add(lblPelaksanaInfo);
 
             // --- AREA PERTANYAAN (SCROLLABLE) ---
             pnlQuestions = new FlowLayoutPanel
@@ -175,12 +180,13 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private async void BtnSave_Click(object sender, EventArgs e)
         {
-            // Validasi Identitas Pelaksana (Dinamis sesuai mode)
-            if (string.IsNullOrWhiteSpace(txtPelaksana.Text))
+            // AMBIL IDENTITAS (NIK/INISIAL) DARI SESSION
+            string userNik = UserSession.CurrentUser?.Username ?? "-";
+
+            if (string.IsNullOrWhiteSpace(userNik) || userNik == "-")
             {
-                string warningMsg = _isTeknisiMode ? "Harap isi Inisial Teknisi terlebih dahulu!" : "Harap isi NIK Patroli terlebih dahulu!";
+                string warningMsg = _isTeknisiMode ? "Sesi Teknisi tidak valid!" : "Sesi Operator tidak valid!";
                 MessageBox.Show(warningMsg, "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                txtPelaksana.Focus();
                 return;
             }
 
@@ -193,9 +199,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             btnSave.Enabled = false;
             btnSave.Text = "Menyimpan Data...";
             this.Cursor = Cursors.WaitCursor;
-
-            // AMBIL IDENTITAS (NIK/INISIAL) DARI TEXTBOX
-            string userNik = txtPelaksana.Text.Trim();
 
             try
             {

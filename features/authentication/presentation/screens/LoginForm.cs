@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Dapper; 
 using mtc_app.features.authentication.data.repositories;
 using mtc_app.shared.data.dtos;
 using mtc_app.shared.data.session;
@@ -300,10 +301,29 @@ namespace mtc_app.features.authentication.presentation.screens
                 SaveOperatorNik(identity);
             }
 
+            string fetchedFullName = null;
+            
+            // Coba ambil full_name dari database jika identitas tidak kosong
+            if (!string.IsNullOrEmpty(identity))
+            {
+                try
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        fetchedFullName = conn.QueryFirstOrDefault<string>(
+                            "SELECT full_name FROM users WHERE username = @Username OR nik = @Username LIMIT 1",
+                            new { Username = identity }
+                        );
+                    }
+                }
+                catch { /* Abaikan jika gagal konek DB, tampil nama login saja */ }
+            }
+
             UserSession.SetUser(new UserDto
             {
                 Username = string.IsNullOrEmpty(identity) ? role : identity,
-                RoleName = role
+                RoleName = role,
+                FullName = fetchedFullName // Menyimpan nama lengkap untuk ditampilkan di Checksheet
             });
 
             this.Hide();
