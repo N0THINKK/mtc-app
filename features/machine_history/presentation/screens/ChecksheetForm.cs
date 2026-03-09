@@ -274,10 +274,9 @@ namespace mtc_app.features.machine_history.presentation.screens
         public bool IsAnswered => radOk.Checked || radNotOk.Checked;
         public bool IsOk => radOk.Checked;
         public bool NeedsTechnician => radNotOk.Checked;
-        public string Notes => txtNote.Text;
+        public string Notes => ""; // Note field removed per user request
 
         private RadioButton radOk, radNotOk;
-        private TextBox txtNote;
 
         public ChecksheetItemControl(int number, int itemId, string name, string standard, string method)
         {
@@ -297,8 +296,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             radOk = new RadioButton { Text = "OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.SeaGreen, AutoSize = true, Location = new Point(30, 65), Cursor = Cursors.Hand };
             radNotOk = new RadioButton { Text = "NOT OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.Crimson, AutoSize = true, Location = new Point(100, 65), Cursor = Cursors.Hand };
 
-            txtNote = new TextBox { Visible = false, Location = new Point(220, 65), Width = 470, Font = new Font("Segoe UI", 10F), PlaceholderText = "Isi keterangan / tindakan..." };
-
             radOk.CheckedChanged += (s, e) => ToggleNotOkOptions();
             radNotOk.CheckedChanged += (s, e) => ToggleNotOkOptions();
 
@@ -306,12 +303,10 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Controls.Add(lblStd);
             this.Controls.Add(radOk);
             this.Controls.Add(radNotOk);
-            this.Controls.Add(txtNote);
         }
 
         private void ToggleNotOkOptions()
         {
-            txtNote.Visible = radNotOk.Checked;
             this.BackColor = radNotOk.Checked ? Color.SeaShell : Color.White;
         }
     }
