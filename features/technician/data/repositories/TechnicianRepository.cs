@@ -66,7 +66,6 @@ namespace mtc_app.features.technician.data.repositories
                     WHERE t.status_id >= 1
                     ORDER BY t.created_at DESC";
                 
-                // Timeout 120 detik agar aman
                 return connection.Query<TicketDto>(sql, commandTimeout: 120);
             }
         }
@@ -193,8 +192,7 @@ namespace mtc_app.features.technician.data.repositories
 
             using (var connection = DatabaseHelper.GetConnection())
             {
-                var data = await connection.QueryAsync<TechnicianPerformanceDto>(sql, new { Start = start, End = end }, commandTimeout: 120);
-                return data;
+                return await connection.QueryAsync<TechnicianPerformanceDto>(sql, new { Start = start, End = end }, commandTimeout: 120);
             }
         }
 
@@ -237,13 +235,11 @@ namespace mtc_app.features.technician.data.repositories
 
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // Timeout diperpanjang jadi 120 agar aman saat ganti area/tanggal
-                var data = await connection.QueryAsync<MachinePerformanceDto>(
+                return await connection.QueryAsync<MachinePerformanceDto>(
                     sql, 
                     new { Start = start, End = end, Area = area }, 
                     commandTimeout: 120
                 );
-                return data;
             }
         }
 
@@ -259,8 +255,6 @@ namespace mtc_app.features.technician.data.repositories
                          
                         (SELECT COUNT(*) FROM machines) as Total
                 ";
-                
-                // Timeout 60 detik untuk tab monitoring real-time
                 return await connection.QueryFirstOrDefaultAsync<(int, int)>(sql, commandTimeout: 60);
             }
         }
@@ -273,6 +267,7 @@ namespace mtc_app.features.technician.data.repositories
         {
             using (var conn = DatabaseHelper.GetConnection())
             {
+                // [DIPERBAIKI] Menggunakan Sub-Query untuk mencari tiket aktif berdasarkan machine_id
                 string sql = @"
                     SELECT 
                         d.detail_id AS DetailId,
@@ -283,7 +278,11 @@ namespace mtc_app.features.technician.data.repositories
                         i.item_name AS ItemName,
                         d.action_note AS ActionNote,
                         d.status AS Status,
-                        d.is_ticket_created AS IsTicketCreated
+                        d.is_ticket_created AS IsTicketCreated,
+                        (SELECT t.ticket_id 
+                         FROM tickets t 
+                         WHERE t.machine_id = m.machine_id AND t.status_id IN (1, 2) 
+                         ORDER BY t.created_at DESC LIMIT 1) AS TicketId
                     FROM patrol_log_details d
                     JOIN patrol_logs l ON d.log_id = l.log_id
                     JOIN machines m ON l.machine_id = m.machine_id

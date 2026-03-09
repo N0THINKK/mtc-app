@@ -14,5 +14,7 @@ namespace mtc_app.features.technician.data.dtos
         public string ActionNote { get; set; }
         public string Status { get; set; }
         public bool IsTicketCreated { get; set; }
+        
+        public long? TicketId { get; set; } 
     }
 }

@@ -21,6 +21,9 @@ namespace mtc_app.features.machine_history.presentation.screens
         private bool _isVerified = false;
         private bool _allowClose = false; 
         
+        // [BARU] Flag untuk memicu Auto-Start
+        private bool _isAutoStart = false;
+        
         // Ticket State (for resume workflow)
         private int _ticketStatus = 1;
         private int _isMachineRunning = 0;
@@ -58,9 +61,12 @@ namespace mtc_app.features.machine_history.presentation.screens
         private AppStarRating ratingOperator;
         private AppInput inputOperatorNote;
 
-        public MachineHistoryFormTechnician(long ticketId)
+        // [MODIFIKASI] Menambahkan parameter autoStart = false
+        public MachineHistoryFormTechnician(long ticketId, bool autoStart = false)
         {
             _currentTicketId = ticketId;
+            _isAutoStart = autoStart;
+
             InitializeComponent();
             LoadTicketStatus(); 
             SetupTimer();
@@ -89,6 +95,22 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             base.OnLoad(e);
             this.OnResize(EventArgs.Empty);
+
+            // ========================================================
+            // [BARU] LOGIKA AUTO-START DARI PATROLI CHECKSHEET
+            // ========================================================
+            if (_isAutoStart && !_isVerified && _currentTicketId > 0)
+            {
+                if (mtc_app.shared.data.session.UserSession.CurrentUser != null && 
+                    !string.IsNullOrEmpty(mtc_app.shared.data.session.UserSession.CurrentUser.Nik))
+                {
+                    // Isi NIK otomatis berdasarkan sesi user yang sedang login
+                    inputNIK.InputValue = mtc_app.shared.data.session.UserSession.CurrentUser.Nik;
+                    
+                    // Eksekusi logic tombol verifikasi secara programatis
+                    BtnVerify_Click(this, EventArgs.Empty);
+                }
+            }
         }
 
         private void LoadTicketStatus()
@@ -467,7 +489,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 try 
                 {
                     int pendingId = (int)Math.Abs(_currentTicketId);
-                    var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+                    var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);                    
                     if (request != null && !string.IsNullOrEmpty(request.TechnicianNik))
                     {
                         _isVerified = true;
@@ -606,26 +628,46 @@ namespace mtc_app.features.machine_history.presentation.screens
                 WrapContents = false,
                 Margin = new Padding(0)
             };
+            
             chk4M = new CheckBox { Text = "Iya", AutoSize = true, Margin = new Padding(0, 0, 15, 0) };
             chkTidak4M = new CheckBox { Text = "Tidak", AutoSize = true };
             
-            chk4M.CheckedChanged += (s, e) => { 
+            chk4M.CheckedChanged += (s, e) => 
+            { 
                 if (chk4M.Checked) chkTidak4M.Checked = false; 
                 inputCounter.Enabled = _isVerified && chk4M.Checked; 
                 if (!chk4M.Checked) inputCounter.InputValue = ""; 
             };
-            chkTidak4M.CheckedChanged += (s, e) => { 
-                if (chkTidak4M.Checked) { chk4M.Checked = false; inputCounter.Enabled = false; inputCounter.InputValue = ""; } 
+            
+            chkTidak4M.CheckedChanged += (s, e) => 
+            { 
+                if (chkTidak4M.Checked) 
+                { 
+                    chk4M.Checked = false; 
+                    inputCounter.Enabled = false; 
+                    inputCounter.InputValue = ""; 
+                } 
             };
             
             pnlCheckboxes.Controls.AddRange(new Control[] { chk4M, chkTidak4M });
             panel4M.Controls.AddRange(new Control[] { lbl4M, pnlCheckboxes });
             mainLayout.Controls.Add(panel4M);
 
-            inputCounter = new AppInput { LabelText = "Jumlah Counter", InputType = AppInput.InputTypeEnum.Text, IsRequired = false };
+            inputCounter = new AppInput 
+            { 
+                LabelText = "Jumlah Counter", 
+                InputType = AppInput.InputTypeEnum.Text, 
+                IsRequired = false 
+            };
             mainLayout.Controls.Add(inputCounter);
 
-            inputSparepart = new AppInput { LabelText = "Permintaan Sparepart", InputType = AppInput.InputTypeEnum.Dropdown, IsRequired = false, AllowCustomText = true };
+            inputSparepart = new AppInput 
+            { 
+                LabelText = "Permintaan Sparepart", 
+                InputType = AppInput.InputTypeEnum.Dropdown, 
+                IsRequired = false, 
+                AllowCustomText = true 
+            };
             mainLayout.Controls.Add(inputSparepart);
             LoadParts();
 
@@ -636,13 +678,26 @@ namespace mtc_app.features.machine_history.presentation.screens
                 WrapContents = false,
                 Margin = new Padding(0, 10, 0, 0)
             };
-            var lblRating = new Label { Text = "Rating Dari Teknisi:", Font = AppFonts.Subtitle, AutoSize = true, Margin = new Padding(0, 0, 0, 5) };
+            var lblRating = new Label 
+            { 
+                Text = "Rating Dari Teknisi:", 
+                Font = AppFonts.Subtitle, 
+                AutoSize = true, 
+                Margin = new Padding(0, 0, 0, 5) 
+            };
+            
             ratingOperator = new AppStarRating { Rating = 0, Margin = new Padding(0) };
             panelRating.Controls.AddRange(new Control[] { lblRating, ratingOperator });
             mainLayout.Controls.Add(panelRating);
 
-            inputOperatorNote = new AppInput { LabelText = "Catatan : ", InputType = AppInput.InputTypeEnum.Text, IsRequired = false };
+            inputOperatorNote = new AppInput 
+            { 
+                LabelText = "Catatan : ", 
+                InputType = AppInput.InputTypeEnum.Text, 
+                IsRequired = false 
+            };
             mainLayout.Controls.Add(inputOperatorNote);
+            
             var spacer = new Panel { Height = 30, Width = 10, BackColor = Color.Transparent };
             mainLayout.Controls.Add(spacer);
         }
@@ -671,7 +726,9 @@ namespace mtc_app.features.machine_history.presentation.screens
             bool enabled = _isVerified;
             
             foreach (var prob in _problemControls)
+            {
                 prob.SetEnabled(enabled);
+            }
 
             chk4M.Enabled = enabled;
             chkTidak4M.Enabled = enabled;
@@ -717,7 +774,9 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 using (var conn = DatabaseHelper.GetConnection())
                 {
-                    var request = conn.QueryFirstOrDefault("SELECT status_id FROM part_requests WHERE ticket_id = @Id ORDER BY requested_at DESC", new { Id = _currentTicketId });
+                    var request = conn.QueryFirstOrDefault(
+                        "SELECT status_id FROM part_requests WHERE ticket_id = @Id ORDER BY requested_at DESC", 
+                        new { Id = _currentTicketId });
                     
                     if (this.IsHandleCreated && !this.IsDisposed)
                     {
@@ -757,10 +816,26 @@ namespace mtc_app.features.machine_history.presentation.screens
                                 }
                                 _lastPartStatusId = statusId;
                                 
-                                if (statusId == 1) { buttonRequestSparepart.Text = "PERMINTAAN DIPROSES"; buttonRequestSparepart.BackColor = Color.Gray; }
-                                else if (statusId == 2) { buttonRequestSparepart.Text = "BARANG SIAP DI GUDANG"; buttonRequestSparepart.BackColor = AppColors.Success; }
-                                else if (statusId == 4) { buttonRequestSparepart.Text = "REQUEST DITOLAK"; buttonRequestSparepart.BackColor = AppColors.Danger; }
-                                else { buttonRequestSparepart.Text = "REQUEST DITUTUP"; buttonRequestSparepart.BackColor = Color.DarkGray; }
+                                if (statusId == 1) 
+                                { 
+                                    buttonRequestSparepart.Text = "PERMINTAAN DIPROSES"; 
+                                    buttonRequestSparepart.BackColor = Color.Gray; 
+                                }
+                                else if (statusId == 2) 
+                                { 
+                                    buttonRequestSparepart.Text = "BARANG SIAP DI GUDANG"; 
+                                    buttonRequestSparepart.BackColor = AppColors.Success; 
+                                }
+                                else if (statusId == 4) 
+                                { 
+                                    buttonRequestSparepart.Text = "REQUEST DITOLAK"; 
+                                    buttonRequestSparepart.BackColor = AppColors.Danger; 
+                                }
+                                else 
+                                { 
+                                    buttonRequestSparepart.Text = "REQUEST DITUTUP"; 
+                                    buttonRequestSparepart.BackColor = Color.DarkGray; 
+                                }
                             }
                             else
                             {
@@ -778,6 +853,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private void BtnVerify_Click(object sender, EventArgs e)
         {
             string nik = inputNIK.InputValue?.Trim();
+            
             if (string.IsNullOrWhiteSpace(nik))
             {
                 MessageBox.Show("Masukkan Inisial Teknisi.", "Validasi");
@@ -787,6 +863,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             if (_currentTicketId < 0)
             {
                 var user = ServiceLocator.OfflineRepo.GetUserByNik(nik);
+                
                 if (user != null)
                 {
                     if (user.RoleId != 2)
@@ -797,6 +874,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
                     int pendingId = (int)Math.Abs(_currentTicketId);
                     var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+                    
                     if (request != null)
                     {
                         request.TechnicianNik = nik;
@@ -827,11 +905,14 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
-                    var tech = conn.QueryFirstOrDefault("SELECT user_id, full_name, nik FROM users WHERE nik = @Nik AND role_id = 2", new { Nik = nik });
+                    var tech = conn.QueryFirstOrDefault(
+                        "SELECT user_id, full_name, nik FROM users WHERE nik = @Nik AND role_id = 2", 
+                        new { Nik = nik });
                     
                     if (tech != null)
                     {
-                        conn.Execute("UPDATE tickets SET status_id = 2, technician_id = @Id, started_at = NOW(), is_machine_running = 0 WHERE ticket_id = @TId", 
+                        conn.Execute(
+                            "UPDATE tickets SET status_id = 2, technician_id = @Id, started_at = NOW(), is_machine_running = 0 WHERE ticket_id = @TId", 
                             new { Id = tech.user_id, TId = _currentTicketId });
                         
                         _isVerified = true;
@@ -863,6 +944,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private void BtnAddTechnician_Click(object sender, EventArgs e)
         {
             string nik = ShowTechnicianEntryDialog();
+            
             if (string.IsNullOrWhiteSpace(nik)) return;
 
             if (_currentTicketId < 0)
@@ -876,7 +958,9 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
-                    var tech = conn.QueryFirstOrDefault("SELECT user_id, full_name, nik FROM users WHERE nik = @Nik AND role_id = 2", new { Nik = nik });
+                    var tech = conn.QueryFirstOrDefault(
+                        "SELECT user_id, full_name, nik FROM users WHERE nik = @Nik AND role_id = 2", 
+                        new { Nik = nik });
                     
                     if (tech != null)
                     {
@@ -934,16 +1018,34 @@ namespace mtc_app.features.machine_history.presentation.screens
                 MinimizeBox = false
             };
 
-            Label textLabel = new Label() { Left = 20, Top = 20, Text = "Masukkan Inisial (NIK):", AutoSize = true, Font = AppFonts.Body };
-            TextBox textBox = new TextBox() { Left = 20, Top = 50, Width = 290, Font = AppFonts.Body, CharacterCasing = CharacterCasing.Upper };
-            Button confirmation = new Button() { Text = "Tambahkan", Left = 180, Width = 130, Top = 90, DialogResult = DialogResult.OK, Height = 35, BackColor = AppColors.Primary, ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            Label textLabel = new Label() 
+            { 
+                Left = 20, Top = 20, Text = "Masukkan Inisial (NIK):", AutoSize = true, Font = AppFonts.Body 
+            };
+            
+            TextBox textBox = new TextBox() 
+            { 
+                Left = 20, Top = 50, Width = 290, Font = AppFonts.Body, CharacterCasing = CharacterCasing.Upper 
+            };
+            
+            Button confirmation = new Button() 
+            { 
+                Text = "Tambahkan", Left = 180, Width = 130, Top = 90, DialogResult = DialogResult.OK, 
+                Height = 35, BackColor = AppColors.Primary, ForeColor = Color.White, FlatStyle = FlatStyle.Flat 
+            };
             confirmation.FlatAppearance.BorderSize = 0;
-            Button cancel = new Button() { Text = "Batal", Left = 40, Width = 100, Top = 90, DialogResult = DialogResult.Cancel, Height = 35, FlatStyle = FlatStyle.Flat };
+            
+            Button cancel = new Button() 
+            { 
+                Text = "Batal", Left = 40, Width = 100, Top = 90, DialogResult = DialogResult.Cancel, 
+                Height = 35, FlatStyle = FlatStyle.Flat 
+            };
 
             prompt.Controls.Add(textLabel);
             prompt.Controls.Add(textBox);
             prompt.Controls.Add(confirmation);
             prompt.Controls.Add(cancel);
+            
             prompt.AcceptButton = confirmation;
             prompt.CancelButton = cancel;
 
@@ -955,6 +1057,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             if (!_isVerified) return;
             
             string val = inputSparepart.InputValue?.Trim();
+            
             if (string.IsNullOrWhiteSpace(val))
             {
                 MessageBox.Show("Isi detail sparepart.", "Validasi");
@@ -962,7 +1065,9 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
 
             if (MessageBox.Show("Lanjutkan request sparepart?", "Konfirmasi", MessageBoxButtons.YesNo) != DialogResult.Yes)
+            {
                 return;
+            }
 
             if (_currentTicketId < 0)
             {
@@ -974,9 +1079,11 @@ namespace mtc_app.features.machine_history.presentation.screens
                     if (request != null)
                     {
                         if (request.SparepartRequests == null)
+                        {
                             request.SparepartRequests = new List<string>();
-                        request.SparepartRequests.Add(val);
+                        }
                         
+                        request.SparepartRequests.Add(val);
                         ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
                         
                         inputSparepart.Enabled = false;
@@ -1004,13 +1111,22 @@ namespace mtc_app.features.machine_history.presentation.screens
                     {
                         var parts = val.Split(new[] { " - " }, StringSplitOptions.RemoveEmptyEntries);
                         if (parts.Length > 0)
-                            partId = conn.QueryFirstOrDefault<int?>("SELECT part_id FROM parts WHERE part_code = @C", new { C = parts[0].Trim() });
+                        {
+                            partId = conn.QueryFirstOrDefault<int?>(
+                                "SELECT part_id FROM parts WHERE part_code = @C", 
+                                new { C = parts[0].Trim() });
+                        }
                     }
                     
                     if (partId == null)
-                        partId = conn.QueryFirstOrDefault<int?>("SELECT part_id FROM parts WHERE part_name = @N", new { N = val });
+                    {
+                        partId = conn.QueryFirstOrDefault<int?>(
+                            "SELECT part_id FROM parts WHERE part_name = @N", 
+                            new { N = val });
+                    }
                     
-                    conn.Execute("INSERT INTO part_requests (ticket_id, part_id, part_name_manual, qty, status_id, requested_at) VALUES (@TId, @PId, @Name, 1, 1, NOW())", 
+                    conn.Execute(
+                        "INSERT INTO part_requests (ticket_id, part_id, part_name_manual, qty, status_id, requested_at) VALUES (@TId, @PId, @Name, 1, 1, NOW())", 
                         new { TId = _currentTicketId, PId = partId, Name = val });
                     
                     inputSparepart.Enabled = false;
@@ -1043,8 +1159,10 @@ namespace mtc_app.features.machine_history.presentation.screens
             
             foreach (var prob in _problemControls)
             {
-                if (!prob.InputProblemType.ValidateInput() || !prob.InputProblemDetail.ValidateInput() ||
-                    !prob.InputCause.ValidateInput() || !prob.InputAction.ValidateInput())
+                if (!prob.InputProblemType.ValidateInput() || 
+                    !prob.InputProblemDetail.ValidateInput() ||
+                    !prob.InputCause.ValidateInput() || 
+                    !prob.InputAction.ValidateInput())
                 {
                     MessageBox.Show("Lengkapi semua detail perbaikan.", "Validasi");
                     return;
@@ -1069,11 +1187,17 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             if (_currentTicketId > 0)
             {
-                try {
-                    using(var conn = DatabaseHelper.GetConnection()) {
-                        conn.Execute("UPDATE tickets SET status_id = 4 WHERE ticket_id = @Id", new { Id = _currentTicketId });
+                try 
+                {
+                    using (var conn = DatabaseHelper.GetConnection()) 
+                    {
+                        conn.Execute(
+                            "UPDATE tickets SET status_id = 4 WHERE ticket_id = @Id", 
+                            new { Id = _currentTicketId });
                     }
-                } catch(Exception ex) {
+                } 
+                catch (Exception ex) 
+                {
                     MessageBox.Show("Gagal update status inspeksi: " + ex.Message);
                 }
             }
@@ -1084,35 +1208,55 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             using (Form prompt = new Form())
             {
-                prompt.Width = 350; prompt.Height = 180; 
+                prompt.Width = 350; 
+                prompt.Height = 180; 
                 prompt.FormBorderStyle = FormBorderStyle.FixedDialog;
                 prompt.Text = "Inspeksi Perbaikan";
                 prompt.StartPosition = FormStartPosition.CenterParent;
                 prompt.ControlBox = false; 
 
-                Label lblInfo = new Label() { Left = 0, Top = 15, Width = 350, TextAlign = ContentAlignment.MiddleCenter, Text = "Perbaikan sudah sesuai?", Font = AppFonts.Subtitle };
+                Label lblInfo = new Label() 
+                { 
+                    Left = 0, Top = 15, Width = 350, TextAlign = ContentAlignment.MiddleCenter, 
+                    Text = "Perbaikan sudah sesuai?", Font = AppFonts.Subtitle 
+                };
                 
-                Label lblTimer = new Label() { Left = 0, Top = 45, Width = 350, TextAlign = ContentAlignment.MiddleCenter, Text = "00:00:00", Font = new Font(AppFonts.Subtitle.FontFamily, 14, FontStyle.Bold), ForeColor = Color.DarkOrange };
+                Label lblTimer = new Label() 
+                { 
+                    Left = 0, Top = 45, Width = 350, TextAlign = ContentAlignment.MiddleCenter, 
+                    Text = "00:00:00", Font = new Font(AppFonts.Subtitle.FontFamily, 14, FontStyle.Bold), 
+                    ForeColor = Color.DarkOrange 
+                };
 
-                Button btnApprove = new Button() { Text = "OK", Left = 20, Width = 140, Top = 90, Height = 40, BackColor = AppColors.Success, ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+                Button btnApprove = new Button() 
+                { 
+                    Text = "OK", Left = 20, Width = 140, Top = 90, Height = 40, 
+                    BackColor = AppColors.Success, ForeColor = Color.White, FlatStyle = FlatStyle.Flat 
+                };
                 btnApprove.FlatAppearance.BorderSize = 0;
                 
-                Button btnReject = new Button() { Text = "NG", Left = 170, Width = 140, Top = 90, Height = 40, BackColor = AppColors.Danger, ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+                Button btnReject = new Button() 
+                { 
+                    Text = "NG", Left = 170, Width = 140, Top = 90, Height = 40, 
+                    BackColor = AppColors.Danger, ForeColor = Color.White, FlatStyle = FlatStyle.Flat 
+                };
                 btnReject.FlatAppearance.BorderSize = 0;
 
-                // Timer lokal untuk memperbarui UI text label setiap detik
                 Timer popupTimer = new Timer() { Interval = 1000 };
-                popupTimer.Tick += (s, ev) => {
+                popupTimer.Tick += (s, ev) => 
+                {
                     lblTimer.Text = TimeSpan.FromSeconds(_inspectionSeconds).ToString(@"hh\:mm\:ss");
                 };
 
-                btnApprove.Click += (s, ev) => { 
+                btnApprove.Click += (s, ev) => 
+                { 
                     isApproved = true; 
                     popupTimer.Stop(); 
                     prompt.DialogResult = DialogResult.OK; 
                 };
 
-                btnReject.Click += (s, ev) => {
+                btnReject.Click += (s, ev) => 
+                {
                     isApproved = false; 
                     popupTimer.Stop(); 
                     prompt.DialogResult = DialogResult.OK; 
@@ -1135,14 +1279,24 @@ namespace mtc_app.features.machine_history.presentation.screens
             else
             {
                 _ticketStatus = 2;
-                if (_currentTicketId > 0) {
-                    try {
-                        using(var conn = DatabaseHelper.GetConnection()) {
-                            conn.Execute("UPDATE tickets SET status_id = 2 WHERE ticket_id = @Id", new { Id = _currentTicketId });
+                if (_currentTicketId > 0) 
+                {
+                    try 
+                    {
+                        using (var conn = DatabaseHelper.GetConnection()) 
+                        {
+                            conn.Execute(
+                                "UPDATE tickets SET status_id = 2 WHERE ticket_id = @Id", 
+                                new { Id = _currentTicketId });
                         }
-                    } catch { /* ignore */ }
+                    } 
+                    catch { /* ignore */ }
                 }
-                MessageBox.Show("Perbaikan dinilai NG oleh inspektur. Silakan perbaiki mesin kembali.", "Inspeksi Gagal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                
+                MessageBox.Show(
+                    "Perbaikan dinilai NG oleh inspektur. Silakan perbaiki mesin kembali.", 
+                    "Inspeksi Gagal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                
                 _timer.Start(); 
             }
         }
@@ -1183,6 +1337,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                             "Sukses", 2000);
                         
                         var runForm = new MachineRunForm(_currentTicketId);
+                        
                         if (runForm.ShowDialog() == DialogResult.OK)
                         {
                             this.DialogResult = DialogResult.OK;
@@ -1215,11 +1370,18 @@ namespace mtc_app.features.machine_history.presentation.screens
                     {
                         try
                         {
-                            string sql = @"UPDATE tickets SET status_id = 3, technician_finished_at = NOW(), 
-                                counter_stroke = @Cnt, is_4m = @Is4M, tech_rating_score = @Sc, tech_rating_note = @Nt
+                            string sql = @"
+                                UPDATE tickets 
+                                SET status_id = 3, 
+                                    technician_finished_at = NOW(), 
+                                    counter_stroke = @Cnt, 
+                                    is_4m = @Is4M, 
+                                    tech_rating_score = @Sc, 
+                                    tech_rating_note = @Nt
                                 WHERE ticket_id = @Id";
                             
-                            conn.Execute(sql, new { 
+                            conn.Execute(sql, new 
+                            { 
                                 Cnt = int.TryParse(inputCounter.InputValue, out int c) ? c : 0, 
                                 Is4M = chk4M.Checked ? 1 : 0, 
                                 Sc = ratingOperator.Rating, 
@@ -1227,11 +1389,12 @@ namespace mtc_app.features.machine_history.presentation.screens
                                 Id = _currentTicketId 
                             }, trans);
 
-                            string detailSql = @"UPDATE ticket_problems SET 
-                                problem_type_id = @TId, problem_type_remarks = @TRem,
-                                failure_id = @FId, failure_remarks = @FRem,
-                                root_cause_id = @CId, root_cause_remarks = @CRem, 
-                                action_id = @AId, action_details_manual = @ARem 
+                            string detailSql = @"
+                                UPDATE ticket_problems SET 
+                                    problem_type_id = @TId, problem_type_remarks = @TRem,
+                                    failure_id = @FId, failure_remarks = @FRem,
+                                    root_cause_id = @CId, root_cause_remarks = @CRem, 
+                                    action_id = @AId, action_details_manual = @ARem 
                                 WHERE problem_id = @PId";
                             
                             foreach (var prob in _problemControls)
@@ -1241,7 +1404,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                                 int? cId = GetOrCreateMasterData(conn, trans, "failure_causes", "cause_id", "cause_name", prob.InputCause.InputValue);
                                 int? aId = GetOrCreateMasterData(conn, trans, "actions", "action_id", "action_name", prob.InputAction.InputValue);
                                 
-                                conn.Execute(detailSql, new {
+                                conn.Execute(detailSql, new 
+                                {
                                     TId = tId, TRem = (string)null, 
                                     FId = fId, FRem = (string)null,
                                     CId = cId, CRem = (string)null,
@@ -1257,9 +1421,12 @@ namespace mtc_app.features.machine_history.presentation.screens
                             
                             TimeSpan repairDuration = TimeSpan.FromSeconds(_repairSeconds);
                             
-                            AutoClosingMessageBox.Show($"Perbaikan Selesai!\nDurasi: {repairDuration:hh\\:mm\\:ss}", "Sukses", 2000);
+                            AutoClosingMessageBox.Show(
+                                $"Perbaikan Selesai!\nDurasi: {repairDuration:hh\\:mm\\:ss}", 
+                                "Sukses", 2000);
                             
                             var runForm = new MachineRunForm(_currentTicketId);
+                            
                             if (runForm.ShowDialog() == DialogResult.OK)
                             {
                                 this.DialogResult = DialogResult.OK;
@@ -1289,7 +1456,9 @@ namespace mtc_app.features.machine_history.presentation.screens
         private void PanelFooter_Paint(object sender, PaintEventArgs e)
         {
             using (var pen = new Pen(AppColors.Separator))
+            {
                 e.Graphics.DrawLine(pen, 0, 0, panelFooter.Width, 0);
+            }
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -1304,6 +1473,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             SaveTimerToDatabase(); 
             SaveSession(); 
             _timer?.Dispose();
+            
             base.OnFormClosing(e);
         }
 
@@ -1386,6 +1556,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     if (activeSessions.Any())
                     {
                         bool isFirst = true;
+                        
                         foreach (var s in activeSessions)
                         {
                             long sId = (long)s.session_id;
