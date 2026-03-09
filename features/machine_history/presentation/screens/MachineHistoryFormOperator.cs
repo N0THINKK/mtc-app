@@ -13,7 +13,7 @@ using mtc_app.shared.presentation.styles;
 using mtc_app.shared.infrastructure;
 using mtc_app.shared.data.repositories;
 using mtc_app.shared.data.session;
-using mtc_app.features.authentication.presentation.screens; // [BARU] Tambahkan ini untuk akses LoginForm
+using mtc_app.features.authentication.presentation.screens; 
 using System.IO;
 
 namespace mtc_app.features.machine_history.presentation.screens
@@ -24,6 +24,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private readonly IMasterDataRepository _masterDataRepository;
         
         // Header Inputs
+        private AppInput inputOperatorNik; // [BARU] Input untuk NIK Operator
         private AppInput inputShift;
         private AppInput inputApplicator;
         
@@ -114,7 +115,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = 2,
-                Padding = new Padding(20, 10, 0, 10) // Right padding 0 to push scrollbar to edge
+                Padding = new Padding(20, 10, 0, 10) 
             };
             _tab1Layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             _tab1Layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); 
@@ -125,7 +126,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 AutoScroll = true,
-                Padding = new Padding(0, 0, 20, 0) // Compensate content padding
+                Padding = new Padding(0, 0, 20, 0) 
             };
             _formLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             _tab1Layout.Controls.Add(_formLayout, 0, 0);
@@ -192,7 +193,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 BackColor = Color.Transparent 
             };
             panelHeader.Controls.Add(_lnkPendingTicket);
-            RepositionPendingLink(); // Initial Position
+            RepositionPendingLink(); 
             _lnkPendingTicket.LinkClicked += LnkPendingTicket_LinkClicked;
         }
         
@@ -206,7 +207,6 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             if (_lnkPendingTicket != null && panelHeader != null)
             {
-                // "Most right" alignment (margin 5px)
                 _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 5, 15);
             }
         }
@@ -221,18 +221,27 @@ namespace mtc_app.features.machine_history.presentation.screens
                  _formLayout.Controls.Add(c, 0, _formLayout.RowCount++);
             }
 
-            // 1. Shift
+            // 1. NIK Operator [BARU]
+            inputOperatorNik = CreateInput("NIK Operator", AppInput.InputTypeEnum.Text, true);
+            // Mengisi otomatis NIK dari UserSession jika login
+            if (UserSession.IsLoggedIn)
+            {
+                inputOperatorNik.InputValue = UserSession.CurrentUser?.Username ?? "";
+            }
+            AddToForm(inputOperatorNik);
+
+            // 2. Shift
             inputShift = CreateInput("Shift", AppInput.InputTypeEnum.Dropdown, true);
             inputShift.AllowCustomText = false;
             LoadShiftsFromDB();
             AddToForm(inputShift);
 
-            // 2. Applicator
+            // 3. Applicator
             inputApplicator = CreateInput("No. Aplikator", AppInput.InputTypeEnum.Text, false);
             inputApplicator.CharacterCasing = CharacterCasing.Upper;
             AddToForm(inputApplicator);
 
-            // 3. Problems Label
+            // 4. Problems Label
             var lblProblems = new Label 
             {
                 Text = "Daftar Kerusakan:", 
@@ -394,9 +403,10 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private async void SaveButton_Click(object sender, EventArgs e)
         {
-            if (!inputShift.ValidateInput())
+            // [BARU] Validasi untuk input NIK Operator juga
+            if (!inputOperatorNik.ValidateInput() || !inputShift.ValidateInput())
             {
-                MessageBox.Show("Mohon lengkapi data wajib (Shift).", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Mohon lengkapi data wajib (NIK Operator dan Shift).", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -419,7 +429,8 @@ namespace mtc_app.features.machine_history.presentation.screens
 
                 var request = new CreateTicketRequest
                 {
-                    OperatorNik = UserSession.CurrentUser?.Username ?? "Operator",
+                    // [BARU] Mengambil NIK Operator dari form input, bukan dari session langsung
+                    OperatorNik = inputOperatorNik.InputValue, 
                     ShiftName = inputShift.InputValue,
                     ApplicatorCode = inputApplicator.InputValue,
                     MachineId = machineId,

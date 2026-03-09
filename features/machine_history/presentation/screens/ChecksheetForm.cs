@@ -20,6 +20,9 @@ namespace mtc_app.features.machine_history.presentation.screens
         private AppButton btnSave;
         private Label lblMachineInfo;
         
+        // Mengubah nama variabel agar lebih umum (bisa untuk NIK Operator atau Inisial Teknisi)
+        private TextBox txtPelaksana; 
+        
         private readonly bool _isTeknisiMode;
         private int _currentMachineId;
         private int _currentTemplateId;
@@ -46,8 +49,35 @@ namespace mtc_app.features.machine_history.presentation.screens
             var pnlHeader = new Panel { Dock = DockStyle.Top, Height = 80, BackColor = AppColors.CardBackground };
             Label lblTitle = new Label { Text = this.Text, Font = new Font("Segoe UI", 16F, FontStyle.Bold), ForeColor = AppColors.TextPrimary, AutoSize = true, Location = new Point(20, 15) };
             lblMachineInfo = new Label { Text = "Loading...", Font = new Font("Segoe UI", 11F), ForeColor = AppColors.TextSecondary, AutoSize = true, Location = new Point(20, 45) };
+            
+            // --- UI IDENTITAS PELAKSANA (DINAMIS) ---
+            Label lblPelaksana = new Label { 
+                // Jika teknisi, tampilkan "Inisial Teknisi:", jika tidak "NIK Patroli:"
+                Text = _isTeknisiMode ? "Inisial Teknisi:" : "NIK Patroli:", 
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold), 
+                AutoSize = true,
+                Location = new Point(this.Width - 310, 25), 
+                Anchor = AnchorStyles.Top | AnchorStyles.Right 
+            };
+            
+            txtPelaksana = new TextBox { 
+                Font = new Font("Segoe UI", 10F), 
+                Width = 180,
+                Location = new Point(this.Width - 210, 22),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+
+            // AUTO-FILL IDENTITAS DARI SESI LOGIN SAAT INI
+            if (UserSession.IsLoggedIn)
+            {
+                // Username menyimpan NIK (untuk Operator) atau Inisial (untuk Teknisi) dari form login
+                txtPelaksana.Text = UserSession.CurrentUser?.Username ?? "";
+            }
+
             pnlHeader.Controls.Add(lblTitle);
             pnlHeader.Controls.Add(lblMachineInfo);
+            pnlHeader.Controls.Add(lblPelaksana);
+            pnlHeader.Controls.Add(txtPelaksana);
 
             // --- AREA PERTANYAAN (SCROLLABLE) ---
             pnlQuestions = new FlowLayoutPanel
@@ -74,7 +104,9 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Controls.Add(pnlHeader);
             this.Controls.Add(pnlBottom);
             
-            this.Resize += (s, e) => { btnSave.Left = this.Width - btnSave.Width - 30; };
+            this.Resize += (s, e) => { 
+                btnSave.Left = this.Width - btnSave.Width - 30; 
+            };
         }
 
         private void LoadChecksheetData()
@@ -118,14 +150,13 @@ namespace mtc_app.features.machine_history.presentation.screens
 
                     if (items.Count == 0)
                     {
-                        // PERBAIKAN 1: Menggunakan AppFonts.Body yang sesuai dengan definisi di sistem Anda
                         Label emptyLbl = new Label { Text = $"Belum ada pertanyaan checksheet khusus {targetRole} di template '{machineInfo.template_name}'.\nHubungi SPV untuk menambahkan pertanyaan di Master Data.", AutoSize = true, Font = AppFonts.Body, ForeColor = Color.Red };
                         pnlQuestions.Controls.Add(emptyLbl);
                         btnSave.Enabled = false;
                         return;
                     }
 
-                    // 4. Gambar Pertanyaannya ke Layar secara dinamis!
+                    // 4. Gambar Pertanyaannya ke Layar secara dinamis
                     int number = 1;
                     foreach (var item in items)
                     {
@@ -144,6 +175,15 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private async void BtnSave_Click(object sender, EventArgs e)
         {
+            // Validasi Identitas Pelaksana (Dinamis sesuai mode)
+            if (string.IsNullOrWhiteSpace(txtPelaksana.Text))
+            {
+                string warningMsg = _isTeknisiMode ? "Harap isi Inisial Teknisi terlebih dahulu!" : "Harap isi NIK Patroli terlebih dahulu!";
+                MessageBox.Show(warningMsg, "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtPelaksana.Focus();
+                return;
+            }
+
             if (_itemControls.Any(i => !i.IsAnswered))
             {
                 MessageBox.Show("Harap isi semua point inspeksi (Pilih OK atau NOT OK) sebelum menyimpan!", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -154,13 +194,15 @@ namespace mtc_app.features.machine_history.presentation.screens
             btnSave.Text = "Menyimpan Data...";
             this.Cursor = Cursors.WaitCursor;
 
-            string userNik = UserSession.CurrentUser?.Username ?? "Unknown";
+            // AMBIL IDENTITAS (NIK/INISIAL) DARI TEXTBOX
+            string userNik = txtPelaksana.Text.Trim();
 
             try
             {
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     // 1. Catat Header Patroli
+                    // Kolom user_nik di database bersifat string, sehingga aman diisi NIK angka maupun Inisial huruf.
                     string insertLogSql = "INSERT INTO patrol_logs (machine_id, user_nik, shift) VALUES (@MachId, @Nik, 'A'); SELECT LAST_INSERT_ID();";
                     int logId = conn.QuerySingle<int>(insertLogSql, new { MachId = _currentMachineId, Nik = userNik });
 
@@ -170,21 +212,23 @@ namespace mtc_app.features.machine_history.presentation.screens
                         string status = item.IsOk ? "OK" : "NOT_OK";
                         bool createTicket = false;
                         
-                        // AUTO-TICKETING LOGIC: Jika Operator menemukan kerusakan dan menuntut teknisi
-                        if (!item.IsOk && item.NeedsTechnician)
+                        // AUTO-TICKETING LOGIC: 
+                        // Jika menemukan kerusakan (NOT_OK) dan sedang di mode Operator
+                        // (Teknisi biasanya langsung memperbaiki tanpa buat tiket dari checksheet, 
+                        // tapi logika ini bisa disesuaikan jika Teknisi juga butuh buat tiket otomatis)
+                        if (!item.IsOk && item.NeedsTechnician && !_isTeknisiMode)
                         {
                             createTicket = true;
                             try 
                             {
                                 var historyRepo = new MachineHistoryRepository();
                                 
-                                // PERBAIKAN 2: Menyesuaikan properti request dengan CreateTicketRequest.cs milik Anda
                                 await historyRepo.CreateTicketAsync(new CreateTicketRequest
                                 {
                                     MachineId = _currentMachineId,
                                     OperatorNik = userNik,
-                                    ShiftName = "A", // Shift Default, bisa diganti sesuai logic shift Anda
-                                    ApplicatorCode = "-", // Abaikan untuk checksheet
+                                    ShiftName = "A", // Shift Default
+                                    ApplicatorCode = "-", 
                                     Problems = new List<TicketProblemRequest>
                                     {
                                         new TicketProblemRequest
@@ -195,7 +239,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                                     }
                                 });
                             } 
-                            catch { /* Lanjut simpan checksheet meskipun auto-ticket gagal untuk mencegah data patroli hilang */ }
+                            catch { /* Abaikan error tiket otomatis agar proses simpan patroli utama tetap sukses */ }
                         }
 
                         conn.Execute(
@@ -229,13 +273,10 @@ namespace mtc_app.features.machine_history.presentation.screens
         public string Standard { get; private set; }
         public bool IsAnswered => radOk.Checked || radNotOk.Checked;
         public bool IsOk => radOk.Checked;
-        
-        // Cek jika operator meminta teknisi
-        public bool NeedsTechnician => radNotOk.Checked && cmbAction.SelectedIndex == 1;
+        public bool NeedsTechnician => radNotOk.Checked;
         public string Notes => txtNote.Text;
 
         private RadioButton radOk, radNotOk;
-        private ComboBox cmbAction;
         private TextBox txtNote;
 
         public ChecksheetItemControl(int number, int itemId, string name, string standard, string method)
@@ -256,11 +297,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             radOk = new RadioButton { Text = "OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.SeaGreen, AutoSize = true, Location = new Point(30, 65), Cursor = Cursors.Hand };
             radNotOk = new RadioButton { Text = "NOT OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.Crimson, AutoSize = true, Location = new Point(100, 65), Cursor = Cursors.Hand };
 
-            cmbAction = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Visible = false, Location = new Point(220, 65), Width = 180, Font = new Font("Segoe UI", 10F) };
-            cmbAction.Items.AddRange(new string[] { "Bisa Diperbaiki Sendiri", "PANGGIL TEKNISI (Abnormal)", "Mesin Stop / Libur" });
-            cmbAction.SelectedIndex = 0;
-
-            txtNote = new TextBox { Visible = false, Location = new Point(410, 65), Width = 280, Font = new Font("Segoe UI", 10F), PlaceholderText = "Isi keterangan / tindakan..." };
+            txtNote = new TextBox { Visible = false, Location = new Point(220, 65), Width = 470, Font = new Font("Segoe UI", 10F), PlaceholderText = "Isi keterangan / tindakan..." };
 
             radOk.CheckedChanged += (s, e) => ToggleNotOkOptions();
             radNotOk.CheckedChanged += (s, e) => ToggleNotOkOptions();
@@ -269,13 +306,11 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Controls.Add(lblStd);
             this.Controls.Add(radOk);
             this.Controls.Add(radNotOk);
-            this.Controls.Add(cmbAction);
             this.Controls.Add(txtNote);
         }
 
         private void ToggleNotOkOptions()
         {
-            cmbAction.Visible = radNotOk.Checked;
             txtNote.Visible = radNotOk.Checked;
             this.BackColor = radNotOk.Checked ? Color.SeaShell : Color.White;
         }
