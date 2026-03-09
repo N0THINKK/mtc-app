@@ -18,6 +18,7 @@ namespace mtc_app.features.machine_history.presentation.screens
     {
         private FlowLayoutPanel pnlQuestions;
         private AppButton btnSave;
+        private Button btnLihatNg; // [BARU] Deklarasi di tingkat class agar bisa diakses event Resize
         private Label lblMachineInfo;
         
         private readonly bool _isTeknisiMode;
@@ -96,21 +97,61 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             // --- BOTTOM PANEL ---
             var pnlBottom = new Panel { Dock = DockStyle.Bottom, Height = 70, BackColor = AppColors.CardBackground };
+            
+            // Tombol Simpan
             btnSave = new AppButton { Text = "Simpan Hasil Patroli", Width = 250, Height = 40, Type = AppButton.ButtonType.Primary, Location = new Point(this.Width - 280, 15), Cursor = Cursors.Hand };
             btnSave.Click += BtnSave_Click;
 
+            // Tombol Batal
             AppButton btnCancel = new AppButton { Text = "Batal", Width = 100, Height = 40, Type = AppButton.ButtonType.Secondary, Location = new Point(20, 15), Cursor = Cursors.Hand };
             btnCancel.Click += (s, e) => this.Close();
 
             pnlBottom.Controls.Add(btnSave);
             pnlBottom.Controls.Add(btnCancel);
 
+            // =========================================================================
+            // [BARU] LANGKAH B: TOMBOL DAFTAR NG DI SEBELAH KIRI TOMBOL SIMPAN
+            // =========================================================================
+            if (_isTeknisiMode)
+            {
+                btnLihatNg = new Button
+                {
+                    Text = "Daftar Mesin NOT OK",
+                    Size = new Size(200, 40),
+                    BackColor = Color.DarkOrange, 
+                    ForeColor = Color.White,
+                    Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                    Cursor = Cursors.Hand,
+                    FlatStyle = FlatStyle.Flat,
+                    Location = new Point(btnSave.Left - 215, 15) // Diberi jarak 15px dari tombol simpan
+                };
+                btnLihatNg.FlatAppearance.BorderSize = 0;
+
+                btnLihatNg.Click += (sender, e) =>
+                {
+                    using (var popup = new PopupNgListForm())
+                    {
+                        popup.ShowDialog();
+                    }
+                };
+
+                pnlBottom.Controls.Add(btnLihatNg);
+            }
+            // =========================================================================
+
             this.Controls.Add(pnlQuestions);
             this.Controls.Add(pnlHeader);
             this.Controls.Add(pnlBottom);
             
+            // [MODIFIKASI] Event Resize untuk mengatur letak kedua tombol agar menempel di kanan
             this.Resize += (s, e) => { 
                 btnSave.Left = this.Width - btnSave.Width - 30; 
+                
+                if (btnLihatNg != null)
+                {
+                    // Pastikan tombol Daftar NG selalu mengikuti letak tombol Simpan
+                    btnLihatNg.Left = btnSave.Left - btnLihatNg.Width - 15; 
+                }
             };
         }
 
@@ -216,10 +257,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                         bool createTicket = false;
                         
                         // AUTO-TICKETING LOGIC: 
-                        // Jika menemukan kerusakan (NOT_OK) dan sedang di mode Operator
-                        // (Teknisi biasanya langsung memperbaiki tanpa buat tiket dari checksheet, 
-                        // tapi logika ini bisa disesuaikan jika Teknisi juga butuh buat tiket otomatis)
-                        if (!item.IsOk && item.NeedsTechnician && !_isTeknisiMode)
+                        if (!item.IsOk && item.NeedsTechnician)
                         {
                             createTicket = true;
                             try 
