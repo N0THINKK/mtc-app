@@ -269,6 +269,7 @@ namespace mtc_app.features.technician.presentation.components
             gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Status", HeaderText = "Status", DataPropertyName = "Status", Width = 150 });
 
             gridPatrols.CellFormatting += GridPatrols_CellFormatting;
+            gridPatrols.CellDoubleClick += GridPatrols_CellDoubleClick;
             pnlContent.Controls.Add(gridPatrols);
 
             UpdateFilterButtons();
@@ -305,6 +306,23 @@ namespace mtc_app.features.technician.presentation.components
             btnSortAsc.Invalidate();
         }
 
+        private void GridPatrols_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+            
+            if (gridPatrols.Rows[e.RowIndex].DataBoundItem is PatrolNgDto dto)
+            {
+                gridPatrols.CurrentCell = gridPatrols.Rows[e.RowIndex].Cells[0];
+                long ticketId = dto.TicketId ?? 0;
+                
+                // Show detail form for viewing
+                using (var ratingForm = new mtc_app.features.rating.presentation.screens.RatingTechnicianForm(ticketId, dto)) 
+                {
+                    ratingForm.ShowDialog();
+                }
+            }
+        }
+
         private void GridPatrols_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
             if (e.RowIndex < 0) return;
@@ -316,7 +334,7 @@ namespace mtc_app.features.technician.presentation.components
             else if (gridPatrols.Columns[e.ColumnIndex].Name == "Status" && e.Value != null)
             {
                 string status = e.Value.ToString();
-                if (status == "NOT_OK")
+                if (status == "NOT_OK" || status == "NG")
                 {
                     e.Value = "NG - Pending";
                     e.CellStyle.ForeColor = AppColors.Danger;
@@ -402,15 +420,25 @@ namespace mtc_app.features.technician.presentation.components
 
                 if (confirm == DialogResult.Yes)
                 {
-                    bool success = await _repository.MarkPatrolNgAsResolvedAsync(dto.DetailId);
-                    if (success)
+                    // Tampilkan Form Penilaian Operator terlebih dahulu
+                    // Dto bisa memiliki TicketId null jika operator mensubmit NG tanpa memicu Auto-Ticket
+                    long ticketIdForRating = dto.TicketId ?? 0;
+                    
+                    using (var ratingForm = new mtc_app.features.rating.presentation.screens.RatingTechnicianForm(ticketIdForRating, dto))
                     {
-                        MessageBox.Show("Berhasil ditandai selesai.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        await LoadDataAsync(_startDate, _endDate);
-                    }
-                    else
-                    {
-                        MessageBox.Show("Gagal memperbarui status. Silakan coba lagi.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        if (ratingForm.ShowDialog() == DialogResult.OK)
+                        {
+                            bool success = await _repository.MarkPatrolNgAsResolvedAsync(dto.DetailId);
+                            if (success)
+                            {
+                                MessageBox.Show("Berhasil ditandai selesai.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                await LoadDataAsync(_startDate, _endDate);
+                            }
+                            else
+                            {
+                                MessageBox.Show("Gagal memperbarui status. Silakan coba lagi.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
                     }
                 }
             }

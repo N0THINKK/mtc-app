@@ -77,10 +77,31 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             this.Load += (s, e) => {
                 CenterContent();
+                LoadExistingData();
             };
             this.Resize += (s, e) => {
                 CenterContent();
             };
+        }
+
+        private void LoadExistingData()
+        {
+            if (_ticketId > 0)
+            {
+                try 
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        int? existingRating = conn.QueryFirstOrDefault<int?>("SELECT gl_rating_score FROM tickets WHERE ticket_id = @Id", new { Id = _ticketId });
+                        if (existingRating.HasValue && existingRating.Value > 0)
+                        {
+                            ratingControl.Rating = existingRating.Value;
+                            btnSubmit.Text = "Tutup";
+                        }
+                    }
+                }
+                catch { }
+            }
         }
 
         private void CenterContent()
@@ -109,6 +130,13 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void BtnSubmit_Click(object sender, EventArgs e)
         {
+            if (btnSubmit.Text == "Tutup")
+            {
+                this.DialogResult = DialogResult.OK;
+                this.Close();
+                return;
+            }
+
             if (ratingControl.Rating == 0)
             {
                 MessageBox.Show("Silakan pilih rating terlebih dahulu.", "Info");
@@ -120,6 +148,15 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void SaveRating()
         {
+            // Jika tiket tidak ada (contoh: bypass dari Dashboard Patroli NG), 
+            // rating sekadar formalitas UI, tidak dicatat di DB.
+            if (_ticketId == 0)
+            {
+                this.DialogResult = DialogResult.OK;
+                this.Close();
+                return;
+            }
+
             // Offline Mode
             if (_ticketId < 0)
             {

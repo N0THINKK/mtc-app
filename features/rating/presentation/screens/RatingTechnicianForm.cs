@@ -7,6 +7,7 @@ using mtc_app.features.technician.data.repositories;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 using mtc_app.shared.infrastructure;
+using mtc_app.features.technician.data.dtos;
 
 namespace mtc_app.features.rating.presentation.screens
 {
@@ -14,6 +15,7 @@ namespace mtc_app.features.rating.presentation.screens
     {
         private readonly ITechnicianRepository _repository; // Changed to Interface
         private long _ticketId;
+        private PatrolNgDto _patrolDto;
         
         // Input Components
         private AppStarRating _starRating;
@@ -36,10 +38,11 @@ namespace mtc_app.features.rating.presentation.screens
         // Sparepart Requests
         private AppLabel _lblSparepartRequests;
 
-        public RatingTechnicianForm(long ticketId)
+        public RatingTechnicianForm(long ticketId, PatrolNgDto patrolDto = null)
         {
             _repository = ServiceLocator.CreateTechnicianRepository(); // Use Factory for Offline Support
             _ticketId = ticketId;
+            _patrolDto = patrolDto;
             
             InitializeCustomComponent();
             _ = LoadTicketDataAsync();
@@ -240,6 +243,27 @@ namespace mtc_app.features.rating.presentation.screens
         {
             try
             {
+                if (_ticketId == 0 && _patrolDto != null)
+                {
+                    _lblOperatorName.Text = _patrolDto.RoleTarget ?? "-";
+                    _lblMachineName.Text = _patrolDto.MachineName ?? "-";
+                    _lblTechnicianName.Text = "-";
+                    
+                    _lblFailureDetails.Text = _patrolDto.ItemName ?? "-";
+                    _lblActionDetails.Text = _patrolDto.ActionNote ?? "-";
+                    
+                    _lblArrivalDuration.Text = "-";
+                    _lblRepairDuration.Text = "-";
+                    
+                    _lblGlNote.Text = "(Belum dinilai oleh GL)";
+                    _lblSparepartRequests.Text = "(Tidak ada permintaan sparepart)";
+                    
+                    _inputNote.Visible = false;
+                    _btnSubmit.Text = "Tutup";
+                    
+                    return;
+                }
+
                 var data = await _repository.GetTicketDetailAsync(_ticketId);
 
                 if (this.IsDisposed) return;
@@ -298,7 +322,11 @@ namespace mtc_app.features.rating.presentation.screens
                     //     _starRating.Rating = data.TechRatingScore.Value;
                     
                     if (!string.IsNullOrEmpty(data.TechRatingNote))
+                    {
                         _inputNote.InputValue = data.TechRatingNote;
+                        _inputNote.Enabled = false;
+                        _btnSubmit.Text = "Tutup";
+                    }
 
                     // Populate Sparepart Requests
                     if (!string.IsNullOrEmpty(data.SparepartRequests))
@@ -325,17 +353,20 @@ namespace mtc_app.features.rating.presentation.screens
 
         private async Task BtnSubmit_ClickAsync(object sender, EventArgs e)
         {
-            // Validation removed
-            // if (_starRating.Rating == 0)
-            // {
-            //     MessageBox.Show("Mohon berikan rating untuk operator.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            //     return;
-            // }
+            if (_btnSubmit.Text == "Tutup")
+            {
+                this.DialogResult = DialogResult.OK;
+                this.Close();
+                return;
+            }
 
             try
             {
-                // Pass 0 as rating
-                await _repository.UpdateOperatorRatingAsync(_ticketId, 0, _inputNote.InputValue);
+                if (_ticketId > 0)
+                {
+                    // Pass 0 as rating
+                    await _repository.UpdateOperatorRatingAsync(_ticketId, 0, _inputNote.InputValue);
+                }
                 
                 MessageBox.Show("Penilaian operator berhasil disimpan.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 this.DialogResult = DialogResult.OK;
