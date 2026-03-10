@@ -158,7 +158,8 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 if (_currentMachineId > 0 && _currentTemplateId > 0)
                 {
-                    using (var historyForm = new ChecksheetHistoryForm(_currentMachineId, _currentTemplateId))
+                    string roleTargetLocal = _isTeknisiMode ? "Teknisi" : "Operator";
+                    using (var historyForm = new ChecksheetHistoryForm(_currentMachineId, _currentTemplateId, roleTargetLocal))
                     {
                         historyForm.ShowDialog();
                     }

@@ -32,6 +32,6 @@ namespace mtc_app.features.machine_history.data.repositories
         /// <summary>
         /// Mengambil riwayat pengisian checksheet dalam bentuk Pivot Table (Tanggal vs Item OK/NG).
         /// </summary>
-        Task<DataTable> GetChecksheetHistoryPivotAsync(int machineId, int templateId, int days = 30);
+        Task<DataTable> GetChecksheetHistoryPivotAsync(int machineId, int templateId, string roleTarget, int days = 30);
     }
 }
