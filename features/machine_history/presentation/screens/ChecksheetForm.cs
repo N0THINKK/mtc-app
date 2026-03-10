@@ -21,7 +21,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private Button btnLihatNg; // [BARU] Deklarasi di tingkat class agar bisa diakses event Resize
         private AppButton btnHistory; // Tombol riwayat checksheet
         private Label lblMachineInfo;
-        
+
         private readonly bool _isTeknisiMode;
         private int _currentMachineId;
         private int _currentTemplateId;
@@ -40,19 +40,19 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Size = new Size(900, 700);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = AppColors.Background;
-            
+
             // Sembunyikan border agar terlihat seperti Kiosk (opsional)
-            this.FormBorderStyle = FormBorderStyle.Sizable; 
+            this.FormBorderStyle = FormBorderStyle.Sizable;
 
             // --- HEADER ---
             var pnlHeader = new Panel { Dock = DockStyle.Top, Height = 100, BackColor = AppColors.CardBackground };
             Label lblTitle = new Label { Text = this.Text, Font = new Font("Segoe UI", 16F, FontStyle.Bold), ForeColor = AppColors.TextPrimary, AutoSize = true, Location = new Point(20, 15) };
             lblMachineInfo = new Label { Text = "Loading...", Font = new Font("Segoe UI", 11F), ForeColor = AppColors.TextSecondary, AutoSize = true, Location = new Point(20, 45) };
-            
+
             // --- UI IDENTITAS PELAKSANA (DINAMIS) ---
             string pelaksanaLabel = _isTeknisiMode ? "Teknisi" : "NIK Operator";
             string pelaksanaValue = UserSession.CurrentUser?.Username ?? "-";
-            
+
             if (_isTeknisiMode)
             {
                 string fullName = UserSession.CurrentUser?.FullName;
@@ -67,19 +67,20 @@ namespace mtc_app.features.machine_history.presentation.screens
                     {
                         pelaksanaValue = $"{words[0]} {words[words.Length - 1]}";
                     }
-                    
+
                     // Convert to Title Case (e.g. RIZAL FIRMANSYAH -> Rizal Firmansyah)
                     var textInfo = new System.Globalization.CultureInfo("id-ID", false).TextInfo;
                     pelaksanaValue = textInfo.ToTitleCase(pelaksanaValue.ToLower());
                 }
             }
 
-            Label lblPelaksanaInfo = new Label { 
-                Text = $"{pelaksanaLabel}: {pelaksanaValue}", 
-                Font = new Font("Segoe UI", 11F), 
-                ForeColor = AppColors.TextSecondary, 
-                AutoSize = true, 
-                Location = new Point(20, 70) 
+            Label lblPelaksanaInfo = new Label
+            {
+                Text = $"{pelaksanaLabel}: {pelaksanaValue}",
+                Font = new Font("Segoe UI", 11F),
+                ForeColor = AppColors.TextSecondary,
+                AutoSize = true,
+                Location = new Point(20, 70)
             };
 
             pnlHeader.Controls.Add(lblTitle);
@@ -93,12 +94,13 @@ namespace mtc_app.features.machine_history.presentation.screens
                 AutoScroll = true,
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
-                Padding = new Padding(20)
+                Padding = new Padding(20, 20, 20, 20),
+                AutoScrollMargin = new Size(0, 100) // Margin ekstra di bawah untuk memastikan item terakhir bisa ter-scroll penuh
             };
 
             // --- BOTTOM PANEL ---
             var pnlBottom = new Panel { Dock = DockStyle.Bottom, Height = 70, BackColor = AppColors.CardBackground };
-            
+
             // Tombol Simpan
             btnSave = new AppButton { Text = "Simpan Hasil Patroli", Width = 250, Height = 40, Type = AppButton.ButtonType.Primary, Location = new Point(this.Width - 280, 15), Cursor = Cursors.Hand };
             btnSave.Click += BtnSave_Click;
@@ -119,7 +121,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 {
                     Text = "Daftar Mesin NOT OK",
                     Size = new Size(200, 40),
-                    BackColor = Color.DarkOrange, 
+                    BackColor = Color.DarkOrange,
                     ForeColor = Color.White,
                     Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                     Cursor = Cursors.Hand,
@@ -143,11 +145,12 @@ namespace mtc_app.features.machine_history.presentation.screens
             btnHistory = new AppButton
             {
                 Text = "History",
-                Width = 100, Height = 40,
+                Width = 100,
+                Height = 40,
                 Type = AppButton.ButtonType.Secondary,
                 Cursor = Cursors.Hand
             };
-            
+
             // Atur posisi awal (nanti di-recalculate di event Resize)
             if (btnLihatNg != null)
                 btnHistory.Location = new Point(btnLihatNg.Left - 115, 15);
@@ -171,15 +174,20 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Controls.Add(pnlQuestions);
             this.Controls.Add(pnlHeader);
             this.Controls.Add(pnlBottom);
-            
+
+            pnlHeader.SendToBack();
+            pnlBottom.SendToBack();
+            pnlQuestions.BringToFront();
+
             // [MODIFIKASI] Event Resize untuk mengatur letak kedua tombol agar menempel di kanan
-            this.Resize += (s, e) => { 
-                btnSave.Left = this.Width - btnSave.Width - 30; 
-                
+            this.Resize += (s, e) =>
+            {
+                btnSave.Left = this.Width - btnSave.Width - 30;
+
                 if (btnLihatNg != null)
                 {
                     // Pastikan tombol Daftar NG selalu mengikuti letak tombol Simpan
-                    btnLihatNg.Left = btnSave.Left - btnLihatNg.Width - 15; 
+                    btnLihatNg.Left = btnSave.Left - btnLihatNg.Width - 15;
                     btnHistory.Left = btnLihatNg.Left - btnHistory.Width - 15;
                 }
                 else
@@ -225,7 +233,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     var items = conn.Query(
                         @"SELECT item_id, item_name, standard_judgment, check_method 
                           FROM checksheet_items 
-                          WHERE template_id = @TplId AND role_target = @RoleTarget", 
+                          WHERE template_id = @TplId AND role_target = @RoleTarget",
                           new { TplId = _currentTemplateId, RoleTarget = targetRole }).ToList();
 
                     if (items.Count == 0)
@@ -242,7 +250,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     {
                         var rowControl = new ChecksheetItemControl(number, (int)item.item_id, item.item_name, item.standard_judgment, item.check_method)
                         {
-                            Width = this.Width - 80 
+                            Width = this.Width - 80
                         };
                         _itemControls.Add(rowControl);
                         pnlQuestions.Controls.Add(rowControl);
@@ -265,9 +273,11 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
-            if (_itemControls.Any(i => !i.IsAnswered))
+            // 5. Validasi: Semua item harus diisi (OK / NOT OK / N/A)
+            bool allAnswered = _itemControls.All(c => c.IsAnswered);
+            if (!allAnswered)
             {
-                MessageBox.Show("Harap isi semua point inspeksi (Pilih OK atau NOT OK) sebelum menyimpan!", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Masih ada pertanyaan yang belum dijawab!\nPastikan semua pertanyaan memiliki status OK, NOT OK, atau N/A.", "Data Belum Lengkap", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -284,36 +294,36 @@ namespace mtc_app.features.machine_history.presentation.screens
                     string insertLogSql = "INSERT INTO patrol_logs (machine_id, user_nik, shift) VALUES (@MachId, @Nik, 'A'); SELECT LAST_INSERT_ID();";
                     int logId = conn.QuerySingle<int>(insertLogSql, new { MachId = _currentMachineId, Nik = userNik });
 
-                    // 2. Catat Jawaban per Pertanyaan
+                    // 7. Simpan Detail Pemeriksaan
                     foreach (var item in _itemControls)
                     {
-                        string status = item.IsOk ? "OK" : "NOT_OK";
+                        string status = item.IsNa ? "N/A" : (item.IsOk ? "OK" : "NG");
                         bool createTicket = false;
-                        
+
                         // AUTO-TICKETING LOGIC: 
                         if (!item.IsOk && item.NeedsTechnician)
                         {
                             createTicket = true;
-                            try 
+                            try
                             {
                                 var historyRepo = new MachineHistoryRepository();
-                                
+
                                 await historyRepo.CreateTicketAsync(new CreateTicketRequest
                                 {
                                     MachineId = _currentMachineId,
                                     OperatorNik = userNik,
                                     ShiftName = "A", // Shift Default
-                                    ApplicatorCode = "-", 
+                                    ApplicatorCode = "-",
                                     Problems = new List<TicketProblemRequest>
                                     {
                                         new TicketProblemRequest
                                         {
-                                            ProblemTypeName = "Lain-lain", 
-                                            FailureName = $"[CHECKSHEET] {item.ItemName} NG. Note: {item.Notes}"
+                                            ProblemTypeName = "Lain-lain",
+                                            FailureName = $"[CHECKSHEET] {item.ItemName} NG"
                                         }
                                     }
                                 });
-                            } 
+                            }
                             catch { /* Abaikan error tiket otomatis agar proses simpan patroli utama tetap sukses */ }
                         }
 
@@ -336,53 +346,57 @@ namespace mtc_app.features.machine_history.presentation.screens
                 this.Cursor = Cursors.Default;
             }
         }
-    }
 
-    // =========================================================================
-    // CUSTOM CONTROL: BARIS PERTANYAAN
-    // =========================================================================
-    public class ChecksheetItemControl : UserControl
-    {
-        public int ItemId { get; private set; }
-        public string ItemName { get; private set; }
-        public string Standard { get; private set; }
-        public bool IsAnswered => radOk.Checked || radNotOk.Checked;
-        public bool IsOk => radOk.Checked;
-        public bool NeedsTechnician => radNotOk.Checked;
-        public string Notes => ""; // Note field removed per user request
-
-        private RadioButton radOk, radNotOk;
-
-        public ChecksheetItemControl(int number, int itemId, string name, string standard, string method)
+        // =========================================================================
+        // CUSTOM CONTROL: BARIS PERTANYAAN
+        // =========================================================================
+        public class ChecksheetItemControl : UserControl
         {
-            ItemId = itemId;
-            ItemName = name;
-            Standard = standard;
-            
-            this.Height = 110;
-            this.BackColor = Color.White;
-            this.Margin = new Padding(0, 0, 0, 15);
-            this.Padding = new Padding(10);
-            this.BorderStyle = BorderStyle.FixedSingle;
+            public int ItemId { get; private set; }
+            public string ItemName { get; private set; }
+            public string Standard { get; private set; }
+            public bool IsAnswered => radOk.Checked || radNotOk.Checked || radNa.Checked;
+            public bool IsOk => radOk.Checked;
+            public bool NeedsTechnician => radNotOk.Checked;
+            public bool IsNa => radNa.Checked;
+            public string Notes => ""; // Note field removed per user request
 
-            Label lblName = new Label { Text = $"{number}. {name}", Font = new Font("Segoe UI", 12F, FontStyle.Bold), AutoSize = true, Location = new Point(10, 10) };
-            Label lblStd = new Label { Text = $"Standar: {standard}  |  Metode: {method}", Font = new Font("Segoe UI", 9.5F), ForeColor = Color.Gray, AutoSize = true, Location = new Point(30, 35) };
+            private RadioButton radOk, radNotOk, radNa;
 
-            radOk = new RadioButton { Text = "OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.SeaGreen, AutoSize = true, Location = new Point(30, 65), Cursor = Cursors.Hand };
-            radNotOk = new RadioButton { Text = "NOT OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.Crimson, AutoSize = true, Location = new Point(100, 65), Cursor = Cursors.Hand };
+            public ChecksheetItemControl(int number, int itemId, string name, string standard, string method)
+            {
+                ItemId = itemId;
+                ItemName = name;
+                Standard = standard;
 
-            radOk.CheckedChanged += (s, e) => ToggleNotOkOptions();
-            radNotOk.CheckedChanged += (s, e) => ToggleNotOkOptions();
+                this.Height = 110;
+                this.BackColor = Color.White;
+                this.Margin = new Padding(0, 0, 0, 15);
+                this.Padding = new Padding(10);
+                this.BorderStyle = BorderStyle.FixedSingle;
 
-            this.Controls.Add(lblName);
-            this.Controls.Add(lblStd);
-            this.Controls.Add(radOk);
-            this.Controls.Add(radNotOk);
-        }
+                Label lblName = new Label { Text = $"{number}. {name}", Font = new Font("Segoe UI", 12F, FontStyle.Bold), AutoSize = true, Location = new Point(10, 10) };
+                Label lblStd = new Label { Text = $"Standar: {standard}  |  Metode: {method}", Font = new Font("Segoe UI", 9.5F), ForeColor = Color.Gray, AutoSize = true, Location = new Point(30, 35) };
 
-        private void ToggleNotOkOptions()
-        {
-            this.BackColor = radNotOk.Checked ? Color.SeaShell : Color.White;
+                radOk = new RadioButton { Text = "OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.SeaGreen, AutoSize = true, Location = new Point(30, 65), Cursor = Cursors.Hand };
+                radNotOk = new RadioButton { Text = "NOT OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.Crimson, AutoSize = true, Location = new Point(100, 65), Cursor = Cursors.Hand };
+                radNa = new RadioButton { Text = "N/A", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.DimGray, AutoSize = true, Location = new Point(210, 65), Cursor = Cursors.Hand };
+
+                radOk.CheckedChanged += (s, e) => ToggleNotOkOptions();
+                radNotOk.CheckedChanged += (s, e) => ToggleNotOkOptions();
+                radNa.CheckedChanged += (s, e) => ToggleNotOkOptions();
+
+                this.Controls.Add(lblName);
+                this.Controls.Add(lblStd);
+                this.Controls.Add(radOk);
+                this.Controls.Add(radNotOk);
+                this.Controls.Add(radNa);
+            }
+
+            private void ToggleNotOkOptions()
+            {
+                this.BackColor = radNotOk.Checked ? Color.SeaShell : Color.White;
+            }
         }
     }
 }
