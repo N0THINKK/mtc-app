@@ -1417,6 +1417,16 @@ namespace mtc_app.features.machine_history.presentation.screens
                                 }, trans);
                             }
                             
+                            // [BARU] Auto-Resolve Patroli NG items for this machine
+                            string resolveNgSql = @"
+                                UPDATE patrol_log_details pld
+                                JOIN patrol_logs pl ON pld.log_id = pl.log_id
+                                SET pld.status = 'PERBAIKAN_OK'
+                                WHERE pl.machine_id = (SELECT machine_id FROM tickets WHERE ticket_id = @Id)
+                                  AND pld.status IN ('NOT_OK', 'NG')";
+                                  
+                            conn.Execute(resolveNgSql, new { Id = _currentTicketId }, trans);
+                            
                             trans.Commit();
                             _timer.Stop();
                             SaveTimerToDatabase(); 
