@@ -101,14 +101,17 @@ namespace mtc_app.features.machine_history.presentation.screens
             // ========================================================
             if (_isAutoStart && !_isVerified && _currentTicketId > 0)
             {
-                if (mtc_app.shared.data.session.UserSession.CurrentUser != null && 
-                    !string.IsNullOrEmpty(mtc_app.shared.data.session.UserSession.CurrentUser.Nik))
+                var currentUser = mtc_app.shared.data.session.UserSession.CurrentUser;
+                if (currentUser != null)
                 {
-                    // Isi NIK otomatis berdasarkan sesi user yang sedang login
-                    inputNIK.InputValue = mtc_app.shared.data.session.UserSession.CurrentUser.Nik;
+                    // Gunakan Username (Inisial) jika ada, jika tidak fallback ke NIK
+                    string activeCredential = !string.IsNullOrEmpty(currentUser.Username) ? currentUser.Username : currentUser.Nik;
                     
-                    // Eksekusi logic tombol verifikasi secara programatis
-                    BtnVerify_Click(this, EventArgs.Empty);
+                    if (!string.IsNullOrEmpty(activeCredential))
+                    {
+                        inputNIK.InputValue = activeCredential;
+                        BtnVerify_Click(this, EventArgs.Empty);
+                    }
                 }
             }
         }
