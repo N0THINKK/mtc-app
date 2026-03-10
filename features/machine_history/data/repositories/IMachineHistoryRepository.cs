@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Threading.Tasks;
 using mtc_app.features.machine_history.data.dtos;
 
@@ -27,5 +28,10 @@ namespace mtc_app.features.machine_history.data.repositories
         /// Digunakan untuk fitur "Continue Problem".
         /// </summary>
         Task<MachineHistoryDto> GetActiveTicketForMachineAsync(int machineId);
+
+        /// <summary>
+        /// Mengambil riwayat pengisian checksheet dalam bentuk Pivot Table (Tanggal vs Item OK/NG).
+        /// </summary>
+        Task<DataTable> GetChecksheetHistoryPivotAsync(int machineId, int templateId, int days = 30);
     }
 }
