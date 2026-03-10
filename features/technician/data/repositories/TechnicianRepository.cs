@@ -293,11 +293,11 @@ namespace mtc_app.features.technician.data.repositories
 
                 // Filter NOT_OK vs PERBAIKAN_OK vs Semua
                 if (filterStatus == "NG")
-                    sql += " AND d.status = 'NOT_OK' ";
+                    sql += " AND d.status IN ('NOT_OK', 'NG') ";
                 else if (filterStatus == "Selesai")
                     sql += " AND d.status = 'PERBAIKAN_OK' ";
                 else
-                    sql += " AND d.status IN ('NOT_OK', 'PERBAIKAN_OK') ";
+                    sql += " AND d.status IN ('NOT_OK', 'NG', 'PERBAIKAN_OK') ";
 
                 if (sortOrder == "ASC")
                     sql += " ORDER BY l.patrol_date ASC;";
@@ -314,12 +314,12 @@ namespace mtc_app.features.technician.data.repositories
             {
                 string sql = @"
                     SELECT 
-                        SUM(CASE WHEN d.status = 'NOT_OK' THEN 1 ELSE 0 END) AS PendingCount,
+                        SUM(CASE WHEN d.status IN ('NOT_OK', 'NG') THEN 1 ELSE 0 END) AS PendingCount,
                         SUM(CASE WHEN d.status = 'PERBAIKAN_OK' THEN 1 ELSE 0 END) AS ResolvedCount
                     FROM patrol_log_details d
                     JOIN patrol_logs l ON d.log_id = l.log_id
                     WHERE l.patrol_date BETWEEN @Start AND @End
-                      AND d.status IN ('NOT_OK', 'PERBAIKAN_OK');";
+                      AND d.status IN ('NOT_OK', 'NG', 'PERBAIKAN_OK');";
 
                 return await conn.QueryFirstOrDefaultAsync<PatrolNgStatsDto>(sql, new { Start = start, End = end });
             }
@@ -332,7 +332,7 @@ namespace mtc_app.features.technician.data.repositories
                 string sql = @"
                     UPDATE patrol_log_details 
                     SET status = 'PERBAIKAN_OK'
-                    WHERE detail_id = @DetailId AND status = 'NOT_OK'";
+                    WHERE detail_id = @DetailId AND status IN ('NOT_OK', 'NG')";
                 int rowsAffected = await conn.ExecuteAsync(sql, new { DetailId = detailId });
                 return rowsAffected > 0;
             }
