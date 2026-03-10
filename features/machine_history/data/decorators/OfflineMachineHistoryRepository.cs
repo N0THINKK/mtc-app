@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using mtc_app.features.machine_history.data.dtos;
@@ -87,6 +88,27 @@ namespace mtc_app.features.machine_history.data.decorators
             // Saat ini kita kembalikan null karena fitur pencarian pending ticket by MachineID
             // perlu ditambahkan di OfflineRepository.
             return null;
+        }
+
+        public async Task<DataTable> GetChecksheetHistoryPivotAsync(int machineId, int templateId, int days = 30)
+        {
+            if (_networkMonitor.IsOnline)
+            {
+                try
+                {
+                    return await _innerRepository.GetChecksheetHistoryPivotAsync(machineId, templateId, days);
+                }
+                catch (Exception ex) when (IsNetworkException(ex))
+                {
+                    // Fallback to offline
+                    System.Diagnostics.Debug.WriteLine($"[OfflineHistory] Network error fetching checksheet pivot: {ex.Message}");
+                }
+            }
+
+            // Fallback Offline: return empty table
+            DataTable emptyTable = new DataTable();
+            emptyTable.Columns.Add("Tanggal", typeof(string));
+            return emptyTable;
         }
 
         private bool IsNetworkException(Exception ex)

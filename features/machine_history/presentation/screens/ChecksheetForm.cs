@@ -19,6 +19,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private FlowLayoutPanel pnlQuestions;
         private AppButton btnSave;
         private Button btnLihatNg; // [BARU] Deklarasi di tingkat class agar bisa diakses event Resize
+        private AppButton btnHistory; // Tombol riwayat checksheet
         private Label lblMachineInfo;
         
         private readonly bool _isTeknisiMode;
@@ -137,6 +138,33 @@ namespace mtc_app.features.machine_history.presentation.screens
 
                 pnlBottom.Controls.Add(btnLihatNg);
             }
+
+            // Tombol History Checksheet
+            btnHistory = new AppButton
+            {
+                Text = "History",
+                Width = 100, Height = 40,
+                Type = AppButton.ButtonType.Secondary,
+                Cursor = Cursors.Hand
+            };
+            
+            // Atur posisi awal (nanti di-recalculate di event Resize)
+            if (btnLihatNg != null)
+                btnHistory.Location = new Point(btnLihatNg.Left - 115, 15);
+            else
+                btnHistory.Location = new Point(btnSave.Left - 115, 15);
+
+            btnHistory.Click += (sender, e) =>
+            {
+                if (_currentMachineId > 0 && _currentTemplateId > 0)
+                {
+                    using (var historyForm = new ChecksheetHistoryForm(_currentMachineId, _currentTemplateId))
+                    {
+                        historyForm.ShowDialog();
+                    }
+                }
+            };
+            pnlBottom.Controls.Add(btnHistory);
             // =========================================================================
 
             this.Controls.Add(pnlQuestions);
@@ -151,6 +179,11 @@ namespace mtc_app.features.machine_history.presentation.screens
                 {
                     // Pastikan tombol Daftar NG selalu mengikuti letak tombol Simpan
                     btnLihatNg.Left = btnSave.Left - btnLihatNg.Width - 15; 
+                    btnHistory.Left = btnLihatNg.Left - btnHistory.Width - 15;
+                }
+                else
+                {
+                    btnHistory.Left = btnSave.Left - btnHistory.Width - 15;
                 }
             };
         }

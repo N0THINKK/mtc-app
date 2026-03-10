@@ -308,6 +308,82 @@ namespace mtc_app.features.machine_history.data.repositories
             }
         }
 
+        public async Task<DataTable> GetChecksheetHistoryPivotAsync(int machineId, int templateId, int days = 30)
+        {
+            DataTable pivotTable = new DataTable();
+            pivotTable.Columns.Add("Tanggal", typeof(string));
+
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                // 1. Ambil list item untuk template ini agar jadi kolom
+                string itemSql = "SELECT item_id, item_name, role_target FROM checksheet_items WHERE template_id = @TempId ORDER BY item_id";
+                var items = await connection.QueryAsync(itemSql, new { TempId = templateId });
+
+                var colMapping = new Dictionary<int, string>();
+                int colIndex = 1;
+                foreach (var item in items)
+                {
+                    string colName = $"{colIndex}"; // Sesuai permintaan: tanggal + nomor problemnya
+                    pivotTable.Columns.Add(colName, typeof(string));
+                    colMapping.Add((int)item.item_id, colName);
+                    colIndex++;
+                }
+
+                if (items.Count() == 0) return pivotTable;
+
+                // 2. Ambil data raw logs
+                DateTime startDate = DateTime.Now.Date.AddDays(-days);
+
+                string rawDataSql = @"
+                    SELECT 
+                        DATE(l.patrol_date) AS PatrolDate,
+                        d.item_id AS ItemId,
+                        d.status AS Status
+                    FROM patrol_logs l
+                    JOIN patrol_log_details d ON l.log_id = d.log_id
+                    JOIN checksheet_items i ON d.item_id = i.item_id
+                    WHERE l.machine_id = @MachId AND i.template_id = @TempId AND l.patrol_date >= @Start
+                    ORDER BY l.patrol_date DESC";
+
+                var rawData = await connection.QueryAsync(rawDataSql, new { MachId = machineId, TempId = templateId, Start = startDate });
+
+                // 3. Group by Date dan Pivot
+                var groupedByDate = rawData.GroupBy(r => ((DateTime)r.PatrolDate).ToString("dd/MM/yyyy"));
+
+                foreach (var dateGroup in groupedByDate)
+                {
+                    DataRow row = pivotTable.NewRow();
+                    row["Tanggal"] = dateGroup.Key;
+
+                    foreach (var record in dateGroup)
+                    {
+                        int itemId = (int)record.ItemId;
+                        if (colMapping.ContainsKey(itemId))
+                        {
+                            string colName = colMapping[itemId];
+                            string status = record.Status == "OK" ? "OK" : "NG";
+                            
+                            // Jika sudah ada status NG untuk item ini di tanggal yg sama, pertahankan NG (worst case scenario)
+                            if (row[colName] == DBNull.Value || row[colName].ToString() == "OK")
+                            {
+                                row[colName] = status;
+                            }
+                        }
+                    }
+
+                    // Isi sel yg kosong dengan "-"
+                    foreach (DataColumn col in pivotTable.Columns)
+                    {
+                        if (row[col] == DBNull.Value) row[col] = "-";
+                    }
+
+                    pivotTable.Rows.Add(row);
+                }
+            }
+
+            return pivotTable;
+        }
+
         // =========================================================================================
         // HELPER FUNCTIONS (FORMATTING & AUTO-ADD TO MASTER)
         // =========================================================================================
