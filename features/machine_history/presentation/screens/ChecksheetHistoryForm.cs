@@ -200,6 +200,11 @@ namespace mtc_app.features.machine_history.presentation.screens
                     e.CellStyle.ForeColor = AppColors.Danger;
                     e.CellStyle.Font = AppFonts.Subtitle;
                 }
+                else if (status == "N/A")
+                {
+                    e.CellStyle.ForeColor = Color.DimGray;
+                    e.CellStyle.Font = AppFonts.Subtitle;
+                }
             }
         }
     }
