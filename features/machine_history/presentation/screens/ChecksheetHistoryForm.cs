@@ -14,16 +14,18 @@ namespace mtc_app.features.machine_history.presentation.screens
         private readonly IMachineHistoryRepository _repository;
         private readonly int _machineId;
         private readonly int _templateId;
+        private readonly string _roleTarget;
 
         private DataGridView _dgvHistory;
         private Label _lblStatus;
         private Panel _pnlContent;
 
-        public ChecksheetHistoryForm(int machineId, int templateId)
+        public ChecksheetHistoryForm(int machineId, int templateId, string roleTarget)
         {
             _repository = new MachineHistoryRepository();
             _machineId = machineId;
             _templateId = templateId;
+            _roleTarget = roleTarget;
 
             InitializeForm();
             InitializeUI();
@@ -145,7 +147,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                 _lblStatus.Text = "Memuat data riwayat rincian...";
                 _lblStatus.Visible = true;
 
-                DataTable pivotData = await _repository.GetChecksheetHistoryPivotAsync(_machineId, _templateId, 30);
+                // Memanggil GetChecksheetHistoryPivotAsync dengan roleTarget (Teknisi / Operator)
+                DataTable pivotData = await _repository.GetChecksheetHistoryPivotAsync(_machineId, _templateId, _roleTarget, 30);
 
                 if (pivotData.Rows.Count == 0)
                 {

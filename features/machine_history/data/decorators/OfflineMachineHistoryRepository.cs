@@ -90,13 +90,13 @@ namespace mtc_app.features.machine_history.data.decorators
             return null;
         }
 
-        public async Task<DataTable> GetChecksheetHistoryPivotAsync(int machineId, int templateId, int days = 30)
+        public async Task<DataTable> GetChecksheetHistoryPivotAsync(int machineId, int templateId, string roleTarget, int days = 30)
         {
             if (_networkMonitor.IsOnline)
             {
                 try
                 {
-                    return await _innerRepository.GetChecksheetHistoryPivotAsync(machineId, templateId, days);
+                    return await _innerRepository.GetChecksheetHistoryPivotAsync(machineId, templateId, roleTarget, days);
                 }
                 catch (Exception ex) when (IsNetworkException(ex))
                 {
