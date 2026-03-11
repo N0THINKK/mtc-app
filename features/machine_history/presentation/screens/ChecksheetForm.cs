@@ -132,10 +132,12 @@ namespace mtc_app.features.machine_history.presentation.screens
 
                 btnLihatNg.Click += (sender, e) =>
                 {
+                    this.Hide();
                     using (var popup = new PopupNgListForm())
                     {
-                        popup.ShowDialog();
+                        popup.ShowDialog(this);
                     }
+                    this.Show();
                 };
 
                 pnlBottom.Controls.Add(btnLihatNg);
@@ -161,11 +163,13 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 if (_currentMachineId > 0 && _currentTemplateId > 0)
                 {
+                    this.Hide();
                     string roleTargetLocal = _isTeknisiMode ? "Teknisi" : "Operator";
                     using (var historyForm = new ChecksheetHistoryForm(_currentMachineId, _currentTemplateId, roleTargetLocal))
                     {
-                        historyForm.ShowDialog();
+                        historyForm.ShowDialog(this);
                     }
+                    this.Show();
                 }
             };
             pnlBottom.Controls.Add(btnHistory);
@@ -300,32 +304,32 @@ namespace mtc_app.features.machine_history.presentation.screens
                         string status = item.IsNa ? "N/A" : (item.IsOk ? "OK" : "NG");
                         bool createTicket = false;
 
-                        // AUTO-TICKETING LOGIC: 
-                        if (!item.IsOk && item.NeedsTechnician)
-                        {
-                            createTicket = true;
-                            try
-                            {
-                                var historyRepo = new MachineHistoryRepository();
+                        // // AUTO-TICKETING LOGIC: 
+                        // if (!item.IsOk && item.NeedsTechnician)
+                        // {
+                        //     createTicket = true;
+                        //     try
+                        //     {
+                        //         var historyRepo = new MachineHistoryRepository();
 
-                                await historyRepo.CreateTicketAsync(new CreateTicketRequest
-                                {
-                                    MachineId = _currentMachineId,
-                                    OperatorNik = userNik,
-                                    ShiftName = "A", // Shift Default
-                                    ApplicatorCode = "-",
-                                    Problems = new List<TicketProblemRequest>
-                                    {
-                                        new TicketProblemRequest
-                                        {
-                                            ProblemTypeName = "Lain-lain",
-                                            FailureName = $"[CHECKSHEET] {item.ItemName} NG"
-                                        }
-                                    }
-                                });
-                            }
-                            catch { /* Abaikan error tiket otomatis agar proses simpan patroli utama tetap sukses */ }
-                        }
+                        //         await historyRepo.CreateTicketAsync(new CreateTicketRequest
+                        //         {
+                        //             MachineId = _currentMachineId,
+                        //             OperatorNik = userNik,
+                        //             ShiftName = "A", // Shift Default
+                        //             ApplicatorCode = "-",
+                        //             Problems = new List<TicketProblemRequest>
+                        //             {
+                        //                 new TicketProblemRequest
+                        //                 {
+                        //                     ProblemTypeName = "Lain-lain",
+                        //                     FailureName = $"[CHECKSHEET] {item.ItemName} NG"
+                        //                 }
+                        //             }
+                        //         });
+                        //     }
+                        //     catch { /* Abaikan error tiket otomatis agar proses simpan patroli utama tetap sukses */ }
+                        // }
 
                         conn.Execute(
                             @"INSERT INTO patrol_log_details (log_id, item_id, status, action_note, is_ticket_created) 

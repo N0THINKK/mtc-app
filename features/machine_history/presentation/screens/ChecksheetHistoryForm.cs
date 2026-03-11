@@ -137,6 +137,38 @@ namespace mtc_app.features.machine_history.presentation.screens
                 TextAlign = ContentAlignment.MiddleCenter
             };
             this.Controls.Add(_lblStatus);
+            // =========================================================
+            // [BARU] PANEL BAWAH & TOMBOL TUTUP DI KIRI BAWAH
+            // =========================================================
+            var pnlBottom = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 60,
+                BackColor = this.BackColor
+            };
+
+            var btnCloseBottom = new Button
+            {
+                Text = "TUTUP",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.Crimson,
+                Size = new Size(120, 40),
+                Cursor = Cursors.Hand,
+                FlatStyle = FlatStyle.Flat,
+                Location = new Point(20, 10) // Jarak 20px dari tepi kiri
+            };
+            btnCloseBottom.FlatAppearance.BorderSize = 0;
+            btnCloseBottom.Click += (s, e) => this.Close();
+
+            pnlBottom.Controls.Add(btnCloseBottom);
+            
+            // Tambahkan ke form
+            this.Controls.Add(pnlBottom);
+            
+            // Pastikan panel ini tidak tertutup oleh grid konten
+            pnlBottom.BringToFront(); 
+            // =========================================================
         }
 
         private async System.Threading.Tasks.Task LoadHistoryDataAsync()
