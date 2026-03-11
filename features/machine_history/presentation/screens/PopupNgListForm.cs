@@ -38,7 +38,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "PatrolDate", HeaderText = "Tanggal", DataPropertyName = "FormattedPatrolDate" });
             gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Machine", HeaderText = "Mesin", DataPropertyName = "MachineName" });
             gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Item", HeaderText = "Item NG", DataPropertyName = "ItemName" });
-            gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Note", HeaderText = "Catatan", DataPropertyName = "ActionNote" });
 
             // Event saat baris diklik ganda (Double Click)
             gridPatrols.CellDoubleClick += GridPatrols_CellDoubleClick;

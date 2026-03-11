@@ -298,7 +298,6 @@ namespace mtc_app.features.technician.presentation.components
             gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Machine", HeaderText = "Mesin", DataPropertyName = "MachineName", Width = 150 });
             gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Reporter", HeaderText = "Pelapor", DataPropertyName = "RoleTarget", Width = 120 });
             gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Item", HeaderText = "Item NG", DataPropertyName = "ItemName", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
-            gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Note", HeaderText = "Keterangan", DataPropertyName = "ActionNote", Width = 250 });
             gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Status", HeaderText = "Status", DataPropertyName = "Status", Width = 150 });
 
             gridPatrols.CellFormatting += GridPatrols_CellFormatting;
@@ -369,7 +368,7 @@ namespace mtc_app.features.technician.presentation.components
                 string status = e.Value.ToString();
                 if (status == "NOT_OK" || status == "NG")
                 {
-                    e.Value = "NG - Pending";
+                    e.Value = "OPEN";
                     e.CellStyle.ForeColor = AppColors.Danger;
                     e.CellStyle.Font = new Font(gridPatrols.DefaultCellStyle.Font, FontStyle.Bold);
                 }
