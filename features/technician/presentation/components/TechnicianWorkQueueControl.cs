@@ -361,8 +361,8 @@ namespace mtc_app.features.technician.presentation.components
             int statusIndex = cmbFilterStatus.SelectedIndex;
             if (statusIndex == 1) filtered = filtered.Where(t => t.StatusId == 1);       // Belum Ditangani
             else if (statusIndex == 2) filtered = filtered.Where(t => t.StatusId == 2);  // Sedang Diperbaiki
-            else if (statusIndex == 3) filtered = filtered.Where(t => t.StatusId == 3);  // Inspeksi [BARU]
-            else if (statusIndex == 4) filtered = filtered.Where(t => t.StatusId == 4);  // Selesai
+            else if (statusIndex == 3) filtered = filtered.Where(t => t.StatusId == 4);  // Inspeksi [BARU] maps to DB Status 4
+            else if (statusIndex == 4) filtered = filtered.Where(t => t.StatusId == 3);  // Selesai maps to DB Status 3
             else if (statusIndex == 5) filtered = filtered.Where(t => t.IsMachineRunning == 0); // Mesin Error (Run=0)
 
             int sortIndex = cmbSortBy.SelectedIndex;

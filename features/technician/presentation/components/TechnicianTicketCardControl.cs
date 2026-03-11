@@ -315,13 +315,13 @@ namespace mtc_app.features.technician.presentation.components
                     stripColor = Color.FromArgb(34, 197, 94);
                     badgeBgColor = Color.FromArgb(240, 253, 244);
                     badgeTextColor = Color.FromArgb(21, 128, 61);
-                    badgeText = "Inspeksi";
+                    badgeText = "Selesai";
                     break;
                 case 4: // Inspeksi (Menunggu Verifikasi)
                     stripColor = Color.FromArgb(168, 85, 247);    // Ungu
                     badgeBgColor = Color.FromArgb(250, 245, 255); // Ungu Muda
                     badgeTextColor = Color.FromArgb(126, 34, 206); // Ungu Gelap
-                    badgeText = "Selesai";
+                    badgeText = "Inspeksi";
                     break;
                 default:
                     stripColor = AppColors.Primary;
