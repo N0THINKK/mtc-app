@@ -263,7 +263,7 @@ namespace mtc_app.features.technician.data.repositories
         // PATROLI CHECKSHEET (NG LIST)
         // ====================================================================================
 
-        public async Task<IEnumerable<PatrolNgDto>> GetPatrolNgListAsync(string filterStatus, string sortOrder, DateTime start, DateTime end)
+        public async Task<IEnumerable<PatrolNgDto>> GetPatrolNgListAsync(string filterStatus, string sortOrder, DateTime start, DateTime end, string roleFilter = "Semua")
         {
             using (var conn = DatabaseHelper.GetConnection())
             {
@@ -298,6 +298,16 @@ namespace mtc_app.features.technician.data.repositories
                     sql += " AND d.status = 'PERBAIKAN_OK' ";
                 else
                     sql += " AND d.status IN ('NOT_OK', 'NG', 'PERBAIKAN_OK') ";
+
+                // Terapkan filter Role Pelapor
+                if (roleFilter == "Teknisi")
+                {
+                    sql += " AND (i.role_target = 'Teknisi' OR l.user_nik REGEXP '^[a-zA-Z]') ";
+                }
+                else if (roleFilter == "Operator")
+                {
+                    sql += " AND (i.role_target = 'Operator' OR l.user_nik REGEXP '^[0-9]') ";
+                }
 
                 if (sortOrder == "ASC")
                     sql += " ORDER BY l.patrol_date ASC;";

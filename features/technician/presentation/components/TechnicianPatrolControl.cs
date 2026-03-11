@@ -16,12 +16,14 @@ namespace mtc_app.features.technician.presentation.components
         private readonly ITechnicianRepository _repository;
         private string _currentFilter = "NG"; // "NG", "Selesai", "Semua"
         private string _currentSort = "DESC"; // "DESC", "ASC"
+        private string _currentRoleFilter = "Semua"; // "Semua", "Teknisi", "Operator"
         
         private StatCard cardPending;
         private StatCard cardResolved;
         private AppButton btnFilterNg;
         private AppButton btnFilterResolved;
         private AppButton btnFilterAll;
+        private ComboBox cbRoleFilter;
         private AppButton btnSortDesc;
         private AppButton btnSortAsc;
         private AppButton btnRefresh;
@@ -152,6 +154,37 @@ namespace mtc_app.features.technician.presentation.components
             flowRight.Controls.Add(btnSortDesc);
             flowRight.Controls.Add(btnSortAsc);
             flowRight.Controls.Add(lblSort);
+
+            // Spacer between filters
+            flowRight.Controls.Add(new Panel { Width = 30, Height = 10, BackColor = Color.Transparent });
+
+            cbRoleFilter = new ComboBox
+            {
+                Width = 150,
+                Margin = new Padding(0, 10, 10, 0),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 11F, FontStyle.Regular),
+                ForeColor = AppColors.TextPrimary,
+            };
+            cbRoleFilter.Items.AddRange(new object[] { "Semua", "Teknisi", "Operator" });
+            cbRoleFilter.SelectedIndex = 0;
+            cbRoleFilter.SelectedIndexChanged += (s, e) => 
+            {
+                _currentRoleFilter = cbRoleFilter.SelectedItem?.ToString() ?? "Semua";
+                _ = LoadDataAsync(_startDate, _endDate);
+            };
+
+            Label lblRoleFilter = new Label
+            {
+                Text = "Pelapor:",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(73, 80, 87),
+                Margin = new Padding(0, 10, 10, 0)
+            };
+
+            flowRight.Controls.Add(cbRoleFilter);
+            flowRight.Controls.Add(lblRoleFilter);
 
             pnlFilters.Controls.Add(flowLeft);
             pnlFilters.Controls.Add(flowRight);
@@ -358,7 +391,7 @@ namespace mtc_app.features.technician.presentation.components
             {
                 // Parallel fetch
                 var statsTask = _repository.GetPatrolNgStatsAsync(start, end);
-                var listTask = _repository.GetPatrolNgListAsync(_currentFilter, _currentSort, start, end);
+                var listTask = _repository.GetPatrolNgListAsync(_currentFilter, _currentSort, start, end, _currentRoleFilter);
 
                 await Task.WhenAll(statsTask, listTask);
 
