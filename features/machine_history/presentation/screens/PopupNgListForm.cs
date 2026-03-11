@@ -43,7 +43,37 @@ namespace mtc_app.features.machine_history.presentation.screens
             // Event saat baris diklik ganda (Double Click)
             gridPatrols.CellDoubleClick += GridPatrols_CellDoubleClick;
 
+            var pnlBottom = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 60,
+                BackColor = AppColors.Background
+            };
+
+            var btnClose = new Button
+            {
+                Text = "TUTUP",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.Crimson,
+                Size = new Size(120, 40),
+                Cursor = Cursors.Hand,
+                FlatStyle = FlatStyle.Flat
+            };
+            btnClose.FlatAppearance.BorderSize = 0;
+            btnClose.Click += (s, e) => this.Close();
+
+            pnlBottom.Controls.Add(btnClose);
+
+            // Tambahkan ke form (urutan ini penting agar Grid merespons panel bawah)
+            this.Controls.Add(pnlBottom);
             this.Controls.Add(gridPatrols);
+            gridPatrols.BringToFront();
+            
+            pnlBottom.Resize += (s, e) => 
+            {
+                btnClose.Location = new Point(pnlBottom.Width - btnClose.Width - 20, 10);
+            }; // Pastikan grid berada di atas panel bottom
         }
 
         protected override async void OnLoad(EventArgs e)
@@ -70,10 +100,11 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 if (dto.TicketId.HasValue)
                 {
+                    this.Hide();
                     // BUKA FORM TEKNISI DENGAN AUTO-START!
                     using (var techForm = new MachineHistoryFormTechnician(dto.TicketId.Value, autoStart: true))
                     {
-                        techForm.ShowDialog();
+                        techForm.ShowDialog(this);
                     }
                     
                     // Tutup popup daftar NG setelah perbaikan

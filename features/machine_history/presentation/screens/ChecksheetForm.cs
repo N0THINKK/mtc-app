@@ -132,10 +132,12 @@ namespace mtc_app.features.machine_history.presentation.screens
 
                 btnLihatNg.Click += (sender, e) =>
                 {
+                    this.Hide();
                     using (var popup = new PopupNgListForm())
                     {
-                        popup.ShowDialog();
+                        popup.ShowDialog(this);
                     }
+                    this.Show();
                 };
 
                 pnlBottom.Controls.Add(btnLihatNg);
@@ -161,11 +163,13 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 if (_currentMachineId > 0 && _currentTemplateId > 0)
                 {
+                    this.Hide();
                     string roleTargetLocal = _isTeknisiMode ? "Teknisi" : "Operator";
                     using (var historyForm = new ChecksheetHistoryForm(_currentMachineId, _currentTemplateId, roleTargetLocal))
                     {
-                        historyForm.ShowDialog();
+                        historyForm.ShowDialog(this);
                     }
+                    this.Show();
                 }
             };
             pnlBottom.Controls.Add(btnHistory);
