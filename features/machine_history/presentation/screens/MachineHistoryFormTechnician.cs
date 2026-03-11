@@ -23,6 +23,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         
         // [BARU] Flag untuk memicu Auto-Start
         private bool _isAutoStart = false;
+        private int _patrolDetailId = 0;
         
         // Ticket State (for resume workflow)
         private int _ticketStatus = 1;
@@ -62,10 +63,11 @@ namespace mtc_app.features.machine_history.presentation.screens
         private AppInput inputOperatorNote;
 
         // [MODIFIKASI] Menambahkan parameter autoStart = false
-        public MachineHistoryFormTechnician(long ticketId, bool autoStart = false)
+        public MachineHistoryFormTechnician(long ticketId, bool autoStart = false, int patrolDetailId = 0)
         {
             _currentTicketId = ticketId;
             _isAutoStart = autoStart;
+            _patrolDetailId = patrolDetailId;
 
             InitializeComponent();
             LoadTicketStatus(); 
@@ -1418,14 +1420,16 @@ namespace mtc_app.features.machine_history.presentation.screens
                             }
                             
                             // [BARU] Auto-Resolve Patroli NG items for this machine
-                            string resolveNgSql = @"
-                                UPDATE patrol_log_details pld
-                                JOIN patrol_logs pl ON pld.log_id = pl.log_id
-                                SET pld.status = 'PERBAIKAN_OK'
-                                WHERE pl.machine_id = (SELECT machine_id FROM tickets WHERE ticket_id = @Id)
-                                  AND pld.status IN ('NOT_OK', 'NG')";
-                                  
-                            conn.Execute(resolveNgSql, new { Id = _currentTicketId }, trans);
+                            // [MODIFIKASI] Auto-Resolve HANYA item NG yang sedang diperbaiki
+                            if (_patrolDetailId > 0)
+                            {
+                                string resolveNgSql = @"
+                                    UPDATE patrol_log_details 
+                                    SET status = 'PERBAIKAN_OK'
+                                    WHERE detail_id = @DetailId AND status IN ('NOT_OK', 'NG')";
+                                      
+                                conn.Execute(resolveNgSql, new { DetailId = _patrolDetailId }, trans);
+                            }
                             
                             trans.Commit();
                             _timer.Stop();

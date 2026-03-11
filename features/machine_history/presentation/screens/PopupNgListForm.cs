@@ -2,6 +2,11 @@ using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using Dapper;
+using mtc_app.shared.data.utils;
+using mtc_app.features.machine_history.data.dtos;
+using mtc_app.features.machine_history.data.repositories;
+using mtc_app.shared.data.session;
 using mtc_app.features.technician.data.dtos;
 using mtc_app.features.technician.data.repositories;
 using mtc_app.shared.presentation.styles;
@@ -93,26 +98,93 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        private void GridPatrols_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
+        // Tambahkan 'async' di sini karena kita akan memanggil fungsi CreateTicketAsync
+        private async void GridPatrols_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0 && gridPatrols.Rows[e.RowIndex].DataBoundItem is PatrolNgDto dto)
             {
-                if (dto.TicketId.HasValue)
+                // Jika sudah ada tiketnya (kasus lama)
+                if (dto.TicketId.HasValue && dto.TicketId.Value > 0)
                 {
-                    this.Hide();
-                    // BUKA FORM TEKNISI DENGAN AUTO-START!
-                    using (var techForm = new MachineHistoryFormTechnician(dto.TicketId.Value, autoStart: true))
+                    this.Hide(); 
+                    // [MODIFIKASI] Tambahkan dto.DetailId
+                    using (var techForm = new MachineHistoryFormTechnician(dto.TicketId.Value, autoStart: true, dto.DetailId))
                     {
                         techForm.ShowDialog(this);
                     }
-                    
-                    // Tutup popup daftar NG setelah perbaikan
                     this.DialogResult = DialogResult.OK;
                     this.Close();
                 }
                 else
                 {
-                    MessageBox.Show("Tiket perbaikan belum terbentuk otomatis untuk temuan ini.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    // TIKET BELUM ADA: Tawarkan untuk membuat tiket saat itu juga
+                    var confirm = MessageBox.Show(
+                        $"Temuan NG pada '{dto.ItemName}' belum memiliki tiket perbaikan di antrean.\n\nApakah Anda ingin membuat tiket baru dan mulai memperbaikinya sekarang?", 
+                        "Buat Tiket Perbaikan", 
+                        MessageBoxButtons.YesNo, 
+                        MessageBoxIcon.Question);
+
+                    if (confirm == DialogResult.Yes)
+                    {
+                        try
+                        {
+                            using (var conn = DatabaseHelper.GetConnection())
+                            {
+                                // 1. Ambil machine_id dari database berdasarkan log_id
+                                int machineId = conn.QueryFirstOrDefault<int>("SELECT machine_id FROM patrol_logs WHERE log_id = @LogId", new { LogId = dto.LogId });
+
+                                if (machineId == 0)
+                                {
+                                    MessageBox.Show("Gagal menemukan data mesin.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    return;
+                                }
+
+                                var historyRepo = new MachineHistoryRepository();
+                                
+                                // 2. Buat tiket baru secara on-demand
+                                var req = new CreateTicketRequest
+                                {
+                                    MachineId = machineId,
+                                    OperatorNik = UserSession.CurrentUser?.Username ?? "-", // Anggap yg sedang login sebagai operator/pelapor
+                                    TechnicianNik = UserSession.CurrentUser?.Username,
+                                    ShiftName = "A",
+                                    ApplicatorCode = "-",
+                                    StatusId = 2, // Langsung status 'Repairing' (2) karena teknisi langsung auto-start
+                                    IsMachineRunning = 0,
+                                    StartedAt = DateTime.Now,
+                                    Problems = new System.Collections.Generic.List<TicketProblemRequest>
+                                    {
+                                        new TicketProblemRequest
+                                        {
+                                            ProblemTypeName = "Lain-lain",
+                                            FailureName = $"[CHECKSHEET] {dto.ItemName} NG"
+                                        }
+                                    }
+                                };
+
+                                var ticketResult = await historyRepo.CreateTicketAsync(req);
+
+                                // 3. Tandai di tabel checksheet bahwa tiket sudah dibuat (agar tidak dobel jika diklik lagi nanti)
+                                conn.Execute("UPDATE patrol_log_details SET is_ticket_created = 1 WHERE detail_id = @DetailId", new { DetailId = dto.DetailId });
+
+                                this.Hide();
+
+                                // 4. Buka form teknisi menggunakan ID tiket yang baru saja berhasil di-generate
+                                // [MODIFIKASI] Menambahkan param dto.DetailId agar hanya ID checksheet ini yang ditutup saat perbaikan selesai
+                                using (var techForm = new MachineHistoryFormTechnician(ticketResult.TicketId, autoStart: true, dto.DetailId))
+                                {
+                                    techForm.ShowDialog(this);
+                                }
+                                
+                                this.DialogResult = DialogResult.OK;
+                                this.Close();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show("Gagal membuat tiket: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
                 }
             }
         }
