@@ -277,11 +277,22 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
-            // 5. Validasi: Semua item harus diisi (OK / NOT OK / N/A)
-            bool allAnswered = _itemControls.All(c => c.IsAnswered);
-            if (!allAnswered)
+            // 5. Validasi: Cari item PERTAMA yang belum dijawab
+            var firstUnanswered = _itemControls.FirstOrDefault(c => !c.IsAnswered);
+            
+            if (firstUnanswered != null)
             {
+                // Fokuskan (scroll) layar langsung ke pertanyaan yang belum dijawab tersebut
+                pnlQuestions.ScrollControlIntoView(firstUnanswered);
+                
+                // Tambahkan sedikit efek visual (opsional) agar teknisi langsung sadar
+                firstUnanswered.BackColor = Color.LightYellow;
+
+                // Tampilkan pesan
                 MessageBox.Show("Masih ada pertanyaan yang belum dijawab!\nPastikan semua pertanyaan memiliki status OK, NOT OK, atau N/A.", "Data Belum Lengkap", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                
+                // Kembalikan warna ke putih setelah user menekan OK
+                firstUnanswered.BackColor = Color.White;
                 return;
             }
 
