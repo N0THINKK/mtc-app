@@ -55,3 +55,14 @@ appsettings.json
 
 # antigravity rules
 .agent/
+db_maintenance.sql
+db_update_micrometer.sql
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+*.db3
+*.s3db
+*.sl3
+mtc_app.db
+mtc_app.sqlite

@@ -342,7 +342,7 @@ namespace mtc_app.features.authentication.presentation.screens
                 case "Teknisi" when string.IsNullOrEmpty(identity):
                     return new TechnicianDashboardForm();
                 case "Teknisi":
-                    return new ChecksheetForm(isTeknisiMode: true);
+                    return new mtc_app.features.technician.presentation.screens.TechnicianMainMenuForm();
                 case "Operator":
                     return new OperatorMainMenuForm();
                 case "Stock":
