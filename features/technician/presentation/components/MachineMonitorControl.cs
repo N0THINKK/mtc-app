@@ -254,9 +254,10 @@ namespace mtc_app.features.technician.presentation.components
                            COALESCE(a.area_name, 'UNK') AS area_name, 
                            m.machine_number,
                            -1 AS hour_index,
-                           (SELECT produced_pieces FROM machine_process_logs WHERE machine_id = m.machine_id AND created_at < @ShiftStart ORDER BY created_at DESC LIMIT 1) AS max_pieces,
-                           0 AS min_pieces,
-                           0 AS curr_auto, 0 AS curr_mon
+                           (SELECT produced_pieces FROM machine_process_logs WHERE machine_id = m.machine_id AND created_at < @ShiftStart ORDER BY created_at DESC LIMIT 1) AS produced_pieces,
+                           0 AS auto_time, 
+                           0 AS monitor_time,
+                           @ShiftStart AS created_at
                     FROM machines m
                     LEFT JOIN machine_types t ON m.type_id = t.type_id
                     LEFT JOIN machine_areas a ON m.area_id = a.area_id
@@ -269,10 +270,10 @@ namespace mtc_app.features.technician.presentation.components
                            COALESCE(a.area_name, 'UNK') AS area_name, 
                            m.machine_number,
                            TIMESTAMPDIFF(HOUR, @ShiftStart, p.created_at) AS hour_index,
-                           MAX(p.produced_pieces) AS max_pieces,
-                           MIN(p.produced_pieces) AS min_pieces, 
-                           MAX(p.auto_time) AS curr_auto,
-                           MAX(p.monitor_time) AS curr_mon
+                           p.produced_pieces,
+                           p.auto_time,
+                           p.monitor_time,
+                           p.created_at
                     FROM machines m
                     LEFT JOIN machine_types t ON m.type_id = t.type_id
                     LEFT JOIN machine_areas a ON m.area_id = a.area_id
@@ -280,8 +281,7 @@ namespace mtc_app.features.technician.presentation.components
                     WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
                       AND p.created_at >= @ShiftStart 
                       AND p.created_at < @ShiftEnd 
-                    GROUP BY m.machine_id, type_name, area_name, m.machine_number, hour_index
-                    ORDER BY machine_id, hour_index;";
+                    ORDER BY machine_id, created_at;";
                 
                 IEnumerable<dynamic> rows;
                 using (var conn = DatabaseHelper.GetConnection())
@@ -291,9 +291,12 @@ namespace mtc_app.features.technician.presentation.components
                 }
 
                 // --- UPDATE C# ALGORITHM ---
-                var rawMax = new Dictionary<int, long[]>();
-                var rawMin = new Dictionary<int, long[]>();
                 var machines = new Dictionary<int, MachineData>();
+                
+                // Temporary tracking for sequential accumulation
+                var lastKnownPieces = new Dictionary<int, long>();
+                var hourlyAccumulation = new Dictionary<int, long[]>();
+                var firstActiveHour = new Dictionary<int, int>();
 
                 foreach (var row in rows)
                 {
@@ -301,30 +304,56 @@ namespace mtc_app.features.technician.presentation.components
                     if (!machines.ContainsKey(mId))
                     {
                         machines[mId] = new MachineData { MachineName = $"{row.type_name}.{row.area_name}-{row.machine_number}" };
-                        
-                        rawMax[mId] = new long[maxShiftHours + 1]; 
-                        rawMin[mId] = new long[maxShiftHours + 1]; 
-                        for(int i=0; i <= maxShiftHours; i++) 
-                        {
-                            rawMax[mId][i] = -1; 
-                            rawMin[mId][i] = -1; 
-                        }
+                        hourlyAccumulation[mId] = new long[maxShiftHours];
+                        lastKnownPieces[mId] = -1;
+                        firstActiveHour[mId] = -1;
                     }
 
                     int hIndex = (int)row.hour_index;
-                    if (hIndex >= -1 && hIndex < maxShiftHours) 
+                    long pieces = (row.produced_pieces != null) ? (long)row.produced_pieces : -1;
+
+                    if (hIndex == -1) 
                     {
-                        long? mx = row.max_pieces;
-                        long? mn = row.min_pieces;
-                        
-                        rawMax[mId][hIndex + 1] = mx ?? -1;
-                        rawMin[mId][hIndex + 1] = mn ?? -1;
-                        
-                        if (hIndex >= 0) 
+                        // Initial state before shift starts
+                        lastKnownPieces[mId] = pieces;
+                        continue;
+                    }
+
+                    if (hIndex >= 0 && hIndex < maxShiftHours && pieces >= 0)
+                    {
+                        long prev = lastKnownPieces[mId];
+                        long increment = 0;
+
+                        if (prev == -1)
                         {
-                            machines[mId].AutoTime = Math.Max(machines[mId].AutoTime, (double)(row.curr_auto ?? 0));
-                            machines[mId].MonitorTime = Math.Max(machines[mId].MonitorTime, (double)(row.curr_mon ?? 0));
+                            // First reading of the shift with no prior history; 
+                            // Treat the current pieces as the increment up to this point
+                            // (or assume 0 start if it reset simultaneously with shift start, but using pieces is safer)
+                            increment = pieces;
                         }
+                        else if (pieces < prev)
+                        {
+                            // A RESET OCCURRED! 
+                            // The true production since the reset is simply the current pieces.
+                            increment = pieces;
+                        }
+                        else
+                        {
+                            // Normal accumulation
+                            increment = pieces - prev;
+                        }
+
+                        hourlyAccumulation[mId][hIndex] += increment;
+                        lastKnownPieces[mId] = pieces;
+
+                        if (increment > 0 && firstActiveHour[mId] == -1)
+                        {
+                            firstActiveHour[mId] = hIndex + 1; // 1-based hour
+                        }
+                        
+                        // Update tracking for auto/monitor time
+                        machines[mId].AutoTime = Math.Max(machines[mId].AutoTime, (double)(row.auto_time ?? 0));
+                        machines[mId].MonitorTime = Math.Max(machines[mId].MonitorTime, (double)(row.monitor_time ?? 0));
                     }
                 }
 
@@ -344,63 +373,30 @@ namespace mtc_app.features.technician.presentation.components
                 {
                     int mId = kvp.Key;
                     var machine = kvp.Value;
-                    var maxes = rawMax[mId];
-                    var mins = rawMin[mId];
-
-                    long lastKnown = maxes[0]; 
+                    var accum = hourlyAccumulation[mId];
+                    int firstActive = firstActiveHour[mId];
 
                     long totalPiecesShiftIni = 0;
-                    int firstActiveHour = -1; 
 
-                    for (int i = 1; i <= maxShiftHours; i++)
+                    for (int i = 0; i < maxShiftHours; i++)
                     {
-                        if (maxes[i] == -1) 
+                        if (i < currentHourCount)
                         {
-                            machine.HourlyPieces[i - 1] = 0;
-                            continue;
-                        }
-
-                        long diff = 0;
-                        if (lastKnown == -1)
-                        {
-                            // Kondisi di mana tidak ada record sebelum shift. Gunakan Min Jam Ini
-                            diff = maxes[i] - mins[i];
+                            machine.HourlyPieces[i] = accum[i];
+                            totalPiecesShiftIni += accum[i];
                         }
                         else
                         {
-                            // Kondisi normal: Max Jam Ini - Max Jam Lalu
-                            diff = maxes[i] - lastKnown;
+                            machine.HourlyPieces[i] = 0;
                         }
-
-                        // Jika file .ini mesin direset oleh operator
-                        if (diff < 0) 
-                        {
-                            diff = maxes[i]; 
-                        }
-
-                        if (i <= currentHourCount)
-                        {
-                            machine.HourlyPieces[i - 1] = diff;
-                            totalPiecesShiftIni += diff; 
-                            if (diff > 0 && firstActiveHour == -1) 
-                            {
-                                firstActiveHour = i;
-                            }
-                        }
-                        else
-                        {
-                            machine.HourlyPieces[i - 1] = 0; 
-                        }
-
-                        lastKnown = maxes[i];
                     }
 
                     machine.TotalPieces = totalPiecesShiftIni;
                     
                     int pembagi = 1;
-                    if (firstActiveHour != -1)
+                    if (firstActive != -1)
                     {
-                        pembagi = currentHourCount - firstActiveHour + 1;
+                        pembagi = currentHourCount - firstActive + 1;
                     }
                     else
                     {
