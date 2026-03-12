@@ -190,16 +190,19 @@ namespace mtc_app.features.machine_history.presentation.screens
                 {
                     _dgvHistory.DataSource = pivotData;
                     
-                    // Sedikit perapihan UI tiap kolom nomor (kolom ke 2 dan seterusnya)
+                    // Kolom 0 sekarang berisi Nama Item Checksheet (dulu namanya Tanggal)
+                    _dgvHistory.Columns[0].HeaderText = "Checksheet Item";
+                    _dgvHistory.Columns[0].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells;
+                    _dgvHistory.Columns[0].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                    _dgvHistory.Columns[0].Frozen = true; // Pin the item column so users can scroll dates
+
+                    // Kolom ke 1 dan seterusnya adalah kolom Tanggal ("dd/MM/yyyy")
                     for (int i = 1; i < _dgvHistory.Columns.Count; i++)
                     {
                         _dgvHistory.Columns[i].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
                         _dgvHistory.Columns[i].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                        _dgvHistory.Columns[i].AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells; // Kembalikan ke AllCells agar ukurannya nge-fit setelah load
+                        _dgvHistory.Columns[i].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells; 
                     }
-                    
-                    // Kolom tanggal (kolom 0) diatur agar wrap text atau minimal lebar yang pas
-                    _dgvHistory.Columns[0].AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
 
                     // Setelah beres render, allow user resize
                     _dgvHistory.AllowUserToResizeColumns = true;
