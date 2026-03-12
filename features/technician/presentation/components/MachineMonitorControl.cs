@@ -326,10 +326,9 @@ namespace mtc_app.features.technician.presentation.components
 
                         if (prev == -1)
                         {
-                            // First reading of the shift with no prior history; 
-                            // Treat the current pieces as the increment up to this point
-                            // (or assume 0 start if it reset simultaneously with shift start, but using pieces is safer)
-                            increment = pieces;
+                            // Tidak ada record sebelum shift dimulai.
+                            // Gunakan nilai saat ini sebagai baseline, jangan hitung sebagai produksi.
+                            increment = 0;
                         }
                         else if (pieces < prev)
                         {
