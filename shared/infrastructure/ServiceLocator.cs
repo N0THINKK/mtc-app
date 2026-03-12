@@ -2,7 +2,7 @@ using mtc_app.features.authentication.data.decorators;
 using mtc_app.features.authentication.data.repositories;
 using mtc_app.features.group_leader.data.decorators;
 using mtc_app.features.group_leader.data.repositories;
-using mtc_app.features.machine_history.data.decorators;
+using mtc_app.features.machine_history.data.decorators;/*  */
 using mtc_app.features.machine_history.data.repositories;
 using mtc_app.features.rating.data.decorators;
 using mtc_app.features.rating.data.repositories;
@@ -14,6 +14,8 @@ using mtc_app.shared.data.decorators;
 using mtc_app.shared.data.local;
 using mtc_app.shared.data.repositories;
 using mtc_app.shared.data.services;
+using mtc_app.features.micrometer_patrol.data.repositories;
+using mtc_app.features.micrometer_patrol.data.decorators;
 
 namespace mtc_app.shared.infrastructure
 {
@@ -195,6 +197,19 @@ namespace mtc_app.shared.infrastructure
         {
             // Setup is usually online-only or local DB, no need for offline decorator yet logic is simple
             return new SetupRepository();
+        }
+
+       /// <summary>
+        /// Creates an offline-aware MicrometerPatrolRepository.
+        /// </summary>
+        public static IMicrometerPatrolRepository CreateMicrometerPatrolRepository()
+        {
+            EnsureServicesInitialized();
+            return new OfflineMicrometerPatrolRepository(
+                new MicrometerPatrolRepository(), 
+                _offlineRepo,
+                _networkMonitor
+            );
         }
     }
 }
