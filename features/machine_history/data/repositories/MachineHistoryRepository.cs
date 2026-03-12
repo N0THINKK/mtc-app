@@ -315,23 +315,7 @@ namespace mtc_app.features.machine_history.data.repositories
 
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // 1. Ambil list item untuk template ini agar jadi kolom, di-filter berdasarkan roleTarget
-                string itemSql = "SELECT item_id, item_name, role_target FROM checksheet_items WHERE template_id = @TempId AND role_target = @RoleTarget ORDER BY item_id";
-                var items = await connection.QueryAsync(itemSql, new { TempId = templateId, RoleTarget = roleTarget });
-
-                var colMapping = new Dictionary<int, string>();
-                int colIndex = 1;
-                foreach (var item in items)
-                {
-                    string colName = $"{colIndex}"; // Sesuai permintaan: tanggal + nomor problemnya
-                    pivotTable.Columns.Add(colName, typeof(string));
-                    colMapping.Add((int)item.item_id, colName);
-                    colIndex++;
-                }
-
-                if (items.Count() == 0) return pivotTable;
-
-                // 2. Ambil data raw logs
+                // 1. Ambil data raw logs (hanya ambil X hari terakhir)
                 DateTime startDate = DateTime.Now.Date.AddDays(-days);
 
                 string rawDataSql = @"
@@ -343,41 +327,52 @@ namespace mtc_app.features.machine_history.data.repositories
                     JOIN patrol_log_details d ON l.log_id = d.log_id
                     JOIN checksheet_items i ON d.item_id = i.item_id
                     WHERE l.machine_id = @MachId AND i.template_id = @TempId AND i.role_target = @RoleTarget AND l.patrol_date >= @Start
-                    ORDER BY l.patrol_date DESC";
+                    ORDER BY l.patrol_date ASC";
 
                 var rawData = await connection.QueryAsync(rawDataSql, new { MachId = machineId, TempId = templateId, RoleTarget = roleTarget, Start = startDate });
 
-                // 3. Group by Date dan Pivot
-                var groupedByDate = rawData.GroupBy(r => ((DateTime)r.PatrolDate).ToString("dd/MM/yyyy"));
+                // 2. Tentukan Kolom (Berdasarkan Tanggal yang unik dari data yang sudah difilter)
+                var distinctDates = rawData.Select(r => ((DateTime)r.PatrolDate).ToString("dd/MM/yyyy")).Distinct().ToList();
 
-                foreach (var dateGroup in groupedByDate)
+                foreach (var dateStr in distinctDates)
+                {
+                    pivotTable.Columns.Add(dateStr, typeof(string));
+                }
+
+                // Jika tidak ada data raw, kembalikan tabel kosong sesuai format
+                if (!distinctDates.Any()) return pivotTable;
+
+                // 3. Ambil Item untuk dijadikan Baris
+                string itemSql = "SELECT item_id, item_name, role_target FROM checksheet_items WHERE template_id = @TempId AND role_target = @RoleTarget ORDER BY item_id";
+                var items = await connection.QueryAsync(itemSql, new { TempId = templateId, RoleTarget = roleTarget });
+
+                int index = 1;
+                foreach (var item in items)
                 {
                     DataRow row = pivotTable.NewRow();
-                    row["Tanggal"] = dateGroup.Key;
+                    row["Tanggal"] = $"{index}. {item.item_name}";
 
-                    foreach (var record in dateGroup)
+                    int itemId = (int)item.item_id;
+
+                    // 4. Isi cell dengan mencocokkan item ID dan Tanggal
+                    foreach (var dateCol in distinctDates)
                     {
-                        int itemId = (int)record.ItemId;
-                        if (colMapping.ContainsKey(itemId))
+                        var matchingRecords = rawData.Where(r => (int)r.ItemId == itemId && ((DateTime)r.PatrolDate).ToString("dd/MM/yyyy") == dateCol);
+                        
+                        if (matchingRecords.Any())
                         {
-                            string colName = colMapping[itemId];
-                            string status = record.Status == "OK" ? "OK" : "NG";
-                            
-                            // Jika sudah ada status NG untuk item ini di tanggal yg sama, pertahankan NG (worst case scenario)
-                            if (row[colName] == DBNull.Value || row[colName].ToString() == "OK")
-                            {
-                                row[colName] = status;
-                            }
+                            // Ambil yang paling "buruk" jika sehari ada banyak inspeksi (NG menang lawan OK)
+                            bool hasNG = matchingRecords.Any(r => r.Status != "OK" && r.Status != "PERBAIKAN_OK");
+                            row[dateCol] = hasNG ? "NG" : "OK";
+                        }
+                        else
+                        {
+                            row[dateCol] = "N/A";
                         }
                     }
 
-                    // Isi sel yg kosong dengan "-"
-                    foreach (DataColumn col in pivotTable.Columns)
-                    {
-                        if (row[col] == DBNull.Value) row[col] = "-";
-                    }
-
                     pivotTable.Rows.Add(row);
+                    index++;
                 }
             }
 
