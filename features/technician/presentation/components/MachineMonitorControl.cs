@@ -121,10 +121,10 @@ namespace mtc_app.features.technician.presentation.components
             var flowRight = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, WrapContents = true, Dock = DockStyle.Fill, BackColor = Color.Transparent };
             
             // 1. Sort
-            _comboSort = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = AppFonts.BodySmall, Width = 100, Margin = new Padding(0, 10, 10, 0) };
-            _comboSort.Items.AddRange(new object[] { "↓ Tertinggi", "↑ Terendah" });
+            _comboSort = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = AppFonts.BodySmall, Width = 110, Margin = new Padding(0, 10, 10, 0) };
+            _comboSort.Items.AddRange(new object[] { "↓ Tertinggi", "↑ Terendah", "Nomor Mesin" });
             _comboSort.SelectedIndex = 0;
-            _comboSort.SelectedIndexChanged += async (s, e) => { _sortAscending = _comboSort.SelectedIndex == 1; await LoadData(); };
+            _comboSort.SelectedIndexChanged += async (s, e) => { await LoadData(); };
             var lblSort = new Label { Text = "Urutkan:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
 
             // 2. Metric
@@ -396,21 +396,31 @@ namespace mtc_app.features.technician.presentation.components
                 }
 
                 string selectedMetric = _comboMetric.SelectedItem?.ToString();
+                string selectedSort = _comboSort.SelectedItem?.ToString();
                 var machineList = machines.Values.ToList();
 
-                if (selectedMetric.Contains("Efisiensi"))
+                if (selectedSort == "Nomor Mesin")
                 {
-                    if (_sortAscending)
-                        machineList = machineList.OrderBy(x => x.Efficiency).ToList();
-                    else
-                        machineList = machineList.OrderByDescending(x => x.Efficiency).ToList();
+                    machineList = machineList.OrderBy(x => x.MachineName).ToList();
                 }
                 else
                 {
-                    if (_sortAscending)
-                        machineList = machineList.OrderBy(x => x.TotalPieces).ToList();
+                    bool sortAscending = selectedSort == "↑ Terendah";
+
+                    if (selectedMetric.Contains("Efisiensi"))
+                    {
+                        if (sortAscending)
+                            machineList = machineList.OrderBy(x => x.Efficiency).ToList();
+                        else
+                            machineList = machineList.OrderByDescending(x => x.Efficiency).ToList();
+                    }
                     else
-                        machineList = machineList.OrderByDescending(x => x.TotalPieces).ToList();
+                    {
+                        if (sortAscending)
+                            machineList = machineList.OrderBy(x => x.TotalPieces).ToList();
+                        else
+                            machineList = machineList.OrderByDescending(x => x.TotalPieces).ToList();
+                    }
                 }
 
                 UpdateChart(machineList, selectedMetric, currentHourCount);
@@ -454,13 +464,20 @@ namespace mtc_app.features.technician.presentation.components
                 area.AxisY.Title = "Output (Pcs)";
 
                 Color[] hourColors = new Color[] {
-                    Color.FromArgb(52, 152, 219), Color.FromArgb(41, 128, 185), 
-                    Color.FromArgb(46, 204, 113), Color.FromArgb(39, 174, 96),  
-                    Color.FromArgb(241, 196, 15), Color.FromArgb(230, 126, 34), 
-                    Color.FromArgb(231, 76, 60),  Color.FromArgb(192, 57, 43),  
-                    Color.FromArgb(155, 89, 182), Color.FromArgb(142, 68, 173), 
-                    Color.FromArgb(26, 188, 156), Color.FromArgb(22, 160, 133), 
-                    Color.FromArgb(52, 73, 94),   Color.FromArgb(44, 62, 80)    
+                    ColorTranslator.FromHtml("#FF85A2"), // Pastel Pink / Watermelon
+                    ColorTranslator.FromHtml("#FFB27D"), // Pastel Peach / Orange
+                    ColorTranslator.FromHtml("#FFD659"), // Pastel Yellow
+                    ColorTranslator.FromHtml("#B5E67A"), // Pastel Light Green
+                    ColorTranslator.FromHtml("#6BE685"), // Pastel Mint / Green
+                    ColorTranslator.FromHtml("#6BE6D0"), // Pastel Cyan
+                    ColorTranslator.FromHtml("#6BBEE6"), // Pastel Light Blue
+                    ColorTranslator.FromHtml("#6B8AE6"), // Pastel Indigo
+                    ColorTranslator.FromHtml("#966BE6"), // Pastel Purple
+                    ColorTranslator.FromHtml("#D86BE6"), // Pastel Magenta
+                    ColorTranslator.FromHtml("#F19CBB"), // Soft Coral Pink
+                    ColorTranslator.FromHtml("#A5C882"), // Muted Sage Green
+                    ColorTranslator.FromHtml("#E8C547"), // Mustard Yellow
+                    ColorTranslator.FromHtml("#4F5D75")  // Slate Gray (fallback)
                 };
 
                 for (int i = 0; i < currentHourCount; i++)
