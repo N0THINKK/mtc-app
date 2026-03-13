@@ -88,10 +88,30 @@ namespace mtc_app.features.admin.presentation.screens
             }
             else if (_category == "Mesin")
             {
+                // Ekstra data membawa gabungan array TYPES dan AREAS dari database
+                var tipeMesinTersedia = new List<string>();
+                var areaTersedia = new List<string>();
+
+                if (_extraData != null && _extraData.Length > 0)
+                {
+                    bool isParsingAreas = false;
+                    foreach(var item in _extraData)
+                    {
+                        if (item == "TYPES") { isParsingAreas = false; continue; }
+                        if (item == "AREAS") { isParsingAreas = true; continue; }
+                        
+                        if (isParsingAreas) areaTersedia.Add(item);
+                        else tipeMesinTersedia.Add(item);
+                    }
+                }
+
+                if (tipeMesinTersedia.Count == 0) tipeMesinTersedia.Add(GetValue("nama") ?? "AC90");
+                if (areaTersedia.Count == 0) areaTersedia.Add(GetValue("area") ?? "TRX");
+
                 AddInput("Kode Mesin", "kode", GetValue("kode"));
-                AddInput("Tipe Mesin", "nama", GetValue("nama"));
-                AddInput("Area", "area", GetValue("area"));
-                AddInput("Kondisi", "kondisi", GetValue("kondisi"));
+                AddComboBoxEditable("Tipe Mesin (Ketik baru / Pilih)", "nama", tipeMesinTersedia.ToArray(), GetValue("nama"));
+                AddComboBoxEditable("Area (Ketik baru / Pilih)", "area", areaTersedia.ToArray(), GetValue("area"));
+                AddComboBox("Kondisi", "kondisi", new[] { "Running", "Down", "Idle", "Under Maintenance" }, GetValue("kondisi"));
             }
             else if (_category == "Sparepart")
             {

@@ -94,6 +94,7 @@ namespace mtc_app.features.admin.data.repositories
             {
                 string sql = @"
                     SELECT 
+                        m.machine_id as id,
                         m.machine_number as kode, 
                         mt.type_name as tipe, 
                         ma.area_name as area, 
@@ -102,6 +103,7 @@ namespace mtc_app.features.admin.data.repositories
                     LEFT JOIN machine_types mt ON m.type_id = mt.type_id
                     LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
                     LEFT JOIN machine_statuses ms ON m.current_status_id = ms.status_id
+                    WHERE m.is_deleted = 0
                     ORDER BY mt.type_name ASC, ma.area_name ASC, m.machine_number ASC";
                 return await connection.QueryAsync(sql);
             }
@@ -113,11 +115,14 @@ namespace mtc_app.features.admin.data.repositories
             {
                 string sql = @"
                     SELECT 
+                        part_id as id,
                         part_code as kode, 
                         part_name as nama, 
-                        15 as stok, 
+                        stock_qty as stok, 
                         'Gudang Utama' as lokasi 
-                    FROM parts";
+                    FROM parts
+                    WHERE is_deleted = 0
+                    ORDER BY part_name ASC";
                 return await connection.QueryAsync(sql);
             }
         }
@@ -175,6 +180,22 @@ namespace mtc_app.features.admin.data.repositories
             using (var connection = DatabaseHelper.GetConnection())
             {
                 return await connection.QueryAsync<string>("SELECT template_name FROM checksheet_templates ORDER BY template_name ASC");
+            }
+        }
+
+        public async Task<IEnumerable<string>> GetMachineTypesAsync()
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                return await connection.QueryAsync<string>("SELECT type_name FROM machine_types ORDER BY type_name ASC");
+            }
+        }
+
+        public async Task<IEnumerable<string>> GetMachineAreasAsync()
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                return await connection.QueryAsync<string>("SELECT area_name FROM machine_areas ORDER BY area_name ASC");
             }
         }
 
@@ -251,6 +272,34 @@ namespace mtc_app.features.admin.data.repositories
                         return await connection.ExecuteAsync(sql, new { targetRole, item = data["item_pengecekan"], standar = data["standar"], metode = data["metode"], inputType = inputType, tipe = data["tipe_mesin"] }) > 0;
                     }
                 }
+                else if (category == "Mesin")
+                {
+                    // Pastikan type dan area ada di master table
+                    string typeName = data["nama"]?.ToString() ?? "Unknown";
+                    int typeId = await GetOrCreateTypeId(connection, typeName);
+                    
+                    string areaName = data["area"]?.ToString() ?? "Unknown";
+                    int areaId = await GetOrCreateAreaId(connection, areaName);
+                    
+                    // Kondisi default ke 1 (Running) saat pertama buat
+                    if (isEdit) {
+                        string sql = "UPDATE machines SET machine_number=@kode, type_id=@typeId, area_id=@areaId WHERE machine_id=@id";
+                        return await connection.ExecuteAsync(sql, new { kode = data["kode"], typeId = typeId, areaId = areaId, id = data["id"] }) > 0;
+                    } else {
+                        string sql = "INSERT INTO machines (machine_number, type_id, area_id) VALUES (@kode, @typeId, @areaId)";
+                        return await connection.ExecuteAsync(sql, new { kode = data["kode"], typeId = typeId, areaId = areaId }) > 0;
+                    }
+                }
+                else if (category == "Sparepart")
+                {
+                    if (isEdit) {
+                        string sql = "UPDATE parts SET part_code=@kode, part_name=@nama, stock_qty=@stok WHERE part_id=@id";
+                        return await connection.ExecuteAsync(sql, new { kode = data["kode"], nama = data["nama"], stok = Convert.ToInt32(data["stok"] ?? 0), id = data["id"] }) > 0;
+                    } else {
+                        string sql = "INSERT INTO parts (part_code, part_name, stock_qty) VALUES (@kode, @nama, @stok)";
+                        return await connection.ExecuteAsync(sql, new { kode = data["kode"], nama = data["nama"], stok = Convert.ToInt32(data["stok"] ?? 0) }) > 0;
+                    }
+                }
                 
                 return false;
             }
@@ -277,8 +326,43 @@ namespace mtc_app.features.admin.data.repositories
                     // Menghapus permanen karena items checksheet jarang terhubung ke histori log secara langsung
                     return await connection.ExecuteAsync("UPDATE checksheet_items SET is_deleted = 1 WHERE item_id=@id", new { id }) > 0;
                 }
+                else if (category == "Mesin")
+                {
+                    return await connection.ExecuteAsync("UPDATE machines SET is_deleted = 1 WHERE machine_id=@id", new { id }) > 0;
+                }
+                else if (category == "Sparepart")
+                {
+                    return await connection.ExecuteAsync("UPDATE parts SET is_deleted = 1 WHERE part_id=@id", new { id }) > 0;
+                }
                 return false;
             }
+        }
+
+        // ==========================================
+        // HELPER FUNCTIONS UNTUK MESIN
+        // ==========================================
+        private async Task<int> GetOrCreateTypeId(System.Data.IDbConnection connection, string typeName)
+        {
+            if (string.IsNullOrWhiteSpace(typeName)) return 0;
+            string checkSql = "SELECT type_id FROM machine_types WHERE type_name = @name LIMIT 1";
+            var existingId = await connection.QueryFirstOrDefaultAsync<int?>(checkSql, new { name = typeName });
+            
+            if (existingId.HasValue && existingId.Value > 0) return existingId.Value;
+
+            string insertSql = "INSERT INTO machine_types (type_name) VALUES (@name); SELECT LAST_INSERT_ID();";
+            return await connection.ExecuteScalarAsync<int>(insertSql, new { name = typeName });
+        }
+
+        private async Task<int> GetOrCreateAreaId(System.Data.IDbConnection connection, string areaName)
+        {
+            if (string.IsNullOrWhiteSpace(areaName)) return 0;
+            string checkSql = "SELECT area_id FROM machine_areas WHERE area_name = @name LIMIT 1";
+            var existingId = await connection.QueryFirstOrDefaultAsync<int?>(checkSql, new { name = areaName });
+            
+            if (existingId.HasValue && existingId.Value > 0) return existingId.Value;
+
+            string insertSql = "INSERT INTO machine_areas (area_name) VALUES (@name); SELECT LAST_INSERT_ID();";
+            return await connection.ExecuteScalarAsync<int>(insertSql, new { name = areaName });
         }
     }
 }
