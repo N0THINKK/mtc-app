@@ -88,10 +88,30 @@ namespace mtc_app.features.admin.presentation.screens
             }
             else if (_category == "Mesin")
             {
+                // Ekstra data membawa gabungan array TYPES dan AREAS dari database
+                var tipeMesinTersedia = new List<string>();
+                var areaTersedia = new List<string>();
+
+                if (_extraData != null && _extraData.Length > 0)
+                {
+                    bool isParsingAreas = false;
+                    foreach(var item in _extraData)
+                    {
+                        if (item == "TYPES") { isParsingAreas = false; continue; }
+                        if (item == "AREAS") { isParsingAreas = true; continue; }
+                        
+                        if (isParsingAreas) areaTersedia.Add(item);
+                        else tipeMesinTersedia.Add(item);
+                    }
+                }
+
+                if (tipeMesinTersedia.Count == 0) tipeMesinTersedia.Add(GetValue("nama") ?? "AC90");
+                if (areaTersedia.Count == 0) areaTersedia.Add(GetValue("area") ?? "TRX");
+
                 AddInput("Kode Mesin", "kode", GetValue("kode"));
-                AddInput("Tipe Mesin", "nama", GetValue("nama"));
-                AddInput("Area", "area", GetValue("area"));
-                AddInput("Kondisi", "kondisi", GetValue("kondisi"));
+                AddComboBoxEditable("Tipe Mesin (Ketik baru / Pilih)", "nama", tipeMesinTersedia.ToArray(), GetValue("nama"));
+                AddComboBoxEditable("Area (Ketik baru / Pilih)", "area", areaTersedia.ToArray(), GetValue("area"));
+                AddComboBox("Kondisi", "kondisi", new[] { "Running", "Down", "Idle", "Under Maintenance" }, GetValue("kondisi"));
             }
             else if (_category == "Sparepart")
             {
@@ -109,7 +129,7 @@ namespace mtc_app.features.admin.presentation.screens
                 // Gunakan daftar asli dari Database yang dikirim lewat ekstraData. Jika kosong, beri nilai fallback.
                 string[] tipeMesinTersedia = (_extraData != null && _extraData.Length > 0) ? _extraData : new[] { "Belum ada template mesin" };
                 
-                AddComboBox("Tipe Mesin (Sesuai Template di DB)", "tipe_mesin", tipeMesinTersedia, GetValue("tipe_mesin"));
+                AddComboBoxEditable("Tipe Mesin (Ketik baru atau pilih yang ada)", "tipe_mesin", tipeMesinTersedia, GetValue("tipe_mesin"));
                 AddInput("Item Pengecekan", "item_pengecekan", GetValue("item_pengecekan"));
                 AddInput("Standar & Judgment", "standar", GetValue("standar"));
                 AddInput("Metode Pengecekan", "metode", GetValue("metode"));
@@ -138,6 +158,20 @@ namespace mtc_app.features.admin.presentation.screens
             ComboBox cmbInput = new ComboBox { Dock = DockStyle.Bottom, Font = AppFonts.Body, Height = 35, DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
             cmbInput.Items.AddRange(options);
             if (!string.IsNullOrEmpty(selectedValue) && cmbInput.Items.Contains(selectedValue)) cmbInput.SelectedItem = selectedValue;
+            else if (options.Length > 0) cmbInput.SelectedIndex = 0;
+            pnlContainer.Controls.Add(cmbInput); pnlForm.Controls.Add(pnlContainer); _inputControls.Add(fieldKey, cmbInput); 
+        }
+
+        private void AddComboBoxEditable(string labelText, string fieldKey, string[] options, string selectedValue)
+        {
+            Panel pnlContainer = CreateInputContainer(labelText);
+            ComboBox cmbInput = new ComboBox { Dock = DockStyle.Bottom, Font = AppFonts.Body, Height = 35, DropDownStyle = ComboBoxStyle.DropDown, FlatStyle = FlatStyle.Flat };
+            cmbInput.Items.AddRange(options);
+            if (!string.IsNullOrEmpty(selectedValue)) 
+            {
+                cmbInput.Text = selectedValue; // Gunakan Text agar bisa menerima nilai yang tidak ada di list
+                if (cmbInput.Items.Contains(selectedValue)) cmbInput.SelectedItem = selectedValue;
+            }
             else if (options.Length > 0) cmbInput.SelectedIndex = 0;
             pnlContainer.Controls.Add(cmbInput); pnlForm.Controls.Add(pnlContainer); _inputControls.Add(fieldKey, cmbInput); 
         }

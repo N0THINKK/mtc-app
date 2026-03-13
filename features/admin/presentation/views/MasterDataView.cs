@@ -57,11 +57,25 @@ namespace mtc_app.features.admin.presentation.views
             };
             btnAdd.Click += async (s, e) => // <--- [MODIFIKASI] Tambahkan async
             {
-                // <--- [MODIFIKASI] Ambil daftar tipe mesin (Template) untuk form Checksheet
+                // <--- [MODIFIKASI] Ambil daftar tipe mesin (Template) untuk form Checksheet atau Type dan Area untuk Mesin
                 string[] extraData = null;
                 if (_currentCategory == "Checksheet") {
                     this.Cursor = Cursors.WaitCursor;
                     extraData = (await _repository.GetChecksheetTemplatesAsync()).ToArray();
+                    this.Cursor = Cursors.Default;
+                } else if (_currentCategory == "Mesin") {
+                    this.Cursor = Cursors.WaitCursor;
+                    var types = await _repository.GetMachineTypesAsync();
+                    var areas = await _repository.GetMachineAreasAsync();
+                    
+                    // Kita gabung Type dan Area menggunakan delimiter khusus '|||' karena MasterDataEditorForm saat ini hanya menerima 1 array extraData tunggal
+                    var combined = new List<string>();
+                    combined.Add("TYPES");
+                    combined.AddRange(types);
+                    combined.Add("AREAS");
+                    combined.AddRange(areas);
+                    
+                    extraData = combined.ToArray();
                     this.Cursor = Cursors.Default;
                 }
 
@@ -387,11 +401,20 @@ namespace mtc_app.features.admin.presentation.views
 
                 if (colName == "Edit")
                 {
-                    // <--- [MODIFIKASI] Ambil Template untuk dikirim ke Editor
+                    // <--- [MODIFIKASI] Ambil ekstraData untuk diedit
                     string[] extraData = null;
                     if (_currentCategory == "Checksheet") {
                         this.Cursor = Cursors.WaitCursor;
                         extraData = (await _repository.GetChecksheetTemplatesAsync()).ToArray();
+                        this.Cursor = Cursors.Default;
+                    } else if (_currentCategory == "Mesin") {
+                        this.Cursor = Cursors.WaitCursor;
+                        var types = await _repository.GetMachineTypesAsync();
+                        var areas = await _repository.GetMachineAreasAsync();
+                        var combined = new List<string>();
+                        combined.Add("TYPES"); combined.AddRange(types);
+                        combined.Add("AREAS"); combined.AddRange(areas);
+                        extraData = combined.ToArray();
                         this.Cursor = Cursors.Default;
                     }
 
