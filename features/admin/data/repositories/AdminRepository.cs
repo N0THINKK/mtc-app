@@ -160,7 +160,8 @@ namespace mtc_app.features.admin.data.repositories
                         ct.template_name as tipe_mesin,
                         ci.item_name as item_pengecekan,
                         ci.standard_judgment as standar,
-                        ci.check_method as metode
+                        ci.check_method as metode,
+                        ci.input_type as tipe_input
                     FROM checksheet_items ci
                     JOIN checksheet_templates ct ON ci.template_id = ct.template_id
                     WHERE ci.role_target = @roleTarget AND ci.is_deleted = 0
@@ -240,13 +241,14 @@ namespace mtc_app.features.admin.data.repositories
                 else if (category == "Checksheet")
                 {
                     string targetRole = subCategory == "Checksheet Operator" ? "Operator" : "Teknisi";
+                    string inputType = data.ContainsKey("tipe_input") && data["tipe_input"].ToString() == "Angka/Teks" ? "numeric/text" : "options";
                     
                     if (isEdit) {
-                        string sql = "UPDATE checksheet_items SET item_name=@item, standard_judgment=@standar, check_method=@metode, template_id=(SELECT template_id FROM checksheet_templates WHERE template_name=@tipe LIMIT 1) WHERE item_id=@id";
-                        return await connection.ExecuteAsync(sql, new { item = data["item_pengecekan"], standar = data["standar"], metode = data["metode"], tipe = data["tipe_mesin"], id = data["id"] }) > 0;
+                        string sql = "UPDATE checksheet_items SET item_name=@item, standard_judgment=@standar, check_method=@metode, input_type=@inputType, template_id=(SELECT template_id FROM checksheet_templates WHERE template_name=@tipe LIMIT 1) WHERE item_id=@id";
+                        return await connection.ExecuteAsync(sql, new { item = data["item_pengecekan"], standar = data["standar"], metode = data["metode"], inputType = inputType, tipe = data["tipe_mesin"], id = data["id"] }) > 0;
                     } else {
-                        string sql = "INSERT INTO checksheet_items (template_id, role_target, item_name, standard_judgment, check_method) VALUES ((SELECT template_id FROM checksheet_templates WHERE template_name=@tipe LIMIT 1), @targetRole, @item, @standar, @metode)";
-                        return await connection.ExecuteAsync(sql, new { targetRole, item = data["item_pengecekan"], standar = data["standar"], metode = data["metode"], tipe = data["tipe_mesin"] }) > 0;
+                        string sql = "INSERT INTO checksheet_items (template_id, role_target, item_name, standard_judgment, check_method, input_type) VALUES ((SELECT template_id FROM checksheet_templates WHERE template_name=@tipe LIMIT 1), @targetRole, @item, @standar, @metode, @inputType)";
+                        return await connection.ExecuteAsync(sql, new { targetRole, item = data["item_pengecekan"], standar = data["standar"], metode = data["metode"], inputType = inputType, tipe = data["tipe_mesin"] }) > 0;
                     }
                 }
                 
