@@ -113,6 +113,7 @@ namespace mtc_app.features.admin.presentation.screens
                 AddInput("Item Pengecekan", "item_pengecekan", GetValue("item_pengecekan"));
                 AddInput("Standar & Judgment", "standar", GetValue("standar"));
                 AddInput("Metode Pengecekan", "metode", GetValue("metode"));
+                AddComboBox("Tipe Input", "tipe_input", new[] { "Pilihan (OK/NG/NA)", "Angka/Teks" }, GetValue("tipe_input") == "numeric/text" ? "Angka/Teks" : "Pilihan (OK/NG/NA)");
             }
         }
 

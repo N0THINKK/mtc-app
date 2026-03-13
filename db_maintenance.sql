@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS `checksheet_items` (
   `item_name` varchar(255) NOT NULL,
   `standard_judgment` varchar(255) NOT NULL,
   `check_method` varchar(100) NOT NULL,
+  `input_type` varchar(20) DEFAULT 'options',
   `is_deleted` tinyint(1) DEFAULT 0,
   PRIMARY KEY (`item_id`),
   KEY `template_id` (`template_id`),

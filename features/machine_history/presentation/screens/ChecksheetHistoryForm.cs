@@ -240,6 +240,11 @@ namespace mtc_app.features.machine_history.presentation.screens
                     e.CellStyle.ForeColor = Color.DimGray;
                     e.CellStyle.Font = AppFonts.Subtitle;
                 }
+                else
+                {
+                    e.CellStyle.ForeColor = AppColors.TextPrimary;
+                    e.CellStyle.Font = AppFonts.Subtitle;
+                }
             }
         }
     }

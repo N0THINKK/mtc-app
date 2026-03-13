@@ -235,7 +235,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     // 3. Tarik Pertanyaan dari Database (Filter Lapis 3: Berdasarkan Role)
                     string targetRole = _isTeknisiMode ? "Teknisi" : "Operator";
                     var items = conn.Query(
-                        @"SELECT item_id, item_name, standard_judgment, check_method 
+                        @"SELECT item_id, item_name, standard_judgment, check_method, input_type 
                           FROM checksheet_items 
                           WHERE template_id = @TplId AND role_target = @RoleTarget",
                           new { TplId = _currentTemplateId, RoleTarget = targetRole }).ToList();
@@ -252,7 +252,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                     int number = 1;
                     foreach (var item in items)
                     {
-                        var rowControl = new ChecksheetItemControl(number, (int)item.item_id, item.item_name, item.standard_judgment, item.check_method)
+                        string inputType = item.input_type != null ? item.input_type.ToString() : "options";
+                        var rowControl = new ChecksheetItemControl(number, (int)item.item_id, item.item_name, item.standard_judgment, item.check_method, inputType)
                         {
                             Width = this.Width - 80
                         };
@@ -312,7 +313,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     // 7. Simpan Detail Pemeriksaan
                     foreach (var item in _itemControls)
                     {
-                        string status = item.IsNa ? "N/A" : (item.IsOk ? "OK" : "NG");
+                        string status = item.ValueString;
                         bool createTicket = false;
 
                         // // AUTO-TICKETING LOGIC: 
@@ -370,19 +371,24 @@ namespace mtc_app.features.machine_history.presentation.screens
             public int ItemId { get; private set; }
             public string ItemName { get; private set; }
             public string Standard { get; private set; }
-            public bool IsAnswered => radOk.Checked || radNotOk.Checked || radNa.Checked;
-            public bool IsOk => radOk.Checked;
-            public bool NeedsTechnician => radNotOk.Checked;
-            public bool IsNa => radNa.Checked;
+            public string InputType { get; private set; }
+            
+            public bool IsAnswered => InputType == "numeric/text" ? !string.IsNullOrWhiteSpace(txtValue.Text) : (radOk.Checked || radNotOk.Checked || radNa.Checked);
+            public bool IsOk => InputType == "numeric/text" ? true : radOk.Checked;
+            public bool NeedsTechnician => InputType == "numeric/text" ? false : radNotOk.Checked;
+            public bool IsNa => InputType == "numeric/text" ? false : radNa.Checked;
+            public string ValueString => InputType == "numeric/text" ? txtValue.Text.Trim() : (radNa.Checked ? "N/A" : (radOk.Checked ? "OK" : "NG"));
             public string Notes => ""; // Note field removed per user request
 
             private RadioButton radOk, radNotOk, radNa;
+            private TextBox txtValue;
 
-            public ChecksheetItemControl(int number, int itemId, string name, string standard, string method)
+            public ChecksheetItemControl(int number, int itemId, string name, string standard, string method, string inputType)
             {
                 ItemId = itemId;
                 ItemName = name;
                 Standard = standard;
+                InputType = inputType;
 
                 this.Height = 110;
                 this.BackColor = Color.White;
@@ -393,24 +399,39 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Label lblName = new Label { Text = $"{number}. {name}", Font = new Font("Segoe UI", 12F, FontStyle.Bold), AutoSize = true, Location = new Point(10, 10) };
                 Label lblStd = new Label { Text = $"Standar: {standard}  |  Metode: {method}", Font = new Font("Segoe UI", 9.5F), ForeColor = Color.Gray, AutoSize = true, Location = new Point(30, 35) };
 
-                radOk = new RadioButton { Text = "OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.SeaGreen, AutoSize = true, Location = new Point(30, 65), Cursor = Cursors.Hand };
-                radNotOk = new RadioButton { Text = "NOT OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.Crimson, AutoSize = true, Location = new Point(100, 65), Cursor = Cursors.Hand };
-                radNa = new RadioButton { Text = "N/A", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.DimGray, AutoSize = true, Location = new Point(210, 65), Cursor = Cursors.Hand };
-
-                radOk.CheckedChanged += (s, e) => ToggleNotOkOptions();
-                radNotOk.CheckedChanged += (s, e) => ToggleNotOkOptions();
-                radNa.CheckedChanged += (s, e) => ToggleNotOkOptions();
-
                 this.Controls.Add(lblName);
                 this.Controls.Add(lblStd);
-                this.Controls.Add(radOk);
-                this.Controls.Add(radNotOk);
-                this.Controls.Add(radNa);
+
+                if (inputType == "numeric/text")
+                {
+                    txtValue = new TextBox { 
+                        Width = 300, 
+                        Font = new Font("Segoe UI", 12F), 
+                        Location = new Point(30, 65),
+                        PlaceholderText = "Masukkan nilai (angka/teks)" 
+                    };
+                    this.Controls.Add(txtValue);
+                }
+                else
+                {
+                    radOk = new RadioButton { Text = "OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.SeaGreen, AutoSize = true, Location = new Point(30, 65), Cursor = Cursors.Hand };
+                    radNotOk = new RadioButton { Text = "NOT OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.Crimson, AutoSize = true, Location = new Point(100, 65), Cursor = Cursors.Hand };
+                    radNa = new RadioButton { Text = "N/A", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.DimGray, AutoSize = true, Location = new Point(210, 65), Cursor = Cursors.Hand };
+
+                    radOk.CheckedChanged += (s, e) => ToggleNotOkOptions();
+                    radNotOk.CheckedChanged += (s, e) => ToggleNotOkOptions();
+                    radNa.CheckedChanged += (s, e) => ToggleNotOkOptions();
+
+                    this.Controls.Add(radOk);
+                    this.Controls.Add(radNotOk);
+                    this.Controls.Add(radNa);
+                }
             }
 
             private void ToggleNotOkOptions()
             {
-                this.BackColor = radNotOk.Checked ? Color.SeaShell : Color.White;
+                if (InputType != "numeric/text")
+                    this.BackColor = radNotOk.Checked ? Color.SeaShell : Color.White;
             }
         }
     }
