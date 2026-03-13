@@ -111,6 +111,24 @@ namespace mtc_app.features.machine_history.data.decorators
             return emptyTable;
         }
 
+        public async Task<List<int>> GetPendingNgItemIdsAsync(int machineId)
+        {
+            if (_networkMonitor.IsOnline)
+            {
+                try
+                {
+                    return await _innerRepository.GetPendingNgItemIdsAsync(machineId);
+                }
+                catch (Exception ex) when (IsNetworkException(ex))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[OfflineHistory] Network error fetching pending NGs: {ex.Message}");
+                }
+            }
+
+            // Fallback offline: kita anggap list kosong saja. Sinkronisasi penuh tidak ideal di offline mode.
+            return new List<int>();
+        }
+
         private bool IsNetworkException(Exception ex)
         {
             if (ex == null) return false;

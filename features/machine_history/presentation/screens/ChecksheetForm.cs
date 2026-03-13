@@ -248,15 +248,32 @@ namespace mtc_app.features.machine_history.presentation.screens
                         return;
                     }
 
+                    // 3.5 Ambil ID item yang saat ini masih berstatus NOT OK / pending
+                    var pendingNgItemIds = conn.Query<int>(@"
+                        SELECT DISTINCT d.item_id
+                        FROM patrol_logs l
+                        JOIN patrol_log_details d ON l.log_id = d.log_id
+                        WHERE l.machine_id = @Id 
+                          AND d.status IN ('NOT_OK', 'NG')
+                    ", new { Id = _currentMachineId }).ToList();
+
                     // 4. Gambar Pertanyaannya ke Layar secara dinamis
                     int number = 1;
                     foreach (var item in items)
                     {
                         string inputType = item.input_type != null ? item.input_type.ToString() : "options";
-                        var rowControl = new ChecksheetItemControl(number, (int)item.item_id, item.item_name, item.standard_judgment, item.check_method, inputType)
+                        int currentItemId = (int)item.item_id;
+                        var rowControl = new ChecksheetItemControl(number, currentItemId, item.item_name, item.standard_judgment, item.check_method, inputType)
                         {
                             Width = this.Width - 80
                         };
+
+                        // Kunci jika item masih NG
+                        if (pendingNgItemIds.Contains(currentItemId))
+                        {
+                            rowControl.SetAsPendingNg();
+                        }
+
                         _itemControls.Add(rowControl);
                         pnlQuestions.Controls.Add(rowControl);
                         number++;
@@ -432,6 +449,34 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 if (InputType != "numeric/text")
                     this.BackColor = radNotOk.Checked ? Color.FromArgb(255, 220, 220) : Color.White;
+            }
+
+            public void SetAsPendingNg()
+            {
+                if (InputType == "numeric/text")
+                {
+                    txtValue.Text = "NG";
+                    txtValue.Enabled = false;
+                }
+                else
+                {
+                    radNotOk.Checked = true;
+                    radOk.Enabled = false;
+                    radNa.Enabled = false;
+                    radNotOk.Enabled = false;
+                }
+                
+                // Tambahkan keterangan visual
+                Label lblWarning = new Label 
+                { 
+                    Text = "Menunggu perbaikan", 
+                    Font = new Font("Segoe UI", 9F, FontStyle.Italic | FontStyle.Bold), 
+                    ForeColor = Color.Crimson, 
+                    AutoSize = true, 
+                    Location = new Point(350, 70) 
+                };
+                if (InputType != "numeric/text") lblWarning.Location = new Point(280, 70);
+                this.Controls.Add(lblWarning);
             }
         }
     }

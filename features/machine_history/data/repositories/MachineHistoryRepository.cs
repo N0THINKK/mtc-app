@@ -379,6 +379,25 @@ namespace mtc_app.features.machine_history.data.repositories
             return pivotTable;
         }
 
+        public async Task<List<int>> GetPendingNgItemIdsAsync(int machineId)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                // Mengambil item_id dari patrol_log_details yang berstatus NOT_OK atau NG
+                // Berdasarkan log terakhir per item untuk mesin tertentu
+                string sql = @"
+                    SELECT DISTINCT d.item_id
+                    FROM patrol_logs l
+                    JOIN patrol_log_details d ON l.log_id = d.log_id
+                    WHERE l.machine_id = @MachineId 
+                      AND d.status IN ('NOT_OK', 'NG')
+                      -- Kita hanya ambil yang benar-benar belum selesai (is_ticket_created tidak menuntaskan masalah secara langsung tanpa tiket ditutup, tapi di sini kita cukup cek status detailnya)
+                ";
+                var result = await connection.QueryAsync<int>(sql, new { MachineId = machineId });
+                return result.ToList();
+            }
+        }
+
         // =========================================================================================
         // HELPER FUNCTIONS (FORMATTING & AUTO-ADD TO MASTER)
         // =========================================================================================
