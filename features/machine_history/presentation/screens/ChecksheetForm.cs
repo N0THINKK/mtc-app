@@ -395,10 +395,11 @@ namespace mtc_app.features.machine_history.presentation.screens
             public bool NeedsTechnician => InputType == "numeric/text" ? false : radNotOk.Checked;
             public bool IsNa => InputType == "numeric/text" ? false : radNa.Checked;
             public string ValueString => InputType == "numeric/text" ? txtValue.Text.Trim() : (radNa.Checked ? "N/A" : (radOk.Checked ? "OK" : "NG"));
-            public string Notes => ""; // Note field removed per user request
+            public string Notes => txtNote?.Visible == true ? txtNote.Text.Trim() : "";
 
             private RadioButton radOk, radNotOk, radNa;
             private TextBox txtValue;
+            private TextBox txtNote;
 
             public ChecksheetItemControl(int number, int itemId, string name, string standard, string method, string inputType)
             {
@@ -442,13 +443,41 @@ namespace mtc_app.features.machine_history.presentation.screens
                     this.Controls.Add(radOk);
                     this.Controls.Add(radNotOk);
                     this.Controls.Add(radNa);
+                    
+                    // TextBox untuk Catatan (hanya muncul saat NOT OK)
+                    txtNote = new TextBox
+                    {
+                        Width = 400,
+                        Font = new Font("Segoe UI", 11F),
+                        Location = new Point(30, 105),
+                        PlaceholderText = "Nomor berapa yang NG? / Berikan catatan",
+                        Visible = false
+                    };
+                    this.Controls.Add(txtNote);
                 }
             }
 
             private void ToggleNotOkOptions()
             {
                 if (InputType != "numeric/text")
+                {
                     this.BackColor = radNotOk.Checked ? Color.FromArgb(255, 220, 220) : Color.White;
+                    
+                    if (txtNote != null)
+                    {
+                        txtNote.Visible = radNotOk.Checked;
+                        if (radNotOk.Checked) 
+                        {
+                            txtNote.Focus();
+                            this.Height = 150; // Perbesar tinggi control
+                        }
+                        else
+                        {
+                            txtNote.Text = "";
+                            this.Height = 110; // Kembalikan tinggi normal
+                        }
+                    }
+                }
             }
 
             public void SetAsPendingNg()
