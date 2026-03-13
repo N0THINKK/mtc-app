@@ -408,14 +408,8 @@ namespace mtc_app.features.technician.presentation.components
 
         private Color GetBarColor(int rank)
         {
-            // Gold, Silver, Bronze for top 3, then primary color
-            return rank switch
-            {
-                0 => Color.FromArgb(255, 193, 7),   // Gold
-                1 => Color.FromArgb(158, 158, 158), // Silver
-                2 => Color.FromArgb(205, 127, 50),  // Bronze
-                _ => AppColors.Primary
-            };
+            // Performa disamakan jadi warna kuning emas semua
+            return Color.FromArgb(255, 193, 7);
         }
 
         private GraphicsPath GetRoundedRect(Rectangle bounds, int radius)

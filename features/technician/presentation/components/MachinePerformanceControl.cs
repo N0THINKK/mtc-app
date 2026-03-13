@@ -216,7 +216,7 @@ namespace mtc_app.features.technician.presentation.components
                 Margin = new Padding(0)
             };
 
-            AddLegendItem(flowLegend, "Respon", AppColors.Danger);
+            AddLegendItem(flowLegend, "Tunggu Tek", AppColors.Danger);
             AddLegendItem(flowLegend, "Perbaikan", AppColors.Warning);
             AddLegendItem(flowLegend, "Tunggu Part", AppColors.Success);
             AddLegendItem(flowLegend, "Tunggu Op", AppColors.Primary);
