@@ -247,17 +247,15 @@ namespace mtc_app.features.technician.presentation.components
                 string namaShift;
                 DateTime shiftStart = GetShiftTimeRange(out shiftEnd, out isPastShift, out namaShift);
 
-                // --- UPDATE SQL LOGIC ---
+                // --- SQL: GROUP BY + FIRST/LAST/MAX per jam (self-contained, anti-error) ---
                 string sql = @"
                     SELECT m.machine_id, 
                            COALESCE(t.type_name, 'UNK') AS type_name, 
                            COALESCE(a.area_name, 'UNK') AS area_name, 
                            m.machine_number,
                            -1 AS hour_index,
-                           (SELECT produced_pieces FROM machine_process_logs WHERE machine_id = m.machine_id AND created_at < @ShiftStart ORDER BY created_at DESC LIMIT 1) AS produced_pieces,
-                           0 AS auto_time, 
-                           0 AS monitor_time,
-                           @ShiftStart AS created_at
+                           0 AS max_pieces, 0 AS first_pieces, 0 AS last_pieces,
+                           0 AS curr_auto, 0 AS curr_mon
                     FROM machines m
                     LEFT JOIN machine_types t ON m.type_id = t.type_id
                     LEFT JOIN machine_areas a ON m.area_id = a.area_id
@@ -270,10 +268,11 @@ namespace mtc_app.features.technician.presentation.components
                            COALESCE(a.area_name, 'UNK') AS area_name, 
                            m.machine_number,
                            TIMESTAMPDIFF(HOUR, @ShiftStart, p.created_at) AS hour_index,
-                           p.produced_pieces,
-                           p.auto_time,
-                           p.monitor_time,
-                           p.created_at
+                           MAX(p.produced_pieces) AS max_pieces,
+                           CAST(SUBSTRING_INDEX(GROUP_CONCAT(p.produced_pieces ORDER BY p.created_at ASC SEPARATOR ','), ',', 1) AS SIGNED) AS first_pieces,
+                           CAST(SUBSTRING_INDEX(GROUP_CONCAT(p.produced_pieces ORDER BY p.created_at DESC SEPARATOR ','), ',', 1) AS SIGNED) AS last_pieces,
+                           MAX(p.auto_time) AS curr_auto,
+                           MAX(p.monitor_time) AS curr_mon
                     FROM machines m
                     LEFT JOIN machine_types t ON m.type_id = t.type_id
                     LEFT JOIN machine_areas a ON m.area_id = a.area_id
@@ -281,7 +280,8 @@ namespace mtc_app.features.technician.presentation.components
                     WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
                       AND p.created_at >= @ShiftStart 
                       AND p.created_at < @ShiftEnd 
-                    ORDER BY machine_id, created_at;";
+                    GROUP BY m.machine_id, type_name, area_name, m.machine_number, hour_index
+                    ORDER BY machine_id, hour_index;";
                 
                 IEnumerable<dynamic> rows;
                 using (var conn = DatabaseHelper.GetConnection())
@@ -290,13 +290,11 @@ namespace mtc_app.features.technician.presentation.components
                     rows = await conn.QueryAsync(sql, new { Area = selectedArea, ShiftStart = shiftStart, ShiftEnd = shiftEnd });
                 }
 
-                // --- UPDATE C# ALGORITHM ---
+                // --- C# ALGORITHM: FIRST/LAST/MAX self-contained per jam ---
+                var hourFirst = new Dictionary<int, long[]>();
+                var hourLast = new Dictionary<int, long[]>();
+                var hourMax = new Dictionary<int, long[]>();
                 var machines = new Dictionary<int, MachineData>();
-                
-                // Temporary tracking for sequential accumulation
-                var lastKnownPieces = new Dictionary<int, long>();
-                var hourlyAccumulation = new Dictionary<int, long[]>();
-                var firstActiveHour = new Dictionary<int, int>();
 
                 foreach (var row in rows)
                 {
@@ -304,55 +302,26 @@ namespace mtc_app.features.technician.presentation.components
                     if (!machines.ContainsKey(mId))
                     {
                         machines[mId] = new MachineData { MachineName = $"{row.type_name}.{row.area_name}-{row.machine_number}" };
-                        hourlyAccumulation[mId] = new long[maxShiftHours];
-                        lastKnownPieces[mId] = -1;
-                        firstActiveHour[mId] = -1;
+                        hourFirst[mId] = new long[maxShiftHours];
+                        hourLast[mId] = new long[maxShiftHours];
+                        hourMax[mId] = new long[maxShiftHours];
+                        for (int i = 0; i < maxShiftHours; i++)
+                        {
+                            hourFirst[mId][i] = -1;
+                            hourLast[mId][i] = -1;
+                            hourMax[mId][i] = -1;
+                        }
                     }
 
                     int hIndex = (int)row.hour_index;
-                    long pieces = (row.produced_pieces != null) ? (long)row.produced_pieces : -1;
-
-                    if (hIndex == -1) 
+                    if (hIndex >= 0 && hIndex < maxShiftHours)
                     {
-                        // Initial state before shift starts
-                        lastKnownPieces[mId] = pieces;
-                        continue;
-                    }
+                        hourFirst[mId][hIndex] = (long)(row.first_pieces ?? 0);
+                        hourLast[mId][hIndex] = (long)(row.last_pieces ?? 0);
+                        hourMax[mId][hIndex] = (long)(row.max_pieces ?? 0);
 
-                    if (hIndex >= 0 && hIndex < maxShiftHours && pieces >= 0)
-                    {
-                        long prev = lastKnownPieces[mId];
-                        long increment = 0;
-
-                        if (prev == -1)
-                        {
-                            // Tidak ada record sebelum shift dimulai.
-                            // Gunakan nilai saat ini sebagai baseline, jangan hitung sebagai produksi.
-                            increment = 0;
-                        }
-                        else if (pieces < prev)
-                        {
-                            // A RESET OCCURRED! 
-                            // The true production since the reset is simply the current pieces.
-                            increment = pieces;
-                        }
-                        else
-                        {
-                            // Normal accumulation
-                            increment = pieces - prev;
-                        }
-
-                        hourlyAccumulation[mId][hIndex] += increment;
-                        lastKnownPieces[mId] = pieces;
-
-                        if (increment > 0 && firstActiveHour[mId] == -1)
-                        {
-                            firstActiveHour[mId] = hIndex + 1; // 1-based hour
-                        }
-                        
-                        // Update tracking for auto/monitor time
-                        machines[mId].AutoTime = Math.Max(machines[mId].AutoTime, (double)(row.auto_time ?? 0));
-                        machines[mId].MonitorTime = Math.Max(machines[mId].MonitorTime, (double)(row.monitor_time ?? 0));
+                        machines[mId].AutoTime = Math.Max(machines[mId].AutoTime, (double)(row.curr_auto ?? 0));
+                        machines[mId].MonitorTime = Math.Max(machines[mId].MonitorTime, (double)(row.curr_mon ?? 0));
                     }
                 }
 
@@ -372,30 +341,51 @@ namespace mtc_app.features.technician.presentation.components
                 {
                     int mId = kvp.Key;
                     var machine = kvp.Value;
-                    var accum = hourlyAccumulation[mId];
-                    int firstActive = firstActiveHour[mId];
 
                     long totalPiecesShiftIni = 0;
+                    int firstActiveHour = -1;
 
                     for (int i = 0; i < maxShiftHours; i++)
                     {
-                        if (i < currentHourCount)
+                        if (hourFirst[mId][i] == -1 || i >= currentHourCount)
                         {
-                            machine.HourlyPieces[i] = accum[i];
-                            totalPiecesShiftIni += accum[i];
+                            machine.HourlyPieces[i] = 0;
+                            continue;
+                        }
+
+                        long first = hourFirst[mId][i];
+                        long last = hourLast[mId][i];
+                        long max = hourMax[mId][i];
+                        long production = 0;
+
+                        if (last >= first)
+                        {
+                            // Normal: tidak ada reset di jam ini
+                            production = last - first;
                         }
                         else
                         {
-                            machine.HourlyPieces[i] = 0;
+                            // Reset terjadi di jam ini (last < first)
+                            // Pre-reset: max - first (produksi sebelum reset)
+                            // Post-reset: last (produksi setelah reset, counter mulai dari 0)
+                            production = (max - first) + last;
+                        }
+
+                        machine.HourlyPieces[i] = production;
+                        totalPiecesShiftIni += production;
+
+                        if (production > 0 && firstActiveHour == -1)
+                        {
+                            firstActiveHour = i + 1; // 1-based
                         }
                     }
 
                     machine.TotalPieces = totalPiecesShiftIni;
                     
                     int pembagi = 1;
-                    if (firstActive != -1)
+                    if (firstActiveHour != -1)
                     {
-                        pembagi = currentHourCount - firstActive + 1;
+                        pembagi = currentHourCount - firstActiveHour + 1;
                     }
                     else
                     {
