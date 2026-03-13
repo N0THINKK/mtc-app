@@ -6,6 +6,7 @@ namespace mtc_app.features.technician.data.dtos
     {
         public int DetailId { get; set; }
         public int LogId { get; set; }
+        public int MachineId { get; set; }
         public string MachineName { get; set; }
         public DateTime PatrolDate { get; set; }
         public string FormattedPatrolDate => PatrolDate.ToString("dd/MM/yyyy HH:mm");

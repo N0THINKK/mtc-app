@@ -17,9 +17,11 @@ namespace mtc_app.features.machine_history.presentation.screens
     {
         private DataGridView gridPatrols;
         private TechnicianRepository _repo;
+        private int? _machineId; // Menyimpan ID mesin untuk filter
 
-        public PopupNgListForm()
+        public PopupNgListForm(int? machineId = null)
         {
+            _machineId = machineId;
             _repo = new TechnicianRepository();
             
             this.Text = "Daftar Temuan Patroli (NOT OK)";
@@ -89,6 +91,12 @@ namespace mtc_app.features.machine_history.presentation.screens
                 // Ambil data NG 7 hari terakhir (Bisa disesuaikan)
                 var list = await _repo.GetPatrolNgListAsync("NG", "DESC", DateTime.Now.AddDays(-7), DateTime.Now);
                 
+                // Menerapkan filter mesin jika diakses langsung dari form spesifik mesin
+                if (_machineId.HasValue)
+                {
+                    list = list.Where(x => x.MachineId == _machineId.Value).ToList();
+                }
+
                 gridPatrols.AutoGenerateColumns = false;
                 gridPatrols.DataSource = list.ToList();
             }

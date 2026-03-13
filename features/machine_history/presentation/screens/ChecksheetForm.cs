@@ -133,7 +133,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 btnLihatNg.Click += (sender, e) =>
                 {
                     this.Hide();
-                    using (var popup = new PopupNgListForm())
+                    using (var popup = new PopupNgListForm(_currentMachineId))
                     {
                         popup.ShowDialog(this);
                     }

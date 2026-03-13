@@ -272,6 +272,7 @@ namespace mtc_app.features.technician.data.repositories
                     SELECT 
                         d.detail_id AS DetailId,
                         l.log_id AS LogId,
+                        m.machine_id AS MachineId,
                         CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) AS MachineName,
                         l.patrol_date AS PatrolDate,
                         i.role_target AS RoleTarget,
