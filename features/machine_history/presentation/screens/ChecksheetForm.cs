@@ -431,7 +431,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             private void ToggleNotOkOptions()
             {
                 if (InputType != "numeric/text")
-                    this.BackColor = radNotOk.Checked ? Color.SeaShell : Color.White;
+                    this.BackColor = radNotOk.Checked ? Color.FromArgb(255, 220, 220) : Color.White;
             }
         }
     }
