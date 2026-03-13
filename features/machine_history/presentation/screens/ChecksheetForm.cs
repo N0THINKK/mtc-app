@@ -230,7 +230,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     }
 
                     _currentTemplateId = (int)machineInfo.current_template_id;
-                    lblMachineInfo.Text = $"Terminal: {machineInfo.type_name}.{machineInfo.machine_number} | Mode Pekerjaan: {machineInfo.template_name}";
+                    lblMachineInfo.Text = $"No. Mesin: {machineInfo.type_name}.{machineInfo.machine_number} | Mode Pekerjaan: {machineInfo.template_name}";
 
                     // 3. Tarik Pertanyaan dari Database (Filter Lapis 3: Berdasarkan Role)
                     string targetRole = _isTeknisiMode ? "Teknisi" : "Operator";
