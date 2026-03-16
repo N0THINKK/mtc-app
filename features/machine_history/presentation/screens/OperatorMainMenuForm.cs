@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using mtc_app.shared.data.session;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
+using mtc_app.features.applicator_patrol.presentation.screens;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
@@ -13,6 +14,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private Label lblSubtitle;
         private AppButton btnHistory;
         private AppButton btnChecksheet;
+        private AppButton btnApplicatorPatrol;
         private AppButton btnMicrometer;
         private AppButton btnLogout;
 
@@ -24,7 +26,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private void InitializeUI()
         {
             this.Text = "Menu Utama Operator";
-            this.Size = new Size(600, 580);
+            this.Size = new Size(600, 680);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = AppColors.Background;
             this.FormBorderStyle = FormBorderStyle.None; 
@@ -71,12 +73,23 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
             btnChecksheet.Click += BtnChecksheet_Click;
 
+            btnApplicatorPatrol = new AppButton
+            {
+                Text = "Isi Patroli Harian\n(Aplikator)",
+                Type = AppButton.ButtonType.Secondary,
+                Size = new Size(500, 90),
+                Location = new Point(50, 360),
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnApplicatorPatrol.Click += BtnApplicatorPatrol_Click;
+
             btnMicrometer = new AppButton
             {
                 Text = "Isi Patroli Harian\n(Mikrometer)",
                 Type = AppButton.ButtonType.Secondary,
                 Size = new Size(500, 90),
-                Location = new Point(50, 360),
+                Location = new Point(50, 470),
                 Font = new Font("Segoe UI", 14F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
@@ -87,7 +100,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Text = "Logout / Kembali",
                 Type = AppButton.ButtonType.Danger, 
                 Size = new Size(200, 45),
-                Location = new Point(200, 480),
+                Location = new Point(200, 590),
                 Cursor = Cursors.Hand
             };
             btnLogout.Click += (s, e) => this.Close(); 
@@ -96,6 +109,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Controls.Add(lblSubtitle);
             this.Controls.Add(btnHistory);
             this.Controls.Add(btnChecksheet);
+            this.Controls.Add(btnApplicatorPatrol);
             this.Controls.Add(btnMicrometer);
             this.Controls.Add(btnLogout);
         }
@@ -114,6 +128,16 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Hide();
             checkForm.FormClosed += (s, args) => this.Show();
             checkForm.Show();
+        }
+
+        private void BtnApplicatorPatrol_Click(object sender, EventArgs e)
+        {
+            var form = new ApplicatorPatrolForm(
+                mtc_app.shared.infrastructure.ServiceLocator.CreateApplicatorPatrolRepository(),
+                mtc_app.shared.infrastructure.ServiceLocator.CreateMasterDataRepository());
+            this.Hide();
+            form.FormClosed += (s, args) => this.Show();
+            form.Show();
         }
 
         private void BtnMicrometer_Click(object sender, EventArgs e)

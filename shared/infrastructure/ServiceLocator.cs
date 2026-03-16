@@ -16,6 +16,7 @@ using mtc_app.shared.data.repositories;
 using mtc_app.shared.data.services;
 using mtc_app.features.micrometer_patrol.data.repositories;
 using mtc_app.features.micrometer_patrol.data.decorators;
+using mtc_app.features.applicator_patrol.data.repositories;
 
 namespace mtc_app.shared.infrastructure
 {
@@ -210,6 +211,14 @@ namespace mtc_app.shared.infrastructure
                 _offlineRepo,
                 _networkMonitor
             );
+        }
+
+        /// <summary>
+        /// Creates an ApplicatorPatrolRepository (online only - real-time data).
+        /// </summary>
+        public static IApplicatorPatrolRepository CreateApplicatorPatrolRepository()
+        {
+            return new ApplicatorPatrolRepository();
         }
     }
 }
