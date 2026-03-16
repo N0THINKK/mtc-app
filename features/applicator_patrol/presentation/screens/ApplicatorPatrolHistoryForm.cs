@@ -141,14 +141,13 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
             dgvHistory.DefaultCellStyle.SelectionForeColor = Color.White;
 
             // Kolom
-            dgvHistory.Columns.Add(new DataGridViewTextBoxColumn { Name = "colDate",   HeaderText = "Tanggal",     FillWeight = 12 });
+            dgvHistory.Columns.Add(new DataGridViewTextBoxColumn { Name = "colDate",   HeaderText = "Tanggal",     FillWeight = 14 });
             dgvHistory.Columns.Add(new DataGridViewTextBoxColumn { Name = "colShift",  HeaderText = "Shift",       FillWeight = 8 });
             dgvHistory.Columns.Add(new DataGridViewTextBoxColumn { Name = "colSide",   HeaderText = "Sisi",        FillWeight = 6 });
-            dgvHistory.Columns.Add(new DataGridViewTextBoxColumn { Name = "colOp",     HeaderText = "Operator",    FillWeight = 12 });
-            dgvHistory.Columns.Add(new DataGridViewTextBoxColumn { Name = "colTotal",  HeaderText = "Total Appl.", FillWeight = 10, DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter } });
-            dgvHistory.Columns.Add(new DataGridViewTextBoxColumn { Name = "colNg",     HeaderText = "NG",          FillWeight = 8,  DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter } });
+            dgvHistory.Columns.Add(new DataGridViewTextBoxColumn { Name = "colOp",     HeaderText = "Operator",    FillWeight = 16 });
+            dgvHistory.Columns.Add(new DataGridViewTextBoxColumn { Name = "colTotal",  HeaderText = "Total Appl.", FillWeight = 12, DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter } });
+            dgvHistory.Columns.Add(new DataGridViewTextBoxColumn { Name = "colNg",     HeaderText = "Jml NG",     FillWeight = 10,  DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter } });
             dgvHistory.Columns.Add(new DataGridViewTextBoxColumn { Name = "colStatus", HeaderText = "Status",      FillWeight = 10, DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter } });
-            dgvHistory.Columns.Add(new DataGridViewTextBoxColumn { Name = "colNotes",  HeaderText = "Keterangan",  FillWeight = 34 });
 
             dgvHistory.CellFormatting += DgvHistory_CellFormatting;
             dgvHistory.SelectionChanged += DgvHistory_SelectionChanged;
@@ -194,9 +193,10 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
             dgvDetail.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             dgvDetail.ColumnHeadersHeight = 28;
 
-            dgvDetail.Columns.Add(new DataGridViewTextBoxColumn { Name = "dNo",   HeaderText = "No.",             FillWeight = 6,  DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter } });
-            dgvDetail.Columns.Add(new DataGridViewTextBoxColumn { Name = "dCode", HeaderText = "No. Aplikator",   FillWeight = 30 });
-            dgvDetail.Columns.Add(new DataGridViewTextBoxColumn { Name = "dJudge",HeaderText = "Kondisi",         FillWeight = 15, DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter } });
+            dgvDetail.Columns.Add(new DataGridViewTextBoxColumn { Name = "dNo",   HeaderText = "No.",           FillWeight = 5,  DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter } });
+            dgvDetail.Columns.Add(new DataGridViewTextBoxColumn { Name = "dCode", HeaderText = "No. Aplikator", FillWeight = 20 });
+            dgvDetail.Columns.Add(new DataGridViewTextBoxColumn { Name = "dJudge",HeaderText = "Kondisi",       FillWeight = 10, DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter } });
+            dgvDetail.Columns.Add(new DataGridViewTextBoxColumn { Name = "dItems",HeaderText = "Item yang NG",  FillWeight = 65 });
 
             dgvDetail.CellFormatting += DgvDetail_CellFormatting;
             pnlDetail.Controls.Add(dgvDetail);
@@ -222,8 +222,7 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
                         h.OperatorNik ?? "-",
                         h.TotalAplikator,
                         h.TotalNg,
-                        status,
-                        h.Notes
+                        status
                     );
                 }
 
@@ -259,7 +258,10 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
                 dgvDetail.Rows.Clear();
                 int no = 1;
                 foreach (var d in details)
-                    dgvDetail.Rows.Add(no++, d.ApplicatorCode, d.Judgment);
+                {
+                    string itemDesc = FormatNgItems(d.NgItems);
+                    dgvDetail.Rows.Add(no++, d.ApplicatorCode, d.Judgment, itemDesc);
+                }
             }
             catch (Exception ex)
             {
@@ -280,6 +282,29 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
                 e.CellStyle.ForeColor = e.Value.ToString() == "NG" ? Color.FromArgb(200, 30, 30) : Color.FromArgb(30, 150, 30);
                 e.CellStyle.Font = new Font(AppFonts.FontFamily, 10, FontStyle.Bold);
             }
+        }
+
+        private static readonly string[] ITEM_NAMES = {
+            "1: Crimper Anvil / Anvil holder / Supporting stopper",
+            "2: Posisi Ram",
+            "3: Kondisi pot oil PA5",
+            "4: Wire stopper / Safety cover / Strip terminal EASY",
+            "5: Crimper front/rear / Anvil punggung / Shear blade",
+            "6: Crimper Anvil (Micrometer)",
+            "7: Validasi Appl"
+        };
+
+        private static string FormatNgItems(string ngItems)
+        {
+            if (string.IsNullOrEmpty(ngItems)) return "";
+            var parts = ngItems.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            var names = new System.Collections.Generic.List<string>();
+            foreach (var p in parts)
+            {
+                if (int.TryParse(p.Trim(), out int idx) && idx >= 1 && idx <= ITEM_NAMES.Length)
+                    names.Add(ITEM_NAMES[idx - 1]);
+            }
+            return names.Count > 0 ? string.Join("  |  ", names) : ngItems;
         }
 
         private void DgvDetail_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)

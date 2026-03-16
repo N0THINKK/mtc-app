@@ -73,13 +73,15 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
         private CsvFileWatcherService _fileWatcher;
         private Dictionary<string, string> _judgmentsA = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private Dictionary<string, string> _judgmentsB = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        // Menyimpan ng_items per aplikator (nomor item yg NG, e.g. "1,3")
+        private Dictionary<string, string> _ngItemsA = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private Dictionary<string, string> _ngItemsB = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         // ── Controls ─────────────────────────────────────────────────────
         private Label lblClock, lblSide, lblPageInfo;
         private AppInput txtTanggal, cmbShift, cmbNik, cmbMesin;
         private Panel pnlApplicatorList;
         private AppButton btnSideA, btnSideB, btnPrev, btnNext, btnRecord, btnSimpan, btnKeluar;
-        private TextBox txtKeterangan;
         private System.Windows.Forms.Timer _clockTimer;
 
         public ApplicatorPatrolForm(IApplicatorPatrolRepository repository, IMasterDataRepository masterDataRepository)
@@ -294,26 +296,9 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
             this.Controls.Add(btnSimpan);
         }
 
-        // ─── Footer: Keterangan ──────────────────────────────────────────
-        private void BuildFooter()
-        {
-            this.Controls.Add(new Panel { Bounds = new Rectangle(0, ROW_FOOTER, FORM_W, 1), BackColor = AppColors.Border });
+        // ─── Footer: dihapus (keterangan tidak digunakan) ───────────────
+        private void BuildFooter() { /* Tidak ada footer */ }
 
-            this.Controls.Add(new Label
-            {
-                Text = "Keterangan",
-                Font = new Font(AppFonts.FontFamily, 10f), ForeColor = AppColors.TextSecondary,
-                AutoSize = true, Location = new Point(COL1_X, ROW_FOOTER + 10)
-            });
-
-            txtKeterangan = new TextBox
-            {
-                Bounds = new Rectangle(110, ROW_FOOTER + 7, 840, 26),
-                Font = new Font(AppFonts.FontFamily, 10f),
-                BorderStyle = BorderStyle.FixedSingle
-            };
-            this.Controls.Add(txtKeterangan);
-        }
 
         // ═════════════════════════════════════════════════════════════════
         //  DATA SETUP
@@ -461,11 +446,18 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
 
         private void SaveCurrentPageJudgments()
         {
-            var dict = _currentSide == "A" ? _judgmentsA : _judgmentsB;
+            var jDict = _currentSide == "A" ? _judgmentsA : _judgmentsB;
+            var nDict = _currentSide == "A" ? _ngItemsA : _ngItemsB;
             foreach (Control ctrl in pnlApplicatorList.Controls)
             {
                 if (ctrl is ApplicatorRowControl row && !string.IsNullOrEmpty(row.ApplicatorCode))
-                    dict[row.ApplicatorCode] = row.Judgment;
+                {
+                    jDict[row.ApplicatorCode] = row.Judgment;
+                    if (row.Judgment == "NG" && !string.IsNullOrEmpty(row.NgItems))
+                        nDict[row.ApplicatorCode] = row.NgItems;
+                    else
+                        nDict.Remove(row.ApplicatorCode);
+                }
             }
         }
 
@@ -499,7 +491,15 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
                 row.ApplicatorCode = applicators[i];
                 row.IsActive = true;
                 if (dict.TryGetValue(applicators[i], out string saved))
+                {
                     row.Judgment = saved;
+                    if (saved == "NG")
+                    {
+                        var nDict = _currentSide == "A" ? _ngItemsA : _ngItemsB;
+                        if (nDict.TryGetValue(applicators[i], out string ngItems))
+                            row.NgItems = ngItems;
+                    }
+                }
                 rows.Add(row);
             }
 
@@ -583,13 +583,15 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
             {
                 PatrolDate = DateTime.Today,
                 ShiftId = shiftId,
-                UserId = (int)(UserSession.CurrentUser?.UserId ?? 0),
+                UserId = (UserSession.CurrentUser?.UserId > 0) ? (int?)UserSession.CurrentUser.UserId : null,
+                OperatorNik = UserSession.CurrentUser?.Nik ?? UserSession.CurrentUser?.Username ?? "",
                 MachineId = machineId,
                 Side = _currentSide,
-                Notes = txtKeterangan.Text.Trim()
+                Notes = ""
             };
 
             var dict = _currentSide == "A" ? _judgmentsA : _judgmentsB;
+            var nDict = _currentSide == "A" ? _ngItemsA : _ngItemsB;
             var applicators = CurrentApplicators();
 
             var details = new List<ApplicatorPatrolDetailDto>();
@@ -597,7 +599,8 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
             {
                 if (string.IsNullOrEmpty(code)) continue;
                 string judgment = dict.TryGetValue(code, out string j) ? j : "OK";
-                details.Add(new ApplicatorPatrolDetailDto { ApplicatorCode = code, Judgment = judgment });
+                string ngItems = (judgment == "NG" && nDict.TryGetValue(code, out string ni)) ? ni : null;
+                details.Add(new ApplicatorPatrolDetailDto { ApplicatorCode = code, Judgment = judgment, NgItems = ngItems });
             }
 
             if (details.Count == 0)
