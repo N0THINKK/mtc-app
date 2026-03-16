@@ -19,18 +19,20 @@ namespace mtc_app.features.applicator_patrol.data.repositories
                 {
                     try
                     {
+                        // 1. Insert header log
                         string insertLog = @"
                             INSERT INTO applicator_patrol_logs 
-                                (patrol_date, shift_id, user_id, machine_id, side, notes)
+                                (patrol_date, shift_id, user_id, operator_nik, machine_id, side, notes)
                             VALUES 
-                                (@PatrolDate, @ShiftId, @UserId, @MachineId, @Side, @Notes);
+                                (@PatrolDate, @ShiftId, @UserId, @OperatorNik, @MachineId, @Side, @Notes);
                             SELECT LAST_INSERT_ID();";
 
                         int logId = await connection.ExecuteScalarAsync<int>(insertLog, new
                         {
                             log.PatrolDate,
                             log.ShiftId,
-                            log.UserId,
+                            UserId = log.UserId > 0 ? (object)log.UserId : null,
+                            log.OperatorNik,
                             log.MachineId,
                             log.Side,
                             log.Notes
@@ -39,8 +41,8 @@ namespace mtc_app.features.applicator_patrol.data.repositories
                         if (details != null && details.Count > 0)
                         {
                             string insertDetail = @"
-                                INSERT INTO applicator_patrol_details (log_id, applicator_code, judgment)
-                                VALUES (@LogId, @ApplicatorCode, @Judgment)";
+                                INSERT INTO applicator_patrol_details (log_id, applicator_code, judgment, ng_items)
+                                VALUES (@LogId, @ApplicatorCode, @Judgment, @NgItems)";
 
                             foreach (var detail in details)
                             {
@@ -104,7 +106,8 @@ namespace mtc_app.features.applicator_patrol.data.repositories
             {
                 string sql = @"
                     SELECT detail_id AS DetailId, log_id AS LogId,
-                           applicator_code AS ApplicatorCode, judgment AS Judgment
+                           applicator_code AS ApplicatorCode, judgment AS Judgment,
+                           ng_items AS NgItems
                     FROM applicator_patrol_details
                     WHERE log_id = @LogId
                     ORDER BY detail_id";
