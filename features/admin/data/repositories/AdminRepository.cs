@@ -364,5 +364,46 @@ namespace mtc_app.features.admin.data.repositories
             string insertSql = "INSERT INTO machine_areas (area_name) VALUES (@name); SELECT LAST_INSERT_ID();";
             return await connection.ExecuteScalarAsync<int>(insertSql, new { name = areaName });
         }
+
+        // ==========================================
+        // OUTPUT TARGET CRUD
+        // ==========================================
+        public async Task<IEnumerable<dynamic>> GetOutputTargetsAsync()
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        ot.target_id AS id,
+                        mt.type_name AS tipe_mesin,
+                        ma.area_name AS area,
+                        ot.target_per_hour AS target_per_jam
+                    FROM machine_output_targets ot
+                    JOIN machine_types mt ON ot.type_id = mt.type_id
+                    JOIN machine_areas ma ON ot.area_id = ma.area_id
+                    ORDER BY mt.type_name, ma.area_name";
+                return await connection.QueryAsync(sql);
+            }
+        }
+
+        public async Task<bool> SaveOutputTargetAsync(int typeId, int areaId, int targetPerHour)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    INSERT INTO machine_output_targets (type_id, area_id, target_per_hour)
+                    VALUES (@typeId, @areaId, @target)
+                    ON DUPLICATE KEY UPDATE target_per_hour = @target";
+                return await connection.ExecuteAsync(sql, new { typeId, areaId, target = targetPerHour }) > 0;
+            }
+        }
+
+        public async Task<bool> DeleteOutputTargetAsync(int targetId)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                return await connection.ExecuteAsync("DELETE FROM machine_output_targets WHERE target_id = @id", new { id = targetId }) > 0;
+            }
+        }
     }
 }
