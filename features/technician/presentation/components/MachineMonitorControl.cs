@@ -123,7 +123,7 @@ namespace mtc_app.features.technician.presentation.components
             // 1. Sort
             _comboSort = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = AppFonts.BodySmall, Width = 110, Margin = new Padding(0, 10, 10, 0) };
             _comboSort.Items.AddRange(new object[] { "↓ Tertinggi", "↑ Terendah", "Nomor Mesin" });
-            _comboSort.SelectedIndex = 0;
+            _comboSort.SelectedIndex = 2; // Default to "Nomor Mesin" for randomized look
             _comboSort.SelectedIndexChanged += async (s, e) => { await LoadData(); };
             var lblSort = new Label { Text = "Urutkan:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
 
@@ -472,20 +472,20 @@ namespace mtc_app.features.technician.presentation.components
                 area.AxisY.Title = "Output (Pcs)";
 
                 Color[] hourColors = new Color[] {
-                    ColorTranslator.FromHtml("#FF85A2"), // Pastel Pink / Watermelon
-                    ColorTranslator.FromHtml("#FFB27D"), // Pastel Peach / Orange
-                    ColorTranslator.FromHtml("#FFD659"), // Pastel Yellow
-                    ColorTranslator.FromHtml("#B5E67A"), // Pastel Light Green
-                    ColorTranslator.FromHtml("#6BE685"), // Pastel Mint / Green
-                    ColorTranslator.FromHtml("#6BE6D0"), // Pastel Cyan
-                    ColorTranslator.FromHtml("#6BBEE6"), // Pastel Light Blue
-                    ColorTranslator.FromHtml("#6B8AE6"), // Pastel Indigo
-                    ColorTranslator.FromHtml("#966BE6"), // Pastel Purple
-                    ColorTranslator.FromHtml("#D86BE6"), // Pastel Magenta
-                    ColorTranslator.FromHtml("#F19CBB"), // Soft Coral Pink
-                    ColorTranslator.FromHtml("#A5C882"), // Muted Sage Green
-                    ColorTranslator.FromHtml("#E8C547"), // Mustard Yellow
-                    ColorTranslator.FromHtml("#4F5D75")  // Slate Gray (fallback)
+                    ColorTranslator.FromHtml("#FF4081"), // Pink
+                    ColorTranslator.FromHtml("#FF9100"), // Orange
+                    ColorTranslator.FromHtml("#FFEA00"), // Yellow
+                    ColorTranslator.FromHtml("#00E676"), // Green
+                    ColorTranslator.FromHtml("#00E5FF"), // Cyan
+                    ColorTranslator.FromHtml("#D500F9"), // Purple
+                    ColorTranslator.FromHtml("#F50057"), // Rose
+                    ColorTranslator.FromHtml("#76FF03"), // Lime
+                    ColorTranslator.FromHtml("#FF3D00"), // Deep Orange
+                    ColorTranslator.FromHtml("#1DE9B6"), // Teal
+                    ColorTranslator.FromHtml("#E040FB"), // Light Purple
+                    ColorTranslator.FromHtml("#C6FF00"), // Yellow Green
+                    ColorTranslator.FromHtml("#FF5252"), // Light Red
+                    ColorTranslator.FromHtml("#448AFF")  // Blue
                 };
 
                 for (int i = 0; i < currentHourCount; i++)
@@ -496,7 +496,7 @@ namespace mtc_app.features.technician.presentation.components
                         Color = hourColors[i],
                         IsValueShownAsLabel = false 
                     };
-                    s["PixelPointWidth"] = "80"; 
+                    s["PixelPointWidth"] = "40"; // Thinner bars for high data density
                     _chart.Series.Add(s);
                 }
 
@@ -525,7 +525,7 @@ namespace mtc_app.features.technician.presentation.components
                     
                     if (item.TotalPieces > 0)
                     {
-                        sAvg.Points[pAvg].Label = $"Avg: {item.AveragePerHour:N0} /j\nTotal: {item.TotalPieces:N0}";
+                        sAvg.Points[pAvg].Label = $"{item.AveragePerHour:N0}/j\nTot: {item.TotalPieces:N0}";
                     }
                     else
                     {
