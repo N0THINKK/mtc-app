@@ -32,9 +32,12 @@ namespace mtc_app.features.technician.presentation.components
         private class MachineData
         {
             public string MachineName { get; set; }
+            public int TypeId { get; set; }
+            public int AreaId { get; set; }
             public long[] HourlyPieces { get; set; } = new long[14]; 
             public long TotalPieces { get; set; } 
-            public double AveragePerHour { get; set; } 
+            public double AveragePerHour { get; set; }
+            public int TargetPerHour { get; set; }
             
             public double AutoTime { get; set; }
             public double MonitorTime { get; set; }
@@ -129,7 +132,7 @@ namespace mtc_app.features.technician.presentation.components
 
             // 2. Metric
             _comboMetric = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 140, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, 10, 0) };
-            _comboMetric.Items.AddRange(new object[] { "Output Per Jam", "Efisiensi Mesin" });
+            _comboMetric.Items.AddRange(new object[] { "Output Per Jam", "Total", "Efisiensi Mesin" });
             _comboMetric.SelectedIndex = 0;
             _comboMetric.SelectedIndexChanged += async (s, e) => await LoadData();
             var lblMetric = new Label { Text = "Metrik:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
@@ -254,6 +257,8 @@ namespace mtc_app.features.technician.presentation.components
                 //       MIN/MAX cannot detect resets (e.g. 12000→0→500 gives MAX-MIN=12000, wrong!)
                 string sql = @"
                     SELECT m.machine_id,
+                           m.type_id,
+                           m.area_id,
                            COALESCE(t.type_name, 'UNK') AS type_name,
                            COALESCE(a.area_name, 'UNK') AS area_name,
                            m.machine_number,
@@ -268,6 +273,8 @@ namespace mtc_app.features.technician.presentation.components
                     UNION ALL
 
                     SELECT m.machine_id,
+                           m.type_id,
+                           m.area_id,
                            COALESCE(t.type_name, 'UNK') AS type_name,
                            COALESCE(a.area_name, 'UNK') AS area_name,
                            m.machine_number,
@@ -306,7 +313,12 @@ namespace mtc_app.features.technician.presentation.components
                     int mId = (int)row.machine_id;
                     if (!machines.ContainsKey(mId))
                     {
-                        machines[mId] = new MachineData { MachineName = $"{row.type_name}.{row.area_name}-{row.machine_number}" };
+                        machines[mId] = new MachineData
+                        {
+                            MachineName = $"{row.type_name}.{row.area_name}-{row.machine_number}",
+                            TypeId = (int)(row.type_id ?? 0),
+                            AreaId = (int)(row.area_id ?? 0)
+                        };
                         hourFirst[mId] = new long[maxShiftHours];
                         hourLast[mId] = new long[maxShiftHours];
                         hourMax[mId] = new long[maxShiftHours];
@@ -403,6 +415,32 @@ namespace mtc_app.features.technician.presentation.components
                     machine.AveragePerHour = (double)totalPiecesShiftIni / pembagi;
                 }
 
+                // --- Load targets from DB and map to each machine ---
+                try
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        conn.Open();
+                        var targets = await conn.QueryAsync(
+                            "SELECT type_id, area_id, target_per_hour FROM machine_output_targets");
+
+                        var targetMap = new Dictionary<string, int>();
+                        foreach (var t in targets)
+                        {
+                            string key = $"{(int)t.type_id}_{(int)t.area_id}";
+                            targetMap[key] = (int)t.target_per_hour;
+                        }
+
+                        foreach (var machine in machines.Values)
+                        {
+                            string key = $"{machine.TypeId}_{machine.AreaId}";
+                            if (targetMap.TryGetValue(key, out int target))
+                                machine.TargetPerHour = target;
+                        }
+                    }
+                }
+                catch { /* Target table might not exist yet — silently ignore */ }
+
                 string selectedMetric = _comboMetric.SelectedItem?.ToString();
                 string selectedSort = _comboSort.SelectedItem?.ToString();
                 var machineList = machines.Values.ToList();
@@ -467,25 +505,67 @@ namespace mtc_app.features.technician.presentation.components
 
             area.RecalculateAxesScale();
 
-            if (mode.Contains("Output"))
+            if (mode == "Output Per Jam")
             {
-                area.AxisY.Title = "Output (Pcs)";
+                // --- MODE 1: Single bar (avg/hour) + target dashed line ---
+                area.AxisY.Title = "Output Per Jam (Pcs)";
+
+                var sBar = new Series("Avg Output/Jam") 
+                { 
+                    ChartType = SeriesChartType.Column, 
+                    Color = Color.FromArgb(0, 229, 255), // Cyan
+                    IsValueShownAsLabel = true,
+                    Font = new Font("Segoe UI", 10F, FontStyle.Bold)
+                };
+                sBar["PixelPointWidth"] = "40";
+
+                var sTarget = new Series("Target") 
+                { 
+                    ChartType = SeriesChartType.Line, 
+                    Color = Color.Red,
+                    BorderWidth = 2,
+                    BorderDashStyle = ChartDashStyle.Dash,
+                    MarkerStyle = MarkerStyle.Circle,
+                    MarkerSize = 6,
+                    IsValueShownAsLabel = false
+                };
+
+                bool hasAnyTarget = data.Any(d => d.TargetPerHour > 0);
+
+                foreach (var item in data)
+                {
+                    int idx = sBar.Points.AddXY(item.MachineName, item.AveragePerHour);
+                    if (item.AveragePerHour > 0)
+                        sBar.Points[idx].Label = $"{item.AveragePerHour:N0}";
+
+                    if (hasAnyTarget)
+                        sTarget.Points.AddXY(item.MachineName, item.TargetPerHour);
+                }
+
+                _chart.Series.Add(sBar);
+                if (hasAnyTarget)
+                    _chart.Series.Add(sTarget);
+            }
+            else if (mode == "Total")
+            {
+                // --- MODE 2: Stacked hourly bars (no avg/tot label) ---
+                area.AxisY.Title = "Total Output (Pcs)";
 
                 Color[] hourColors = new Color[] {
-                    ColorTranslator.FromHtml("#FF4081"), // Pink
-                    ColorTranslator.FromHtml("#FF9100"), // Orange
-                    ColorTranslator.FromHtml("#FFEA00"), // Yellow
-                    ColorTranslator.FromHtml("#00E676"), // Green
-                    ColorTranslator.FromHtml("#00E5FF"), // Cyan
-                    ColorTranslator.FromHtml("#D500F9"), // Purple
-                    ColorTranslator.FromHtml("#F50057"), // Rose
-                    ColorTranslator.FromHtml("#76FF03"), // Lime
-                    ColorTranslator.FromHtml("#FF3D00"), // Deep Orange
-                    ColorTranslator.FromHtml("#1DE9B6"), // Teal
-                    ColorTranslator.FromHtml("#E040FB"), // Light Purple
-                    ColorTranslator.FromHtml("#C6FF00"), // Yellow Green
-                    ColorTranslator.FromHtml("#FF5252"), // Light Red
-                    ColorTranslator.FromHtml("#448AFF")  // Blue
+                    Color.FromArgb(255, 64, 129), // Pink
+                    Color.FromArgb(255, 145, 0),  // Orange
+                    Color.FromArgb(255, 234, 0),  // Yellow
+                    Color.FromArgb(0, 230, 118),  // Green
+                    Color.FromArgb(0, 229, 255),  // Cyan
+                    Color.FromArgb(213, 0, 249),  // Purple
+                    Color.FromArgb(245, 0, 87),   // Rose
+                    Color.FromArgb(118, 255, 3),  // Lime
+                    Color.FromArgb(255, 61, 0),   // Deep Orange
+                    Color.FromArgb(29, 233, 182), // Teal
+                    Color.FromArgb(224, 64, 251), // Light Purple
+                    Color.FromArgb(198, 255, 0),  // Yellow Green
+                    Color.FromArgb(255, 82, 82),  // Light Red
+                    Color.FromArgb(68, 138, 255)   // Blue
                 };
 
                 for (int i = 0; i < currentHourCount; i++)
@@ -496,20 +576,21 @@ namespace mtc_app.features.technician.presentation.components
                         Color = hourColors[i],
                         IsValueShownAsLabel = false 
                     };
-                    s["PixelPointWidth"] = "40"; // Thinner bars for high data density
+                    s["PixelPointWidth"] = "40";
                     _chart.Series.Add(s);
                 }
 
-                var sAvg = new Series("Rata-rata/Jam") 
+                // Total label on top (no avg)
+                var sTotLabel = new Series("Total") 
                 { 
                     ChartType = SeriesChartType.Point, 
                     MarkerStyle = MarkerStyle.None, 
                     Color = Color.Transparent,
                     IsValueShownAsLabel = true,
-                    Font = new Font("Segoe UI", 12F, FontStyle.Bold)
+                    Font = new Font("Segoe UI", 10F, FontStyle.Bold)
                 };
-                sAvg["LabelStyle"] = "Top";
-                _chart.Series.Add(sAvg);
+                sTotLabel["LabelStyle"] = "Top";
+                _chart.Series.Add(sTotLabel);
 
                 foreach (var item in data)
                 {
@@ -521,19 +602,11 @@ namespace mtc_app.features.technician.presentation.components
                     }
                     
                     double labelYPos = item.TotalPieces > 0 ? item.TotalPieces + (item.TotalPieces * 0.05) : 0;
-                    int pAvg = sAvg.Points.AddXY(item.MachineName, labelYPos);
-                    
-                    if (item.TotalPieces > 0)
-                    {
-                        sAvg.Points[pAvg].Label = $"{item.AveragePerHour:N0}/j\nTot: {item.TotalPieces:N0}";
-                    }
-                    else
-                    {
-                        sAvg.Points[pAvg].Label = " "; 
-                    }
+                    int pTot = sTotLabel.Points.AddXY(item.MachineName, labelYPos);
+                    sTotLabel.Points[pTot].Label = item.TotalPieces > 0 ? $"Tot: {item.TotalPieces:N0}" : " ";
                 }
             }
-            else 
+            else // Efisiensi Mesin
             {
                 area.AxisY.Title = "Waktu (Menit)";
 

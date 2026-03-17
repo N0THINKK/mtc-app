@@ -8,6 +8,7 @@ using mtc_app.features.admin.data.repositories;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 using mtc_app.shared.presentation.utils;
+using Dapper;
 
 namespace mtc_app.features.admin.presentation.views
 {
@@ -53,11 +54,17 @@ namespace mtc_app.features.admin.presentation.views
             // Tombol Tambah (Akan menempel di pojok kanan)
             btnAdd = new AppButton
             {
-                Text = "+ Tambah Data", Type = AppButton.ButtonType.Primary, Width = 250, Dock = DockStyle.Right // <--- [MODIFIKASI] Lebar ditambah agar teks panjang muat
+                Text = "+ Tambah Data", Type = AppButton.ButtonType.Primary, Width = 250, Dock = DockStyle.Right
             };
-            btnAdd.Click += async (s, e) => // <--- [MODIFIKASI] Tambahkan async
+            btnAdd.Click += async (s, e) =>
             {
-                // <--- [MODIFIKASI] Ambil daftar tipe mesin (Template) untuk form Checksheet atau Type dan Area untuk Mesin
+                // Target category uses a custom inline dialog
+                if (_currentCategory == "Target")
+                {
+                    await ShowTargetEditorDialog(null);
+                    return;
+                }
+
                 string[] extraData = null;
                 if (_currentCategory == "Checksheet") {
                     this.Cursor = Cursors.WaitCursor;
@@ -68,7 +75,6 @@ namespace mtc_app.features.admin.presentation.views
                     var types = await _repository.GetMachineTypesAsync();
                     var areas = await _repository.GetMachineAreasAsync();
                     
-                    // Kita gabung Type dan Area menggunakan delimiter khusus '|||' karena MasterDataEditorForm saat ini hanya menerima 1 array extraData tunggal
                     var combined = new List<string>();
                     combined.Add("TYPES");
                     combined.AddRange(types);
@@ -79,7 +85,6 @@ namespace mtc_app.features.admin.presentation.views
                     this.Cursor = Cursors.Default;
                 }
 
-                // <--- [MODIFIKASI] Lempar extraData ke constructor form
                 using (var form = new mtc_app.features.admin.presentation.screens.MasterDataEditorForm(_repository, _currentCategory, _currentProblemSubCategory, null, extraData))
                 {
                     if (form.ShowDialog() == DialogResult.OK)
@@ -295,6 +300,12 @@ namespace mtc_app.features.admin.presentation.views
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "STOK", DataPropertyName = "stok", FillWeight = 60 });
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "LOKASI RAK", DataPropertyName = "lokasi", FillWeight = 80 });
                     break;
+                case "Target":
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", DataPropertyName = "id", FillWeight = 40 });
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "TIPE MESIN", DataPropertyName = "tipe_mesin", FillWeight = 120 });
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "AREA", DataPropertyName = "area", FillWeight = 100 });
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "TARGET/JAM", DataPropertyName = "target_per_jam", FillWeight = 80 });
+                    break;
             }
 
             gridData.Columns.Add(new DataGridViewButtonColumn { Name = "Edit", HeaderText = "EDIT", Text = "Edit", UseColumnTextForButtonValue = true, FillWeight = 50 });
@@ -306,6 +317,7 @@ namespace mtc_app.features.admin.presentation.views
                 if (category == "User") _originalData = await _repository.GetMasterUsersAsync();
                 else if (category == "Mesin") _originalData = await _repository.GetMasterMachinesAsync();
                 else if (category == "Sparepart") _originalData = await _repository.GetMasterSparepartsAsync();
+                else if (category == "Target") _originalData = await _repository.GetOutputTargetsAsync();
                 
                 gridData.DataSource = _originalData?.ToList();
             }
@@ -401,7 +413,13 @@ namespace mtc_app.features.admin.presentation.views
 
                 if (colName == "Edit")
                 {
-                    // <--- [MODIFIKASI] Ambil ekstraData untuk diedit
+                    // Target uses custom dialog
+                    if (_currentCategory == "Target")
+                    {
+                        await ShowTargetEditorDialog(rowData);
+                        return;
+                    }
+
                     string[] extraData = null;
                     if (_currentCategory == "Checksheet") {
                         this.Cursor = Cursors.WaitCursor;
@@ -436,7 +454,12 @@ namespace mtc_app.features.admin.presentation.views
                         var dataDict = rowData as IDictionary<string, object>;
                         int idToDelete = Convert.ToInt32(dataDict["id"]);
 
-                        bool success = await _repository.DeleteMasterDataAsync(_currentCategory, _currentProblemSubCategory, idToDelete);
+                        bool success;
+                        if (_currentCategory == "Target")
+                            success = await _repository.DeleteOutputTargetAsync(idToDelete);
+                        else
+                            success = await _repository.DeleteMasterDataAsync(_currentCategory, _currentProblemSubCategory, idToDelete);
+
                         if (success) {
                             if (_currentCategory == "Problem" || _currentCategory == "Checksheet") 
                                 LoadSubCategory(_currentProblemSubCategory);
@@ -446,6 +469,116 @@ namespace mtc_app.features.admin.presentation.views
                             MessageBox.Show("Gagal menghapus data. Data mungkin sedang dipakai di tabel lain.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
                     }
+                }
+            }
+        }
+
+        // ==========================================
+        // TARGET OUTPUT: Custom Editor Dialog
+        // ==========================================
+        private async Task ShowTargetEditorDialog(object existingData)
+        {
+            this.Cursor = Cursors.WaitCursor;
+            var types = (await _repository.GetMachineTypesAsync()).ToList();
+            var areas = (await _repository.GetMachineAreasAsync()).ToList();
+            this.Cursor = Cursors.Default;
+
+            using (var dlg = new Form())
+            {
+                dlg.Text = existingData == null ? "Tambah Target Output" : "Edit Target Output";
+                dlg.Size = new Size(400, 280);
+                dlg.StartPosition = FormStartPosition.CenterParent;
+                dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dlg.MaximizeBox = false;
+                dlg.MinimizeBox = false;
+                dlg.BackColor = AppColors.Background;
+                dlg.Padding = new Padding(24);
+
+                var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 4 };
+                layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35F));
+                layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65F));
+
+                var lblType = new Label { Text = "Tipe Mesin:", Font = AppFonts.Body, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+                var cmbType = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, Font = AppFonts.Body };
+                cmbType.Items.AddRange(types.ToArray());
+
+                var lblArea = new Label { Text = "Area:", Font = AppFonts.Body, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+                var cmbArea = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, Font = AppFonts.Body };
+                cmbArea.Items.AddRange(areas.ToArray());
+
+                var lblTarget = new Label { Text = "Target/Jam:", Font = AppFonts.Body, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+                var txtTarget = new NumericUpDown { Minimum = 0, Maximum = 999999, Dock = DockStyle.Fill, Font = AppFonts.Body };
+
+                // Pre-fill for edit mode
+                if (existingData != null)
+                {
+                    var dict = existingData as IDictionary<string, object>;
+                    if (dict != null)
+                    {
+                        string editType = dict["tipe_mesin"]?.ToString() ?? "";
+                        string editArea = dict["area"]?.ToString() ?? "";
+                        int editTarget = Convert.ToInt32(dict["target_per_jam"]);
+
+                        int typeIdx = types.IndexOf(editType);
+                        if (typeIdx >= 0) cmbType.SelectedIndex = typeIdx;
+
+                        int areaIdx = areas.IndexOf(editArea);
+                        if (areaIdx >= 0) cmbArea.SelectedIndex = areaIdx;
+
+                        txtTarget.Value = editTarget;
+                    }
+                }
+
+                var btnSave = new AppButton { Text = "Simpan", Type = AppButton.ButtonType.Primary, Dock = DockStyle.Fill, Height = 40 };
+
+                layout.Controls.Add(lblType, 0, 0); layout.Controls.Add(cmbType, 1, 0);
+                layout.Controls.Add(lblArea, 0, 1); layout.Controls.Add(cmbArea, 1, 1);
+                layout.Controls.Add(lblTarget, 0, 2); layout.Controls.Add(txtTarget, 1, 2);
+                layout.Controls.Add(btnSave, 0, 3); layout.SetColumnSpan(btnSave, 2);
+
+                dlg.Controls.Add(layout);
+
+                btnSave.Click += async (s, e) =>
+                {
+                    if (cmbType.SelectedIndex < 0 || cmbArea.SelectedIndex < 0)
+                    {
+                        MessageBox.Show("Pilih Tipe Mesin dan Area terlebih dahulu.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    string selectedType = cmbType.SelectedItem.ToString();
+                    string selectedArea = cmbArea.SelectedItem.ToString();
+
+                    // Resolve type_id and area_id from names
+                    int typeId = 0, areaId = 0;
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        conn.Open();
+                        typeId = await conn.QueryFirstOrDefaultAsync<int>("SELECT type_id FROM machine_types WHERE type_name = @n", new { n = selectedType });
+                        areaId = await conn.QueryFirstOrDefaultAsync<int>("SELECT area_id FROM machine_areas WHERE area_name = @n", new { n = selectedArea });
+                    }
+
+                    if (typeId == 0 || areaId == 0)
+                    {
+                        MessageBox.Show("Tipe Mesin atau Area tidak ditemukan.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    bool success = await _repository.SaveOutputTargetAsync(typeId, areaId, (int)txtTarget.Value);
+                    if (success)
+                    {
+                        dlg.DialogResult = DialogResult.OK;
+                        dlg.Close();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Gagal menyimpan target.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                };
+
+                if (dlg.ShowDialog() == DialogResult.OK)
+                {
+                    LoadCategory("Target");
                 }
             }
         }

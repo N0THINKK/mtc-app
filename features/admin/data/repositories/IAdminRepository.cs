@@ -29,5 +29,10 @@ namespace mtc_app.features.admin.data.repositories
 
         Task<bool> SaveMasterDataAsync(string category, string subCategory, bool isEdit, IDictionary<string, object> data);
         Task<bool> DeleteMasterDataAsync(string category, string subCategory, int id);
+
+        // Output Target CRUD
+        Task<IEnumerable<dynamic>> GetOutputTargetsAsync();
+        Task<bool> SaveOutputTargetAsync(int typeId, int areaId, int targetPerHour);
+        Task<bool> DeleteOutputTargetAsync(int targetId);
     }
 }
