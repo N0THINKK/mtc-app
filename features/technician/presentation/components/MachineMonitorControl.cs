@@ -247,25 +247,29 @@ namespace mtc_app.features.technician.presentation.components
                 string namaShift;
                 DateTime shiftStart = GetShiftTimeRange(out shiftEnd, out isPastShift, out namaShift);
 
-                // --- SQL: GROUP BY + FIRST/LAST/MAX per jam (self-contained, anti-error) ---
+                // --- SQL: UNION ALL with FIRST/LAST/MAX per hour (handles counter resets) ---
+                // Part 1: Machine list (no log table touch, instant)
+                // Part 2: Aggregated logs with WHERE filter (uses index on machine_id + created_at)
+                // NOTE: GROUP_CONCAT is needed for FIRST/LAST to detect counter resets correctly.
+                //       MIN/MAX cannot detect resets (e.g. 12000→0→500 gives MAX-MIN=12000, wrong!)
                 string sql = @"
-                    SELECT m.machine_id, 
-                           COALESCE(t.type_name, 'UNK') AS type_name, 
-                           COALESCE(a.area_name, 'UNK') AS area_name, 
+                    SELECT m.machine_id,
+                           COALESCE(t.type_name, 'UNK') AS type_name,
+                           COALESCE(a.area_name, 'UNK') AS area_name,
                            m.machine_number,
-                           -1 AS hour_index,
+                           CAST(NULL AS SIGNED) AS hour_index,
                            0 AS max_pieces, 0 AS first_pieces, 0 AS last_pieces,
                            0 AS curr_auto, 0 AS curr_mon
                     FROM machines m
                     LEFT JOIN machine_types t ON m.type_id = t.type_id
                     LEFT JOIN machine_areas a ON m.area_id = a.area_id
                     WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
-                    
+
                     UNION ALL
-                    
-                    SELECT m.machine_id, 
-                           COALESCE(t.type_name, 'UNK') AS type_name, 
-                           COALESCE(a.area_name, 'UNK') AS area_name, 
+
+                    SELECT m.machine_id,
+                           COALESCE(t.type_name, 'UNK') AS type_name,
+                           COALESCE(a.area_name, 'UNK') AS area_name,
                            m.machine_number,
                            TIMESTAMPDIFF(HOUR, @ShiftStart, p.created_at) AS hour_index,
                            MAX(p.produced_pieces) AS max_pieces,
@@ -278,19 +282,20 @@ namespace mtc_app.features.technician.presentation.components
                     LEFT JOIN machine_areas a ON m.area_id = a.area_id
                     JOIN machine_process_logs p ON m.machine_id = p.machine_id
                     WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
-                      AND p.created_at >= @ShiftStart 
-                      AND p.created_at < @ShiftEnd 
-                    GROUP BY m.machine_id, type_name, area_name, m.machine_number, hour_index
+                      AND p.created_at >= @ShiftStart
+                      AND p.created_at < @ShiftEnd
+                      AND p.produced_pieces > 0
+                    GROUP BY m.machine_id, t.type_name, a.area_name, m.machine_number, hour_index
                     ORDER BY machine_id, hour_index;";
-                
+
                 IEnumerable<dynamic> rows;
                 using (var conn = DatabaseHelper.GetConnection())
                 {
-                    conn.Open(); 
-                    rows = await conn.QueryAsync(sql, new { Area = selectedArea, ShiftStart = shiftStart, ShiftEnd = shiftEnd });
+                    conn.Open();
+                    rows = await conn.QueryAsync(sql, new { Area = selectedArea, ShiftStart = shiftStart, ShiftEnd = shiftEnd }, commandTimeout: 60);
                 }
 
-                // --- C# ALGORITHM: FIRST/LAST/MAX self-contained per jam ---
+                // --- C# ALGORITHM: FIRST/LAST/MAX per hour (handles counter resets) ---
                 var hourFirst = new Dictionary<int, long[]>();
                 var hourLast = new Dictionary<int, long[]>();
                 var hourMax = new Dictionary<int, long[]>();
@@ -312,6 +317,9 @@ namespace mtc_app.features.technician.presentation.components
                             hourMax[mId][i] = -1;
                         }
                     }
+
+                    // hour_index is NULL for machine-list rows (Part 1 of UNION ALL)
+                    if (row.hour_index == null) continue;
 
                     int hIndex = (int)row.hour_index;
                     if (hIndex >= 0 && hIndex < maxShiftHours)
@@ -360,14 +368,14 @@ namespace mtc_app.features.technician.presentation.components
 
                         if (last >= first)
                         {
-                            // Normal: tidak ada reset di jam ini
+                            // Normal: no reset in this hour
                             production = last - first;
                         }
                         else
                         {
-                            // Reset terjadi di jam ini (last < first)
-                            // Pre-reset: max - first (produksi sebelum reset)
-                            // Post-reset: last (produksi setelah reset, counter mulai dari 0)
+                            // Counter reset happened in this hour (last < first)
+                            // Pre-reset production: max - first
+                            // Post-reset production: last (counter restarted from 0)
                             production = (max - first) + last;
                         }
 
@@ -381,7 +389,7 @@ namespace mtc_app.features.technician.presentation.components
                     }
 
                     machine.TotalPieces = totalPiecesShiftIni;
-                    
+
                     int pembagi = 1;
                     if (firstActiveHour != -1)
                     {
@@ -389,9 +397,9 @@ namespace mtc_app.features.technician.presentation.components
                     }
                     else
                     {
-                        pembagi = currentHourCount; 
+                        pembagi = currentHourCount;
                     }
-                    
+
                     machine.AveragePerHour = (double)totalPiecesShiftIni / pembagi;
                 }
 
