@@ -44,6 +44,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="mtc-auto-export\**" />
+    <EmbeddedResource Remove="mtc-auto-export\**" />
+    <None Remove="mtc-auto-export\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="features\group_leader\presentation\screens\" />
     <Folder Include="features\machine_history\presentation\components\" />
     <Folder Include="features\rating\presentation\screens\" />
