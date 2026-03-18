@@ -53,7 +53,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             btnHistory = new AppButton
             {
-                Text = "Lapor Mesin Bermasalah\n(Machine History)",
+                Text = "History Mesin",
                 Type = AppButton.ButtonType.Primary,
                 Size = new Size(500, 90),
                 Location = new Point(50, 140),
@@ -64,7 +64,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             btnChecksheet = new AppButton
             {
-                Text = "Isi Patroli Harian\n(Mesin)",
+                Text = "Patroli Harian Mesin Cutting",
                 Type = AppButton.ButtonType.Secondary, 
                 Size = new Size(500, 90),
                 Location = new Point(50, 250),
@@ -75,10 +75,10 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             btnApplicatorPatrol = new AppButton
             {
-                Text = "Isi Patroli Harian\n(Aplikator)",
+                Text = "Patroli Harian Aplikator",
                 Type = AppButton.ButtonType.Secondary,
                 Size = new Size(500, 90),
-                Location = new Point(50, 360),
+                Location = new Point(50, 470),
                 Font = new Font("Segoe UI", 14F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
@@ -86,10 +86,10 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             btnMicrometer = new AppButton
             {
-                Text = "Isi Patroli Harian\n(Mikrometer)",
+                Text = "Patroli Harian Mikrometer",
                 Type = AppButton.ButtonType.Secondary,
                 Size = new Size(500, 90),
-                Location = new Point(50, 470),
+                Location = new Point(50, 360),
                 Font = new Font("Segoe UI", 14F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
