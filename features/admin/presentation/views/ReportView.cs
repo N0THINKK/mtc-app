@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Data;
 using System.Drawing;
 using System.Linq;
@@ -8,6 +9,7 @@ using ClosedXML.Excel;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 using mtc_app.shared.infrastructure; // Pastikan namespace untuk DatabaseHelper
+using mtc_app.features.admin.services;
 
 namespace mtc_app.features.admin.presentation.views
 {
@@ -18,6 +20,7 @@ namespace mtc_app.features.admin.presentation.views
         private DateTimePicker dateStart, dateEnd;
         private ComboBox cmbArea;
         private AppButton btnExport;
+        private AppButton btnExportOutput;
 
         public ReportView()
         {
@@ -79,7 +82,7 @@ namespace mtc_app.features.admin.presentation.views
                         // Melempar parameter 'areaName' ke dalam fungsi fetch data
                         var dataDetail = FetchDataForReport(dateStart.Value, dateEnd.Value, areaName);
                         var dataRekapBulanan = FetchMonthlyDowntimeSummary(dateStart.Value, dateEnd.Value, areaName);
-                        var dataOutputHarian = FetchDailyOutputSummary(dateStart.Value, dateEnd.Value, areaName);
+                        var dataOutputHarian = OutputExportService.FetchDailyOutputSummary(dateStart.Value, dateEnd.Value, areaName);
 
                         using (var workbook = new XLWorkbook())
                         {
@@ -133,6 +136,48 @@ namespace mtc_app.features.admin.presentation.views
                         btnExport.Text = "Generate & Export Excel";
                     }
                 }
+            }
+        }
+        private void BtnExportOutput_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                btnExportOutput.Enabled = false;
+                btnExportOutput.Text = "Memproses...";
+                Application.DoEvents();
+
+                string areaName = cmbArea.SelectedItem?.ToString() ?? "Semua Area";
+                string safeArea = areaName == "Semua Area" ? "SemuaArea" : areaName;
+
+                string directoryPath = @"D:\export output";
+                if (!Directory.Exists(directoryPath))
+                {
+                    Directory.CreateDirectory(directoryPath);
+                }
+
+                string fileName = $"Export_Output_Manual_{safeArea}_{dateStart.Value:yyyy-MM-dd}_hingga_{dateEnd.Value:yyyy-MM-dd}.xlsx";
+                string filePath = Path.Combine(directoryPath, fileName);
+
+                var dataOutputHarian = OutputExportService.FetchDailyOutputSummary(dateStart.Value, dateEnd.Value, areaName);
+
+                if (dataOutputHarian.Rows.Count > 0)
+                {
+                    OutputExportService.ExportDataTableToExcel(dataOutputHarian, filePath);
+                    MessageBox.Show($"File Output berhasil diekspor ke:\n{filePath}", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    MessageBox.Show("Tidak ada data output pada rentang tanggal tersebut.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Terjadi kesalahan saat mengekspor: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                btnExportOutput.Enabled = true;
+                btnExportOutput.Text = "Export Output Harian";
             }
         }
         
@@ -205,83 +250,7 @@ namespace mtc_app.features.admin.presentation.views
             }
         }
 
-        // =========================================================
-        // FUNGSI 3: REKAP OUTPUT HARIAN & EFISIENSI
-        // =========================================================
-        private DataTable FetchDailyOutputSummary(DateTime startDate, DateTime endDate, string area)
-        {
-            using (var connection = DatabaseHelper.GetConnection())
-            {
-                string sql = @"
-                    SELECT 
-                        DATE_FORMAT(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR), '%d %M %Y') AS 'Tanggal Produksi',
-                        CONCAT(IFNULL(mt.type_name, ''), '.', IFNULL(ma.area_name, ''), '-', LPAD(m.machine_number, 2, '0')) AS 'Nama Mesin',
-                        
-                        MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND HOUR(mpl.created_at) < 19 THEN mpl.produced_pieces ELSE 0 END) AS 'Output Pagi',
-                        MAX(CASE WHEN HOUR(mpl.created_at) < 7 OR HOUR(mpl.created_at) >= 19 THEN mpl.produced_pieces ELSE 0 END) AS 'Output Malam',
-                        
-                        (MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND HOUR(mpl.created_at) < 19 THEN mpl.auto_time ELSE 0 END) +
-                         MAX(CASE WHEN HOUR(mpl.created_at) < 7 OR HOUR(mpl.created_at) >= 19 THEN mpl.auto_time ELSE 0 END)) AS 'RawAutoSec',
-                         
-                        (MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND HOUR(mpl.created_at) < 19 THEN mpl.monitor_time ELSE 0 END) +
-                         MAX(CASE WHEN HOUR(mpl.created_at) < 7 OR HOUR(mpl.created_at) >= 19 THEN mpl.monitor_time ELSE 0 END)) AS 'RawMonitorSec'
-                        
-                    FROM machine_process_logs mpl
-                    JOIN machines m ON mpl.machine_id = m.machine_id
-                    LEFT JOIN machine_types mt ON m.type_id = mt.type_id
-                    LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
-                    WHERE mpl.created_at BETWEEN @StartDate AND @EndDate";
-
-                if (area != "Semua Area") {
-                    sql += " AND ma.area_name = @Area";
-                }
-
-                sql += @"
-                    GROUP BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)), m.machine_id, mt.type_name, ma.area_name, m.machine_number
-                    ORDER BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)) DESC, mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC";
-                
-                var reader = connection.ExecuteReader(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 300);
-                var dataTable = new DataTable();
-                dataTable.Load(reader);
-
-                dataTable.Columns.Add("Total Output (Pcs)", typeof(long));
-                dataTable.Columns.Add("Rata-rata / Jam (Pcs)", typeof(long));
-                dataTable.Columns.Add("Production Time (Menit)", typeof(long));
-                dataTable.Columns.Add("Loss Time (Menit)", typeof(long));
-                dataTable.Columns.Add("Efisiensi (%)", typeof(string));
-
-                foreach (DataRow row in dataTable.Rows)
-                {
-                    long outPagi = row["Output Pagi"] != DBNull.Value ? Convert.ToInt64(row["Output Pagi"]) : 0;
-                    long outMalam = row["Output Malam"] != DBNull.Value ? Convert.ToInt64(row["Output Malam"]) : 0;
-                    long totalOut = outPagi + outMalam;
-                    
-                    long autoSec = row["RawAutoSec"] != DBNull.Value ? Convert.ToInt64(row["RawAutoSec"]) : 0;
-                    long monSec = row["RawMonitorSec"] != DBNull.Value ? Convert.ToInt64(row["RawMonitorSec"]) : 0;
-                    
-                    long autoMin = autoSec / 60;
-                    long monMin = monSec / 60;
-                    long lossMin = monMin > autoMin ? monMin - autoMin : 0;
-                    
-                    double eff = monMin > 0 ? ((double)autoMin / monMin) * 100 : 0;
-
-                    row["Total Output (Pcs)"] = totalOut;
-                    row["Rata-rata / Jam (Pcs)"] = totalOut / 24; 
-                    row["Production Time (Menit)"] = autoMin;
-                    row["Loss Time (Menit)"] = lossMin;
-                    row["Efisiensi (%)"] = eff.ToString("F1") + " %";
-                }
-
-                dataTable.Columns.Remove("RawAutoSec");
-                dataTable.Columns.Remove("RawMonitorSec");
-
-                int outPagiIdx = dataTable.Columns["Output Pagi"].Ordinal;
-                dataTable.Columns["Total Output (Pcs)"].SetOrdinal(outPagiIdx + 2);
-                dataTable.Columns["Rata-rata / Jam (Pcs)"].SetOrdinal(outPagiIdx + 3);
-
-                return dataTable;
-            }
-        }
+        // FUNGSI 3 dihapus karena pindah ke OutputExportService
 
         protected override void Dispose(bool disposing)
         {
@@ -304,6 +273,7 @@ namespace mtc_app.features.admin.presentation.views
             this.lblArea = new Label();
             this.cmbArea = new ComboBox();
             this.btnExport = new AppButton();
+            this.btnExportOutput = new AppButton();
 
             this.lblTitle.AutoSize = true;
             this.lblTitle.Font = AppFonts.Header3;
@@ -342,10 +312,16 @@ namespace mtc_app.features.admin.presentation.views
             this.cmbArea.Font = AppFonts.BodySmall;
             this.cmbArea.DropDownStyle = ComboBoxStyle.DropDownList;
 
-            this.btnExport.Text = "Generate & Export Excel";
+            this.btnExport.Text = "Generate & Export Laporan Utama";
             this.btnExport.Location = new Point(0, 120);
             this.btnExport.Size = new Size(250, 50);
             this.btnExport.Click += BtnExport_Click;
+
+            this.btnExportOutput.Text = "Export Output Harian";
+            this.btnExportOutput.Type = AppButton.ButtonType.Secondary;
+            this.btnExportOutput.Location = new Point(260, 120);
+            this.btnExportOutput.Size = new Size(200, 50);
+            this.btnExportOutput.Click += BtnExportOutput_Click;
 
             this.Controls.Add(this.lblTitle);
             this.Controls.Add(this.lblDateStart);
@@ -355,6 +331,7 @@ namespace mtc_app.features.admin.presentation.views
             this.Controls.Add(this.lblArea);
             this.Controls.Add(this.cmbArea);
             this.Controls.Add(this.btnExport);
+            this.Controls.Add(this.btnExportOutput);
             
             this.Name = "ReportView";
             this.Dock = DockStyle.Fill;
