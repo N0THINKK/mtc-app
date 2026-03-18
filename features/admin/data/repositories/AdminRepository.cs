@@ -377,6 +377,7 @@ namespace mtc_app.features.admin.data.repositories
                         ot.target_id AS id,
                         mt.type_name AS tipe_mesin,
                         ma.area_name AS area,
+                        ot.machine_number AS no_mesin,
                         ot.target_per_hour AS target_per_jam
                     FROM machine_output_targets ot
                     JOIN machine_types mt ON ot.type_id = mt.type_id
@@ -386,15 +387,26 @@ namespace mtc_app.features.admin.data.repositories
             }
         }
 
-        public async Task<bool> SaveOutputTargetAsync(int typeId, int areaId, int targetPerHour)
+        public async Task<bool> SaveOutputTargetAsync(int? targetId, int typeId, int areaId, string machineNumber, int targetPerHour)
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                string sql = @"
-                    INSERT INTO machine_output_targets (type_id, area_id, target_per_hour)
-                    VALUES (@typeId, @areaId, @target)
-                    ON DUPLICATE KEY UPDATE target_per_hour = @target";
-                return await connection.ExecuteAsync(sql, new { typeId, areaId, target = targetPerHour }) > 0;
+                if (targetId.HasValue && targetId.Value > 0)
+                {
+                    string sql = @"
+                        UPDATE machine_output_targets 
+                        SET type_id = @typeId, area_id = @areaId, machine_number = @machineNumber, target_per_hour = @target
+                        WHERE target_id = @targetId";
+                    return await connection.ExecuteAsync(sql, new { targetId = targetId.Value, typeId, areaId, machineNumber, target = targetPerHour }) > 0;
+                }
+                else
+                {
+                    string sql = @"
+                        INSERT INTO machine_output_targets (type_id, area_id, machine_number, target_per_hour)
+                        VALUES (@typeId, @areaId, @machineNumber, @target)
+                        ON DUPLICATE KEY UPDATE target_per_hour = @target";
+                    return await connection.ExecuteAsync(sql, new { typeId, areaId, machineNumber, target = targetPerHour }) > 0;
+                }
             }
         }
 

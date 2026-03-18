@@ -32,7 +32,7 @@ namespace mtc_app.features.admin.data.repositories
 
         // Output Target CRUD
         Task<IEnumerable<dynamic>> GetOutputTargetsAsync();
-        Task<bool> SaveOutputTargetAsync(int typeId, int areaId, int targetPerHour);
+        Task<bool> SaveOutputTargetAsync(int? targetId, int typeId, int areaId, string machineNumber, int targetPerHour);
         Task<bool> DeleteOutputTargetAsync(int targetId);
     }
 }
