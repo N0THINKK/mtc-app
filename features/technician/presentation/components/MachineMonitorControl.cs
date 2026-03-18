@@ -27,6 +27,27 @@ namespace mtc_app.features.technician.presentation.components
         private bool _sortAscending = false;
         private bool _isLoading = false;
         
+        // Array mapping actual active hours (index) to effective hours (value)
+        // Index 0 is 1.0 to prevent division by zero for the 0th hour.
+        // Index 1-9: Regular shift (1 actual hour = 0.88 effective hours). Total max = 7.92.
+        // Index 10-12: Overtime (Total max = 9.42). 1.5 effective hours spread across 3 overtime hours = +0.5 per OT hour.
+        private readonly double[] _effectiveHours = new double[] 
+        {
+            1.00, // Index 0 (No full running hours yet)
+            0.88, // Hour 1
+            1.76, // Hour 2
+            2.64, // Hour 3
+            3.52, // Hour 4
+            4.40, // Hour 5
+            5.28, // Hour 6
+            6.16, // Hour 7
+            7.04, // Hour 8
+            7.92, // Hour 9  (End of regular shift)
+            8.42, // Hour 10 (Overtime 1)
+            8.92, // Hour 11 (Overtime 2)
+            9.42  // Hour 12 (Overtime 3)
+        };
+
         private System.ComponentModel.IContainer components = null;
 
         private class MachineData
@@ -364,6 +385,7 @@ namespace mtc_app.features.technician.presentation.components
 
                     long totalPiecesShiftIni = 0;
                     int firstActiveHour = -1;
+                    int lastActiveHour = -1;
 
                     for (int i = 0; i < maxShiftHours; i++)
                     {
@@ -394,25 +416,40 @@ namespace mtc_app.features.technician.presentation.components
                         machine.HourlyPieces[i] = production;
                         totalPiecesShiftIni += production;
 
-                        if (production > 0 && firstActiveHour == -1)
+                        if (production > 0)
                         {
-                            firstActiveHour = i + 1; // 1-based
+                            if (firstActiveHour == -1) firstActiveHour = i + 1; // 1-based
+                            lastActiveHour = i + 1;
                         }
                     }
 
                     machine.TotalPieces = totalPiecesShiftIni;
 
-                    int pembagi = 1;
+                    // SMART OVERTIME DETECTION:
+                    // If the machine produced output in Hour 10 or later, they are validated as working overtime.
+                    bool isOvertime = lastActiveHour >= 10;
+                    
+                    // If overtime is validated, the divisor grows up to the current running hour.
+                    // If not overtime, the divisor is strictly capped at hour 9 (end of regular shift).
+                    int activeEndHour = isOvertime ? currentHourCount : Math.Min(currentHourCount, 9);
+
+                    int divisorIndex = 1;
                     if (firstActiveHour != -1)
                     {
-                        pembagi = currentHourCount - firstActiveHour + 1;
+                        // Calculate active hours based on when they started producing
+                        divisorIndex = activeEndHour - firstActiveHour + 1;
                     }
                     else
                     {
-                        pembagi = currentHourCount;
+                        divisorIndex = activeEndHour;
                     }
 
-                    machine.AveragePerHour = (double)totalPiecesShiftIni / pembagi;
+                    // Clamp the divisor index between 0 and 12 to safely access the array
+                    if (divisorIndex < 0) divisorIndex = 0;
+                    if (divisorIndex > 12) divisorIndex = 12;
+
+                    double effectiveDivisor = _effectiveHours[divisorIndex];
+                    machine.AveragePerHour = (double)totalPiecesShiftIni / effectiveDivisor;
                 }
 
                 // --- Load targets from DB and map to each machine ---
