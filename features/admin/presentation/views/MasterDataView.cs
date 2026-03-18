@@ -304,6 +304,7 @@ namespace mtc_app.features.admin.presentation.views
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", DataPropertyName = "id", FillWeight = 40 });
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "TIPE MESIN", DataPropertyName = "tipe_mesin", FillWeight = 120 });
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "AREA", DataPropertyName = "area", FillWeight = 100 });
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "NO MESIN", DataPropertyName = "no_mesin", FillWeight = 80 });
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "TARGET/JAM", DataPropertyName = "target_per_jam", FillWeight = 80 });
                     break;
             }
@@ -486,7 +487,7 @@ namespace mtc_app.features.admin.presentation.views
             using (var dlg = new Form())
             {
                 dlg.Text = existingData == null ? "Tambah Target Output" : "Edit Target Output";
-                dlg.Size = new Size(400, 280);
+                dlg.Size = new Size(400, 320); // Increased height to accommodate new field
                 dlg.StartPosition = FormStartPosition.CenterParent;
                 dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
                 dlg.MaximizeBox = false;
@@ -494,7 +495,7 @@ namespace mtc_app.features.admin.presentation.views
                 dlg.BackColor = AppColors.Background;
                 dlg.Padding = new Padding(24);
 
-                var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 4 };
+                var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 5 }; // Increased rows
                 layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35F));
                 layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65F));
 
@@ -506,8 +507,13 @@ namespace mtc_app.features.admin.presentation.views
                 var cmbArea = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, Font = AppFonts.Body };
                 cmbArea.Items.AddRange(areas.ToArray());
 
+                var lblMachineNum = new Label { Text = "No Mesin:", Font = AppFonts.Body, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+                var txtMachineNum = new TextBox { Dock = DockStyle.Fill, Font = AppFonts.Body };
+
                 var lblTarget = new Label { Text = "Target/Jam:", Font = AppFonts.Body, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
                 var txtTarget = new NumericUpDown { Minimum = 0, Maximum = 999999, Dock = DockStyle.Fill, Font = AppFonts.Body };
+
+                int? currentTargetId = null;
 
                 // Pre-fill for edit mode
                 if (existingData != null)
@@ -515,8 +521,10 @@ namespace mtc_app.features.admin.presentation.views
                     var dict = existingData as IDictionary<string, object>;
                     if (dict != null)
                     {
+                        currentTargetId = Convert.ToInt32(dict["id"]);
                         string editType = dict["tipe_mesin"]?.ToString() ?? "";
                         string editArea = dict["area"]?.ToString() ?? "";
+                        string editNum = dict["no_mesin"]?.ToString() ?? "";
                         int editTarget = Convert.ToInt32(dict["target_per_jam"]);
 
                         int typeIdx = types.IndexOf(editType);
@@ -525,6 +533,7 @@ namespace mtc_app.features.admin.presentation.views
                         int areaIdx = areas.IndexOf(editArea);
                         if (areaIdx >= 0) cmbArea.SelectedIndex = areaIdx;
 
+                        txtMachineNum.Text = editNum;
                         txtTarget.Value = editTarget;
                     }
                 }
@@ -533,8 +542,9 @@ namespace mtc_app.features.admin.presentation.views
 
                 layout.Controls.Add(lblType, 0, 0); layout.Controls.Add(cmbType, 1, 0);
                 layout.Controls.Add(lblArea, 0, 1); layout.Controls.Add(cmbArea, 1, 1);
-                layout.Controls.Add(lblTarget, 0, 2); layout.Controls.Add(txtTarget, 1, 2);
-                layout.Controls.Add(btnSave, 0, 3); layout.SetColumnSpan(btnSave, 2);
+                layout.Controls.Add(lblMachineNum, 0, 2); layout.Controls.Add(txtMachineNum, 1, 2);
+                layout.Controls.Add(lblTarget, 0, 3); layout.Controls.Add(txtTarget, 1, 3);
+                layout.Controls.Add(btnSave, 0, 4); layout.SetColumnSpan(btnSave, 2);
 
                 dlg.Controls.Add(layout);
 
@@ -543,6 +553,13 @@ namespace mtc_app.features.admin.presentation.views
                     if (cmbType.SelectedIndex < 0 || cmbArea.SelectedIndex < 0)
                     {
                         MessageBox.Show("Pilih Tipe Mesin dan Area terlebih dahulu.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    string machineNum = txtMachineNum.Text.Trim();
+                    if (string.IsNullOrEmpty(machineNum))
+                    {
+                        MessageBox.Show("Nomor Mesin harus diisi.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
 
@@ -564,15 +581,26 @@ namespace mtc_app.features.admin.presentation.views
                         return;
                     }
 
-                    bool success = await _repository.SaveOutputTargetAsync(typeId, areaId, (int)txtTarget.Value);
-                    if (success)
+                    try
                     {
-                        dlg.DialogResult = DialogResult.OK;
-                        dlg.Close();
+                        bool success = await _repository.SaveOutputTargetAsync(currentTargetId, typeId, areaId, machineNum, (int)txtTarget.Value);
+                        if (success)
+                        {
+                            dlg.DialogResult = DialogResult.OK;
+                            dlg.Close();
+                        }
+                        else
+                        {
+                            MessageBox.Show("Gagal menyimpan target.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
                     }
-                    else
+                    catch (Exception ex) when (ex.Message.Contains("Duplicate entry") || ex.Message.Contains("Duplicate key"))
                     {
-                        MessageBox.Show("Gagal menyimpan target.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show("Target untuk kombinasi Tipe Mesin, Area, dan No Mesin ini sudah ada! Silakan ubah salah satunya.", "Data Duplikat", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Terjadi kesalahan sistem: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 };
 

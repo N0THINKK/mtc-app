@@ -53,6 +53,7 @@ namespace mtc_app.features.technician.presentation.components
         private class MachineData
         {
             public string MachineName { get; set; }
+            public string MachineNum { get; set; }
             public int TypeId { get; set; }
             public int AreaId { get; set; }
             public long[] HourlyPieces { get; set; } = new long[14]; 
@@ -337,6 +338,7 @@ namespace mtc_app.features.technician.presentation.components
                         machines[mId] = new MachineData
                         {
                             MachineName = $"{row.type_name}.{row.area_name}-{row.machine_number}",
+                            MachineNum = row.machine_number,
                             TypeId = (int)(row.type_id ?? 0),
                             AreaId = (int)(row.area_id ?? 0)
                         };
@@ -459,18 +461,18 @@ namespace mtc_app.features.technician.presentation.components
                     {
                         conn.Open();
                         var targets = await conn.QueryAsync(
-                            "SELECT type_id, area_id, target_per_hour FROM machine_output_targets");
+                            "SELECT type_id, area_id, machine_number, target_per_hour FROM machine_output_targets");
 
                         var targetMap = new Dictionary<string, int>();
                         foreach (var t in targets)
                         {
-                            string key = $"{(int)t.type_id}_{(int)t.area_id}";
+                            string key = $"{(int)t.type_id}_{(int)t.area_id}_{t.machine_number}";
                             targetMap[key] = (int)t.target_per_hour;
                         }
 
                         foreach (var machine in machines.Values)
                         {
-                            string key = $"{machine.TypeId}_{machine.AreaId}";
+                            string key = $"{machine.TypeId}_{machine.AreaId}_{machine.MachineNum}";
                             if (targetMap.TryGetValue(key, out int target))
                                 machine.TargetPerHour = target;
                         }
