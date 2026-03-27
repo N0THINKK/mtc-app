@@ -532,10 +532,11 @@ namespace mtc_app.features.technician.presentation.components
             area.AxisY.Minimum = 0;
             area.AxisY.Title = "";
             
-            if (data.Count > 10)
+            int maxVisible = 40; // Fit more bars in one screen for slimmer look
+            if (data.Count > maxVisible)
             {
                 area.AxisX.ScaleView.Zoomable = true;
-                area.AxisX.ScaleView.Size = 10;
+                area.AxisX.ScaleView.Size = maxVisible;
             }
             else
             {
@@ -559,7 +560,7 @@ namespace mtc_app.features.technician.presentation.components
                     IsValueShownAsLabel = true,
                     Font = new Font("Segoe UI", 10F, FontStyle.Bold)
                 };
-                sBar["PixelPointWidth"] = "40";
+                sBar["PointWidth"] = "0.7";
 
                 var sTarget = new Series("Target") 
                 { 
@@ -618,7 +619,7 @@ namespace mtc_app.features.technician.presentation.components
                         Color = hourColors[i],
                         IsValueShownAsLabel = false 
                     };
-                    s["PixelPointWidth"] = "40";
+                    s["PointWidth"] = "0.7";
                     _chart.Series.Add(s);
                 }
 
@@ -653,10 +654,10 @@ namespace mtc_app.features.technician.presentation.components
                 area.AxisY.Title = "Waktu (Menit)";
 
                 var sAuto = new Series("Auto Time") { ChartType = SeriesChartType.StackedColumn, Color = AppColors.Success, IsValueShownAsLabel = true };
-                sAuto["PixelPointWidth"] = "80";
+                sAuto["PointWidth"] = "0.7";
                 
                 var sLoss = new Series("Loss Time") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(230, 126, 34), IsValueShownAsLabel = true };
-                sLoss["PixelPointWidth"] = "80";
+                sLoss["PointWidth"] = "0.7";
                 
                 var sEffLabel = new Series("Eff %") { ChartType = SeriesChartType.Point, Color = Color.Transparent, IsValueShownAsLabel = true };
                 sEffLabel["LabelStyle"] = "Top"; 
