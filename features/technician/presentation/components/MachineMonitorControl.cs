@@ -29,23 +29,23 @@ namespace mtc_app.features.technician.presentation.components
         
         // Array mapping actual active hours (index) to effective hours (value)
         // Index 0 is 1.0 to prevent division by zero for the 0th hour.
-        // Index 1-9: Regular shift (1 actual hour = 0.88 effective hours). Total max = 7.92.
-        // Index 10-12: Overtime (Total max = 9.42). 1.5 effective hours spread across 3 overtime hours = +0.5 per OT hour.
+        // Index 1-9: Regular shift (Total max = 8.00). 8.0 spread across 9 hours.
+        // Index 10-12: Overtime (Total max = 8.00 + 1.75 = 9.75). 1.75 effective hours spread across 3 overtime hours.
         private readonly double[] _effectiveHours = new double[] 
         {
             1.00, // Index 0 (No full running hours yet)
-            0.88, // Hour 1
-            1.76, // Hour 2
-            2.64, // Hour 3
-            3.52, // Hour 4
-            4.40, // Hour 5
-            5.28, // Hour 6
-            6.16, // Hour 7
-            7.04, // Hour 8
-            7.92, // Hour 9  (End of regular shift)
-            8.42, // Hour 10 (Overtime 1)
-            8.92, // Hour 11 (Overtime 2)
-            9.42  // Hour 12 (Overtime 3)
+            8.0 / 9.0 * 1, // Hour 1
+            8.0 / 9.0 * 2, // Hour 2
+            8.0 / 9.0 * 3, // Hour 3
+            8.0 / 9.0 * 4, // Hour 4
+            8.0 / 9.0 * 5, // Hour 5
+            8.0 / 9.0 * 6, // Hour 6
+            8.0 / 9.0 * 7, // Hour 7
+            8.0 / 9.0 * 8, // Hour 8
+            8.00, // Hour 9  (End of regular shift)
+            8.00 + (1.75 / 3.0 * 1), // Hour 10 (Overtime 1)
+            8.00 + (1.75 / 3.0 * 2), // Hour 11 (Overtime 2)
+            9.75  // Hour 12 (Overtime 3)
         };
 
         private System.ComponentModel.IContainer components = null;
