@@ -417,5 +417,53 @@ namespace mtc_app.features.admin.data.repositories
                 return await connection.ExecuteAsync("DELETE FROM machine_output_targets WHERE target_id = @id", new { id = targetId }) > 0;
             }
         }
+        
+        public async Task<IEnumerable<dynamic>> GetShiftBreaksAsync(string shiftName)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        sb.id AS id,
+                        dw.day_name AS hari,
+                        sb.non_ot_minutes AS non_ot_minutes,
+                        sb.ot_minutes AS ot_minutes
+                    FROM shift_breaks sb
+                    JOIN days_of_week dw ON sb.day_id = dw.id
+                    WHERE sb.shift_name = @shiftName
+                    ORDER BY dw.id";
+                return await connection.QueryAsync(sql, new { shiftName });
+            }
+        }
+
+        public async Task<bool> SaveShiftBreakAsync(int? breakId, string shiftName, int dayId, int nonOtMinutes, int otMinutes)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                if (breakId.HasValue && breakId.Value > 0)
+                {
+                    string sql = @"
+                        UPDATE shift_breaks 
+                        SET non_ot_minutes = @nonOtMinutes, ot_minutes = @otMinutes
+                        WHERE id = @breakId";
+                    return await connection.ExecuteAsync(sql, new { breakId = breakId.Value, nonOtMinutes, otMinutes }) > 0;
+                }
+                else
+                {
+                    string sql = @"
+                        INSERT INTO shift_breaks (shift_name, day_id, non_ot_minutes, ot_minutes)
+                        VALUES (@shiftName, @dayId, @nonOtMinutes, @otMinutes)";
+                    return await connection.ExecuteAsync(sql, new { shiftName, dayId, nonOtMinutes, otMinutes }) > 0;
+                }
+            }
+        }
+
+        public async Task<bool> DeleteShiftBreakAsync(int breakId)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                return await connection.ExecuteAsync("DELETE FROM shift_breaks WHERE id = @id", new { id = breakId }) > 0;
+            }
+        }
     }
 }

@@ -248,6 +248,7 @@ namespace mtc_app.features.admin.presentation.views
             _currentCategory = category;
             lblTitle.Text = $"Kelola Data {category}";
             btnAdd.Text = $"+ Tambah Data {category}"; // <--- [MODIFIKASI] Update teks tombol otomatis
+            btnAdd.Visible = category != "Waktu Break";
 
             _originalData = null;
             gridData.DataSource = null;
@@ -264,7 +265,7 @@ namespace mtc_app.features.admin.presentation.views
                 LoadSubCategory("Kategori Masalah");
                 return; 
             }
-            else if (category == "Checksheet") // <--- [MODIFIKASI] Munculkan tab untuk Checksheet
+            else if (category == "Checksheet") 
             {
                 pnlProblemTabs.Visible = true;
                 btnTabJenis.Visible = true; btnTabDetail.Visible = true; 
@@ -274,6 +275,18 @@ namespace mtc_app.features.admin.presentation.views
                 
                 HighlightTab(btnTabJenis);
                 LoadSubCategory("Checksheet Operator");
+                return;
+            }
+            else if (category == "Waktu Break") 
+            {
+                pnlProblemTabs.Visible = true;
+                btnTabJenis.Visible = true; btnTabDetail.Visible = true; 
+                btnTabPenyebab.Visible = false; btnTabTindakan.Visible = false;
+                
+                btnTabJenis.Text = "Shift 1"; btnTabDetail.Text = "Shift 2";
+                
+                HighlightTab(btnTabJenis);
+                LoadSubCategory("Shift 1");
                 return;
             }
 
@@ -337,6 +350,7 @@ namespace mtc_app.features.admin.presentation.views
             // <--- [MODIFIKASI] Ubah teks di Header berdasarkan Tab yang diklik
             lblTitle.Text = $"Kelola Data {subCategory}";
             btnAdd.Text = $"+ Tambah {subCategory}"; 
+            btnAdd.Visible = _currentCategory != "Waktu Break";
             
             _originalData = null;
             gridData.DataSource = null;
@@ -346,20 +360,29 @@ namespace mtc_app.features.admin.presentation.views
             if (_currentCategory == "Checksheet")
             {
                 gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", DataPropertyName = "id", FillWeight = 50 });
-                gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "TARGET", DataPropertyName = "role_target", FillWeight = 80 }); // <--- [MODIFIKASI] Tambah Kolom Target Role
+                gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "TARGET", DataPropertyName = "role_target", FillWeight = 80 }); 
                 gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "TIPE MESIN", DataPropertyName = "tipe_mesin", FillWeight = 100 });
                 gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ITEM PENGECEKAN", DataPropertyName = "item_pengecekan", FillWeight = 200 });
                 gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "STANDAR (JUDGMENT)", DataPropertyName = "standar", FillWeight = 150 });
                 gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "METODE", DataPropertyName = "metode", FillWeight = 100 });
+            }
+            else if (_currentCategory == "Waktu Break")
+            {
+                gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", DataPropertyName = "id", FillWeight = 30 });
+                gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "HARI", DataPropertyName = "hari", FillWeight = 100 });
+                gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "BREAK NON-OT (Menit)", DataPropertyName = "non_ot_minutes", FillWeight = 100 });
+                gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "TAMBAHAN BREAK OT (Menit)", DataPropertyName = "ot_minutes", FillWeight = 100 });
             }
             else // Jika Problem
             {
                 gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", DataPropertyName = "id", FillWeight = 50 });
                 gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = subCategory.ToUpper(), DataPropertyName = "nama", FillWeight = 250 });
             }
-            
             gridData.Columns.Add(new DataGridViewButtonColumn { Name = "Edit", HeaderText = "EDIT", Text = "Edit", UseColumnTextForButtonValue = true, FillWeight = 50 });
-            gridData.Columns.Add(new DataGridViewButtonColumn { Name = "Delete", HeaderText = "HAPUS", Text = "Hapus", UseColumnTextForButtonValue = true, FillWeight = 50 });
+            if (_currentCategory != "Waktu Break")
+            {
+                gridData.Columns.Add(new DataGridViewButtonColumn { Name = "Delete", HeaderText = "HAPUS", Text = "Hapus", UseColumnTextForButtonValue = true, FillWeight = 50 });
+            }
 
             try
             {
@@ -369,8 +392,9 @@ namespace mtc_app.features.admin.presentation.views
                 else if (subCategory == "Detail Problem") _originalData = await _repository.GetMasterFailuresAsync();
                 else if (subCategory == "Penyebab Problem") _originalData = await _repository.GetMasterCausesAsync();
                 else if (subCategory == "Tindakan Perbaikan") _originalData = await _repository.GetMasterActionsAsync();
-                else if (subCategory == "Checksheet Operator") _originalData = await _repository.GetMasterChecksheetsAsync("Operator"); // <--- Panggil Data
-                else if (subCategory == "Checksheet Teknisi") _originalData = await _repository.GetMasterChecksheetsAsync("Teknisi"); // <--- Panggil Data
+                else if (subCategory == "Checksheet Operator") _originalData = await _repository.GetMasterChecksheetsAsync("Operator"); 
+                else if (subCategory == "Checksheet Teknisi") _originalData = await _repository.GetMasterChecksheetsAsync("Teknisi"); 
+                else if (_currentCategory == "Waktu Break") _originalData = await _repository.GetShiftBreaksAsync(subCategory);
 
                 gridData.DataSource = _originalData?.ToList();
             }
@@ -418,6 +442,12 @@ namespace mtc_app.features.admin.presentation.views
                     if (_currentCategory == "Target")
                     {
                         await ShowTargetEditorDialog(rowData);
+                        return;
+                    }
+
+                    if (_currentCategory == "Waktu Break")
+                    {
+                        await ShowShiftBreakEditorDialog(rowData);
                         return;
                     }
 
@@ -607,6 +637,89 @@ namespace mtc_app.features.admin.presentation.views
                 if (dlg.ShowDialog() == DialogResult.OK)
                 {
                     LoadCategory("Target");
+                }
+            }
+        }
+
+        private async Task ShowShiftBreakEditorDialog(object existingData)
+        {
+            if (existingData == null) return; // Hanya bisa Edit
+
+            using (var dlg = new Form())
+            {
+                dlg.Text = "Edit Waktu Break (" + _currentProblemSubCategory + ")";
+                dlg.Size = new Size(400, 300);
+                dlg.StartPosition = FormStartPosition.CenterParent;
+                dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dlg.MaximizeBox = false;
+                dlg.MinimizeBox = false;
+                dlg.BackColor = AppColors.Background;
+                dlg.Padding = new Padding(24);
+
+                var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 4 };
+                layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
+                layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
+
+                var lblDayName = new Label { Text = "Hari:", Font = AppFonts.Body, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+                var txtDayName = new TextBox { Dock = DockStyle.Fill, Font = AppFonts.Body, ReadOnly = true, BackColor = Color.LightGray };
+                
+                var lblNonOt = new Label { Text = "Break Non-OT (Menit):", Font = AppFonts.Body, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+                var txtNonOt = new NumericUpDown { Minimum = 0, Maximum = 1440, Dock = DockStyle.Fill, Font = AppFonts.Body };
+                
+                var lblOt = new Label { Text = "Break OT (Menit):", Font = AppFonts.Body, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+                var txtOt = new NumericUpDown { Minimum = 0, Maximum = 1440, Dock = DockStyle.Fill, Font = AppFonts.Body };
+
+                int currentBreakId = 0;
+                string dayName = "";
+
+                var dict = existingData as IDictionary<string, object>;
+                if (dict != null)
+                {
+                    currentBreakId = Convert.ToInt32(dict["id"]);
+                    dayName = dict["hari"]?.ToString() ?? "";
+                    
+                    if (int.TryParse(dict["non_ot_minutes"]?.ToString(), out int nonOt))
+                        txtNonOt.Value = nonOt;
+                    if (int.TryParse(dict["ot_minutes"]?.ToString(), out int ot))
+                        txtOt.Value = ot;
+
+                    txtDayName.Text = dayName;
+                }
+
+                var btnSave = new AppButton { Text = "Simpan", Type = AppButton.ButtonType.Primary, Dock = DockStyle.Fill, Height = 40 };
+
+                layout.Controls.Add(lblDayName, 0, 0); layout.Controls.Add(txtDayName, 1, 0);
+                layout.Controls.Add(lblNonOt, 0, 1); layout.Controls.Add(txtNonOt, 1, 1);
+                layout.Controls.Add(lblOt, 0, 2); layout.Controls.Add(txtOt, 1, 2);
+                layout.Controls.Add(btnSave, 0, 3); layout.SetColumnSpan(btnSave, 2);
+
+                dlg.Controls.Add(layout);
+
+                btnSave.Click += async (s, e) =>
+                {
+                    try
+                    {
+                        // dayId arg doesn't matter for Update because we use breakId
+                        bool success = await _repository.SaveShiftBreakAsync(currentBreakId, _currentProblemSubCategory, 1, (int)txtNonOt.Value, (int)txtOt.Value);
+                        if (success)
+                        {
+                            dlg.DialogResult = DialogResult.OK;
+                            dlg.Close();
+                        }
+                        else
+                        {
+                            MessageBox.Show("Gagal menyimpan waktu break.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Terjadi kesalahan sistem: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                };
+
+                if (dlg.ShowDialog() == DialogResult.OK)
+                {
+                    LoadSubCategory(_currentProblemSubCategory);
                 }
             }
         }

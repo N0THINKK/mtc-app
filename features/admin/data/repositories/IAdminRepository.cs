@@ -34,5 +34,10 @@ namespace mtc_app.features.admin.data.repositories
         Task<IEnumerable<dynamic>> GetOutputTargetsAsync();
         Task<bool> SaveOutputTargetAsync(int? targetId, int typeId, int areaId, string machineNumber, int targetPerHour);
         Task<bool> DeleteOutputTargetAsync(int targetId);
+
+        // Shift Breaks
+        Task<IEnumerable<dynamic>> GetShiftBreaksAsync(string shiftName);
+        Task<bool> SaveShiftBreakAsync(int? breakId, string shiftName, int dayId, int nonOtMinutes, int otMinutes);
+        Task<bool> DeleteShiftBreakAsync(int breakId);
     }
 }

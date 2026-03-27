@@ -91,7 +91,8 @@ namespace mtc_app.features.admin.presentation.screens
                 { "🔧 Data Sparepart", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Sparepart"); } },
                 { "⚠️ Data Problem", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Problem"); } },
                 { "📋 Data Checksheet", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Checksheet"); } },
-                { "🎯 Target Output", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Target"); } }
+                { "🎯 Target Output", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Target"); } },
+                { "⏱️ Data Waktu Break", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Waktu Break"); } }
             });
 
             AddMenuButton("🖨️ Laporan / Export", flowMenu, _reportView);

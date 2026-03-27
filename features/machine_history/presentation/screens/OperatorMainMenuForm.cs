@@ -5,6 +5,8 @@ using mtc_app.shared.data.session;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 using mtc_app.features.applicator_patrol.presentation.screens;
+using Dapper;
+using mtc_app.shared.infrastructure;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
@@ -16,17 +18,74 @@ namespace mtc_app.features.machine_history.presentation.screens
         private AppButton btnChecksheet;
         private AppButton btnApplicatorPatrol;
         private AppButton btnMicrometer;
+        private AppButton btnIdleToggle;
         private AppButton btnLogout;
+
+        private int? _currentActiveRecordId = null;
 
         public OperatorMainMenuForm()
         {
             InitializeUI();
+            CheckActiveIdleStatus();
+        }
+
+        private string GetMachineName()
+        {
+            string machineIdStr = DatabaseHelper.GetMachineId();
+            string machineName = "Unknown Machine";
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    machineName = conn.QueryFirstOrDefault<string>("SELECT machine_name FROM machine_tags WHERE id = @Id", new { Id = machineIdStr }) ?? machineName;
+                }
+            }
+            catch {}
+            return machineName;
+        }
+
+        private void CheckActiveIdleStatus()
+        {
+            try
+            {
+                string mName = GetMachineName();
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    var sql = "SELECT id, activity_id, (SELECT activity_name FROM activity_types WHERE id = activity_id) as act_name FROM machine_operator_activities WHERE machine_name = @MName AND end_time IS NULL ORDER BY start_time DESC LIMIT 1";
+                    var activeRec = conn.QueryFirstOrDefault(sql, new { MName = mName });
+                    if (activeRec != null)
+                    {
+                        _currentActiveRecordId = Convert.ToInt32(activeRec.id);
+                        string actName = activeRec.act_name?.ToString() ?? "Unknown";
+                        SetButtonToIdleState(actName);
+                    }
+                    else
+                    {
+                        SetButtonToRunState();
+                    }
+                }
+            }
+            catch {}
+        }
+
+        private void SetButtonToRunState()
+        {
+            if (btnIdleToggle == null) return;
+            btnIdleToggle.Text = "▶ MESIN RUN (Klik untuk Keluar/Berhenti)";
+            btnIdleToggle.Type = AppButton.ButtonType.Primary; // Fallback ke Primary
+        }
+
+        private void SetButtonToIdleState(string activityName)
+        {
+            if (btnIdleToggle == null) return;
+            btnIdleToggle.Text = $"■ MESIN STOP: {activityName} (Klik untuk RUN)";
+            btnIdleToggle.Type = AppButton.ButtonType.Danger;
         }
 
         private void InitializeUI()
         {
             this.Text = "Menu Utama Operator";
-            this.Size = new Size(600, 680);
+            this.Size = new Size(600, 790); // Increased height
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = AppColors.Background;
             this.FormBorderStyle = FormBorderStyle.None; 
@@ -95,12 +154,23 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
             btnMicrometer.Click += BtnMicrometer_Click;
 
+            btnIdleToggle = new AppButton
+            {
+                Text = "▶ MESIN RUN (Klik untuk Keluar/Berhenti)",
+                Type = AppButton.ButtonType.Primary,
+                Size = new Size(500, 90),
+                Location = new Point(50, 580),
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnIdleToggle.Click += BtnIdleToggle_Click;
+
             btnLogout = new AppButton
             {
                 Text = "Logout / Kembali",
                 Type = AppButton.ButtonType.Danger, 
                 Size = new Size(200, 45),
-                Location = new Point(200, 590),
+                Location = new Point(200, 700),
                 Cursor = Cursors.Hand
             };
             btnLogout.Click += (s, e) => this.Close(); 
@@ -111,6 +181,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Controls.Add(btnChecksheet);
             this.Controls.Add(btnApplicatorPatrol);
             this.Controls.Add(btnMicrometer);
+            this.Controls.Add(btnIdleToggle);
             this.Controls.Add(btnLogout);
         }
 
@@ -148,6 +219,53 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Hide();
             microForm.FormClosed += (s, args) => this.Show();
             microForm.Show();
+        }
+
+        private void BtnIdleToggle_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                string machineName = GetMachineName();
+                string opName = UserSession.CurrentUser?.Username ?? "Unknown";
+                TimeSpan nowTime = DateTime.Now.TimeOfDay;
+                string shiftName = (nowTime >= new TimeSpan(7, 0, 0) && nowTime < new TimeSpan(19, 0, 0)) ? "Shift Pagi" : "Shift Malam";
+
+                if (_currentActiveRecordId == null)
+                {
+                    // State is RUN, going to STOP
+                    using (var dlg = new ActivitySelectionDialog())
+                    {
+                        if (dlg.ShowDialog() == DialogResult.OK)
+                        {
+                            using (var conn = DatabaseHelper.GetConnection())
+                            {
+                                string sql = "INSERT INTO machine_operator_activities (machine_name, operator_name, activity_id, start_time, shift_name) VALUES (@MName, @OpName, @ActId, @Now, @Shift); SELECT LAST_INSERT_ID();";
+                                int newId = conn.QuerySingle<int>(sql, new { MName = machineName, OpName = opName, ActId = dlg.SelectedActivityId, Now = DateTime.Now, Shift = shiftName });
+                                
+                                _currentActiveRecordId = newId;
+                                SetButtonToIdleState(dlg.SelectedActivityName);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // State is STOP, going to RUN
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        // Calc duration natively via DATEDIFF or dynamically in DB wait, I'll let the user SQL query calculate it or I can just save end_time
+                        string sql = "UPDATE machine_operator_activities SET end_time = @Now WHERE id = @Id";
+                        conn.Execute(sql, new { Now = DateTime.Now, Id = _currentActiveRecordId.Value });
+                        
+                        _currentActiveRecordId = null;
+                        SetButtonToRunState();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Gagal mengupdate status: " + ex.Message, "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
     }
 }
