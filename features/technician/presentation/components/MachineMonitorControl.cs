@@ -542,6 +542,9 @@ namespace mtc_app.features.technician.presentation.components
                 area.AxisX.ScaleView.ZoomReset();
             }
 
+            area.AxisX.LabelStyle.Angle = -90;
+            area.AxisX.IsLabelAutoFit = false;
+
             area.RecalculateAxesScale();
 
             if (mode == "Output Per Jam")
