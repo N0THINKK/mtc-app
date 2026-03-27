@@ -13,7 +13,7 @@ namespace mtc_app.features.technician.presentation.components
 {
     public class MachineMonitorControl : UserControl
     {
-        private const int REFRESH_RATE_MS = 30000; 
+        private const int REFRESH_RATE_MS = 30000;
 
         private Timer _timer;
         private Chart _chart;
@@ -26,12 +26,12 @@ namespace mtc_app.features.technician.presentation.components
         private Label _lblStatus;
         private bool _sortAscending = false;
         private bool _isLoading = false;
-        
+
         // Array mapping actual active hours (index) to effective hours (value)
         // Index 0 is 1.0 to prevent division by zero for the 0th hour.
         // Index 1-9: Regular shift (Total max = 8.00). 8.0 spread across 9 hours.
         // Index 10-12: Overtime (Total max = 8.00 + 1.75 = 9.75). 1.75 effective hours spread across 3 overtime hours.
-        private readonly double[] _effectiveHours = new double[] 
+        private readonly double[] _effectiveHours = new double[]
         {
             1.00, // Index 0 (No full running hours yet)
             8.0 / 9.0 * 1, // Hour 1
@@ -56,11 +56,11 @@ namespace mtc_app.features.technician.presentation.components
             public string MachineNum { get; set; }
             public int TypeId { get; set; }
             public int AreaId { get; set; }
-            public long[] HourlyPieces { get; set; } = new long[14]; 
-            public long TotalPieces { get; set; } 
+            public long[] HourlyPieces { get; set; } = new long[14];
+            public long TotalPieces { get; set; }
             public double AveragePerHour { get; set; }
             public int TargetPerHour { get; set; }
-            
+
             public double AutoTime { get; set; }
             public double MonitorTime { get; set; }
             public double Efficiency => MonitorTime > 0 ? (AutoTime / MonitorTime) * 100 : 0;
@@ -70,7 +70,7 @@ namespace mtc_app.features.technician.presentation.components
         {
             InitializeComponent();
             SetupTimer();
-            LoadAreas(); 
+            LoadAreas();
         }
 
         private async void LoadAreas()
@@ -98,25 +98,25 @@ namespace mtc_app.features.technician.presentation.components
             this.Controls.Add(pnlHeader);
 
             _pnlChartContainer = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White };
-            
+
             _chart = new Chart();
-            
+
             // ════ FIX BUG SCROLL WINFORMS ════
-            _chart.Dock = DockStyle.Fill;  
+            _chart.Dock = DockStyle.Fill;
             _chart.BackColor = Color.White;
 
             var chartArea = new ChartArea("MainArea");
             chartArea.AxisX.Interval = 1;
             chartArea.AxisX.LabelStyle.Angle = -45;
             chartArea.AxisX.MajorGrid.LineColor = Color.LightGray;
-            
+
             // Konfigurasi Scrollbar Native Chart
             chartArea.AxisX.ScrollBar.Enabled = true;
-            chartArea.AxisX.ScrollBar.IsPositionedInside = false; 
+            chartArea.AxisX.ScrollBar.IsPositionedInside = false;
             chartArea.AxisX.ScrollBar.Size = 14;
 
             chartArea.AxisY.MajorGrid.LineColor = Color.LightGray;
-            
+
             _chart.ChartAreas.Add(chartArea);
 
             var legend = new Legend("MainLegend");
@@ -136,15 +136,15 @@ namespace mtc_app.features.technician.presentation.components
             var pnlHeader = new Panel { Dock = DockStyle.Top, AutoSize = true, MinimumSize = new Size(0, 60) };
             var headerLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, BackColor = Color.Transparent };
             headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
-            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70F)); 
-            
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70F));
+
             var flowLeft = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Dock = DockStyle.Fill, BackColor = Color.Transparent };
             _lblStatus = new Label { Text = "Memuat data...", Font = AppFonts.BodySmall, ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(0, 10, 0, 0) };
             flowLeft.Controls.Add(_lblStatus);
             headerLayout.Controls.Add(flowLeft, 0, 0);
 
             var flowRight = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, WrapContents = true, Dock = DockStyle.Fill, BackColor = Color.Transparent };
-            
+
             // 1. Sort
             _comboSort = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = AppFonts.BodySmall, Width = 110, Margin = new Padding(0, 10, 10, 0) };
             _comboSort.Items.AddRange(new object[] { "↓ Tertinggi", "↑ Terendah", "Nomor Mesin" });
@@ -168,7 +168,7 @@ namespace mtc_app.features.technician.presentation.components
             _comboShift = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, 10, 0) };
             _comboShift.Items.AddRange(new object[] { "Waktu Aktual", "Shift Pagi", "Shift Malam" });
             _comboShift.SelectedIndex = 0;
-            _comboShift.SelectedIndexChanged += async (s, e) => 
+            _comboShift.SelectedIndexChanged += async (s, e) =>
             {
                 _dtpDateFilter.Enabled = _comboShift.SelectedIndex != 0;
                 await LoadData();
@@ -177,7 +177,7 @@ namespace mtc_app.features.technician.presentation.components
 
             // 5. Date Picker
             _dtpDateFilter = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, 10, 0) };
-            _dtpDateFilter.Enabled = false; 
+            _dtpDateFilter.Enabled = false;
             _dtpDateFilter.ValueChanged += async (s, e) => await LoadData();
             var lblDate = new Label { Text = "Tanggal:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
 
@@ -191,7 +191,7 @@ namespace mtc_app.features.technician.presentation.components
             flowRight.Controls.Add(lblShift);
             flowRight.Controls.Add(_dtpDateFilter);
             flowRight.Controls.Add(lblDate);
-            
+
             headerLayout.Controls.Add(flowRight, 1, 0);
             pnlHeader.Controls.Add(headerLayout);
             return pnlHeader;
@@ -221,20 +221,20 @@ namespace mtc_app.features.technician.presentation.components
             {
                 // MODE REAL-TIME
                 isPastShift = false;
-                if (now.Hour >= 7 && now.Hour < 19) 
+                if (now.Hour >= 7 && now.Hour < 19)
                 {
                     shiftName = "Shift Pagi";
                     shiftStart = now.Date.AddHours(7);
                 }
-                else if (now.Hour >= 19) 
+                else if (now.Hour >= 19)
                 {
                     shiftName = "Shift Malam";
                     shiftStart = now.Date.AddHours(19);
                 }
-                else 
+                else
                 {
                     shiftName = "Shift Malam";
-                    shiftStart = now.Date.AddDays(-1).AddHours(19); 
+                    shiftStart = now.Date.AddDays(-1).AddHours(19);
                 }
             }
             else
@@ -250,7 +250,7 @@ namespace mtc_app.features.technician.presentation.components
                     shiftName = "Shift Malam";
                     shiftStart = selectedDate.AddHours(19);
                 }
-                
+
                 isPastShift = now >= shiftStart.AddHours(12);
             }
 
@@ -278,44 +278,44 @@ namespace mtc_app.features.technician.presentation.components
                 // NOTE: GROUP_CONCAT is needed for FIRST/LAST to detect counter resets correctly.
                 //       MIN/MAX cannot detect resets (e.g. 12000→0→500 gives MAX-MIN=12000, wrong!)
                 string sql = @"
-                    SELECT m.machine_id,
-                           m.type_id,
-                           m.area_id,
-                           COALESCE(t.type_name, 'UNK') AS type_name,
-                           COALESCE(a.area_name, 'UNK') AS area_name,
-                           m.machine_number,
-                           CAST(NULL AS SIGNED) AS hour_index,
-                           0 AS max_pieces, 0 AS first_pieces, 0 AS last_pieces,
-                           0 AS curr_auto, 0 AS curr_mon
-                    FROM machines m
-                    LEFT JOIN machine_types t ON m.type_id = t.type_id
-                    LEFT JOIN machine_areas a ON m.area_id = a.area_id
-                    WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
+                SELECT m.machine_id,
+                        m.type_id,
+                        m.area_id,
+                        COALESCE(t.type_name, 'UNK') AS type_name,
+                        COALESCE(a.area_name, 'UNK') AS area_name,
+                        m.machine_number,
+                        CAST(NULL AS SIGNED) AS hour_index,
+                        0 AS max_pieces, 0 AS first_pieces, 0 AS last_pieces,
+                        0 AS curr_auto, 0 AS curr_mon
+                FROM machines m
+                LEFT JOIN machine_types t ON m.type_id = t.type_id
+                LEFT JOIN machine_areas a ON m.area_id = a.area_id
+                WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
 
-                    UNION ALL
+                UNION ALL
 
-                    SELECT m.machine_id,
-                           m.type_id,
-                           m.area_id,
-                           COALESCE(t.type_name, 'UNK') AS type_name,
-                           COALESCE(a.area_name, 'UNK') AS area_name,
-                           m.machine_number,
-                           TIMESTAMPDIFF(HOUR, @ShiftStart, p.created_at) AS hour_index,
-                           MAX(p.produced_pieces) AS max_pieces,
-                           CAST(SUBSTRING_INDEX(GROUP_CONCAT(p.produced_pieces ORDER BY p.created_at ASC SEPARATOR ','), ',', 1) AS SIGNED) AS first_pieces,
-                           CAST(SUBSTRING_INDEX(GROUP_CONCAT(p.produced_pieces ORDER BY p.created_at DESC SEPARATOR ','), ',', 1) AS SIGNED) AS last_pieces,
-                           MAX(p.auto_time) AS curr_auto,
-                           MAX(p.monitor_time) AS curr_mon
-                    FROM machines m
-                    LEFT JOIN machine_types t ON m.type_id = t.type_id
-                    LEFT JOIN machine_areas a ON m.area_id = a.area_id
-                    JOIN machine_process_logs p ON m.machine_id = p.machine_id
-                    WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
-                      AND p.created_at >= @ShiftStart
-                      AND p.created_at < @ShiftEnd
-                      AND p.produced_pieces > 0
-                    GROUP BY m.machine_id, t.type_name, a.area_name, m.machine_number, hour_index
-                    ORDER BY machine_id, hour_index;";
+                SELECT m.machine_id,
+                        m.type_id,
+                        m.area_id,
+                        COALESCE(t.type_name, 'UNK') AS type_name,
+                        COALESCE(a.area_name, 'UNK') AS area_name,
+                        m.machine_number,
+                        TIMESTAMPDIFF(HOUR, @ShiftStart, p.created_at) AS hour_index,
+                        MAX(p.produced_pieces) AS max_pieces,
+                        CAST(SUBSTRING_INDEX(GROUP_CONCAT(p.produced_pieces ORDER BY p.created_at ASC SEPARATOR ','), ',', 1) AS SIGNED) AS first_pieces,
+                        CAST(SUBSTRING_INDEX(GROUP_CONCAT(p.produced_pieces ORDER BY p.created_at DESC SEPARATOR ','), ',', 1) AS SIGNED) AS last_pieces,
+                        MAX(p.auto_time) AS curr_auto,
+                        MAX(p.monitor_time) AS curr_mon
+                FROM machines m
+                LEFT JOIN machine_types t ON m.type_id = t.type_id
+                LEFT JOIN machine_areas a ON m.area_id = a.area_id
+                JOIN machine_process_logs p ON m.machine_id = p.machine_id
+                WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
+                    AND p.created_at >= @ShiftStart
+                    AND p.created_at < @ShiftEnd
+                    AND p.produced_pieces > 0
+                GROUP BY m.machine_id, t.type_name, a.area_name, m.machine_number, hour_index
+                ORDER BY machine_id, hour_index;";
 
                 IEnumerable<dynamic> rows;
                 using (var conn = DatabaseHelper.GetConnection())
@@ -430,7 +430,7 @@ namespace mtc_app.features.technician.presentation.components
                     // SMART OVERTIME DETECTION:
                     // If the machine produced output in Hour 10 or later, they are validated as working overtime.
                     bool isOvertime = lastActiveHour >= 10;
-                    
+
                     // If overtime is validated, the divisor grows up to the current running hour.
                     // If not overtime, the divisor is strictly capped at hour 9 (end of regular shift).
                     int activeEndHour = isOvertime ? currentHourCount : Math.Min(currentHourCount, 9);
@@ -509,7 +509,7 @@ namespace mtc_app.features.technician.presentation.components
                 }
 
                 UpdateChart(machineList, selectedMetric, currentHourCount);
-                
+
                 string stateText = isPastShift ? "Selesai" : $"Berjalan: Jam ke-{currentHourCount}";
                 _lblStatus.Text = $"Update: {DateTime.Now:HH:mm:ss} | {namaShift} ({shiftStart:dd MMM yyyy}) | {stateText}";
             }
@@ -531,7 +531,7 @@ namespace mtc_app.features.technician.presentation.components
             area.AxisY.Maximum = Double.NaN;
             area.AxisY.Minimum = 0;
             area.AxisY.Title = "";
-            
+
             int maxVisible = 40; // Fit more bars in one screen for slimmer look
             if (data.Count > maxVisible)
             {
@@ -553,18 +553,18 @@ namespace mtc_app.features.technician.presentation.components
                 // --- MODE 1: Single bar (avg/hour) + target dashed line ---
                 area.AxisY.Title = "Output Per Jam (Pcs)";
 
-                var sBar = new Series("Avg Output/Jam") 
-                { 
-                    ChartType = SeriesChartType.Column, 
+                var sBar = new Series("Avg Output/Jam")
+                {
+                    ChartType = SeriesChartType.Column,
                     Color = Color.FromArgb(0, 229, 255), // Cyan
                     IsValueShownAsLabel = true,
                     Font = new Font("Segoe UI", 10F, FontStyle.Bold)
                 };
                 sBar["PointWidth"] = "0.7";
 
-                var sTarget = new Series("Target") 
-                { 
-                    ChartType = SeriesChartType.Line, 
+                var sTarget = new Series("Target")
+                {
+                    ChartType = SeriesChartType.Line,
                     Color = Color.Red,
                     BorderWidth = 2,
                     BorderDashStyle = ChartDashStyle.Dash,
@@ -595,39 +595,39 @@ namespace mtc_app.features.technician.presentation.components
                 area.AxisY.Title = "Total Output (Pcs)";
 
                 Color[] hourColors = new Color[] {
-                    Color.FromArgb(255, 64, 129), // Pink
-                    Color.FromArgb(255, 145, 0),  // Orange
-                    Color.FromArgb(255, 234, 0),  // Yellow
-                    Color.FromArgb(0, 230, 118),  // Green
-                    Color.FromArgb(0, 229, 255),  // Cyan
-                    Color.FromArgb(213, 0, 249),  // Purple
-                    Color.FromArgb(245, 0, 87),   // Rose
-                    Color.FromArgb(118, 255, 3),  // Lime
-                    Color.FromArgb(255, 61, 0),   // Deep Orange
-                    Color.FromArgb(29, 233, 182), // Teal
-                    Color.FromArgb(224, 64, 251), // Light Purple
-                    Color.FromArgb(198, 255, 0),  // Yellow Green
-                    Color.FromArgb(255, 82, 82),  // Light Red
-                    Color.FromArgb(68, 138, 255)   // Blue
-                };
+                Color.FromArgb(255, 64, 129), // Pink
+                Color.FromArgb(255, 145, 0),  // Orange
+                Color.FromArgb(255, 234, 0),  // Yellow
+                Color.FromArgb(0, 230, 118),  // Green
+                Color.FromArgb(0, 229, 255),  // Cyan
+                Color.FromArgb(213, 0, 249),  // Purple
+                Color.FromArgb(245, 0, 87),   // Rose
+                Color.FromArgb(118, 255, 3),  // Lime
+                Color.FromArgb(255, 61, 0),   // Deep Orange
+                Color.FromArgb(29, 233, 182), // Teal
+                Color.FromArgb(224, 64, 251), // Light Purple
+                Color.FromArgb(198, 255, 0),  // Yellow Green
+                Color.FromArgb(255, 82, 82),  // Light Red
+                Color.FromArgb(68, 138, 255)   // Blue
+            };
 
                 for (int i = 0; i < currentHourCount; i++)
                 {
-                    var s = new Series($"Jam {i + 1}") 
-                    { 
-                        ChartType = SeriesChartType.StackedColumn, 
+                    var s = new Series($"Jam {i + 1}")
+                    {
+                        ChartType = SeriesChartType.StackedColumn,
                         Color = hourColors[i],
-                        IsValueShownAsLabel = false 
+                        IsValueShownAsLabel = false
                     };
                     s["PointWidth"] = "0.7";
                     _chart.Series.Add(s);
                 }
 
                 // Total label on top (no avg)
-                var sTotLabel = new Series("Total") 
-                { 
-                    ChartType = SeriesChartType.Point, 
-                    MarkerStyle = MarkerStyle.None, 
+                var sTotLabel = new Series("Total")
+                {
+                    ChartType = SeriesChartType.Point,
+                    MarkerStyle = MarkerStyle.None,
                     Color = Color.Transparent,
                     IsValueShownAsLabel = true,
                     Font = new Font("Segoe UI", 10F, FontStyle.Bold)
@@ -643,7 +643,7 @@ namespace mtc_app.features.technician.presentation.components
                         if (item.HourlyPieces[i] > 0)
                             _chart.Series[i].Points[pIdx].Label = item.HourlyPieces[i].ToString("N0");
                     }
-                    
+
                     double labelYPos = item.TotalPieces > 0 ? item.TotalPieces + (item.TotalPieces * 0.05) : 0;
                     int pTot = sTotLabel.Points.AddXY(item.MachineName, labelYPos);
                     sTotLabel.Points[pTot].Label = item.TotalPieces > 0 ? $"Tot: {item.TotalPieces:N0}" : " ";
@@ -655,29 +655,29 @@ namespace mtc_app.features.technician.presentation.components
 
                 var sAuto = new Series("Auto Time") { ChartType = SeriesChartType.StackedColumn, Color = AppColors.Success, IsValueShownAsLabel = true };
                 sAuto["PointWidth"] = "0.7";
-                
+
                 var sLoss = new Series("Loss Time") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(230, 126, 34), IsValueShownAsLabel = true };
                 sLoss["PointWidth"] = "0.7";
-                
+
                 var sEffLabel = new Series("Eff %") { ChartType = SeriesChartType.Point, Color = Color.Transparent, IsValueShownAsLabel = true };
-                sEffLabel["LabelStyle"] = "Top"; 
-                sEffLabel.Font = new Font("Segoe UI", 12F, FontStyle.Bold); 
+                sEffLabel["LabelStyle"] = "Top";
+                sEffLabel.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
 
                 foreach (var item in data)
                 {
-                    double autoValMinutes = item.AutoTime / 60.0; 
+                    double autoValMinutes = item.AutoTime / 60.0;
                     double monValMinutes = item.MonitorTime / 60.0;
                     double lossValMinutes = (monValMinutes > autoValMinutes) ? (monValMinutes - autoValMinutes) : 0;
-                    
+
                     int p1 = sAuto.Points.AddXY(item.MachineName, autoValMinutes);
                     sAuto.Points[p1].Label = autoValMinutes > 0 ? $"{autoValMinutes:N0}m" : " ";
 
                     int p2 = sLoss.Points.AddXY(item.MachineName, lossValMinutes);
-                    sLoss.Points[p2].Label = lossValMinutes > 0 ? $"{lossValMinutes:N0}m" : " "; 
+                    sLoss.Points[p2].Label = lossValMinutes > 0 ? $"{lossValMinutes:N0}m" : " ";
 
-                    double labelY = monValMinutes > 0 ? monValMinutes + (monValMinutes * 0.05) : 0; 
+                    double labelY = monValMinutes > 0 ? monValMinutes + (monValMinutes * 0.05) : 0;
                     int p3 = sEffLabel.Points.AddXY(item.MachineName, labelY);
-                    
+
                     if (monValMinutes > 0)
                     {
                         sEffLabel.Points[p3].Label = $"{item.Efficiency:F1}%";
@@ -686,7 +686,7 @@ namespace mtc_app.features.technician.presentation.components
                     {
                         sEffLabel.Points[p3].Label = " ";
                     }
-                    
+
                     sEffLabel.Points[p3].MarkerStyle = MarkerStyle.None;
                 }
                 _chart.Series.Add(sAuto);
