@@ -604,6 +604,7 @@ namespace mtc_app.features.technician.presentation.components
                     Font = new Font("Segoe UI", 10F, FontStyle.Bold)
                 };
                 sBar["PointWidth"] = "0.7";
+                sBar["LabelAngle"] = "-90";
 
                 var sTarget = new Series("Target")
                 {
@@ -676,6 +677,7 @@ namespace mtc_app.features.technician.presentation.components
                     Font = new Font("Segoe UI", 10F, FontStyle.Bold)
                 };
                 sTotLabel["LabelStyle"] = "Top";
+                sTotLabel["LabelAngle"] = "-90";
                 _chart.Series.Add(sTotLabel);
 
                 foreach (var item in data)
@@ -689,7 +691,7 @@ namespace mtc_app.features.technician.presentation.components
 
                     double labelYPos = item.TotalPieces > 0 ? item.TotalPieces + (item.TotalPieces * 0.05) : 0;
                     int pTot = sTotLabel.Points.AddXY(item.MachineName, labelYPos);
-                    sTotLabel.Points[pTot].Label = item.TotalPieces > 0 ? $"Tot: {item.TotalPieces:N0}" : " ";
+                    sTotLabel.Points[pTot].Label = item.TotalPieces > 0 ? $"{item.TotalPieces:N0}" : " ";
                 }
             }
             else // Efisiensi Mesin
@@ -707,6 +709,7 @@ namespace mtc_app.features.technician.presentation.components
 
                 var sEffLabel = new Series("Eff %") { ChartType = SeriesChartType.Point, Color = Color.Transparent, IsValueShownAsLabel = true };
                 sEffLabel["LabelStyle"] = "Top";
+                sEffLabel["LabelAngle"] = "-90";
                 sEffLabel.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
 
                 foreach (var item in data)
@@ -719,13 +722,13 @@ namespace mtc_app.features.technician.presentation.components
                     double lossValMinutes = totalLossValMinutes - breakValMinutes;
 
                     int p1 = sAuto.Points.AddXY(item.MachineName, autoValMinutes);
-                    sAuto.Points[p1].Label = autoValMinutes > 0 ? $"{autoValMinutes:N0}m" : " ";
+                    sAuto.Points[p1].Label = autoValMinutes > 0 ? $"{autoValMinutes:N0}" : " ";
 
                     int pBreak = sBreak.Points.AddXY(item.MachineName, breakValMinutes);
-                    sBreak.Points[pBreak].Label = breakValMinutes > 0 ? $"{breakValMinutes:N0}m" : " ";
+                    sBreak.Points[pBreak].Label = breakValMinutes > 0 ? $"{breakValMinutes:N0}" : " ";
 
                     int p2 = sLoss.Points.AddXY(item.MachineName, lossValMinutes);
-                    sLoss.Points[p2].Label = lossValMinutes > 0 ? $"{lossValMinutes:N0}m" : " ";
+                    sLoss.Points[p2].Label = lossValMinutes > 0 ? $"{lossValMinutes:N0}" : " ";
 
                     double labelY = monValMinutes > 0 ? monValMinutes + (monValMinutes * 0.05) : 0;
                     int p3 = sEffLabel.Points.AddXY(item.MachineName, labelY);
