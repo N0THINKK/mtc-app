@@ -556,7 +556,7 @@ namespace mtc_app.features.technician.presentation.components
                 var sBar = new Series("Avg Output/Jam")
                 {
                     ChartType = SeriesChartType.Column,
-                    Color = Color.FromArgb(0, 229, 255), // Cyan
+                    Color = Color.FromArgb(174, 214, 241), // Pastel Blue
                     IsValueShownAsLabel = true,
                     Font = new Font("Segoe UI", 10F, FontStyle.Bold)
                 };
@@ -595,20 +595,20 @@ namespace mtc_app.features.technician.presentation.components
                 area.AxisY.Title = "Total Output (Pcs)";
 
                 Color[] hourColors = new Color[] {
-                Color.FromArgb(255, 64, 129), // Pink
-                Color.FromArgb(255, 145, 0),  // Orange
-                Color.FromArgb(255, 234, 0),  // Yellow
-                Color.FromArgb(0, 230, 118),  // Green
-                Color.FromArgb(0, 229, 255),  // Cyan
-                Color.FromArgb(213, 0, 249),  // Purple
-                Color.FromArgb(245, 0, 87),   // Rose
-                Color.FromArgb(118, 255, 3),  // Lime
-                Color.FromArgb(255, 61, 0),   // Deep Orange
-                Color.FromArgb(29, 233, 182), // Teal
-                Color.FromArgb(224, 64, 251), // Light Purple
-                Color.FromArgb(198, 255, 0),  // Yellow Green
-                Color.FromArgb(255, 82, 82),  // Light Red
-                Color.FromArgb(68, 138, 255)   // Blue
+                Color.FromArgb(255, 179, 186), // Pastel Pink
+                Color.FromArgb(255, 223, 186), // Pastel Orange
+                Color.FromArgb(255, 255, 186), // Pastel Yellow
+                Color.FromArgb(186, 255, 201), // Pastel Green
+                Color.FromArgb(186, 225, 255), // Pastel Cyan/Blue
+                Color.FromArgb(226, 186, 255), // Pastel Purple
+                Color.FromArgb(255, 186, 210), // Pastel Rose
+                Color.FromArgb(219, 255, 186), // Pastel Lime
+                Color.FromArgb(255, 201, 186), // Pastel Deep Orange
+                Color.FromArgb(186, 255, 240), // Pastel Teal
+                Color.FromArgb(240, 186, 255), // Pastel Light Purple
+                Color.FromArgb(237, 255, 186), // Pastel Yellow Green
+                Color.FromArgb(255, 186, 186), // Pastel Light Red
+                Color.FromArgb(174, 214, 241)  // Pastel Blue
             };
 
                 for (int i = 0; i < currentHourCount; i++)
@@ -653,10 +653,10 @@ namespace mtc_app.features.technician.presentation.components
             {
                 area.AxisY.Title = "Waktu (Menit)";
 
-                var sAuto = new Series("Auto Time") { ChartType = SeriesChartType.StackedColumn, Color = AppColors.Success, IsValueShownAsLabel = true };
+                var sAuto = new Series("Auto Time") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(171, 235, 198), IsValueShownAsLabel = true };
                 sAuto["PointWidth"] = "0.7";
 
-                var sLoss = new Series("Loss Time") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(230, 126, 34), IsValueShownAsLabel = true };
+                var sLoss = new Series("Loss Time") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(245, 183, 177), IsValueShownAsLabel = true };
                 sLoss["PointWidth"] = "0.7";
 
                 var sEffLabel = new Series("Eff %") { ChartType = SeriesChartType.Point, Color = Color.Transparent, IsValueShownAsLabel = true };
