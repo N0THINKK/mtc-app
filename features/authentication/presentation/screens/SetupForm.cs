@@ -40,7 +40,7 @@ namespace mtc_app.features.authentication.presentation.screens
             // 1. Buat Label dan ComboBox Template
             lblTemplate = new Label 
             { 
-                Text = "Template Checksheet (Khusus AC90):", 
+                Text = "Template Checksheet (Khusus AC90/AC95):", 
                 AutoSize = true, 
                 Visible = false, 
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
@@ -107,7 +107,7 @@ namespace mtc_app.features.authentication.presentation.screens
 
         private void HandleMachineTypeChange(string typeName)
         {
-            if (typeName.Contains("AC90"))
+            if (typeName.Contains("AC90") || typeName.Contains("AC95"))
             {
                 lblTemplate.Visible = true;
                 cmbTemplate.Visible = true;
@@ -140,8 +140,13 @@ namespace mtc_app.features.authentication.presentation.screens
                     
                     foreach (var t in templates)
                     {
-                        cmbTemplate.Items.Add(t.template_name);
-                        _templateMap[t.template_name] = (int)t.template_id;
+                        // Hapus embel-embel tipe mesin (misal 'AC95 ' atau ' AC90') dari nama template agar UI lebih bersih
+                        string displayName = t.template_name;
+                        displayName = displayName.Replace("AC95 ", "").Replace(" AC95", "").Replace(" (AC95)", "")
+                                                 .Replace("AC90 ", "").Replace(" AC90", "").Replace(" (AC90)", "").Trim();
+
+                        cmbTemplate.Items.Add(displayName);
+                        _templateMap[displayName] = (int)t.template_id;
                     }
                     
                     if (cmbTemplate.Items.Count > 0)
@@ -196,16 +201,16 @@ namespace mtc_app.features.authentication.presentation.screens
                 {
                     if (cmbTemplate.Visible && cmbTemplate.SelectedIndex >= 0)
                     {
-                        // Jika AC90, simpan template yang dipilih SPV
+                        // Jika AC90/AC95, simpan template yang dipilih SPV
                         if (_templateMap.TryGetValue(cmbTemplate.Text, out int templateId))
                         {
                             conn.Execute("UPDATE machines SET current_template_id = @TplId WHERE machine_id = @MacId", 
                                 new { TplId = templateId, MacId = machineId });
                         }
                     }
-                    else if (!type.Contains("AC90"))
+                    else if (!type.Contains("AC90") && !type.Contains("AC95"))
                     {
-                        // Jika mesin lain (AC81/AC95), otomatis pasangkan dengan template default mereka
+                        // Jika mesin lain (AC81 dsb), otomatis pasangkan dengan template default mereka
                         var defaultTpl = conn.QueryFirstOrDefault<int?>(
                             @"SELECT template_id FROM checksheet_templates ct 
                               JOIN machine_types mt ON ct.machine_type_id = mt.type_id 
