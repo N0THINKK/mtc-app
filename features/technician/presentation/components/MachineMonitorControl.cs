@@ -272,11 +272,27 @@ namespace mtc_app.features.technician.presentation.components
                 string namaShift;
                 DateTime shiftStart = GetShiftTimeRange(out shiftEnd, out isPastShift, out namaShift);
 
-                // --- SQL: UNION ALL with FIRST/LAST/MAX per hour (handles counter resets) ---
-                // Part 1: Machine list (no log table touch, instant)
-                // Part 2: Aggregated logs with WHERE filter (uses index on machine_id + created_at)
-                // NOTE: GROUP_CONCAT is needed for FIRST/LAST to detect counter resets correctly.
-                //       MIN/MAX cannot detect resets (e.g. 12000→0→500 gives MAX-MIN=12000, wrong!)
+                int maxBreakMinutes = 0;
+                try
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        conn.Open();
+                        string dbShift = namaShift == "Shift Pagi" ? "Shift 1" : "Shift 2";
+                        int dayId = (int)shiftStart.DayOfWeek;
+                        if (dayId == 0) dayId = 7;
+                        
+                        var b = await conn.QueryFirstOrDefaultAsync("SELECT non_ot_minutes, ot_minutes FROM shift_breaks WHERE shift_name = @Shift AND day_id = @Day", new { Shift = dbShift, Day = dayId });
+                        if (b != null)
+                        {
+                            int currentHourCountTemp = isPastShift ? 12 : Math.Max(1, (int)(DateTime.Now - shiftStart).TotalHours + 1);
+                            maxBreakMinutes = currentHourCountTemp > 9 ? ((int)b.non_ot_minutes + (int)b.ot_minutes) : (int)b.non_ot_minutes;
+                        }
+                    }
+                }
+                catch { }
+
+                // --- SQL: Optimized SARGable Index Lookups ---
                 string sql = @"
                 SELECT m.machine_id,
                         m.type_id,
@@ -294,27 +310,54 @@ namespace mtc_app.features.technician.presentation.components
 
                 UNION ALL
 
-                SELECT m.machine_id,
-                        m.type_id,
-                        m.area_id,
-                        COALESCE(t.type_name, 'UNK') AS type_name,
-                        COALESCE(a.area_name, 'UNK') AS area_name,
-                        m.machine_number,
-                        TIMESTAMPDIFF(HOUR, @ShiftStart, p.created_at) AS hour_index,
-                        MAX(p.produced_pieces) AS max_pieces,
-                        CAST(SUBSTRING_INDEX(GROUP_CONCAT(p.produced_pieces ORDER BY p.created_at ASC SEPARATOR ','), ',', 1) AS SIGNED) AS first_pieces,
-                        CAST(SUBSTRING_INDEX(GROUP_CONCAT(p.produced_pieces ORDER BY p.created_at DESC SEPARATOR ','), ',', 1) AS SIGNED) AS last_pieces,
-                        MAX(p.auto_time) AS curr_auto,
-                        MAX(p.monitor_time) AS curr_mon
+                SELECT 
+                    m.machine_id,
+                    m.type_id,
+                    m.area_id,
+                    COALESCE(t.type_name, 'UNK') AS type_name,
+                    COALESCE(a.area_name, 'UNK') AS area_name,
+                    m.machine_number,
+                    CAST(al.hour_index AS SIGNED) AS hour_index,
+                    CAST(al.max_pieces AS SIGNED) AS max_pieces,
+                    CAST(al.first_pieces AS SIGNED) AS first_pieces,
+                    CAST(al.last_pieces AS SIGNED) AS last_pieces,
+                    al.curr_auto,
+                    al.curr_mon
                 FROM machines m
                 LEFT JOIN machine_types t ON m.type_id = t.type_id
                 LEFT JOIN machine_areas a ON m.area_id = a.area_id
-                JOIN machine_process_logs p ON m.machine_id = p.machine_id
+                JOIN (
+                    SELECT 
+                        p1.machine_id,
+                        p1.hour_index,
+                        p1.max_pieces,
+                        p1.curr_auto,
+                        p1.curr_mon,
+                        (SELECT produced_pieces FROM machine_process_logs pl 
+                         WHERE pl.machine_id = p1.machine_id 
+                           AND pl.created_at >= DATE_ADD(@ShiftStart, INTERVAL p1.hour_index HOUR)
+                           AND pl.created_at < DATE_ADD(@ShiftStart, INTERVAL (p1.hour_index + 1) HOUR)
+                           AND pl.produced_pieces > 0 
+                         ORDER BY pl.created_at ASC LIMIT 1) AS first_pieces,
+                        (SELECT produced_pieces FROM machine_process_logs pl 
+                         WHERE pl.machine_id = p1.machine_id 
+                           AND pl.created_at >= DATE_ADD(@ShiftStart, INTERVAL p1.hour_index HOUR)
+                           AND pl.created_at < DATE_ADD(@ShiftStart, INTERVAL (p1.hour_index + 1) HOUR)
+                           AND pl.produced_pieces > 0 
+                         ORDER BY pl.created_at DESC LIMIT 1) AS last_pieces
+                    FROM (
+                        SELECT 
+                            machine_id,
+                            TIMESTAMPDIFF(HOUR, @ShiftStart, created_at) AS hour_index,
+                            MAX(produced_pieces) AS max_pieces,
+                            MAX(auto_time) AS curr_auto,
+                            MAX(monitor_time) AS curr_mon
+                        FROM machine_process_logs
+                        WHERE created_at >= @ShiftStart AND created_at < @ShiftEnd AND produced_pieces > 0
+                        GROUP BY machine_id, TIMESTAMPDIFF(HOUR, @ShiftStart, created_at)
+                    ) p1
+                ) al ON m.machine_id = al.machine_id
                 WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
-                    AND p.created_at >= @ShiftStart
-                    AND p.created_at < @ShiftEnd
-                    AND p.produced_pieces > 0
-                GROUP BY m.machine_id, t.type_name, a.area_name, m.machine_number, hour_index
                 ORDER BY machine_id, hour_index;";
 
                 IEnumerable<dynamic> rows;
@@ -508,7 +551,7 @@ namespace mtc_app.features.technician.presentation.components
                     }
                 }
 
-                UpdateChart(machineList, selectedMetric, currentHourCount);
+                UpdateChart(machineList, selectedMetric, currentHourCount, maxBreakMinutes);
 
                 string stateText = isPastShift ? "Selesai" : $"Berjalan: Jam ke-{currentHourCount}";
                 _lblStatus.Text = $"Update: {DateTime.Now:HH:mm:ss} | {namaShift} ({shiftStart:dd MMM yyyy}) | {stateText}";
@@ -523,7 +566,7 @@ namespace mtc_app.features.technician.presentation.components
             }
         }
 
-        private void UpdateChart(List<MachineData> data, string mode, int currentHourCount)
+        private void UpdateChart(List<MachineData> data, string mode, int currentHourCount, int maxBreakMinutes)
         {
             _chart.Series.Clear();
             var area = _chart.ChartAreas[0];
@@ -656,6 +699,9 @@ namespace mtc_app.features.technician.presentation.components
                 var sAuto = new Series("Auto Time") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(171, 235, 198), IsValueShownAsLabel = true };
                 sAuto["PointWidth"] = "0.7";
 
+                var sBreak = new Series("Break Time") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(174, 214, 241), IsValueShownAsLabel = true }; // Pastel Blue
+                sBreak["PointWidth"] = "0.7";
+
                 var sLoss = new Series("Loss Time") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(245, 183, 177), IsValueShownAsLabel = true };
                 sLoss["PointWidth"] = "0.7";
 
@@ -667,10 +713,16 @@ namespace mtc_app.features.technician.presentation.components
                 {
                     double autoValMinutes = item.AutoTime / 60.0;
                     double monValMinutes = item.MonitorTime / 60.0;
-                    double lossValMinutes = (monValMinutes > autoValMinutes) ? (monValMinutes - autoValMinutes) : 0;
+                    double totalLossValMinutes = (monValMinutes > autoValMinutes) ? (monValMinutes - autoValMinutes) : 0;
+
+                    double breakValMinutes = Math.Min(totalLossValMinutes, maxBreakMinutes);
+                    double lossValMinutes = totalLossValMinutes - breakValMinutes;
 
                     int p1 = sAuto.Points.AddXY(item.MachineName, autoValMinutes);
                     sAuto.Points[p1].Label = autoValMinutes > 0 ? $"{autoValMinutes:N0}m" : " ";
+
+                    int pBreak = sBreak.Points.AddXY(item.MachineName, breakValMinutes);
+                    sBreak.Points[pBreak].Label = breakValMinutes > 0 ? $"{breakValMinutes:N0}m" : " ";
 
                     int p2 = sLoss.Points.AddXY(item.MachineName, lossValMinutes);
                     sLoss.Points[p2].Label = lossValMinutes > 0 ? $"{lossValMinutes:N0}m" : " ";
@@ -690,6 +742,7 @@ namespace mtc_app.features.technician.presentation.components
                     sEffLabel.Points[p3].MarkerStyle = MarkerStyle.None;
                 }
                 _chart.Series.Add(sAuto);
+                _chart.Series.Add(sBreak);
                 _chart.Series.Add(sLoss);
                 _chart.Series.Add(sEffLabel);
             }
