@@ -29,6 +29,29 @@ namespace mtc_app.features.machine_history.presentation.screens
             CheckActiveIdleStatus();
         }
 
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            var screen = Screen.FromControl(this);
+            var workingArea = screen.WorkingArea;
+            // Posisikan di sebelah kanan layar, dengan margin 20 pixel, tengah secara vertikal
+            this.Location = new Point(workingArea.Right - this.Width - 20, workingArea.Top + (workingArea.Height - this.Height) / 2);
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+            // WM_NCHITTEST
+            if (m.Msg == 0x84) 
+            {
+                // Jika kursor berada di area klien form, treat seperti berada di title bar agar bisa di-drag
+                if ((int)m.Result == 0x1) 
+                {
+                    m.Result = (IntPtr)0x2; // HTCAPTION
+                }
+            }
+        }
+
         private string GetMachineName()
         {
             string machineIdStr = DatabaseHelper.GetMachineId();
@@ -86,7 +109,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             this.Text = "Menu Utama Operator";
             this.Size = new Size(600, 790); // Increased height
-            this.StartPosition = FormStartPosition.CenterScreen;
+            this.StartPosition = FormStartPosition.Manual;
             this.BackColor = AppColors.Background;
             this.FormBorderStyle = FormBorderStyle.None; 
 
