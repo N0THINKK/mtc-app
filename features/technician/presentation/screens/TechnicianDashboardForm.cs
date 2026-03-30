@@ -89,6 +89,10 @@ namespace mtc_app.features.technician.presentation.screens
         private async void TechnicianDashboardForm_Shown(object sender, EventArgs e)
         {
             await Task.Delay(50); // Delay kecil untuk memastikan UI sudah siap
+            if (tabControl.SelectedIndex == 0)
+            {
+                machineMonitorControl.StartMonitoring();
+            }
             LoadCurrentTabData(); // Load data untuk tab yang aktif saat ini
         }
 

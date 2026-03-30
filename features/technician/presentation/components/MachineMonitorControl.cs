@@ -13,8 +13,10 @@ namespace mtc_app.features.technician.presentation.components
 {
     public class MachineMonitorControl : UserControl
     {
-        private const int REFRESH_RATE_MS = 30000;
+        // Refresh otomatis setiap 30 Menit (30 * 60 * 1000 ms = 1800000)
+        private const int REFRESH_RATE_MS = 1800000;
 
+        private Button _btnRefresh;
         private Timer _timer;
         private Chart _chart;
         private Panel _pnlChartContainer;
@@ -140,7 +142,25 @@ namespace mtc_app.features.technician.presentation.components
             headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70F));
 
             var flowLeft = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Dock = DockStyle.Fill, BackColor = Color.Transparent };
+            
+            _btnRefresh = new Button 
+            { 
+                Text = "Refresh", 
+                Font = AppFonts.BodySmall, 
+                Width = 100, 
+                Height = 30, 
+                Margin = new Padding(0, 5, 10, 0), 
+                BackColor = Color.FromArgb(0, 122, 204), 
+                ForeColor = Color.White, 
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            _btnRefresh.FlatAppearance.BorderSize = 0;
+            _btnRefresh.Click += async (s, e) => await HandleManualRefresh();
+
             _lblStatus = new Label { Text = "Memuat data...", Font = AppFonts.BodySmall, ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(0, 10, 0, 0) };
+            
+            flowLeft.Controls.Add(_btnRefresh);
             flowLeft.Controls.Add(_lblStatus);
             headerLayout.Controls.Add(flowLeft, 0, 0);
 
@@ -257,6 +277,37 @@ namespace mtc_app.features.technician.presentation.components
             _timer = new Timer();
             _timer.Interval = REFRESH_RATE_MS;
             _timer.Tick += async (s, e) => await LoadData();
+        }
+
+        private async Task HandleManualRefresh()
+        {
+            if (_isLoading) return;
+
+            // Reset timer ototmatis agar jeda 30 menit menghitung dari SEKARANG
+            if (_timer != null)
+            {
+                _timer.Stop();
+                _timer.Start();
+            }
+
+            _btnRefresh.Enabled = false;
+            
+            await LoadData();
+
+            // Proteksi Anti-Spam (Cooldown 2 menit)
+            int cooldownSeconds = 120;
+            while (cooldownSeconds > 0 && !this.IsDisposed)
+            {
+                _btnRefresh.Text = $"Tunggu ({cooldownSeconds}s)";
+                await Task.Delay(1000);
+                cooldownSeconds--;
+            }
+
+            if (!this.IsDisposed)
+            {
+                _btnRefresh.Enabled = true;
+                _btnRefresh.Text = "Refresh";
+            }
         }
 
         public void StartMonitoring() { _ = LoadData(); _timer.Start(); }
