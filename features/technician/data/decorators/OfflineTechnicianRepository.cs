@@ -30,7 +30,7 @@ namespace mtc_app.features.technician.data.decorators
         /// <summary>
         /// Gets active tickets. Falls back to cached tickets when offline.
         /// </summary>
-        public IEnumerable<TicketDto> GetActiveTickets()
+        public async Task<IEnumerable<TicketDto>> GetActiveTicketsAsync()
         {
             if (!_networkMonitor.IsOnline)
             {
@@ -40,7 +40,7 @@ namespace mtc_app.features.technician.data.decorators
 
             try
             {
-                return _innerRepository.GetActiveTickets();
+                return await _innerRepository.GetActiveTicketsAsync();
             }
             catch (Exception ex) when (IsNetworkException(ex))
             {
@@ -52,7 +52,7 @@ namespace mtc_app.features.technician.data.decorators
         /// <summary>
         /// Gets technician statistics. Returns empty stats when offline.
         /// </summary>
-        public TechnicianStatsDto GetTechnicianStatistics(long technicianId)
+        public async Task<TechnicianStatsDto> GetTechnicianStatisticsAsync(long technicianId)
         {
             if (!_networkMonitor.IsOnline)
             {
@@ -61,7 +61,7 @@ namespace mtc_app.features.technician.data.decorators
 
             try
             {
-                return _innerRepository.GetTechnicianStatistics(technicianId);
+                return await _innerRepository.GetTechnicianStatisticsAsync(technicianId);
             }
             catch (Exception ex) when (IsNetworkException(ex))
             {

@@ -9,7 +9,7 @@ namespace mtc_app.features.technician.data.repositories
 {
     public class TechnicianRepository : ITechnicianRepository
     {
-        public IEnumerable<TicketDto> GetActiveTickets()
+        public async Task<IEnumerable<TicketDto>> GetActiveTicketsAsync()
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
@@ -66,7 +66,7 @@ namespace mtc_app.features.technician.data.repositories
                     WHERE t.status_id >= 1
                     ORDER BY t.created_at DESC";
                 
-                return connection.Query<TicketDto>(sql, commandTimeout: 120);
+                return await connection.QueryAsync<TicketDto>(sql, commandTimeout: 120);
             }
         }
 
@@ -149,7 +149,7 @@ namespace mtc_app.features.technician.data.repositories
             }
         }
 
-        public TechnicianStatsDto GetTechnicianStatistics(long technicianId)
+        public async Task<TechnicianStatsDto> GetTechnicianStatisticsAsync(long technicianId)
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
@@ -163,7 +163,7 @@ namespace mtc_app.features.technician.data.repositories
                     WHERE tts.technician_id = @TechnicianId
                       AND t.status_id = 4";
                 
-                return connection.QueryFirstOrDefault<TechnicianStatsDto>(sql, new { TechnicianId = technicianId }, commandTimeout: 120);
+                return await connection.QueryFirstOrDefaultAsync<TechnicianStatsDto>(sql, new { TechnicianId = technicianId }, commandTimeout: 120);
             }
         }
 

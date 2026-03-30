@@ -8,9 +8,24 @@ using Microsoft.Extensions.Configuration;
 
 namespace mtc_auto_export
 {
+    public class DailyOutputDto
+    {
+        public string TanggalProduksi { get; set; }
+        public string NamaMesin { get; set; }
+        public long? OutputPagi { get; set; }
+        public long? OutputMalam { get; set; }
+        public long? RawAutoSec { get; set; }
+        public long? RawMonitorSec { get; set; }
+        public long? KanbanMin { get; set; }
+        public long? MaterialMin { get; set; }
+        public long? GantiMin { get; set; }
+        public long? LainnyaMin { get; set; }
+        public long? BreakMin { get; set; }
+    }
+
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             try
             {
@@ -55,7 +70,7 @@ namespace mtc_auto_export
                 {
                     connection.Open();
                     Console.WriteLine("Terkoneksi ke database. Mengambil data output...");
-                    var dataOutputHarian = FetchDailyOutputSummary(connection, yesterday, yesterday, "Semua Area");
+                    var dataOutputHarian = await FetchDailyOutputSummaryAsync(connection, yesterday, yesterday, "Semua Area");
 
                     if (dataOutputHarian.Rows.Count > 0)
                     {
@@ -75,7 +90,7 @@ namespace mtc_auto_export
             }
         }
 
-        private static DataTable FetchDailyOutputSummary(IDbConnection connection, DateTime startDate, DateTime endDate, string area)
+        private static async Task<DataTable> FetchDailyOutputSummaryAsync(IDbConnection connection, DateTime startDate, DateTime endDate, string area)
         {
             string sql = @"
                 SELECT 
@@ -128,7 +143,7 @@ namespace mtc_auto_export
                 GROUP BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)), m.machine_id, mt.type_name, ma.area_name, m.machine_number, KanbanMin, MaterialMin, GantiMin, LainnyaMin, BreakMin
                 ORDER BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)) DESC, mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC";
             
-            var results = connection.Query<dynamic>(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 300);
+            var results = await connection.QueryAsync<DailyOutputDto>(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 300);
             
             var dataTable = new DataTable();
             dataTable.Columns.Add("Tanggal Produksi", typeof(string));
@@ -149,22 +164,22 @@ namespace mtc_auto_export
 
             foreach (var row in results)
             {
-                long outPagi = (long)(row.OutputPagi ?? 0);
-                long outMalam = (long)(row.OutputMalam ?? 0);
+                long outPagi = row.OutputPagi ?? 0;
+                long outMalam = row.OutputMalam ?? 0;
                 long totalOut = outPagi + outMalam;
                 
-                long autoSec = (long)(row.RawAutoSec ?? 0);
-                long monSec = (long)(row.RawMonitorSec ?? 0);
+                long autoSec = row.RawAutoSec ?? 0;
+                long monSec = row.RawMonitorSec ?? 0;
                 
                 long autoMin = autoSec / 60;
                 long monMin = monSec / 60;
                 long nyalaMin = monMin > autoMin ? monMin - autoMin : 0; 
                 
-                long kanban = Convert.ToInt64(row.KanbanMin ?? 0);
-                long material = Convert.ToInt64(row.MaterialMin ?? 0);
-                long ganti = Convert.ToInt64(row.GantiMin ?? 0);
-                long lainnya = Convert.ToInt64(row.LainnyaMin ?? 0);
-                long breakMin = Convert.ToInt64(row.BreakMin ?? 0);
+                long kanban = row.KanbanMin ?? 0;
+                long material = row.MaterialMin ?? 0;
+                long ganti = row.GantiMin ?? 0;
+                long lainnya = row.LainnyaMin ?? 0;
+                long breakMin = row.BreakMin ?? 0;
 
                 // Efisiensi = Mesin Run / (Mesin Run + Mesin Nyala + Kanban Habis + Material Habis + Ganti Material + Lainnya atau Toilet - Break)
                 double pembagiEfisiensi = autoMin + nyalaMin + kanban + material + ganti + lainnya - breakMin;
