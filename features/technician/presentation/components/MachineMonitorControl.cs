@@ -591,6 +591,8 @@ namespace mtc_app.features.technician.presentation.components
 
             area.RecalculateAxesScale();
 
+            _chart.Legends.Clear();
+
             if (mode == "Output Per Jam")
             {
                 // --- MODE 1: Single bar (avg/hour) + target dashed line ---
@@ -698,16 +700,25 @@ namespace mtc_app.features.technician.presentation.components
             {
                 area.AxisY.Title = "Waktu (Menit)";
 
-                var sAuto = new Series("Auto Time") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(171, 235, 198), IsValueShownAsLabel = true };
+                var legend = new Legend("LegendEfisiensi")
+                {
+                    Docking = Docking.Top,
+                    Alignment = StringAlignment.Center,
+                    BackColor = Color.Transparent,
+                    Font = new Font("Segoe UI", 10F, FontStyle.Bold)
+                };
+                _chart.Legends.Add(legend);
+
+                var sAuto = new Series("Mesin Run") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(171, 235, 198), IsValueShownAsLabel = true }; // Pastel Green
                 sAuto["PointWidth"] = "0.7";
 
-                var sBreak = new Series("Break Time") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(174, 214, 241), IsValueShownAsLabel = true }; // Pastel Blue
+                var sBreak = new Series("Break") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(174, 214, 241), IsValueShownAsLabel = true }; // Pastel Blue
                 sBreak["PointWidth"] = "0.7";
 
-                var sLoss = new Series("Loss Time") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(245, 183, 177), IsValueShownAsLabel = true };
+                var sLoss = new Series("Downtime") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(250, 215, 161), IsValueShownAsLabel = true }; // Pastel Orange
                 sLoss["PointWidth"] = "0.7";
 
-                var sEffLabel = new Series("Eff %") { ChartType = SeriesChartType.Point, Color = Color.Transparent, IsValueShownAsLabel = true };
+                var sEffLabel = new Series("Eff %") { ChartType = SeriesChartType.Point, Color = Color.Transparent, IsValueShownAsLabel = true, IsVisibleInLegend = false };
                 sEffLabel["LabelStyle"] = "Top";
                 sEffLabel["LabelAngle"] = "-90";
                 sEffLabel.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
