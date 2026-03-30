@@ -275,24 +275,32 @@ namespace mtc_app.features.technician.presentation.components
                 int maxBreakMinutes = 0;
                 try
                 {
+                    // NOTE: Do NOT call conn.Open() — Dapper manages connection state automatically.
                     using (var conn = DatabaseHelper.GetConnection())
                     {
-                        conn.Open();
                         string dbShift = namaShift == "Shift Pagi" ? "Shift 1" : "Shift 2";
                         int dayId = (int)shiftStart.DayOfWeek;
                         if (dayId == 0) dayId = 7;
-                        
-                        var b = await conn.QueryFirstOrDefaultAsync("SELECT non_ot_minutes, ot_minutes FROM shift_breaks WHERE shift_name = @Shift AND day_id = @Day", new { Shift = dbShift, Day = dayId });
+
+                        var b = await conn.QueryFirstOrDefaultAsync(
+                            "SELECT non_ot_minutes, ot_minutes FROM shift_breaks WHERE shift_name = @Shift AND day_id = @Day",
+                            new { Shift = dbShift, Day = dayId });
+
                         if (b != null)
                         {
                             int currentHourCountTemp = isPastShift ? 12 : Math.Max(1, (int)(DateTime.Now - shiftStart).TotalHours + 1);
-                            maxBreakMinutes = currentHourCountTemp > 9 ? ((int)b.non_ot_minutes + (int)b.ot_minutes) : (int)b.non_ot_minutes;
+                            maxBreakMinutes = currentHourCountTemp > 9
+                                ? ((int)b.non_ot_minutes + (int)b.ot_minutes)
+                                : (int)b.non_ot_minutes;
                         }
                     }
                 }
                 catch { }
 
-                // --- SQL: Optimized SARGable Index Lookups ---
+                // --- SQL: Single-pass aggregation (no correlated subqueries) ---
+                // Uses MIN/MAX with a CASE on the min/max created_at per hour to derive
+                // first_pieces and last_pieces in one GROUP BY scan. This avoids the N×M
+                // correlated subquery problem that caused the Command Timeout.
                 string sql = @"
                 SELECT m.machine_id,
                         m.type_id,
@@ -310,7 +318,7 @@ namespace mtc_app.features.technician.presentation.components
 
                 UNION ALL
 
-                SELECT 
+                SELECT
                     m.machine_id,
                     m.type_id,
                     m.area_id,
@@ -327,43 +335,39 @@ namespace mtc_app.features.technician.presentation.components
                 LEFT JOIN machine_types t ON m.type_id = t.type_id
                 LEFT JOIN machine_areas a ON m.area_id = a.area_id
                 JOIN (
-                    SELECT 
-                        p1.machine_id,
-                        p1.hour_index,
-                        p1.max_pieces,
-                        p1.curr_auto,
-                        p1.curr_mon,
-                        (SELECT produced_pieces FROM machine_process_logs pl 
-                         WHERE pl.machine_id = p1.machine_id 
-                           AND pl.created_at >= DATE_ADD(@ShiftStart, INTERVAL p1.hour_index HOUR)
-                           AND pl.created_at < DATE_ADD(@ShiftStart, INTERVAL (p1.hour_index + 1) HOUR)
-                           AND pl.produced_pieces > 0 
-                         ORDER BY pl.created_at ASC LIMIT 1) AS first_pieces,
-                        (SELECT produced_pieces FROM machine_process_logs pl 
-                         WHERE pl.machine_id = p1.machine_id 
-                           AND pl.created_at >= DATE_ADD(@ShiftStart, INTERVAL p1.hour_index HOUR)
-                           AND pl.created_at < DATE_ADD(@ShiftStart, INTERVAL (p1.hour_index + 1) HOUR)
-                           AND pl.produced_pieces > 0 
-                         ORDER BY pl.created_at DESC LIMIT 1) AS last_pieces
+                    SELECT
+                        agg.machine_id,
+                        agg.hour_index,
+                        agg.max_pieces,
+                        agg.curr_auto,
+                        agg.curr_mon,
+                        MIN(CASE WHEN p.created_at = agg.first_ts THEN p.produced_pieces END) AS first_pieces,
+                        MIN(CASE WHEN p.created_at = agg.last_ts  THEN p.produced_pieces END) AS last_pieces
                     FROM (
-                        SELECT 
+                        SELECT
                             machine_id,
                             TIMESTAMPDIFF(HOUR, @ShiftStart, created_at) AS hour_index,
-                            MAX(produced_pieces) AS max_pieces,
-                            MAX(auto_time) AS curr_auto,
-                            MAX(monitor_time) AS curr_mon
+                            MAX(produced_pieces)  AS max_pieces,
+                            MAX(auto_time)        AS curr_auto,
+                            MAX(monitor_time)     AS curr_mon,
+                            MIN(created_at)       AS first_ts,
+                            MAX(created_at)       AS last_ts
                         FROM machine_process_logs
                         WHERE created_at >= @ShiftStart AND created_at < @ShiftEnd AND produced_pieces > 0
                         GROUP BY machine_id, TIMESTAMPDIFF(HOUR, @ShiftStart, created_at)
-                    ) p1
+                    ) agg
+                    JOIN machine_process_logs p
+                        ON p.machine_id = agg.machine_id
+                       AND p.created_at IN (agg.first_ts, agg.last_ts)
+                    GROUP BY agg.machine_id, agg.hour_index, agg.max_pieces, agg.curr_auto, agg.curr_mon
                 ) al ON m.machine_id = al.machine_id
                 WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
                 ORDER BY machine_id, hour_index;";
 
+                // NOTE: Do NOT call conn.Open() — Dapper manages connection state automatically.
                 IEnumerable<dynamic> rows;
                 using (var conn = DatabaseHelper.GetConnection())
                 {
-                    conn.Open();
                     rows = await conn.QueryAsync(sql, new { Area = selectedArea, ShiftStart = shiftStart, ShiftEnd = shiftEnd }, commandTimeout: 60);
                 }
 
