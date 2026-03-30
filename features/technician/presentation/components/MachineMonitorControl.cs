@@ -118,6 +118,7 @@ namespace mtc_app.features.technician.presentation.components
             chartArea.AxisY.MajorGrid.LineColor = Color.LightGray;
 
             _chart.ChartAreas.Add(chartArea);
+            _chart.PostPaint += Chart_PostPaint;
 
             var legend = new Legend("MainLegend");
             legend.Docking = Docking.Top;
@@ -195,6 +196,60 @@ namespace mtc_app.features.technician.presentation.components
             headerLayout.Controls.Add(flowRight, 1, 0);
             pnlHeader.Controls.Add(headerLayout);
             return pnlHeader;
+        }
+
+        private void Chart_PostPaint(object sender, ChartPaintEventArgs e)
+        {
+            if (sender is Chart chart && e.ChartElement is ChartArea area && area.Name == "MainArea")
+            {
+                var cg = e.ChartGraphics;
+                var g = cg.Graphics;
+                var sf = new StringFormat
+                {
+                    Alignment = StringAlignment.Near,
+                    LineAlignment = StringAlignment.Center
+                };
+
+                foreach (var series in chart.Series)
+                {
+                    if (series.Name == "Avg Output/Jam" || series.Name == "Total" || series.Name == "Eff %")
+                    {
+                        for (int i = 0; i < series.Points.Count; i++)
+                        {
+                            var p = series.Points[i];
+                            string labelText = p.Tag as string;
+                            if (string.IsNullOrWhiteSpace(labelText)) continue;
+
+                            double xVal = p.XValue != 0 ? p.XValue : i + 1;
+                            
+                            if (!double.IsNaN(area.AxisX.ScaleView.ViewMinimum) && !double.IsNaN(area.AxisX.ScaleView.ViewMaximum))
+                            {
+                                if (xVal < area.AxisX.ScaleView.ViewMinimum || xVal > area.AxisX.ScaleView.ViewMaximum)
+                                    continue;
+                            }
+
+                            double yVal = p.YValues[0];
+                            try 
+                            {
+                                double xPosRel = area.AxisX.ValueToPosition(xVal);
+                                double yPosRel = area.AxisY.ValueToPosition(yVal);
+                                PointF pixelPos = cg.GetAbsolutePoint(new PointF((float)xPosRel, (float)yPosRel));
+
+                                var state = g.Save();
+                                g.TranslateTransform(pixelPos.X, pixelPos.Y - 5);
+                                g.RotateTransform(-90);
+                                
+                                using (var brush = new SolidBrush(Color.FromArgb(64, 64, 64)))
+                                {
+                                    g.DrawString(labelText, series.Font, brush, new PointF(0, 0), sf);
+                                }
+                                g.Restore(state);
+                            } 
+                            catch { }
+                        }
+                    }
+                }
+            }
         }
 
         private void SetupTimer()
@@ -575,7 +630,6 @@ namespace mtc_app.features.technician.presentation.components
             _chart.Series.Clear();
             var area = _chart.ChartAreas[0];
 
-            area.AxisY.Maximum = Double.NaN;
             area.AxisY.Minimum = 0;
             area.AxisY.Title = "";
 
@@ -600,17 +654,20 @@ namespace mtc_app.features.technician.presentation.components
             if (mode == "Output Per Jam")
             {
                 // --- MODE 1: Single bar (avg/hour) + target dashed line ---
+                double maxVal = data.Count > 0 ? data.Max(x => x.AveragePerHour) : 0;
+                double maxTarget = data.Count > 0 ? data.Max(x => x.TargetPerHour) : 0;
+                area.AxisY.Maximum = Math.Max(maxVal, maxTarget) > 0 ? Math.Max(maxVal, maxTarget) * 1.2 : 10;
+
                 area.AxisY.Title = "Output Per Jam (Pcs)";
 
                 var sBar = new Series("Avg Output/Jam")
                 {
                     ChartType = SeriesChartType.Column,
                     Color = Color.FromArgb(174, 214, 241), // Pastel Blue
-                    IsValueShownAsLabel = true,
+                    IsValueShownAsLabel = false,
                     Font = new Font("Segoe UI", 10F, FontStyle.Bold)
                 };
                 sBar["PointWidth"] = "0.7";
-                sBar["LabelAngle"] = "-90";
 
                 var sTarget = new Series("Target")
                 {
@@ -629,7 +686,7 @@ namespace mtc_app.features.technician.presentation.components
                 {
                     int idx = sBar.Points.AddXY(item.MachineName, item.AveragePerHour);
                     if (item.AveragePerHour > 0)
-                        sBar.Points[idx].Label = $"{item.AveragePerHour:N0}";
+                        sBar.Points[idx].Tag = $"{item.AveragePerHour:N0}";
 
                     if (hasAnyTarget)
                         sTarget.Points.AddXY(item.MachineName, item.TargetPerHour);
@@ -642,6 +699,9 @@ namespace mtc_app.features.technician.presentation.components
             else if (mode == "Total")
             {
                 // --- MODE 2: Stacked hourly bars (no avg/tot label) ---
+                double maxVal = data.Count > 0 ? data.Max(x => x.TotalPieces) : 0;
+                area.AxisY.Maximum = maxVal > 0 ? maxVal * 1.2 : 10;
+
                 area.AxisY.Title = "Total Output (Pcs)";
 
                 Color[] hourColors = new Color[] {
@@ -673,17 +733,15 @@ namespace mtc_app.features.technician.presentation.components
                     _chart.Series.Add(s);
                 }
 
-                // Total label on top (no avg)
+                // Total label on top (no avg) using Tag for PostPaint drawing
                 var sTotLabel = new Series("Total")
                 {
                     ChartType = SeriesChartType.Point,
                     MarkerStyle = MarkerStyle.None,
                     Color = Color.Transparent,
-                    IsValueShownAsLabel = true,
+                    IsValueShownAsLabel = false,
                     Font = new Font("Segoe UI", 10F, FontStyle.Bold)
                 };
-                sTotLabel["LabelStyle"] = "Top";
-                sTotLabel["LabelAngle"] = "-90";
                 _chart.Series.Add(sTotLabel);
 
                 foreach (var item in data)
@@ -695,13 +753,19 @@ namespace mtc_app.features.technician.presentation.components
                             _chart.Series[i].Points[pIdx].Label = item.HourlyPieces[i].ToString("N0");
                     }
 
-                    double labelYPos = item.TotalPieces > 0 ? item.TotalPieces + (item.TotalPieces * 0.05) : 0;
+                    // MaxVal is used so that the label offsets consistently across the chart
+                    double maxValRef = data.Count > 0 ? data.Max(x => x.TotalPieces) : 0;
+                    double labelYPos = item.TotalPieces > 0 ? item.TotalPieces + (maxValRef * 0.02) : 0;
                     int pTot = sTotLabel.Points.AddXY(item.MachineName, labelYPos);
-                    sTotLabel.Points[pTot].Label = item.TotalPieces > 0 ? $"{item.TotalPieces:N0}" : " ";
+                    if (item.TotalPieces > 0)
+                        sTotLabel.Points[pTot].Tag = $"{item.TotalPieces:N0}";
                 }
             }
             else // Efisiensi Mesin
             {
+                double maxVal = data.Count > 0 ? data.Max(x => x.MonitorTime / 60.0) : 0;
+                area.AxisY.Maximum = maxVal > 0 ? maxVal * 1.2 : 10;
+
                 area.AxisY.Title = "Waktu (Menit)";
 
                 var legend = new Legend("LegendEfisiensi")
@@ -722,9 +786,7 @@ namespace mtc_app.features.technician.presentation.components
                 var sLoss = new Series("Downtime") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(250, 215, 161), IsValueShownAsLabel = true }; // Pastel Orange
                 sLoss["PointWidth"] = "0.7";
 
-                var sEffLabel = new Series("Eff %") { ChartType = SeriesChartType.Point, Color = Color.Transparent, IsValueShownAsLabel = true, IsVisibleInLegend = false };
-                sEffLabel["LabelStyle"] = "Top";
-                sEffLabel["LabelAngle"] = "-90";
+                var sEffLabel = new Series("Eff %") { ChartType = SeriesChartType.Point, Color = Color.Transparent, IsValueShownAsLabel = false, IsVisibleInLegend = false };
                 sEffLabel.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
 
                 foreach (var item in data)
@@ -745,16 +807,13 @@ namespace mtc_app.features.technician.presentation.components
                     int p2 = sLoss.Points.AddXY(item.MachineName, lossValMinutes);
                     sLoss.Points[p2].Label = lossValMinutes > 0 ? $"{lossValMinutes:N0}" : " ";
 
-                    double labelY = monValMinutes > 0 ? monValMinutes + (monValMinutes * 0.05) : 0;
+                    double maxValRef = data.Count > 0 ? data.Max(x => x.MonitorTime / 60.0) : 0;
+                    double labelY = monValMinutes > 0 ? monValMinutes + (maxValRef * 0.02) : 0;
                     int p3 = sEffLabel.Points.AddXY(item.MachineName, labelY);
 
                     if (monValMinutes > 0)
                     {
-                        sEffLabel.Points[p3].Label = $"{item.Efficiency:F1}%";
-                    }
-                    else
-                    {
-                        sEffLabel.Points[p3].Label = " ";
+                        sEffLabel.Points[p3].Tag = $"{item.Efficiency:F1}%";
                     }
 
                     sEffLabel.Points[p3].MarkerStyle = MarkerStyle.None;
