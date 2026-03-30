@@ -49,10 +49,10 @@ namespace mtc_app.features.micrometer_patrol.data.repositories
                     JOIN users u ON mp.user_id = u.user_id
                     JOIN shifts s ON mp.shift_id = s.shift_id
                     JOIN machines m ON mp.machine_id = m.machine_id
-                    WHERE DATE(mp.patrol_date) = DATE(@Date)
+                    WHERE mp.patrol_date >= DATE(@Date) AND mp.patrol_date < DATE_ADD(DATE(@Date), INTERVAL 1 DAY)
                     ORDER BY mp.created_at DESC";
 
-                return await connection.QueryAsync<MicrometerPatrolDto>(query, new { Date = date });
+                return await connection.QueryAsync<MicrometerPatrolDto>(query, new { Date = date.Date });
             }
         }
     }

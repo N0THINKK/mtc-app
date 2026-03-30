@@ -312,7 +312,8 @@ namespace mtc_app.features.technician.presentation.components
             _isLoading = true;
             try
             {
-                _allTickets = _repository.GetActiveTickets().ToList();
+                var ticketsRaw = await _repository.GetActiveTicketsAsync();
+                _allTickets = ticketsRaw.ToList();
                 
                 pnlTicketList.SuspendLayout();
                 

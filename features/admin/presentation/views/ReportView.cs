@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.IO;
 using System.Data;
 using System.Drawing;
@@ -60,7 +61,7 @@ namespace mtc_app.features.admin.presentation.views
             }
         }
 
-        private void BtnExport_Click(object sender, EventArgs e)
+        private async void BtnExport_Click(object sender, EventArgs e)
         {
             using (var saveFileDialog = new SaveFileDialog())
             {
@@ -80,9 +81,15 @@ namespace mtc_app.features.admin.presentation.views
                         Application.DoEvents(); // Agar UI tidak lag
 
                         // Melempar parameter 'areaName' ke dalam fungsi fetch data
-                        var dataDetail = FetchDataForReport(dateStart.Value, dateEnd.Value, areaName);
-                        var dataRekapBulanan = FetchMonthlyDowntimeSummary(dateStart.Value, dateEnd.Value, areaName);
-                        var dataOutputHarian = OutputExportService.FetchDailyOutputSummary(dateStart.Value, dateEnd.Value, areaName);
+                        var dataDetailTask = FetchDataForReportAsync(dateStart.Value, dateEnd.Value, areaName);
+                        var dataRekapBulananTask = FetchMonthlyDowntimeSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
+                        var dataOutputHarianTask = OutputExportService.FetchDailyOutputSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
+
+                        await Task.WhenAll(dataDetailTask, dataRekapBulananTask, dataOutputHarianTask);
+
+                        var dataDetail = dataDetailTask.Result;
+                        var dataRekapBulanan = dataRekapBulananTask.Result;
+                        var dataOutputHarian = dataOutputHarianTask.Result;
 
                         using (var workbook = new XLWorkbook())
                         {
@@ -138,7 +145,7 @@ namespace mtc_app.features.admin.presentation.views
                 }
             }
         }
-        private void BtnExportOutput_Click(object sender, EventArgs e)
+        private async void BtnExportOutput_Click(object sender, EventArgs e)
         {
             try
             {
@@ -158,7 +165,7 @@ namespace mtc_app.features.admin.presentation.views
                 string fileName = $"Export_Output_Manual_{safeArea}_{dateStart.Value:yyyy-MM-dd}_hingga_{dateEnd.Value:yyyy-MM-dd}.xlsx";
                 string filePath = Path.Combine(directoryPath, fileName);
 
-                var dataOutputHarian = OutputExportService.FetchDailyOutputSummary(dateStart.Value, dateEnd.Value, areaName);
+                var dataOutputHarian = await OutputExportService.FetchDailyOutputSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
 
                 if (dataOutputHarian.Rows.Count > 0)
                 {
@@ -184,7 +191,7 @@ namespace mtc_app.features.admin.presentation.views
         // =========================================================
         // FUNGSI 1: DATA DETAIL
         // =========================================================
-        private DataTable FetchDataForReport(DateTime startDate, DateTime endDate, string area)
+        private async Task<DataTable> FetchDataForReportAsync(DateTime startDate, DateTime endDate, string area)
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
@@ -203,7 +210,7 @@ namespace mtc_app.features.admin.presentation.views
                 // URUTAN KHUSUS: Tipe -> Area -> Angka (Casting String ke Integer) -> Waktu Terbaru
                 sql += " ORDER BY mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC, t.created_at DESC";
                 
-                var reader = connection.ExecuteReader(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 120);
+                var reader = await connection.ExecuteReaderAsync(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 120);
                 var dataTable = new DataTable();
                 dataTable.Load(reader);
 
@@ -219,7 +226,7 @@ namespace mtc_app.features.admin.presentation.views
         // =========================================================
         // FUNGSI 2: REKAP DOWNTIME BULANAN
         // =========================================================
-        private DataTable FetchMonthlyDowntimeSummary(DateTime startDate, DateTime endDate, string area)
+        private async Task<DataTable> FetchMonthlyDowntimeSummaryAsync(DateTime startDate, DateTime endDate, string area)
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
@@ -243,7 +250,7 @@ namespace mtc_app.features.admin.presentation.views
                     GROUP BY DATE_FORMAT(t.created_at, '%M %Y'), YEAR(t.created_at), MONTH(t.created_at), m.machine_id, mt.type_name, ma.area_name, m.machine_number
                     ORDER BY YEAR(t.created_at) DESC, MONTH(t.created_at) DESC, mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC";
                 
-                var reader = connection.ExecuteReader(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 120);
+                var reader = await connection.ExecuteReaderAsync(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 120);
                 var dataTable = new DataTable();
                 dataTable.Load(reader);
                 return dataTable;

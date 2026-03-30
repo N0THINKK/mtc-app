@@ -117,7 +117,7 @@ namespace mtc_app.shared.data.services
                 var repo = new TechnicianRepository();
                 
                 // GetActiveTickets returns Open and Repairing tickets
-                var tickets = repo.GetActiveTickets()?.ToList() ?? new List<TicketDto>();
+                var tickets = (await repo.GetActiveTicketsAsync())?.ToList() ?? new List<TicketDto>();
 
                 if (tickets.Count > 0)
                 {
