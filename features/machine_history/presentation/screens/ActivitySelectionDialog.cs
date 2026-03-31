@@ -12,9 +12,12 @@ namespace mtc_app.features.machine_history.presentation.screens
 {
     public class ActivitySelectionDialog : Form
     {
+        private ComboBox _cmbCategory;
         private ComboBox _cmbActivities;
         private AppButton _btnSave;
         private AppButton _btnCancel;
+
+        private List<ActivityOption> _allActivities = new List<ActivityOption>();
 
         public int SelectedActivityId { get; private set; }
         public string SelectedActivityName { get; private set; }
@@ -22,26 +25,44 @@ namespace mtc_app.features.machine_history.presentation.screens
         public ActivitySelectionDialog()
         {
             this.Text = "Pilih Alasan Idle / Keluar";
-            this.Size = new Size(400, 250);
+            this.Size = new Size(420, 320);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.BackColor = AppColors.Background;
 
-            var lbl = new Label
+            var lblCategory = new Label
             {
-                Text = "Alasan Mesin Berhenti / Operator Keluar:",
+                Text = "Kategori Berhenti:",
                 Font = AppFonts.Subtitle,
                 ForeColor = AppColors.TextPrimary,
                 AutoSize = true,
                 Location = new Point(20, 20)
             };
 
+            _cmbCategory = new ComboBox
+            {
+                Location = new Point(20, 50),
+                Size = new Size(360, 30),
+                Font = AppFonts.Body,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            _cmbCategory.SelectedIndexChanged += CmbCategory_SelectedIndexChanged;
+
+            var lblReason = new Label
+            {
+                Text = "Pilih Alasan Detail:",
+                Font = AppFonts.Subtitle,
+                ForeColor = AppColors.TextPrimary,
+                AutoSize = true,
+                Location = new Point(20, 95)
+            };
+
             _cmbActivities = new ComboBox
             {
-                Location = new Point(20, 60),
-                Size = new Size(340, 30),
+                Location = new Point(20, 125),
+                Size = new Size(360, 30),
                 Font = AppFonts.Body,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
@@ -53,7 +74,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Text = "Simpan",
                 Type = AppButton.ButtonType.Primary,
                 Size = new Size(160, 40),
-                Location = new Point(20, 130)
+                Location = new Point(20, 190)
             };
             _btnSave.Click += BtnSave_Click;
 
@@ -62,17 +83,19 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Text = "Batal",
                 Type = AppButton.ButtonType.Secondary,
                 Size = new Size(160, 40),
-                Location = new Point(200, 130)
+                Location = new Point(220, 190)
             };
             _btnCancel.Click += (s, e) => { this.DialogResult = DialogResult.Cancel; this.Close(); };
 
-            this.Controls.Add(lbl);
+            this.Controls.Add(lblCategory);
+            this.Controls.Add(_cmbCategory);
+            this.Controls.Add(lblReason);
             this.Controls.Add(_cmbActivities);
             this.Controls.Add(_btnSave);
             this.Controls.Add(_btnCancel);
         }
 
-        private class ActivityOption { public int Id { get; set; } public string Name { get; set; } }
+        private class ActivityOption { public int Id { get; set; } public string Name { get; set; } public string Category { get; set; } }
 
         private void LoadActivities()
         {
@@ -81,17 +104,37 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
-                    var list = conn.Query<ActivityOption>("SELECT id as Id, activity_name as Name FROM activity_types").ToList();
+                    try {
+                        _allActivities = conn.Query<ActivityOption>("SELECT id as Id, activity_name as Name, category as Category FROM activity_types").ToList();
+                    } catch {
+                        _allActivities = conn.Query<ActivityOption>("SELECT id as Id, activity_name as Name, 'Uncategorized' as Category FROM activity_types").ToList();
+                    }
                     
-                    _cmbActivities.DisplayMember = "Name";
-                    _cmbActivities.ValueMember = "Id";
-                    foreach(var item in list) _cmbActivities.Items.Add(item);
-                    if (_cmbActivities.Items.Count > 0) _cmbActivities.SelectedIndex = 0;
+                    var categories = _allActivities.Select(a => a.Category).Distinct().ToList();
+                    foreach (var c in categories) _cmbCategory.Items.Add(c);
+                    
+                    if (_cmbCategory.Items.Count > 0) _cmbCategory.SelectedIndex = 0;
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Gagal memuat daftar alasan: " + ex.Message);
+            }
+        }
+
+        private void CmbCategory_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            _cmbActivities.Items.Clear();
+            if (_cmbCategory.SelectedItem != null)
+            {
+                string selectedCat = _cmbCategory.SelectedItem.ToString();
+                var filtered = _allActivities.Where(a => a.Category == selectedCat).ToList();
+                
+                _cmbActivities.DisplayMember = "Name";
+                _cmbActivities.ValueMember = "Id";
+                
+                foreach(var item in filtered) _cmbActivities.Items.Add(item);
+                if (_cmbActivities.Items.Count > 0) _cmbActivities.SelectedIndex = 0;
             }
         }
 

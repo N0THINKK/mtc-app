@@ -16,10 +16,8 @@ namespace mtc_auto_export
         public long? OutputMalam { get; set; }
         public long? RawAutoSec { get; set; }
         public long? RawMonitorSec { get; set; }
-        public long? KanbanMin { get; set; }
-        public long? MaterialMin { get; set; }
-        public long? GantiMin { get; set; }
-        public long? LainnyaMin { get; set; }
+        public long? PlannedMin { get; set; }
+        public long? SuddenMin { get; set; }
         public long? BreakMin { get; set; }
     }
 
@@ -106,10 +104,8 @@ namespace mtc_auto_export
                     (MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND HOUR(mpl.created_at) < 19 THEN mpl.monitor_time ELSE 0 END) +
                      MAX(CASE WHEN HOUR(mpl.created_at) < 7 OR HOUR(mpl.created_at) >= 19 THEN mpl.monitor_time ELSE 0 END)) AS RawMonitorSec,
 
-                    IFNULL(act.KanbanMin, 0) AS KanbanMin,
-                    IFNULL(act.MaterialMin, 0) AS MaterialMin,
-                    IFNULL(act.GantiMin, 0) AS GantiMin,
-                    IFNULL(act.LainnyaMin, 0) AS LainnyaMin,
+                    IFNULL(act.PlannedMin, 0) AS PlannedMin,
+                    IFNULL(act.SuddenMin, 0) AS SuddenMin,
 
                     IFNULL(brk.TotalBreakMin, 0) AS BreakMin
                 FROM machine_process_logs mpl
@@ -118,14 +114,13 @@ namespace mtc_auto_export
                 LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
                 LEFT JOIN (
                     SELECT 
-                        machine_name,
-                        DATE(DATE_SUB(start_time, INTERVAL 7 HOUR)) AS act_date,
-                        SUM(CASE WHEN activity_id = 1 THEN TIMESTAMPDIFF(MINUTE, start_time, IFNULL(end_time, NOW())) ELSE 0 END) AS KanbanMin,
-                        SUM(CASE WHEN activity_id = 2 THEN TIMESTAMPDIFF(MINUTE, start_time, IFNULL(end_time, NOW())) ELSE 0 END) AS MaterialMin,
-                        SUM(CASE WHEN activity_id = 3 THEN TIMESTAMPDIFF(MINUTE, start_time, IFNULL(end_time, NOW())) ELSE 0 END) AS GantiMin,
-                        SUM(CASE WHEN activity_id = 4 THEN TIMESTAMPDIFF(MINUTE, start_time, IFNULL(end_time, NOW())) ELSE 0 END) AS LainnyaMin
-                    FROM machine_operator_activities
-                    GROUP BY machine_name, DATE(DATE_SUB(start_time, INTERVAL 7 HOUR))
+                        moa.machine_name,
+                        DATE(DATE_SUB(moa.start_time, INTERVAL 7 HOUR)) AS act_date,
+                        SUM(CASE WHEN it.category = 'Planned Stop' THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMin,
+                        SUM(CASE WHEN it.category = 'Sudden Stop' THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
+                    FROM machine_operator_activities moa
+                    LEFT JOIN activity_types it ON moa.activity_id = it.id
+                    GROUP BY moa.machine_name, DATE(DATE_SUB(moa.start_time, INTERVAL 7 HOUR))
                 ) act ON act.machine_name = CONCAT(IFNULL(mt.type_name, ''), '.', IFNULL(ma.area_name, ''), '-', LPAD(m.machine_number, 2, '0')) 
                         AND act.act_date = DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR))
                 LEFT JOIN (
@@ -140,7 +135,7 @@ namespace mtc_auto_export
             }
 
             sql += @"
-                GROUP BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)), m.machine_id, mt.type_name, ma.area_name, m.machine_number, KanbanMin, MaterialMin, GantiMin, LainnyaMin, BreakMin
+                GROUP BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)), m.machine_id, mt.type_name, ma.area_name, m.machine_number, PlannedMin, SuddenMin, BreakMin
                 ORDER BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)) DESC, mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC";
             
             var results = await connection.QueryAsync<DailyOutputDto>(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 300);
@@ -156,10 +151,8 @@ namespace mtc_auto_export
             dataTable.Columns.Add("Mesin Run (Menit)", typeof(long));
             dataTable.Columns.Add("Mesin Nyala (Menit)", typeof(long));
             dataTable.Columns.Add("Break (Menit)", typeof(long));
-            dataTable.Columns.Add("Kanban Habis (Menit)", typeof(long));
-            dataTable.Columns.Add("Material Habis (Menit)", typeof(long));
-            dataTable.Columns.Add("Ganti Material (Menit)", typeof(long));
-            dataTable.Columns.Add("Lainnya/Toilet (Menit)", typeof(long));
+            dataTable.Columns.Add("Planned Stop (Menit)", typeof(long));
+            dataTable.Columns.Add("Sudden Stop (Menit)", typeof(long));
             dataTable.Columns.Add("Efisiensi (%)", typeof(string));
 
             foreach (var row in results)
@@ -175,14 +168,12 @@ namespace mtc_auto_export
                 long monMin = monSec / 60;
                 long nyalaMin = monMin > autoMin ? monMin - autoMin : 0; 
                 
-                long kanban = row.KanbanMin ?? 0;
-                long material = row.MaterialMin ?? 0;
-                long ganti = row.GantiMin ?? 0;
-                long lainnya = row.LainnyaMin ?? 0;
+                long planned = row.PlannedMin ?? 0;
+                long sudden = row.SuddenMin ?? 0;
                 long breakMin = row.BreakMin ?? 0;
 
-                // Efisiensi = Mesin Run / (Mesin Run + Mesin Nyala + Kanban Habis + Material Habis + Ganti Material + Lainnya atau Toilet - Break)
-                double pembagiEfisiensi = autoMin + nyalaMin + kanban + material + ganti + lainnya - breakMin;
+                // Efisiensi = Mesin Run / (Mesin Run + Mesin Nyala + Planned + Sudden - Break)
+                double pembagiEfisiensi = autoMin + nyalaMin + planned + sudden - breakMin;
                 double eff = pembagiEfisiensi > 0 ? ((double)autoMin / pembagiEfisiensi) * 100 : 0;
 
                 // Standard divider 9.75 representing active available hours in a standard 12H run (8 base + 1.75 overtime scaling)
@@ -200,10 +191,8 @@ namespace mtc_auto_export
                     autoMin,
                     nyalaMin,
                     breakMin,
-                    kanban,
-                    material,
-                    ganti,
-                    lainnya,
+                    planned,
+                    sudden,
                     eff.ToString("F1") + " %"
                 );
             }
