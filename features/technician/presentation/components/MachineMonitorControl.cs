@@ -65,6 +65,8 @@ namespace mtc_app.features.technician.presentation.components
 
             public double AutoTime { get; set; }
             public double MonitorTime { get; set; }
+            public double PlannedStopMinutes { get; set; }
+            public double SuddenStopMinutes { get; set; }
             public double Efficiency => MonitorTime > 0 ? (AutoTime / MonitorTime) * 100 : 0;
         }
 
@@ -633,6 +635,37 @@ namespace mtc_app.features.technician.presentation.components
                 }
                 catch { /* Target table might not exist yet — silently ignore */ }
 
+                // --- Load Downtime categories (Planned / Sudden)
+                try
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        var psData = await conn.QueryAsync(@"
+                            SELECT moa.machine_name, 
+                                   SUM(CASE WHEN it.category = 'Planned Stop' THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMin,
+                                   SUM(CASE WHEN it.category = 'Sudden Stop' THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
+                            FROM machine_operator_activities moa
+                            LEFT JOIN activity_types it ON moa.activity_id = it.id
+                            WHERE moa.start_time >= @ShiftStart AND moa.start_time < @ShiftEnd
+                            GROUP BY moa.machine_name", new { ShiftStart = shiftStart, ShiftEnd = shiftEnd });
+
+                        var psMap = new Dictionary<string, (double planned, double sudden)>();
+                        foreach(var row in psData) {
+                            psMap[(string)row.machine_name] = ((double)(row.PlannedMin ?? 0), (double)(row.SuddenMin ?? 0));
+                        }
+
+                        foreach (var machine in machines.Values)
+                        {
+                            if (psMap.TryGetValue(machine.MachineName, out var ps))
+                            {
+                                 machine.PlannedStopMinutes = ps.planned;
+                                 machine.SuddenStopMinutes = ps.sudden;
+                            }
+                        }
+                    }
+                }
+                catch { /* Quiet fallback */ }
+
                 string selectedMetric = _comboMetric.SelectedItem?.ToString();
                 string selectedSort = _comboSort.SelectedItem?.ToString();
                 var machineList = machines.Values.ToList();
@@ -831,11 +864,17 @@ namespace mtc_app.features.technician.presentation.components
                 var sAuto = new Series("Mesin Run") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(171, 235, 198), IsValueShownAsLabel = true }; // Pastel Green
                 sAuto["PointWidth"] = "0.7";
 
-                var sBreak = new Series("Break") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(174, 214, 241), IsValueShownAsLabel = true }; // Pastel Blue
+                var sBreak = new Series("Break") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(224, 224, 224), IsValueShownAsLabel = true }; // Pastel Gray
                 sBreak["PointWidth"] = "0.7";
 
-                var sLoss = new Series("Downtime") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(250, 215, 161), IsValueShownAsLabel = true }; // Pastel Orange
-                sLoss["PointWidth"] = "0.7";
+                var sPlanned = new Series("Planned Stop") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(174, 214, 241), IsValueShownAsLabel = true }; // Pastel Blue
+                sPlanned["PointWidth"] = "0.7";
+
+                var sSudden = new Series("Sudden Stop") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(255, 186, 186), IsValueShownAsLabel = true }; // Pastel Red
+                sSudden["PointWidth"] = "0.7";
+
+                var sIdle = new Series("Idle/Unaccounted") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(250, 215, 161), IsValueShownAsLabel = true }; // Pastel Orange
+                sIdle["PointWidth"] = "0.7";
 
                 var sEffLabel = new Series("Eff %") { ChartType = SeriesChartType.Point, Color = Color.Transparent, IsValueShownAsLabel = false, IsVisibleInLegend = false };
                 sEffLabel.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
@@ -847,7 +886,30 @@ namespace mtc_app.features.technician.presentation.components
                     double totalLossValMinutes = (monValMinutes > autoValMinutes) ? (monValMinutes - autoValMinutes) : 0;
 
                     double breakValMinutes = Math.Min(totalLossValMinutes, maxBreakMinutes);
-                    double lossValMinutes = totalLossValMinutes - breakValMinutes;
+                    double remainingLoss = totalLossValMinutes - breakValMinutes;
+
+                    double plannedMin = item.PlannedStopMinutes;
+                    double suddenMin = item.SuddenStopMinutes;
+                    double idleMin = 0;
+
+                    if (plannedMin + suddenMin > remainingLoss && remainingLoss > 0)
+                    {
+                        // Cap manual inputs if they exceed PLC MonitorTime to preserve the aesthetic 100% stack layout
+                        double scale = remainingLoss / (plannedMin + suddenMin);
+                        plannedMin *= scale;
+                        suddenMin *= scale;
+                        idleMin = 0;
+                    }
+                    else if (remainingLoss > 0)
+                    {
+                        idleMin = remainingLoss - plannedMin - suddenMin;
+                        if (idleMin < 0) idleMin = 0;
+                    }
+                    else {
+                        plannedMin = 0;
+                        suddenMin = 0;
+                        idleMin = 0;
+                    }
 
                     int p1 = sAuto.Points.AddXY(item.MachineName, autoValMinutes);
                     sAuto.Points[p1].Label = autoValMinutes > 0 ? $"{autoValMinutes:N0}" : " ";
@@ -855,8 +917,14 @@ namespace mtc_app.features.technician.presentation.components
                     int pBreak = sBreak.Points.AddXY(item.MachineName, breakValMinutes);
                     sBreak.Points[pBreak].Label = breakValMinutes > 0 ? $"{breakValMinutes:N0}" : " ";
 
-                    int p2 = sLoss.Points.AddXY(item.MachineName, lossValMinutes);
-                    sLoss.Points[p2].Label = lossValMinutes > 0 ? $"{lossValMinutes:N0}" : " ";
+                    int pPlan = sPlanned.Points.AddXY(item.MachineName, plannedMin);
+                    sPlanned.Points[pPlan].Label = plannedMin > 0 ? $"{plannedMin:N0}" : " ";
+
+                    int pSudden = sSudden.Points.AddXY(item.MachineName, suddenMin);
+                    sSudden.Points[pSudden].Label = suddenMin > 0 ? $"{suddenMin:N0}" : " ";
+
+                    int pIdle = sIdle.Points.AddXY(item.MachineName, idleMin);
+                    sIdle.Points[pIdle].Label = idleMin > 0 ? $"{idleMin:N0}" : " ";
 
                     double maxValRef = data.Count > 0 ? data.Max(x => x.MonitorTime / 60.0) : 0;
                     double labelY = monValMinutes > 0 ? monValMinutes + (maxValRef * 0.02) : 0;
@@ -871,7 +939,9 @@ namespace mtc_app.features.technician.presentation.components
                 }
                 _chart.Series.Add(sAuto);
                 _chart.Series.Add(sBreak);
-                _chart.Series.Add(sLoss);
+                _chart.Series.Add(sPlanned);
+                _chart.Series.Add(sSudden);
+                _chart.Series.Add(sIdle);
                 _chart.Series.Add(sEffLabel);
             }
         }
