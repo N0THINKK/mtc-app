@@ -198,7 +198,7 @@ namespace mtc_app.features.technician.presentation.screens
 
             // Timer Setup
             timerTabSwitch = new Timer();
-            timerTabSwitch.Interval = 60000; // 10 Seconds default
+            timerTabSwitch.Interval = 30000; // 30 Seconds default
             timerTabSwitch.Tick += AutoSwitch_Tick;
 
             // Button (added first because FlowDirection is RightToLeft)
@@ -220,7 +220,7 @@ namespace mtc_app.features.technician.presentation.screens
                 if (timerTabSwitch.Enabled)
                 {
                     timerTabSwitch.Stop();
-                    _autoSwitchStage = -1; // Reset stage
+                    _autoSwitchStage = 0; // Reset stage
                     btnAutoSwitch.Text = "Auto Switch: OFF";
                     btnAutoSwitch.BackColor = AppColors.Surface;
                     btnAutoSwitch.ForeColor = AppColors.TextSecondary;
@@ -228,8 +228,10 @@ namespace mtc_app.features.technician.presentation.screens
                 else
                 {
                     timerTabSwitch.Interval = (int)nudInterval.Value * 1000;
+                    _autoSwitchStage = 0;
+                    tabControl.SelectedIndex = 0;
+                    machineMonitorControl?.ResetAutoSwitch();
                     timerTabSwitch.Start();
-                    AutoSwitch_Tick(null, EventArgs.Empty);
                     btnAutoSwitch.Text = "Auto Switch: ON";
                     btnAutoSwitch.BackColor = AppColors.Success; 
                     btnAutoSwitch.ForeColor = AppColors.TextInverse;
@@ -258,9 +260,9 @@ namespace mtc_app.features.technician.presentation.screens
             nudInterval = new NumericUpDown
             {
                 Size = new Size(60, 28),
-                Minimum = 5,
+                Minimum = 30, // Minimal 30 detik
                 Maximum = 3600,
-                Value = 10,
+                Value = 30,
                 Font = AppFonts.Body,
                 Margin = new Padding(AppDimens.MarginSmall, 5, 0, 0)
             };
@@ -282,34 +284,31 @@ namespace mtc_app.features.technician.presentation.screens
         {
             if (tabControl.TabCount <= 0) return;
 
-            const int totalStages = 7; 
-            _autoSwitchStage = (_autoSwitchStage + 1) % totalStages;
-
-            switch (_autoSwitchStage)
+            if (_autoSwitchStage == 0)
             {
-                case 0: // Monitor - Output
+                // We are on Output tab, let MachineMonitor cycle areas/metrics
+                tabControl.SelectedIndex = 0;
+                bool isOutputDone = machineMonitorControl?.AdvanceAutoSwitch() ?? true;
+                if (isOutputDone)
+                {
+                    _autoSwitchStage++;
+                    tabControl.SelectedIndex = _autoSwitchStage;
+                }
+            }
+            else
+            {
+                _autoSwitchStage++;
+                if (_autoSwitchStage >= tabControl.TabCount) 
+                {
+                    // Reached the end of tabs (Patroli NG), loop back to start
+                    _autoSwitchStage = 0;
                     tabControl.SelectedIndex = 0;
-                    machineMonitorControl?.SetMetric(0);
-                    break;
-                case 1: // Monitor - Efficiency
-                    tabControl.SelectedIndex = 0;
-                    machineMonitorControl?.SetMetric(1);
-                    break;
-                case 2: // Work Queue
-                    tabControl.SelectedIndex = 1;
-                    break;
-                case 3: // Data Part
-                    tabControl.SelectedIndex = 2;
-                    break;
-                case 4: // Performance
-                    tabControl.SelectedIndex = 3;
-                    break;
-                case 5: // Machine Analysis
-                    tabControl.SelectedIndex = 4;
-                    break;
-                case 6: // Patroli Checksheet
-                    tabControl.SelectedIndex = 5;
-                    break;
+                    machineMonitorControl?.ResetAutoSwitch();
+                }
+                else
+                {
+                    tabControl.SelectedIndex = _autoSwitchStage;
+                }
             }
         }
 
