@@ -70,9 +70,9 @@ namespace mtc_auto_export
                     Console.WriteLine("Terkoneksi ke database. Mengambil data output...");
                     var dataOutputHarian = await FetchDailyOutputSummaryAsync(connection, yesterday, yesterday, "Semua Area");
 
-                    if (dataOutputHarian.Rows.Count > 0)
+                    if (dataOutputHarian.Tables.Count > 0 && dataOutputHarian.Tables[0].Rows.Count > 0)
                     {
-                        ExportDataTableToExcel(dataOutputHarian, filePath);
+                        ExportDataSetToExcel(dataOutputHarian, filePath);
                         Console.WriteLine($"[Sukses] Berhasil mengekspor output harian ke: {filePath}");
                     }
                     else
@@ -88,7 +88,7 @@ namespace mtc_auto_export
             }
         }
 
-        private static async Task<DataTable> FetchDailyOutputSummaryAsync(IDbConnection connection, DateTime startDate, DateTime endDate, string area)
+        private static async Task<DataSet> FetchDailyOutputSummaryAsync(IDbConnection connection, DateTime startDate, DateTime endDate, string area)
         {
             string sql = @"
                 SELECT 
@@ -140,7 +140,7 @@ namespace mtc_auto_export
             
             var results = await connection.QueryAsync<DailyOutputDto>(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 300);
             
-            var dataTable = new DataTable();
+            var dataTable = new DataTable("Output Harian");
             dataTable.Columns.Add("Tanggal Produksi", typeof(string));
             dataTable.Columns.Add("Nama Mesin", typeof(string));
             dataTable.Columns.Add("Output Pagi (Pcs)", typeof(long));
@@ -197,19 +197,104 @@ namespace mtc_auto_export
                 );
             }
 
-            return dataTable;
+            // --- DOWNTIME BREAKDOWN ---
+            var dtDetails = new DataTable("Rincian Downtime Operator");
+            dtDetails.Columns.Add("Tanggal Produksi", typeof(string));
+            dtDetails.Columns.Add("Nama Mesin", typeof(string));
+
+            var activities = await connection.QueryAsync("SELECT id, activity_name FROM activity_types ORDER BY id", commandTimeout: 30);
+            var activityList = System.Linq.Enumerable.ToList(activities);
+            foreach (var act in activityList)
+            {
+                dtDetails.Columns.Add((string)act.activity_name, typeof(string));
+            }
+
+            string detailSql = @"
+            SELECT 
+                DATE_FORMAT(DATE_SUB(moa.start_time, INTERVAL 7 HOUR), '%d %M %Y') AS TanggalProduksi,
+                moa.machine_name AS NamaMesin,
+                moa.activity_id AS ActivityId,
+                SUM(TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW()))) AS DurationMin
+            FROM machine_operator_activities moa
+            WHERE moa.start_time >= @StartDate AND moa.start_time < @EndDatePlusOne
+            GROUP BY TanggalProduksi, NamaMesin, ActivityId";
+
+            var detailResults = await connection.QueryAsync(detailSql, new { StartDate = startDate.Date, EndDatePlusOne = endDate.Date.AddDays(1) }, commandTimeout: 300);
+
+            var detailDict = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.Dictionary<int, long>>();
+            foreach (var dr in detailResults)
+            {
+                string key = $"{(string)dr.TanggalProduksi}_{(string)dr.NamaMesin}";
+                if (!detailDict.ContainsKey(key)) detailDict[key] = new System.Collections.Generic.Dictionary<int, long>();
+                detailDict[key][(int)dr.ActivityId] = (long)Math.Max(0, (long)dr.DurationMin);
+            }
+
+            var machinesWithDowntime = new System.Collections.Generic.List<DailyOutputDto>();
+            var machinesWithoutDowntime = new System.Collections.Generic.List<DailyOutputDto>();
+
+            foreach (var row in results)
+            {
+                if ((row.PlannedMin ?? 0) > 0 || (row.SuddenMin ?? 0) > 0)
+                    machinesWithDowntime.Add(row);
+                else
+                    machinesWithoutDowntime.Add(row);
+            }
+
+            foreach (var row in machinesWithDowntime)
+            {
+                var dataRow = dtDetails.NewRow();
+                dataRow["Tanggal Produksi"] = row.TanggalProduksi;
+                dataRow["Nama Mesin"] = row.NamaMesin;
+                string key = $"{row.TanggalProduksi}_{row.NamaMesin}";
+                var acts = detailDict.ContainsKey(key) ? detailDict[key] : null;
+
+                foreach (var act in activityList)
+                {
+                    long min = (acts != null && acts.ContainsKey((int)act.id)) ? acts[(int)act.id] : 0;
+                    dataRow[(string)act.activity_name] = min.ToString();
+                }
+                dtDetails.Rows.Add(dataRow);
+            }
+
+            if (machinesWithoutDowntime.Count > 0)
+            {
+                dtDetails.Rows.Add(dtDetails.NewRow()); // Gap row
+
+                foreach (var row in machinesWithoutDowntime)
+                {
+                    var dataRow = dtDetails.NewRow();
+                    dataRow["Tanggal Produksi"] = row.TanggalProduksi;
+                    dataRow["Nama Mesin"] = row.NamaMesin;
+                    bool first = true;
+                    foreach (var act in activityList)
+                    {
+                        dataRow[(string)act.activity_name] = first ? "Jalan Terus" : "-";
+                        first = false;
+                    }
+                    dtDetails.Rows.Add(dataRow);
+                }
+            }
+
+            var ds = new DataSet();
+            ds.Tables.Add(dataTable);
+            ds.Tables.Add(dtDetails);
+
+            return ds;
         }
 
-        private static void ExportDataTableToExcel(DataTable dataOutputHarian, string filePath)
+        private static void ExportDataSetToExcel(DataSet dataSet, string filePath)
         {
             using (var workbook = new XLWorkbook())
             {
-                var wsHarian = workbook.Worksheets.Add("Output Harian");
-                wsHarian.Cell("A1").InsertTable(dataOutputHarian);
-                wsHarian.Row(1).Style.Font.Bold = true;
-                wsHarian.Row(1).Style.Fill.BackgroundColor = XLColor.AirForceBlue; 
-                wsHarian.Row(1).Style.Font.FontColor = XLColor.White;
-                wsHarian.Columns().AdjustToContents();
+                foreach (DataTable dt in dataSet.Tables)
+                {
+                    var ws = workbook.Worksheets.Add(dt.TableName);
+                    ws.Cell("A1").InsertTable(dt);
+                    ws.Row(1).Style.Font.Bold = true;
+                    ws.Row(1).Style.Fill.BackgroundColor = XLColor.AirForceBlue; 
+                    ws.Row(1).Style.Font.FontColor = XLColor.White;
+                    ws.Columns().AdjustToContents();
+                }
 
                 workbook.SaveAs(filePath);
             }

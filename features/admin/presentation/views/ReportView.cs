@@ -122,16 +122,26 @@ namespace mtc_app.features.admin.presentation.views
                             // SHEET 3: REKAP OUTPUT HARIAN & EFISIENSI
                             // =========================================================
                             var wsHarian = workbook.Worksheets.Add("Output Harian");
-                            wsHarian.Cell("A1").InsertTable(dataOutputHarian);
+                            wsHarian.Cell("A1").InsertTable(dataOutputHarian.Tables[0]);
                             wsHarian.Row(1).Style.Font.Bold = true;
                             wsHarian.Row(1).Style.Fill.BackgroundColor = XLColor.SeaGreen; 
                             wsHarian.Row(1).Style.Font.FontColor = XLColor.White;
                             wsHarian.Columns().AdjustToContents();
 
+                            // =========================================================
+                            // SHEET 4: RINCIAN DOWNTIME OPERATOR
+                            // =========================================================
+                            var wsDowntime = workbook.Worksheets.Add("Rincian Downtime Operator");
+                            wsDowntime.Cell("A1").InsertTable(dataOutputHarian.Tables[1]);
+                            wsDowntime.Row(1).Style.Font.Bold = true;
+                            wsDowntime.Row(1).Style.Fill.BackgroundColor = XLColor.Purple; 
+                            wsDowntime.Row(1).Style.Font.FontColor = XLColor.White;
+                            wsDowntime.Columns().AdjustToContents();
+
                             workbook.SaveAs(saveFileDialog.FileName);
                         }
 
-                        MessageBox.Show($"Laporan berhasil diekspor!\n\nFile Excel ini berisi 3 Sheet:\n1. Detail Tiket\n2. Rekap Downtime Bulanan\n3. Output Mesin Harian", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show($"Laporan berhasil diekspor!\n\nFile Excel ini berisi 4 Sheet:\n1. Detail Tiket\n2. Rekap Downtime Bulanan\n3. Output Mesin Harian\n4. Rincian Downtime", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
                     {
@@ -167,9 +177,9 @@ namespace mtc_app.features.admin.presentation.views
 
                 var dataOutputHarian = await OutputExportService.FetchDailyOutputSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
 
-                if (dataOutputHarian.Rows.Count > 0)
+                if (dataOutputHarian.Tables.Count > 0 && dataOutputHarian.Tables[0].Rows.Count > 0)
                 {
-                    OutputExportService.ExportDataTableToExcel(dataOutputHarian, filePath);
+                    OutputExportService.ExportDataSetToExcel(dataOutputHarian, filePath);
                     MessageBox.Show($"File Output berhasil diekspor ke:\n{filePath}", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else
