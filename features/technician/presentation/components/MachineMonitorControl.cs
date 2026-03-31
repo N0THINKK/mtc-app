@@ -917,16 +917,16 @@ namespace mtc_app.features.technician.presentation.components
                 };
                 _chart.Legends.Add(legend);
 
-                var sAuto = new Series("Mesin Run") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(171, 235, 198), IsValueShownAsLabel = true }; // Pastel Green
+                var sAuto = new Series("Run") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(171, 235, 198), IsValueShownAsLabel = true }; // Pastel Green
                 sAuto["PointWidth"] = "0.7";
 
                 var sBreak = new Series("Break") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(224, 224, 224), IsValueShownAsLabel = true }; // Pastel Gray
                 sBreak["PointWidth"] = "0.7";
 
-                var sPlanned = new Series("Planned Stop") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(174, 214, 241), IsValueShownAsLabel = true }; // Pastel Blue
+                var sPlanned = new Series("Downtime") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(174, 214, 241), IsValueShownAsLabel = true }; // Pastel Blue
                 sPlanned["PointWidth"] = "0.7";
 
-                var sSudden = new Series("Sudden Stop") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(255, 186, 186), IsValueShownAsLabel = true }; // Pastel Red
+                var sSudden = new Series("Excluding Time") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(255, 186, 186), IsValueShownAsLabel = true }; // Pastel Red
                 sSudden["PointWidth"] = "0.7";
 
                 var sIdle = new Series("Idle/Unaccounted") { ChartType = SeriesChartType.StackedColumn, Color = Color.FromArgb(250, 215, 161), IsValueShownAsLabel = true }; // Pastel Orange
