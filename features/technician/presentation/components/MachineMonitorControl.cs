@@ -82,14 +82,65 @@ namespace mtc_app.features.technician.presentation.components
             try
             {
                 _comboArea.Items.Add("Semua Area");
-                _comboArea.SelectedIndex = 0;
                 using (var conn = DatabaseHelper.GetConnection())
                 {
-                    var areas = await conn.QueryAsync<string>("SELECT area_name FROM machine_areas ORDER BY area_name");
+                    string sql = @"
+                        SELECT DISTINCT a.area_name 
+                        FROM machine_areas a 
+                        JOIN machines m ON a.area_id = m.area_id 
+                        ORDER BY a.area_name";
+                    var areas = await conn.QueryAsync<string>(sql);
                     foreach (var area in areas) _comboArea.Items.Add(area);
+                }
+
+                if (_comboArea.Items.Count > 1)
+                {
+                    _comboArea.SelectedIndex = 1; // Default to first alphabet
+                }
+                else if (_comboArea.Items.Count > 0)
+                {
+                    _comboArea.SelectedIndex = 0;
                 }
             }
             catch { }
+        }
+
+        public void ResetAutoSwitch()
+        {
+            if (_comboMetric.Items.Count > 0) _comboMetric.SelectedIndex = 0;
+            if (_comboArea.Items.Count > 1) _comboArea.SelectedIndex = 1;
+            else if (_comboArea.Items.Count > 0) _comboArea.SelectedIndex = 0;
+        }
+
+        public bool AdvanceAutoSwitch()
+        {
+            int areaCount = _comboArea.Items.Count;
+            int metricCount = _comboMetric.Items.Count;
+
+            if (areaCount <= 1 || metricCount <= 0) return true; 
+
+            int currentAreaIndex = _comboArea.SelectedIndex;
+            int currentMetricIndex = _comboMetric.SelectedIndex;
+
+            currentAreaIndex++;
+
+            if (currentAreaIndex >= areaCount)
+            {
+                // Reached end of areas, go to next metric and start from first area again
+                currentAreaIndex = 1; 
+                currentMetricIndex++;
+
+                if (currentMetricIndex >= metricCount)
+                {
+                    // Reached end of all metrics
+                    return true; // Output tab is done, parent should switch to next tab
+                }
+            }
+
+            _comboMetric.SelectedIndex = currentMetricIndex;
+            _comboArea.SelectedIndex = currentAreaIndex;
+
+            return false;
         }
 
         private void InitializeComponent()
@@ -99,11 +150,30 @@ namespace mtc_app.features.technician.presentation.components
             this.Padding = new Padding(AppDimens.MarginLarge);
 
             var pnlHeader = BuildHeaderPanel();
-            this.Controls.Add(pnlHeader);
 
-            _pnlChartContainer = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White };
+            var pnlBottom = new Panel { Dock = DockStyle.Bottom, Height = 45, BackColor = Color.Transparent };
+            _btnRefresh = new Button 
+            { 
+                Text = "Refresh", 
+                Font = AppFonts.BodySmall, 
+                Width = 100, 
+                Height = 35, 
+                Margin = new Padding(0), 
+                BackColor = Color.White, 
+                ForeColor = AppColors.TextPrimary, 
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            _btnRefresh.FlatAppearance.BorderColor = Color.LightGray;
+            _btnRefresh.Click += async (s, e) => await HandleManualRefresh();
+            pnlBottom.Controls.Add(_btnRefresh);
+
+            _pnlChartContainer = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White, MinimumSize = new Size(10, 10) };
 
             _chart = new Chart();
+            
+            // Fix MS Chart crash on Height = 0 during layout
+            _chart.MinimumSize = new Size(10, 10);
 
             // ════ FIX BUG SCROLL WINFORMS ════
             _chart.Dock = DockStyle.Fill;
@@ -131,8 +201,10 @@ namespace mtc_app.features.technician.presentation.components
 
             _pnlChartContainer.Controls.Add(_chart);
             this.Controls.Add(_pnlChartContainer);
+            this.Controls.Add(pnlBottom);
+            this.Controls.Add(pnlHeader);
 
-            var lblTitle = new Label { Text = "Monitoring Output & Efisiensi", Font = AppFonts.PageTitle, ForeColor = AppColors.TextPrimary, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Top, Height = 40 };
+            var lblTitle = new Label { Text = "Monitoring Output Efisiensi", Font = AppFonts.PageTitle, ForeColor = AppColors.TextPrimary, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Top, Height = 40 };
             this.Controls.Add(lblTitle);
         }
 
@@ -140,29 +212,13 @@ namespace mtc_app.features.technician.presentation.components
         {
             var pnlHeader = new Panel { Dock = DockStyle.Top, AutoSize = true, MinimumSize = new Size(0, 60) };
             var headerLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, BackColor = Color.Transparent };
-            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
-            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70F));
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
 
             var flowLeft = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, Dock = DockStyle.Fill, BackColor = Color.Transparent };
             
-            _btnRefresh = new Button 
-            { 
-                Text = "Refresh", 
-                Font = AppFonts.BodySmall, 
-                Width = 100, 
-                Height = 30, 
-                Margin = new Padding(0, 5, 10, 0), 
-                BackColor = Color.FromArgb(0, 122, 204), 
-                ForeColor = Color.White, 
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand
-            };
-            _btnRefresh.FlatAppearance.BorderSize = 0;
-            _btnRefresh.Click += async (s, e) => await HandleManualRefresh();
-
-            _lblStatus = new Label { Text = "Memuat data...", Font = AppFonts.BodySmall, ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(0, 10, 0, 0) };
+            _lblStatus = new Label { Text = "Memuat data...", Font = AppFonts.BodySmall, ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(0, 13, 0, 0) };
             
-            flowLeft.Controls.Add(_btnRefresh);
             flowLeft.Controls.Add(_lblStatus);
             headerLayout.Controls.Add(flowLeft, 0, 0);
 
