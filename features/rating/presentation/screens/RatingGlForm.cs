@@ -165,6 +165,7 @@ namespace mtc_app.features.rating.presentation.screens
             };
             _btnSubmit.Click += async (s, e) => await BtnSubmit_ClickAsync(s, e);
             mainLayout.Controls.Add(_btnSubmit);
+            mainLayout.Controls.Add(new Panel { Height = 40, BackColor = Color.Transparent });
         }
 
         private void AddSectionHeader(Control parent, string text)
