@@ -268,6 +268,30 @@ namespace mtc_app.shared.presentation.components
             // Simple filtering logic embedded
             comboInput.TextChanged += ComboInput_TextChanged; 
             comboInput.DropDown += (s, e) => DropdownOpened?.Invoke(this, EventArgs.Empty);
+            
+            // Fix: Prevent MouseWheel from changing selection when closed and allow page scrolling
+            comboInput.MouseWheel += (s, e) => 
+            {
+                if (!comboInput.DroppedDown)
+                {
+                    if (e is HandledMouseEventArgs handledArgs)
+                    {
+                        handledArgs.Handled = true;
+                    }
+                    
+                    Control parentNode = this.Parent;
+                    while (parentNode != null)
+                    {
+                        if (parentNode is ScrollableControl sc && sc.AutoScroll)
+                        {
+                            sc.Focus();
+                            break;
+                        }
+                        parentNode = parentNode.Parent;
+                    }
+                }
+            };
+
             comboInput.Visible = false;
             comboInput.SizeChanged += (s, e) => { RepositionControls(); this.Invalidate(); };
             this.Controls.Add(comboInput);
