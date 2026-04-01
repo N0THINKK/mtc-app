@@ -300,13 +300,14 @@ namespace mtc_app.features.machine_history.presentation.screens
             var problemControl = new ProblemInputControl(_problemControls.Count);
             problemControl.RemoveRequested += (s, e) => RemoveProblemInput(problemControl);
             problemControl.Dock = DockStyle.Top;
-            problemControl.AutoSize = true;
-            problemControl.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             
             _problemControls.Add(problemControl);
             
-            _problemsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            _problemsLayout.Controls.Add(problemControl, 0, _problemsLayout.RowCount++);
+            _problemsLayout.SuspendLayout();
+            _problemsLayout.RowCount = _problemControls.Count;
+            _problemsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 230));
+            _problemsLayout.Controls.Add(problemControl, 0, _problemControls.Count - 1);
+            _problemsLayout.ResumeLayout(true);
         }
 
         private void RemoveProblemInput(ProblemInputControl control)
@@ -317,14 +318,28 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
             
-            _problemsLayout.Controls.Remove(control);
             _problemControls.Remove(control);
-            control.Dispose();
+            
+            // Rebuild the entire TableLayoutPanel to avoid ghost rows
+            _problemsLayout.SuspendLayout();
+            _problemsLayout.Controls.Clear();
+            _problemsLayout.RowStyles.Clear();
+            _problemsLayout.RowCount = _problemControls.Count;
             
             for (int i = 0; i < _problemControls.Count; i++)
             {
                 _problemControls[i].UpdateIndex(i);
+                _problemsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 230));
+                _problemsLayout.Controls.Add(_problemControls[i], 0, i);
             }
+            _problemsLayout.ResumeLayout(true);
+            
+            control.Dispose();
+            
+            // Explicitly set height to match content and reset scroll
+            _problemsLayout.Height = _problemControls.Count * 230;
+            _formLayout.AutoScrollPosition = new Point(0, 0);
+            _formLayout.PerformLayout();
         }
 
         private void HandleKeyDown(object sender, KeyEventArgs e)
