@@ -831,8 +831,9 @@ namespace mtc_app.features.technician.presentation.components
                     var s = new Series($"Jam {i + 1}")
                     {
                         ChartType = SeriesChartType.StackedColumn,
-                        Color = hourColors[i],
-                        IsValueShownAsLabel = false
+                        Color = hourColors[i % hourColors.Length], // Cegah IndexOutOfRange just in case
+                        IsValueShownAsLabel = false,
+                        Font = new Font("Segoe UI", 8F, FontStyle.Regular)
                     };
                     s["PointWidth"] = "0.7";
                     _chart.Series.Add(s);
@@ -849,13 +850,22 @@ namespace mtc_app.features.technician.presentation.components
                 };
                 _chart.Series.Add(sTotLabel);
 
+                // --- Calculate Smart Label Threshold ---
+                // Minimal butuh sekitar 16 pixel secara vertikal agar text font 8pt tidak bertumpuk.
+                int chartDrawHeight = Math.Max(200, _chart.Height - 80); 
+                double labelYThreshold = (area.AxisY.Maximum / chartDrawHeight) * 16.0;
+
                 foreach (var item in data)
                 {
                     for (int i = 0; i < currentHourCount; i++)
                     {
                         int pIdx = _chart.Series[i].Points.AddXY(item.MachineName, item.HourlyPieces[i]);
-                        if (item.HourlyPieces[i] > 0)
+                        
+                        // Smart Clipping: Sembunyikan label dalam bar jika ukuran fisiknya kurang dari 16px di layar
+                        if (item.HourlyPieces[i] > 0 && item.HourlyPieces[i] >= labelYThreshold)
+                        {
                             _chart.Series[i].Points[pIdx].Label = item.HourlyPieces[i].ToString("N0");
+                        }
                     }
 
                     // MaxVal is used so that the label offsets consistently across the chart
