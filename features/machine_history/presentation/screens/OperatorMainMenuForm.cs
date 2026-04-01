@@ -34,8 +34,8 @@ namespace mtc_app.features.machine_history.presentation.screens
             base.OnLoad(e);
             var screen = Screen.FromControl(this);
             var workingArea = screen.WorkingArea;
-            // Posisikan di sebelah kanan layar, dengan margin 20 pixel, tengah secara vertikal
-            this.Location = new Point(workingArea.Right - this.Width - 20, workingArea.Top + (workingArea.Height - this.Height) / 2);
+            // Posisikan di pojok kanan ATAS
+            this.Location = new Point(workingArea.Right - this.Width - 20, workingArea.Top + 20);
         }
 
         protected override void WndProc(ref Message m)
@@ -105,11 +105,15 @@ namespace mtc_app.features.machine_history.presentation.screens
         private void InitializeUI()
         {
             this.Text = "Menu Utama Operator";
-            this.Size = new Size(550, 580);
-            this.StartPosition = FormStartPosition.Manual;
             this.BackColor = AppColors.Background;
             this.FormBorderStyle = FormBorderStyle.None; 
             this.AutoScroll = true;
+
+            // Restrict maximum form height to ensure it fits small screens, enabling AutoScroll naturally
+            var screenHeight = Screen.PrimaryScreen.WorkingArea.Height;
+            int desiredHeight = 580;
+            this.Size = new Size(550, Math.Min(desiredHeight, screenHeight - 60));
+            this.StartPosition = FormStartPosition.Manual;
 
             string userName = UserSession.CurrentUser?.Username ?? "Operator";
 
