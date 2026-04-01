@@ -53,7 +53,8 @@ namespace mtc_app.features.group_leader.data.repositories
                         t.gl_rating_score AS GlRatingScore,
                         t.created_at AS CreatedAt,
                         t.gl_validated_at AS GlValidatedAt,
-                        t.status_id AS StatusId
+                        t.status_id AS StatusId,
+                        ma.area_name AS AreaName
                     FROM tickets t
                     LEFT JOIN machines m ON t.machine_id = m.machine_id
                     LEFT JOIN machine_types mt ON m.type_id = mt.type_id

@@ -13,5 +13,6 @@ namespace mtc_app.features.group_leader.data.dtos
         public DateTime? GlValidatedAt { get; set; }
         public int StatusId { get; set; } // Added for Offline Filtering
         public string FailureDetails { get; set; }
+        public string AreaName { get; set; }
     }
 }
