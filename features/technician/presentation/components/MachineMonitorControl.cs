@@ -436,11 +436,21 @@ namespace mtc_app.features.technician.presentation.components
                 string namaShift;
                 DateTime shiftStart = GetShiftTimeRange(out shiftEnd, out isPastShift, out namaShift);
 
+                // ══════════════════════════════════════════════════════════
+                // SINGLE CONNECTION: All queries share one connection
+                // ══════════════════════════════════════════════════════════
                 int maxBreakMinutes = 0;
-                try
+                var machines = new Dictionary<int, MachineData>();
+                var hourFirst = new Dictionary<int, long[]>();
+                var hourLast = new Dictionary<int, long[]>();
+                var hourMax = new Dictionary<int, long[]>();
+
+                using (var conn = DatabaseHelper.GetConnection())
                 {
-                    // NOTE: Do NOT call conn.Open() — Dapper manages connection state automatically.
-                    using (var conn = DatabaseHelper.GetConnection())
+                    conn.Open();
+
+                    // --- Query 1: Break minutes (tiny lookup) ---
+                    try
                     {
                         string dbShift = namaShift == "Shift Pagi" ? "Shift 1" : "Shift 2";
                         int dayId = (int)shiftStart.DayOfWeek;
@@ -458,94 +468,25 @@ namespace mtc_app.features.technician.presentation.components
                                 : (int)b.non_ot_minutes;
                         }
                     }
-                }
-                catch { }
+                    catch { }
 
-                // --- SQL: Single-pass aggregation (no correlated subqueries) ---
-                // Uses MIN/MAX with a CASE on the min/max created_at per hour to derive
-                // first_pieces and last_pieces in one GROUP BY scan. This avoids the N×M
-                // correlated subquery problem that caused the Command Timeout.
-                string sql = @"
-                SELECT m.machine_id,
-                        m.type_id,
-                        m.area_id,
-                        COALESCE(t.type_name, 'UNK') AS type_name,
-                        COALESCE(a.area_name, 'UNK') AS area_name,
-                        m.machine_number,
-                        CAST(NULL AS SIGNED) AS hour_index,
-                        0 AS max_pieces, 0 AS first_pieces, 0 AS last_pieces,
-                        0 AS curr_auto, 0 AS curr_mon
-                FROM machines m
-                LEFT JOIN machine_types t ON m.type_id = t.type_id
-                LEFT JOIN machine_areas a ON m.area_id = a.area_id
-                WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
+                    // --- Query 2: Machine list (lightweight) ---
+                    string sqlMachines = @"
+                        SELECT m.machine_id, m.type_id, m.area_id,
+                               COALESCE(t.type_name, 'UNK') AS type_name,
+                               COALESCE(a.area_name, 'UNK') AS area_name,
+                               m.machine_number
+                        FROM machines m
+                        LEFT JOIN machine_types t ON m.type_id = t.type_id
+                        LEFT JOIN machine_areas a ON m.area_id = a.area_id
+                        WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
+                        ORDER BY m.machine_id";
 
-                UNION ALL
+                    var machineRows = await conn.QueryAsync(sqlMachines, new { Area = selectedArea });
 
-                SELECT
-                    m.machine_id,
-                    m.type_id,
-                    m.area_id,
-                    COALESCE(t.type_name, 'UNK') AS type_name,
-                    COALESCE(a.area_name, 'UNK') AS area_name,
-                    m.machine_number,
-                    CAST(al.hour_index AS SIGNED) AS hour_index,
-                    CAST(al.max_pieces AS SIGNED) AS max_pieces,
-                    CAST(al.first_pieces AS SIGNED) AS first_pieces,
-                    CAST(al.last_pieces AS SIGNED) AS last_pieces,
-                    al.curr_auto,
-                    al.curr_mon
-                FROM machines m
-                LEFT JOIN machine_types t ON m.type_id = t.type_id
-                LEFT JOIN machine_areas a ON m.area_id = a.area_id
-                JOIN (
-                    SELECT
-                        agg.machine_id,
-                        agg.hour_index,
-                        agg.max_pieces,
-                        agg.curr_auto,
-                        agg.curr_mon,
-                        MIN(CASE WHEN p.created_at = agg.first_ts THEN p.produced_pieces END) AS first_pieces,
-                        MIN(CASE WHEN p.created_at = agg.last_ts  THEN p.produced_pieces END) AS last_pieces
-                    FROM (
-                        SELECT
-                            machine_id,
-                            TIMESTAMPDIFF(HOUR, @ShiftStart, created_at) AS hour_index,
-                            MAX(produced_pieces)  AS max_pieces,
-                            MAX(auto_time)        AS curr_auto,
-                            MAX(monitor_time)     AS curr_mon,
-                            MIN(created_at)       AS first_ts,
-                            MAX(created_at)       AS last_ts
-                        FROM machine_process_logs
-                        WHERE created_at >= @ShiftStart AND created_at < @ShiftEnd AND produced_pieces > 0
-                        GROUP BY machine_id, TIMESTAMPDIFF(HOUR, @ShiftStart, created_at)
-                    ) agg
-                    JOIN machine_process_logs p
-                        ON p.machine_id = agg.machine_id
-                       AND p.created_at IN (agg.first_ts, agg.last_ts)
-                    GROUP BY agg.machine_id, agg.hour_index, agg.max_pieces, agg.curr_auto, agg.curr_mon
-                ) al ON m.machine_id = al.machine_id
-                WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
-                ORDER BY machine_id, hour_index;";
-
-                // NOTE: Do NOT call conn.Open() — Dapper manages connection state automatically.
-                IEnumerable<dynamic> rows;
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    rows = await conn.QueryAsync(sql, new { Area = selectedArea, ShiftStart = shiftStart, ShiftEnd = shiftEnd }, commandTimeout: 60);
-                }
-
-                // --- C# ALGORITHM: FIRST/LAST/MAX per hour (handles counter resets) ---
-                var hourFirst = new Dictionary<int, long[]>();
-                var hourLast = new Dictionary<int, long[]>();
-                var hourMax = new Dictionary<int, long[]>();
-                var machines = new Dictionary<int, MachineData>();
-
-                foreach (var row in rows)
-                {
-                    int mId = (int)row.machine_id;
-                    if (!machines.ContainsKey(mId))
+                    foreach (var row in machineRows)
                     {
+                        int mId = (int)row.machine_id;
                         machines[mId] = new MachineData
                         {
                             MachineName = $"{row.type_name}.{row.area_name}-{row.machine_number}",
@@ -564,21 +505,109 @@ namespace mtc_app.features.technician.presentation.components
                         }
                     }
 
-                    // hour_index is NULL for machine-list rows (Part 1 of UNION ALL)
-                    if (row.hour_index == null) continue;
+                    // --- Query 3: FLAT raw logs — NO self-join, NO UNION ALL ---
+                    // The DB only scans machine_process_logs ONCE with index on (created_at, machine_id).
+                    // C# will compute first/last/max per (machine, hour) from ordered rows.
+                    string sqlLogs = @"
+                        SELECT machine_id,
+                               TIMESTAMPDIFF(HOUR, @ShiftStart, created_at) AS hour_index,
+                               produced_pieces,
+                               auto_time,
+                               monitor_time
+                        FROM machine_process_logs
+                        WHERE created_at >= @ShiftStart AND created_at < @ShiftEnd
+                          AND produced_pieces > 0
+                        ORDER BY machine_id, created_at";
 
-                    int hIndex = (int)row.hour_index;
-                    if (hIndex >= 0 && hIndex < maxShiftHours)
+                    var logRows = await conn.QueryAsync(sqlLogs, 
+                        new { ShiftStart = shiftStart, ShiftEnd = shiftEnd }, 
+                        commandTimeout: 30);
+
+                    // --- C# ALGORITHM: Compute first/last/max per (machine, hour) ---
+                    foreach (var row in logRows)
                     {
-                        hourFirst[mId][hIndex] = (long)(row.first_pieces ?? 0);
-                        hourLast[mId][hIndex] = (long)(row.last_pieces ?? 0);
-                        hourMax[mId][hIndex] = (long)(row.max_pieces ?? 0);
+                        int mId = (int)row.machine_id;
+                        if (!machines.ContainsKey(mId)) continue; // Skip if not in filtered area
 
-                        machines[mId].AutoTime = Math.Max(machines[mId].AutoTime, (double)(row.curr_auto ?? 0));
-                        machines[mId].MonitorTime = Math.Max(machines[mId].MonitorTime, (double)(row.curr_mon ?? 0));
+                        int hIndex = (int)(row.hour_index ?? 0);
+                        if (hIndex < 0 || hIndex >= maxShiftHours) continue;
+
+                        long pieces = (long)(row.produced_pieces ?? 0);
+                        double autoTime = (double)(row.auto_time ?? 0);
+                        double monTime = (double)(row.monitor_time ?? 0);
+
+                        // First piece for this (machine, hour) — set once
+                        if (hourFirst[mId][hIndex] == -1)
+                            hourFirst[mId][hIndex] = pieces;
+
+                        // Last piece — always overwrite (rows are ordered by created_at)
+                        hourLast[mId][hIndex] = pieces;
+
+                        // Max piece — track running max
+                        if (pieces > hourMax[mId][hIndex])
+                            hourMax[mId][hIndex] = pieces;
+
+                        // Auto/Monitor time — take the max across all rows
+                        machines[mId].AutoTime = Math.Max(machines[mId].AutoTime, autoTime);
+                        machines[mId].MonitorTime = Math.Max(machines[mId].MonitorTime, monTime);
                     }
-                }
 
+                    // --- Query 4: Targets (tiny table) ---
+                    try
+                    {
+                        var targets = await conn.QueryAsync(
+                            "SELECT type_id, area_id, machine_number, target_per_hour FROM machine_output_targets");
+
+                        var targetMap = new Dictionary<string, int>();
+                        foreach (var t in targets)
+                        {
+                            string key = $"{(int)t.type_id}_{(int)t.area_id}_{t.machine_number}";
+                            targetMap[key] = (int)t.target_per_hour;
+                        }
+
+                        foreach (var machine in machines.Values)
+                        {
+                            string key = $"{machine.TypeId}_{machine.AreaId}_{machine.MachineNum}";
+                            if (targetMap.TryGetValue(key, out int target))
+                                machine.TargetPerHour = target;
+                        }
+                    }
+                    catch { /* Target table might not exist yet */ }
+
+                    // --- Query 5: Downtime categories (Planned / Sudden) ---
+                    try
+                    {
+                        var psData = await conn.QueryAsync(@"
+                            SELECT moa.machine_name, 
+                                   SUM(CASE WHEN it.category = 'Planned Stop' THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMin,
+                                   SUM(CASE WHEN it.category = 'Sudden Stop' THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
+                            FROM machine_operator_activities moa
+                            LEFT JOIN activity_types it ON moa.activity_id = it.id
+                            WHERE moa.start_time >= @ShiftStart AND moa.start_time < @ShiftEnd
+                            GROUP BY moa.machine_name", new { ShiftStart = shiftStart, ShiftEnd = shiftEnd });
+
+                        var psMap = new Dictionary<string, (double planned, double sudden)>();
+                        foreach (var row in psData)
+                        {
+                            psMap[(string)row.machine_name] = ((double)(row.PlannedMin ?? 0), (double)(row.SuddenMin ?? 0));
+                        }
+
+                        foreach (var machine in machines.Values)
+                        {
+                            if (psMap.TryGetValue(machine.MachineName, out var ps))
+                            {
+                                machine.PlannedStopMinutes = ps.planned;
+                                machine.SuddenStopMinutes = ps.sudden;
+                            }
+                        }
+                    }
+                    catch { /* Quiet fallback */ }
+
+                } // End single connection
+
+                // ══════════════════════════════════════════════════════════
+                // C# POST-PROCESSING (unchanged logic)
+                // ══════════════════════════════════════════════════════════
                 int currentHourCount;
                 if (isPastShift)
                 {
@@ -664,63 +693,6 @@ namespace mtc_app.features.technician.presentation.components
                     double effectiveDivisor = _effectiveHours[divisorIndex];
                     machine.AveragePerHour = (double)totalPiecesShiftIni / effectiveDivisor;
                 }
-
-                // --- Load targets from DB and map to each machine ---
-                try
-                {
-                    using (var conn = DatabaseHelper.GetConnection())
-                    {
-                        conn.Open();
-                        var targets = await conn.QueryAsync(
-                            "SELECT type_id, area_id, machine_number, target_per_hour FROM machine_output_targets");
-
-                        var targetMap = new Dictionary<string, int>();
-                        foreach (var t in targets)
-                        {
-                            string key = $"{(int)t.type_id}_{(int)t.area_id}_{t.machine_number}";
-                            targetMap[key] = (int)t.target_per_hour;
-                        }
-
-                        foreach (var machine in machines.Values)
-                        {
-                            string key = $"{machine.TypeId}_{machine.AreaId}_{machine.MachineNum}";
-                            if (targetMap.TryGetValue(key, out int target))
-                                machine.TargetPerHour = target;
-                        }
-                    }
-                }
-                catch { /* Target table might not exist yet — silently ignore */ }
-
-                // --- Load Downtime categories (Planned / Sudden)
-                try
-                {
-                    using (var conn = DatabaseHelper.GetConnection())
-                    {
-                        var psData = await conn.QueryAsync(@"
-                            SELECT moa.machine_name, 
-                                   SUM(CASE WHEN it.category = 'Planned Stop' THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMin,
-                                   SUM(CASE WHEN it.category = 'Sudden Stop' THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
-                            FROM machine_operator_activities moa
-                            LEFT JOIN activity_types it ON moa.activity_id = it.id
-                            WHERE moa.start_time >= @ShiftStart AND moa.start_time < @ShiftEnd
-                            GROUP BY moa.machine_name", new { ShiftStart = shiftStart, ShiftEnd = shiftEnd });
-
-                        var psMap = new Dictionary<string, (double planned, double sudden)>();
-                        foreach(var row in psData) {
-                            psMap[(string)row.machine_name] = ((double)(row.PlannedMin ?? 0), (double)(row.SuddenMin ?? 0));
-                        }
-
-                        foreach (var machine in machines.Values)
-                        {
-                            if (psMap.TryGetValue(machine.MachineName, out var ps))
-                            {
-                                 machine.PlannedStopMinutes = ps.planned;
-                                 machine.SuddenStopMinutes = ps.sudden;
-                            }
-                        }
-                    }
-                }
-                catch { /* Quiet fallback */ }
 
                 string selectedMetric = _comboMetric.SelectedItem?.ToString();
                 string selectedSort = _comboSort.SelectedItem?.ToString();
