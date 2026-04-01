@@ -576,26 +576,21 @@ namespace mtc_app.features.technician.presentation.components
                     try
                     {
                         var psData = await conn.QueryAsync(@"
-                            SELECT moa.machine_name, 
+                            SELECT moa.machine_id, 
                                    SUM(CASE WHEN it.category = 'Planned Stop' THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMin,
                                    SUM(CASE WHEN it.category = 'Sudden Stop' THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
                             FROM machine_operator_activities moa
                             LEFT JOIN activity_types it ON moa.activity_id = it.id
                             WHERE moa.start_time >= @ShiftStart AND moa.start_time < @ShiftEnd
-                            GROUP BY moa.machine_name", new { ShiftStart = shiftStart, ShiftEnd = shiftEnd });
+                            GROUP BY moa.machine_id", new { ShiftStart = shiftStart, ShiftEnd = shiftEnd });
 
-                        var psMap = new Dictionary<string, (double planned, double sudden)>();
                         foreach (var row in psData)
                         {
-                            psMap[(string)row.machine_name] = ((double)(row.PlannedMin ?? 0), (double)(row.SuddenMin ?? 0));
-                        }
-
-                        foreach (var machine in machines.Values)
-                        {
-                            if (psMap.TryGetValue(machine.MachineName, out var ps))
+                            int downtimeMachineId = Convert.ToInt32(row.machine_id);
+                            if (machines.TryGetValue(downtimeMachineId, out var downtimeMachine))
                             {
-                                machine.PlannedStopMinutes = ps.planned;
-                                machine.SuddenStopMinutes = ps.sudden;
+                                downtimeMachine.PlannedStopMinutes = (double)(row.PlannedMin ?? 0);
+                                downtimeMachine.SuddenStopMinutes = (double)(row.SuddenMin ?? 0);
                             }
                         }
                     }

@@ -52,30 +52,27 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        private string GetMachineName()
+        private int GetMachineIdInt()
         {
             string machineIdStr = DatabaseHelper.GetMachineId();
-            string machineName = "Unknown Machine";
-            try
+            if (int.TryParse(machineIdStr, out int mId))
             {
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    machineName = conn.QueryFirstOrDefault<string>("SELECT machine_name FROM machine_tags WHERE id = @Id", new { Id = machineIdStr }) ?? machineName;
-                }
+                return mId;
             }
-            catch {}
-            return machineName;
+            return 0; // Fallback or invalid
         }
 
         private void CheckActiveIdleStatus()
         {
             try
             {
-                string mName = GetMachineName();
+                int mId = GetMachineIdInt();
+                if (mId == 0) return; // Prevent bad data
+
                 using (var conn = DatabaseHelper.GetConnection())
                 {
-                    var sql = "SELECT id, activity_id, (SELECT activity_name FROM activity_types WHERE id = activity_id) as act_name FROM machine_operator_activities WHERE machine_name = @MName AND end_time IS NULL ORDER BY start_time DESC LIMIT 1";
-                    var activeRec = conn.QueryFirstOrDefault(sql, new { MName = mName });
+                    var sql = "SELECT id, activity_id, (SELECT activity_name FROM activity_types WHERE id = activity_id) as act_name FROM machine_operator_activities WHERE machine_id = @MId AND end_time IS NULL ORDER BY start_time DESC LIMIT 1";
+                    var activeRec = conn.QueryFirstOrDefault(sql, new { MId = mId });
                     if (activeRec != null)
                     {
                         _currentActiveRecordId = Convert.ToInt32(activeRec.id);
@@ -248,7 +245,13 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             try
             {
-                string machineName = GetMachineName();
+                int mId = GetMachineIdInt();
+                if (mId == 0) 
+                {
+                    MessageBox.Show("Mesin belum dikonfigurasi. Silakan setup ID Mesin terlebih dahulu.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
                 string opName = UserSession.CurrentUser?.Username ?? "Unknown";
                 TimeSpan nowTime = DateTime.Now.TimeOfDay;
                 string shiftName = (nowTime >= new TimeSpan(7, 0, 0) && nowTime < new TimeSpan(19, 0, 0)) ? "Shift Pagi" : "Shift Malam";
@@ -262,8 +265,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                         {
                             using (var conn = DatabaseHelper.GetConnection())
                             {
-                                string sql = "INSERT INTO machine_operator_activities (machine_name, operator_name, activity_id, start_time, shift_name) VALUES (@MName, @OpName, @ActId, @Now, @Shift); SELECT LAST_INSERT_ID();";
-                                int newId = conn.QuerySingle<int>(sql, new { MName = machineName, OpName = opName, ActId = dlg.SelectedActivityId, Now = DateTime.Now, Shift = shiftName });
+                                string sql = "INSERT INTO machine_operator_activities (machine_id, operator_name, activity_id, start_time, shift_name) VALUES (@MId, @OpName, @ActId, @Now, @Shift); SELECT LAST_INSERT_ID();";
+                                int newId = conn.QuerySingle<int>(sql, new { MId = mId, OpName = opName, ActId = dlg.SelectedActivityId, Now = DateTime.Now, Shift = shiftName });
                                 
                                 _currentActiveRecordId = newId;
                                 SetButtonToIdleState(dlg.SelectedActivityName);

@@ -71,14 +71,14 @@ namespace mtc_app.features.admin.services
                     LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
                     LEFT JOIN (
                         SELECT 
-                            moa.machine_name,
+                            moa.machine_id,
                             DATE(DATE_SUB(moa.start_time, INTERVAL 7 HOUR)) AS act_date,
                             SUM(CASE WHEN it.category = 'Planned Stop' THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMin,
                             SUM(CASE WHEN it.category = 'Sudden Stop' THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
                         FROM machine_operator_activities moa
                         LEFT JOIN activity_types it ON moa.activity_id = it.id
-                        GROUP BY moa.machine_name, DATE(DATE_SUB(moa.start_time, INTERVAL 7 HOUR))
-                    ) act ON act.machine_name = CONCAT(IFNULL(mt.type_name, ''), '.', IFNULL(ma.area_name, ''), '-', LPAD(m.machine_number, 2, '0')) 
+                        GROUP BY moa.machine_id, DATE(DATE_SUB(moa.start_time, INTERVAL 7 HOUR))
+                    ) act ON act.machine_id = m.machine_id 
                             AND act.act_date = DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR))
                     LEFT JOIN (
                         SELECT day_id, SUM(non_ot_minutes + ot_minutes) AS TotalBreakMin
@@ -169,10 +169,13 @@ namespace mtc_app.features.admin.services
                 string detailSql = @"
                 SELECT 
                     DATE_FORMAT(DATE_SUB(moa.start_time, INTERVAL 7 HOUR), '%d %M %Y') AS TanggalProduksi,
-                    moa.machine_name AS NamaMesin,
+                    CONCAT(IFNULL(mt.type_name, ''), '.', IFNULL(ma.area_name, ''), '-', LPAD(m.machine_number, 2, '0')) AS NamaMesin,
                     moa.activity_id AS ActivityId,
                     SUM(TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW()))) AS DurationMin
                 FROM machine_operator_activities moa
+                LEFT JOIN machines m ON moa.machine_id = m.machine_id
+                LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
                 WHERE moa.start_time >= @StartDate AND moa.start_time < @EndDatePlusOne
                 GROUP BY TanggalProduksi, NamaMesin, ActivityId";
 
