@@ -161,7 +161,7 @@ namespace mtc_app.features.technician.data.repositories
                     FROM ticket_technician_sessions tts
                     JOIN tickets t ON tts.ticket_id = t.ticket_id
                     WHERE tts.technician_id = @TechnicianId
-                      AND t.status_id = 4";
+                      AND t.status_id IN (3, 4)";
                 
                 return await connection.QueryFirstOrDefaultAsync<TechnicianStatsDto>(sql, new { TechnicianId = technicianId }, commandTimeout: 120);
             }
@@ -184,7 +184,7 @@ namespace mtc_app.features.technician.data.repositories
                     FROM ticket_technician_sessions tts
                     JOIN tickets t ON tts.ticket_id = t.ticket_id
                     JOIN users u ON tts.technician_id = u.user_id
-                    WHERE t.status_id = 4 
+                    WHERE t.status_id IN (3, 4) 
                       AND t.created_at BETWEEN @Start AND @End
                 ) AS T
                 GROUP BY T.user_id, T.TechnicianName
@@ -212,7 +212,7 @@ namespace mtc_app.features.technician.data.repositories
                      FROM part_requests pr 
                      JOIN tickets t_sub ON pr.ticket_id = t_sub.ticket_id
                      WHERE t_sub.machine_id = m.machine_id 
-                       AND t_sub.status_id = 4 
+                       AND t_sub.status_id IN (3, 4) 
                        AND t_sub.created_at BETWEEN @Start AND @End
                        AND pr.ready_at IS NOT NULL
                     ) AS PartWaitDurationSeconds
@@ -221,7 +221,7 @@ namespace mtc_app.features.technician.data.repositories
                 JOIN machine_types mt ON m.type_id = mt.type_id
                 JOIN machine_areas ma ON m.area_id = ma.area_id
                 JOIN tickets t ON m.machine_id = t.machine_id
-                WHERE t.status_id = 4 
+                WHERE t.status_id IN (3, 4) 
                   AND t.created_at BETWEEN @Start AND @End";
 
             if (!string.IsNullOrEmpty(area) && area != "All")
