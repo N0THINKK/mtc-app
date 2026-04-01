@@ -14,6 +14,7 @@ using mtc_app.shared.infrastructure;
 using mtc_app.shared.data.repositories;
 using mtc_app.shared.data.session;
 using mtc_app.features.authentication.presentation.screens; 
+using mtc_app.features.applicator_patrol.data.services;
 using System.IO;
 
 namespace mtc_app.features.machine_history.presentation.screens
@@ -22,6 +23,14 @@ namespace mtc_app.features.machine_history.presentation.screens
     {
         private readonly IMachineHistoryRepository _repository;
         private readonly IMasterDataRepository _masterDataRepository;
+        
+        // CSV paths for prdmst (same as applicator patrol)
+        private static readonly Dictionary<string, string> CsvPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "AC90", @"C:\AC90HMI\prg\prdmst.csv" },
+            { "AC81", @"" },
+            { "AC95", @"" },
+        };
         
         // Header Inputs
         private AppInput inputOperatorNik; // [BARU] Input untuk NIK Operator
@@ -69,6 +78,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             await Task.Delay(50); 
 
             LoadAreas();
+            LoadApplicatorsFromCsv();
             await CheckForPendingTicketAsync();
         }
 
@@ -236,9 +246,9 @@ namespace mtc_app.features.machine_history.presentation.screens
             LoadShiftsFromDB();
             AddToForm(inputShift);
 
-            // 3. Applicator
-            inputApplicator = CreateInput("No. Aplikator", AppInput.InputTypeEnum.Text, false);
-            inputApplicator.CharacterCasing = CharacterCasing.Upper;
+            // 3. Applicator (Dropdown dari prdmst.csv, bisa kosong)
+            inputApplicator = CreateInput("No. Aplikator", AppInput.InputTypeEnum.Dropdown, false);
+            inputApplicator.AllowCustomText = true;
             AddToForm(inputApplicator);
 
             // 4. Problems Label
@@ -300,13 +310,14 @@ namespace mtc_app.features.machine_history.presentation.screens
             var problemControl = new ProblemInputControl(_problemControls.Count);
             problemControl.RemoveRequested += (s, e) => RemoveProblemInput(problemControl);
             problemControl.Dock = DockStyle.Top;
-            problemControl.AutoSize = true;
-            problemControl.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             
             _problemControls.Add(problemControl);
             
-            _problemsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            _problemsLayout.Controls.Add(problemControl, 0, _problemsLayout.RowCount++);
+            _problemsLayout.SuspendLayout();
+            _problemsLayout.RowCount = _problemControls.Count;
+            _problemsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 230));
+            _problemsLayout.Controls.Add(problemControl, 0, _problemControls.Count - 1);
+            _problemsLayout.ResumeLayout(true);
         }
 
         private void RemoveProblemInput(ProblemInputControl control)
@@ -317,14 +328,28 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
             
-            _problemsLayout.Controls.Remove(control);
             _problemControls.Remove(control);
-            control.Dispose();
+            
+            // Rebuild the entire TableLayoutPanel to avoid ghost rows
+            _problemsLayout.SuspendLayout();
+            _problemsLayout.Controls.Clear();
+            _problemsLayout.RowStyles.Clear();
+            _problemsLayout.RowCount = _problemControls.Count;
             
             for (int i = 0; i < _problemControls.Count; i++)
             {
                 _problemControls[i].UpdateIndex(i);
+                _problemsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 230));
+                _problemsLayout.Controls.Add(_problemControls[i], 0, i);
             }
+            _problemsLayout.ResumeLayout(true);
+            
+            control.Dispose();
+            
+            // Explicitly set height to match content and reset scroll
+            _problemsLayout.Height = _problemControls.Count * 230;
+            _formLayout.AutoScrollPosition = new Point(0, 0);
+            _formLayout.PerformLayout();
         }
 
         private void HandleKeyDown(object sender, KeyEventArgs e)
@@ -357,6 +382,49 @@ namespace mtc_app.features.machine_history.presentation.screens
                 inputShift.SetDropdownItems(shifts.Select(s => s.ShiftName).ToArray());
             }
             catch { /* Ignore */ }
+        }
+
+        private void LoadApplicatorsFromCsv()
+        {
+            try
+            {
+                // Resolve machine code from config
+                string machineCode = "";
+                if (int.TryParse(DatabaseHelper.GetMachineId(), out int configId))
+                {
+                    var machines = Task.Run(() => _masterDataRepository.GetMachinesAsync()).Result;
+                    var machine = machines?.FirstOrDefault(m => m.MachineId == configId);
+                    if (machine != null) machineCode = machine.Code ?? "";
+                }
+
+                // Find matching CSV path
+                string csvPath = null;
+                foreach (var key in CsvPaths.Keys)
+                {
+                    if (!string.IsNullOrEmpty(machineCode) && machineCode.StartsWith(key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        string configured = CsvPaths[key];
+                        if (!string.IsNullOrEmpty(configured))
+                            csvPath = Path.IsPathRooted(configured) ? configured : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, configured);
+                        break;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(csvPath) || !File.Exists(csvPath)) return;
+
+                // Read applicators from prdmst.csv
+                var (sideA, sideB) = ApplicatorCsvReader.ReadApplicators(csvPath);
+                var allApplicators = sideA.Union(sideB).OrderBy(x => x).ToArray();
+
+                if (allApplicators.Length > 0)
+                {
+                    inputApplicator.SetDropdownItems(allApplicators);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MachineHistory] Error loading applicators: {ex.Message}");
+            }
         }
 
         private async void LoadAreas()

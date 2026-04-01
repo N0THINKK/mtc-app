@@ -13,6 +13,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private Label lblTitle;
         private Label lblSubtitle;
         private AppStarRating ratingControl;
+        private AppInput _inputNote;
         private AppButton btnSubmit;
         private Panel mainPanel;
 
@@ -31,7 +32,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             // Main Panel to center content
             mainPanel = new Panel();
-            mainPanel.Size = new Size(600, 500);
+            mainPanel.Size = new Size(600, 580);
             mainPanel.BackColor = Color.White;
             mainPanel.Padding = new Padding(40);
             // Center logic in OnLoad or Resize
@@ -67,8 +68,19 @@ namespace mtc_app.features.machine_history.presentation.screens
             btnSubmit.Size = new Size(200, 50);
             btnSubmit.Click += BtnSubmit_Click;
 
+            // Note Input (required)
+            _inputNote = new AppInput
+            {
+                LabelText = "Catatan (wajib diisi) :",
+                InputType = AppInput.InputTypeEnum.Text,
+                Multiline = true,
+                IsRequired = true,
+                Width = 520,
+            };
+
             // Add to Main Panel
             mainPanel.Controls.Add(btnSubmit);
+            mainPanel.Controls.Add(_inputNote);
             mainPanel.Controls.Add(ratingControl);
             mainPanel.Controls.Add(lblSubtitle);
             mainPanel.Controls.Add(lblTitle);
@@ -93,9 +105,13 @@ namespace mtc_app.features.machine_history.presentation.screens
                     using (var conn = DatabaseHelper.GetConnection())
                     {
                         int? existingRating = conn.QueryFirstOrDefault<int?>("SELECT gl_rating_score FROM tickets WHERE ticket_id = @Id", new { Id = _ticketId });
+                        string existingNote = conn.QueryFirstOrDefault<string>("SELECT gl_rating_note FROM tickets WHERE ticket_id = @Id", new { Id = _ticketId });
                         if (existingRating.HasValue && existingRating.Value > 0)
                         {
                             ratingControl.Rating = existingRating.Value;
+                            if (!string.IsNullOrEmpty(existingNote))
+                                _inputNote.InputValue = existingNote;
+                            _inputNote.Enabled = false;
                             btnSubmit.Text = "Tutup";
                         }
                     }
@@ -118,12 +134,17 @@ namespace mtc_app.features.machine_history.presentation.screens
                 
                 ratingControl.Location = new Point(
                     centerX - (ratingControl.Width / 2),
-                    lblSubtitle.Bottom + 40
+                    lblSubtitle.Bottom + 30
+                );
+
+                _inputNote.Location = new Point(
+                    centerX - (_inputNote.Width / 2),
+                    ratingControl.Bottom + 20
                 );
 
                 btnSubmit.Location = new Point(
                     centerX - (btnSubmit.Width / 2),
-                    ratingControl.Bottom + 60
+                    _inputNote.Bottom + 30
                 );
             }
         }
@@ -140,6 +161,13 @@ namespace mtc_app.features.machine_history.presentation.screens
             if (ratingControl.Rating == 0)
             {
                 MessageBox.Show("Silakan pilih rating terlebih dahulu.", "Info");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_inputNote.InputValue))
+            {
+                MessageBox.Show("Catatan wajib diisi.", "Validasi");
+                _inputNote.SetError("Catatan wajib diisi.");
                 return;
             }
 
@@ -185,8 +213,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                     using (var conn = DatabaseHelper.GetConnection())
                     {
                         conn.Open();
-                        string sql = "UPDATE tickets SET gl_rating_score = @Score WHERE ticket_id = @Id";
-                        conn.Execute(sql, new { Id = _ticketId, Score = ratingControl.Rating });
+                        string sql = "UPDATE tickets SET gl_rating_score = @Score, gl_rating_note = @Note WHERE ticket_id = @Id";
+                        conn.Execute(sql, new { Id = _ticketId, Score = ratingControl.Rating, Note = _inputNote.InputValue });
                     }
                 }
                 catch (Exception ex)

@@ -30,12 +30,26 @@ namespace mtc_app.features.machine_history.presentation.components
             LoadData();
         }
 
+        private FlowLayoutPanel _headerRow;
+
         private void InitializeComponent(int index)
         {
             this.AutoSize = false;
-            this.Height = 250; // Increased height to fit larger inputs
+            this.Height = 250;
             this.Margin = new Padding(0, 0, 0, 10);
             this.BackColor = Color.Transparent;
+
+            // Header Row: Title + Remove Button side by side
+            _headerRow = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                Height = 36,
+                AutoSize = false,
+                WrapContents = false,
+                Location = new Point(0, 0),
+                BackColor = Color.Transparent,
+                Padding = new Padding(0)
+            };
 
             // Title Label
             lblTitle = new Label 
@@ -44,21 +58,26 @@ namespace mtc_app.features.machine_history.presentation.components
                 Font = AppFonts.Subtitle,
                 ForeColor = AppColors.TextPrimary,
                 AutoSize = true,
-                Location = new Point(0, 0)
+                Margin = new Padding(0, 5, 10, 0)
             };
-            this.Controls.Add(lblTitle);
+            _headerRow.Controls.Add(lblTitle);
 
             // Remove Button
             btnRemove = new AppButton
             {
                 Text = "Hapus",
                 Type = AppButton.ButtonType.Danger,
-                Width = 70,
-                Height = 26,
-                Visible = index > 0
+                Width = 90,
+                Height = 30,
+                Visible = index > 0,
+                Margin = new Padding(0),
+                Padding = new Padding(0),
+                TextAlign = ContentAlignment.MiddleCenter
             };
             btnRemove.Click += (s, e) => RemoveRequested?.Invoke(this, EventArgs.Empty);
-            this.Controls.Add(btnRemove);
+            _headerRow.Controls.Add(btnRemove);
+
+            this.Controls.Add(_headerRow);
 
             // Jenis Problem Input
             InputType = new AppInput 
@@ -67,7 +86,7 @@ namespace mtc_app.features.machine_history.presentation.components
                 InputType = AppInput.InputTypeEnum.Dropdown,
                 AllowCustomText = false,
                 IsRequired = true,
-                Location = new Point(0, 30)
+                Location = new Point(0, 35)
             };
             this.Controls.Add(InputType);
             
@@ -78,7 +97,7 @@ namespace mtc_app.features.machine_history.presentation.components
                 InputType = AppInput.InputTypeEnum.Dropdown, 
                 AllowCustomText = true,
                 IsRequired = true,
-                Location = new Point(0, 115)
+                Location = new Point(0, 125)
             };
             this.Controls.Add(InputFailure);
         }
@@ -98,9 +117,8 @@ namespace mtc_app.features.machine_history.presentation.components
             
             int inputWidth = this.Width - 10;
             
-            // Position delete button at top-right
-            if (btnRemove != null)
-                btnRemove.Location = new Point(this.Width - btnRemove.Width, 0);
+            // Resize header row to full width so button isn't clipped
+            if (_headerRow != null) _headerRow.Width = this.Width;
             
             // Resize inputs to fill width
             if (InputType != null) InputType.Width = inputWidth;

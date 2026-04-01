@@ -56,16 +56,17 @@ namespace mtc_app.features.machine_history.presentation.components
             this._grid.DefaultCellStyle.SelectionForeColor = AppColors.TextPrimary;
 
             // Columns
-            _grid.Columns.Add(CreateColumn("TicketCode", "Kode", 100));
-            
-            var colDate = CreateColumn("CreatedAt", "Tanggal", 150);
-            colDate.DefaultCellStyle.Format = "dd MMM HH:mm";
+            var colDate = CreateColumn("CreatedAt", "Tanggal", 100);
+            colDate.DefaultCellStyle.Format = "dd MMM yyyy";
             _grid.Columns.Add(colDate);
 
-            _grid.Columns.Add(CreateColumn("MachineName", "Mesin", 150));
-            _grid.Columns.Add(CreateColumn("Issue", "Problem", 250));
-            _grid.Columns.Add(CreateColumn("TechnicianName", "Teknisi", 150));
-            _grid.Columns.Add(CreateColumn("StatusName", "Status", 100));
+            _grid.Columns.Add(CreateColumn("MachineName", "Mesin", 120));
+            _grid.Columns.Add(CreateColumn("Issue", "Problem", 200));
+            _grid.Columns.Add(CreateColumn("TechnicianName", "Teknisi", 100));
+            _grid.Columns.Add(CreateColumn("ReportedTime", "Mulai Lapor", 80));
+            _grid.Columns.Add(CreateColumn("FinishedTime", "Selesai", 80));
+            _grid.Columns.Add(CreateColumn("Duration", "Durasi", 70));
+            _grid.Columns.Add(CreateColumn("StatusName", "Status", 80));
 
             // Hidden column for StatusId (used for color formatting)
             var colStatusId = new DataGridViewTextBoxColumn
