@@ -58,7 +58,7 @@ namespace mtc_app.features.group_leader.presentation.components
             this.AutoSize = true;
             this.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             this.Margin = new Padding(0);
-            this.Padding = new Padding(0, 0, 0, 10);
+            this.Padding = new Padding(0, 0, 0, 2);
             this.Dock = DockStyle.Top;
 
             this.pnlMain.BackColor = AppColors.CardBackground;
@@ -74,7 +74,7 @@ namespace mtc_app.features.group_leader.presentation.components
             this.layoutTable.ColumnCount = 7;
             this.layoutTable.RowCount = 1;
             this.layoutTable.Dock = DockStyle.Top;
-            this.layoutTable.Padding = new Padding(15, 15, 15, 15);
+            this.layoutTable.Padding = new Padding(10, 10, 10, 10);
             this.layoutTable.AutoSize = true;
             this.layoutTable.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             

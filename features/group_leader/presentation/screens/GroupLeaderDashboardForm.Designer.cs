@@ -70,8 +70,8 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.panelHeader.Controls.Add(this.lblTicketStats);
             this.panelHeader.Controls.Add(this.labelTitle);
             this.panelHeader.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panelHeader.Height = 140;
-            this.panelHeader.Padding = new System.Windows.Forms.Padding(30, 20, 30, 20);
+            this.panelHeader.Height = 70;
+            this.panelHeader.Padding = new System.Windows.Forms.Padding(30, 5, 30, 5);
             this.panelHeader.Paint += (s, e) => {
                 e.Graphics.DrawLine(new Pen(Color.FromArgb(230, 230, 230)),
                     0, panelHeader.Height - 1, panelHeader.Width, panelHeader.Height - 1);
@@ -86,7 +86,7 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.labelTitle.ForeColor = AppColors.TextPrimary;
             this.labelTitle.Dock = System.Windows.Forms.DockStyle.Top;
             this.labelTitle.AutoSize = true;
-            this.labelTitle.Padding = new System.Windows.Forms.Padding(20, 15, 0, 5);
+            this.labelTitle.Padding = new System.Windows.Forms.Padding(20, 5, 0, 0);
 
             // 
             // lblTicketStats
@@ -96,7 +96,7 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.lblTicketStats.ForeColor = AppColors.Primary;
             this.lblTicketStats.Dock = System.Windows.Forms.DockStyle.Top;
             this.lblTicketStats.AutoSize = true;
-            this.lblTicketStats.Padding = new System.Windows.Forms.Padding(20, 5, 0, 10);
+            this.lblTicketStats.Padding = new System.Windows.Forms.Padding(20, 0, 0, 2);
             this.lblTicketStats.Text = "Total: 0 | Direview: 0 | Belum: 0";
 
             // 
@@ -105,7 +105,7 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.panelStatusBar.BackColor = System.Drawing.Color.FromArgb(240, 253, 244);
             // NOTE: Controls are added via flowStatus FlowLayoutPanel below
             this.panelStatusBar.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panelStatusBar.Height = 60;
+            this.panelStatusBar.Height = 35;
             this.panelStatusBar.Padding = new System.Windows.Forms.Padding(30, 0, 30, 0);
 
             // 
@@ -149,8 +149,8 @@ namespace mtc_app.features.group_leader.presentation.screens
             // 
             this.panelFilters.BackColor = mtc_app.shared.presentation.styles.AppColors.CardBackground;
             this.panelFilters.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panelFilters.Height = 90;
-            this.panelFilters.Padding = new System.Windows.Forms.Padding(30, 20, 30, 20);
+            this.panelFilters.Height = 50;
+            this.panelFilters.Padding = new System.Windows.Forms.Padding(30, 5, 30, 5);
 
             // 
             // lblSort
@@ -249,7 +249,7 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.flowTickets.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowTickets.AutoScroll = true;
 
-            this.flowTickets.Padding = new System.Windows.Forms.Padding(20);
+            this.flowTickets.Padding = new System.Windows.Forms.Padding(20, 5, 20, 5);
             this.flowTickets.BackColor = System.Drawing.Color.FromArgb(248, 250, 252);
             this.flowTickets.Controls.Add(this.panelEmptyState);
 
