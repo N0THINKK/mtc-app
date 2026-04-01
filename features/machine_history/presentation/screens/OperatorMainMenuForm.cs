@@ -108,38 +108,45 @@ namespace mtc_app.features.machine_history.presentation.screens
         private void InitializeUI()
         {
             this.Text = "Menu Utama Operator";
-            this.Size = new Size(600, 790); // Increased height
+            this.Size = new Size(550, 580);
             this.StartPosition = FormStartPosition.Manual;
             this.BackColor = AppColors.Background;
             this.FormBorderStyle = FormBorderStyle.None; 
+            this.AutoScroll = true;
 
             string userName = UserSession.CurrentUser?.Username ?? "Operator";
 
             lblWelcome = new Label
             {
                 Text = $"Selamat Datang, {userName}!",
-                Font = new Font("Segoe UI", 18F, FontStyle.Bold),
+                Font = new Font("Segoe UI", 16F, FontStyle.Bold),
                 ForeColor = AppColors.TextPrimary,
                 AutoSize = true,
-                Location = new Point(50, 40)
+                Location = new Point(40, 20)
             };
 
             lblSubtitle = new Label
             {
                 Text = "Silakan pilih tugas yang ingin Anda lakukan saat ini:",
-                Font = new Font("Segoe UI", 12F),
+                Font = new Font("Segoe UI", 10F),
                 ForeColor = AppColors.TextSecondary,
                 AutoSize = true,
-                Location = new Point(50, 80)
+                Location = new Point(40, 55)
             };
+
+            int btnW = 470;
+            int btnH = 60;
+            int btnX = 40;
+            int startY = 90;
+            int gap = 8;
 
             btnHistory = new AppButton
             {
                 Text = "History Mesin",
                 Type = AppButton.ButtonType.Primary,
-                Size = new Size(500, 90),
-                Location = new Point(50, 140),
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                Size = new Size(btnW, btnH),
+                Location = new Point(btnX, startY),
+                Font = new Font("Segoe UI", 13F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             btnHistory.Click += BtnHistory_Click;
@@ -148,42 +155,42 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 Text = "Patroli Harian Mesin Cutting",
                 Type = AppButton.ButtonType.Secondary, 
-                Size = new Size(500, 90),
-                Location = new Point(50, 250),
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                Size = new Size(btnW, btnH),
+                Location = new Point(btnX, startY + (btnH + gap) * 1),
+                Font = new Font("Segoe UI", 13F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             btnChecksheet.Click += BtnChecksheet_Click;
-
-            btnApplicatorPatrol = new AppButton
-            {
-                Text = "Patroli Harian Aplikator",
-                Type = AppButton.ButtonType.Secondary,
-                Size = new Size(500, 90),
-                Location = new Point(50, 470),
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            btnApplicatorPatrol.Click += BtnApplicatorPatrol_Click;
 
             btnMicrometer = new AppButton
             {
                 Text = "Patroli Harian Mikrometer",
                 Type = AppButton.ButtonType.Secondary,
-                Size = new Size(500, 90),
-                Location = new Point(50, 360),
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                Size = new Size(btnW, btnH),
+                Location = new Point(btnX, startY + (btnH + gap) * 2),
+                Font = new Font("Segoe UI", 13F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             btnMicrometer.Click += BtnMicrometer_Click;
+
+            btnApplicatorPatrol = new AppButton
+            {
+                Text = "Patroli Harian Aplikator",
+                Type = AppButton.ButtonType.Secondary,
+                Size = new Size(btnW, btnH),
+                Location = new Point(btnX, startY + (btnH + gap) * 3),
+                Font = new Font("Segoe UI", 13F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnApplicatorPatrol.Click += BtnApplicatorPatrol_Click;
 
             btnIdleToggle = new AppButton
             {
                 Text = "▶ MESIN RUN (Klik untuk Keluar/Berhenti)",
                 Type = AppButton.ButtonType.Primary,
-                Size = new Size(500, 90),
-                Location = new Point(50, 580),
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                Size = new Size(btnW, btnH),
+                Location = new Point(btnX, startY + (btnH + gap) * 4),
+                Font = new Font("Segoe UI", 13F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             btnIdleToggle.Click += BtnIdleToggle_Click;
@@ -192,8 +199,8 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 Text = "Logout / Kembali",
                 Type = AppButton.ButtonType.Danger, 
-                Size = new Size(200, 45),
-                Location = new Point(200, 700),
+                Size = new Size(200, 40),
+                Location = new Point((550 - 200) / 2, startY + (btnH + gap) * 5),
                 Cursor = Cursors.Hand
             };
             btnLogout.Click += (s, e) => this.Close(); 
@@ -202,8 +209,8 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Controls.Add(lblSubtitle);
             this.Controls.Add(btnHistory);
             this.Controls.Add(btnChecksheet);
-            this.Controls.Add(btnApplicatorPatrol);
             this.Controls.Add(btnMicrometer);
+            this.Controls.Add(btnApplicatorPatrol);
             this.Controls.Add(btnIdleToggle);
             this.Controls.Add(btnLogout);
         }
