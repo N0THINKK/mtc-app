@@ -30,6 +30,8 @@ namespace mtc_app.features.rating.presentation.screens
         private AppLabel _lblActionDetails;
         private AppLabel _lblArrivalDuration;
         private AppLabel _lblRepairDuration;
+        private AppLabel _lblReportTime;
+        private AppLabel _lblFinishTime;
         
         // GL Rating Display (Read Only)
         private AppStarRating _glRatingControl;
@@ -85,6 +87,8 @@ namespace mtc_app.features.rating.presentation.screens
 
             // 3. Time Metrics
             AddSectionHeader(mainLayout, "Durasi Pengerjaan");
+            _lblReportTime = AddInfoRow(mainLayout, "Mulai Lapor:");
+            _lblFinishTime = AddInfoRow(mainLayout, "Selesai Perbaikan:");
             _lblArrivalDuration = AddInfoRow(mainLayout, "Respon (Arrival):");
             _lblRepairDuration = AddInfoRow(mainLayout, "Pengerjaan (Repair):");
 
@@ -295,6 +299,10 @@ namespace mtc_app.features.rating.presentation.screens
                     {
                         _lblActionDetails.Text = "-";
                     }
+
+                    // Populate Time Info
+                    _lblReportTime.Text = data.CreatedAt.ToString("HH:mm");
+                    _lblFinishTime.Text = data.FinishedAt?.ToString("HH:mm") ?? "-";
 
                     // Calculate Durations
                     if (data.StartedAt.HasValue)

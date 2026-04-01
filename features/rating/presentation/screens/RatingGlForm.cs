@@ -28,6 +28,8 @@ namespace mtc_app.features.rating.presentation.screens
         private AppLabel _lblActionDetails;
         private AppLabel _lblArrivalDuration;
         private AppLabel _lblRepairDuration;
+        private AppLabel _lblReportTime;
+        private AppLabel _lblFinishTime;
         private AppStarRating _techRatingControl;
         private AppLabel _lblTechNote;
 
@@ -74,7 +76,7 @@ namespace mtc_app.features.rating.presentation.screens
                 Text = "Validasi & Rating Perbaikan", 
                 Type = AppLabel.LabelType.Header2,
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, AppDimens.MarginLarge)
+                Margin = new Padding(0, 0, 0, 5)
             });
 
             // 1. General Info
@@ -90,6 +92,8 @@ namespace mtc_app.features.rating.presentation.screens
 
             // 3. Time Metrics
             AddSectionHeader(mainLayout, "Durasi Pengerjaan");
+            _lblReportTime = AddInfoRow(mainLayout, "Mulai Lapor:");
+            _lblFinishTime = AddInfoRow(mainLayout, "Selesai Perbaikan:");
             _lblArrivalDuration = AddInfoRow(mainLayout, "Respon (Arrival):");
             _lblRepairDuration = AddInfoRow(mainLayout, "Pengerjaan (Repair):");
 
@@ -102,12 +106,12 @@ namespace mtc_app.features.rating.presentation.screens
                 Text = "Rating Dari Teknisi:", 
                 Type = AppLabel.LabelType.Subtitle,
                 AutoSize = true,
-                Margin = new Padding(0, AppDimens.MarginSmall, 0, AppDimens.MarginXS)
+                Margin = new Padding(0, 2, 0, 2)
             });
 
             var techRating = new AppStarRating { IsReadOnly = true };
             _techRatingControl = techRating; // Store ref to populate later
-            techRating.Margin = new Padding(0, 0, 0, AppDimens.GapStandard);
+            techRating.Margin = new Padding(0, 0, 0, 3);
             mainLayout.Controls.Add(techRating);
 
             // Tech Note
@@ -115,7 +119,7 @@ namespace mtc_app.features.rating.presentation.screens
             { 
                 Text = "Catatan:", 
                 Type = AppLabel.LabelType.BodySmall, 
-                Margin = new Padding(0, 0, 0, AppDimens.MarginXS)
+                Margin = new Padding(0, 0, 0, 1)
             });
 
             _lblTechNote = new AppLabel 
@@ -124,7 +128,7 @@ namespace mtc_app.features.rating.presentation.screens
                 Type = AppLabel.LabelType.Body, 
                 AutoSize = true,
                 MaximumSize = new Size(440, 0),
-                Margin = new Padding(0, 0, 0, AppDimens.MarginLarge)
+                Margin = new Padding(0, 0, 0, 5)
             };
             mainLayout.Controls.Add(_lblTechNote);
 
@@ -141,7 +145,7 @@ namespace mtc_app.features.rating.presentation.screens
 
             _starRating = new AppStarRating();
             _starRating.Rating = 5; // Default
-            _starRating.Margin = new Padding(0, 0, 0, AppDimens.PaddingStandard);
+            _starRating.Margin = new Padding(0, 0, 0, 5);
             mainLayout.Controls.Add(_starRating);
 
             _inputNote = new AppInput
@@ -150,7 +154,7 @@ namespace mtc_app.features.rating.presentation.screens
                 InputType = AppInput.InputTypeEnum.Text,
                 Multiline = true,
                 Width = 440,
-                Margin = new Padding(0, 0, 0, AppDimens.MarginLarge)
+                Margin = new Padding(0, 0, 0, 5)
             };
             mainLayout.Controls.Add(_inputNote);
 
@@ -161,7 +165,7 @@ namespace mtc_app.features.rating.presentation.screens
                 Type = AppButton.ButtonType.Primary,
                 Width = 440,
                 Height = AppDimens.InputHeight,
-                Margin = new Padding(0, AppDimens.GapStandard, 0, AppDimens.MarginLarge)
+                Margin = new Padding(0, 5, 0, 5)
             };
             _btnSubmit.Click += async (s, e) => await BtnSubmit_ClickAsync(s, e);
             mainLayout.Controls.Add(_btnSubmit);
@@ -175,7 +179,7 @@ namespace mtc_app.features.rating.presentation.screens
                 Text = text, 
                 Type = AppLabel.LabelType.Title,
                 AutoSize = true,
-                Margin = new Padding(0, AppDimens.GapStandard, 0, AppDimens.GapStandard)
+                Margin = new Padding(0, 8, 0, 2)
             });
             
             // Divider
@@ -184,7 +188,7 @@ namespace mtc_app.features.rating.presentation.screens
                 Height = 1,
                 Width = 440,
                 BackColor = AppColors.Separator,
-                Margin = new Padding(0, 0, 0, AppDimens.GapStandard)
+                Margin = new Padding(0, 0, 0, 3)
             };
             parent.Controls.Add(divider);
         }
@@ -197,7 +201,7 @@ namespace mtc_app.features.rating.presentation.screens
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
                 Width = 440,
-                Margin = new Padding(0, 0, 0, AppDimens.MarginSmall)
+                Margin = new Padding(0, 0, 0, 2)
             };
 
             row.Controls.Add(new AppLabel 
@@ -236,7 +240,7 @@ namespace mtc_app.features.rating.presentation.screens
                 Type = AppLabel.LabelType.Body, 
                 AutoSize = true,
                 MaximumSize = new Size(440, 0),
-                Margin = new Padding(0, 0, 0, 10)
+                Margin = new Padding(0, 0, 0, 3)
             };
             parent.Controls.Add(valueLabel);
             return valueLabel;
@@ -274,6 +278,10 @@ namespace mtc_app.features.rating.presentation.screens
                     {
                         _lblActionDetails.Text = "-";
                     }
+
+                    // Populate Time Info
+                    _lblReportTime.Text = data.CreatedAt.ToString("HH:mm");
+                    _lblFinishTime.Text = data.FinishedAt?.ToString("HH:mm") ?? "-";
 
                     // Calculate Durations
                     if (data.StartedAt.HasValue)
