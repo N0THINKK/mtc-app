@@ -556,23 +556,21 @@ namespace mtc_app.features.technician.presentation.components
                     try
                     {
                         var targets = await conn.QueryAsync(
-                            "SELECT type_id, area_id, machine_number, target_per_hour FROM machine_output_targets");
+                            "SELECT machine_id, target_per_hour FROM machine_output_targets");
 
-                        var targetMap = new Dictionary<string, int>();
-                        foreach (var t in targets)
+                        foreach (var row in targets)
                         {
-                            string key = $"{(int)t.type_id}_{(int)t.area_id}_{t.machine_number}";
-                            targetMap[key] = (int)t.target_per_hour;
-                        }
-
-                        foreach (var machine in machines.Values)
-                        {
-                            string key = $"{machine.TypeId}_{machine.AreaId}_{machine.MachineNum}";
-                            if (targetMap.TryGetValue(key, out int target))
-                                machine.TargetPerHour = target;
+                            int targetMachineId = Convert.ToInt32(row.machine_id);
+                            if (machines.TryGetValue(targetMachineId, out var targetMachine))
+                            {
+                                targetMachine.TargetPerHour = Convert.ToInt32(row.target_per_hour);
+                            }
                         }
                     }
-                    catch { /* Target table might not exist yet */ }
+                    catch (Exception ex) 
+                    { 
+                        Console.WriteLine("Error mapping targets: " + ex.Message);
+                    }
 
                     // --- Query 5: Downtime categories (Planned / Sudden) ---
                     try
