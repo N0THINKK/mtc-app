@@ -62,6 +62,9 @@ namespace mtc_app.features.group_leader.presentation.screens
 
                 _allTickets = tickets.ToList();
 
+                // Populate Area filter dynamically
+                PopulateAreaFilter();
+
                 UpdateStats();
                 RenderTickets();
                 UpdateStatusIndicator(true);
@@ -95,6 +98,27 @@ namespace mtc_app.features.group_leader.presentation.screens
         private void Filter_Changed(object sender, EventArgs e)
         {
             RenderTickets();
+        }
+
+        private void PopulateAreaFilter()
+        {
+            string currentSelection = cmbFilterArea.SelectedItem?.ToString();
+            cmbFilterArea.Items.Clear();
+            cmbFilterArea.Items.Add("Semua");
+
+            var areas = _allTickets
+                .Where(t => !string.IsNullOrEmpty(t.AreaName))
+                .Select(t => t.AreaName)
+                .Distinct()
+                .OrderBy(a => a)
+                .ToList();
+
+            foreach (var area in areas)
+                cmbFilterArea.Items.Add(area);
+
+            // Restore previous selection if still exists
+            int idx = currentSelection != null ? cmbFilterArea.Items.IndexOf(currentSelection) : -1;
+            cmbFilterArea.SelectedIndex = idx >= 0 ? idx : 0;
         }
 
         private void RenderTickets()
@@ -136,6 +160,20 @@ namespace mtc_app.features.group_leader.presentation.screens
             else // Terlama
             {
                 filtered = filtered.OrderByDescending(t => t.CreatedAt);
+            }
+
+            // Area Filter
+            if (cmbFilterArea.SelectedIndex > 0)
+            {
+                string selectedArea = cmbFilterArea.SelectedItem.ToString();
+                filtered = filtered.Where(t => t.AreaName == selectedArea);
+            }
+
+            // Month Filter
+            if (cmbFilterMonth.SelectedIndex > 0)
+            {
+                int selectedMonth = cmbFilterMonth.SelectedIndex; // 1=Januari, 2=Februari, dst.
+                filtered = filtered.Where(t => t.CreatedAt.Month == selectedMonth);
             }
 
             var ticketList = filtered.ToList();

@@ -21,8 +21,12 @@ namespace mtc_app.features.group_leader.presentation.screens
         private PictureBox picStatusIndicator;
         private ComboBox cmbSortTime;
         private ComboBox cmbFilterStatus;
+        private ComboBox cmbFilterArea;
+        private ComboBox cmbFilterMonth;
         private Label lblSort;
         private Label lblFilter;
+        private Label lblArea;
+        private Label lblMonth;
         private System.Windows.Forms.Panel flowTickets;
         private Label lblEmptyTitle;
         private Label lblEmptyMessage;
@@ -48,8 +52,12 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.picStatusIndicator = new System.Windows.Forms.PictureBox();
             this.cmbSortTime = new System.Windows.Forms.ComboBox();
             this.cmbFilterStatus = new System.Windows.Forms.ComboBox();
+            this.cmbFilterArea = new System.Windows.Forms.ComboBox();
+            this.cmbFilterMonth = new System.Windows.Forms.ComboBox();
             this.lblSort = new System.Windows.Forms.Label();
             this.lblFilter = new System.Windows.Forms.Label();
+            this.lblArea = new System.Windows.Forms.Label();
+            this.lblMonth = new System.Windows.Forms.Label();
             this.flowTickets = new System.Windows.Forms.Panel();
             this.lblEmptyTitle = new System.Windows.Forms.Label();
             this.lblEmptyMessage = new System.Windows.Forms.Label();
@@ -192,7 +200,52 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.cmbFilterStatus.Width = 220;
             this.cmbFilterStatus.SelectedIndex = 0;
             this.cmbFilterStatus.SelectedIndexChanged += new System.EventHandler(this.Filter_Changed);
-            this.cmbFilterStatus.Margin = new System.Windows.Forms.Padding(0, 5, 0, 0);
+            this.cmbFilterStatus.Margin = new System.Windows.Forms.Padding(0, 5, 20, 0);
+
+            //
+            // lblArea
+            //
+            this.lblArea = new System.Windows.Forms.Label();
+            this.lblArea.AutoSize = true;
+            this.lblArea.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.lblArea.ForeColor = AppColors.TextPrimary;
+            this.lblArea.Text = "Area:";
+            this.lblArea.Margin = new System.Windows.Forms.Padding(0, 8, 5, 0);
+
+            //
+            // cmbFilterArea
+            //
+            this.cmbFilterArea.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbFilterArea.Font = new System.Drawing.Font("Segoe UI", 12F);
+            this.cmbFilterArea.FormattingEnabled = true;
+            this.cmbFilterArea.Items.Add("Semua");
+            this.cmbFilterArea.Width = 160;
+            this.cmbFilterArea.SelectedIndex = 0;
+            this.cmbFilterArea.SelectedIndexChanged += new System.EventHandler(this.Filter_Changed);
+            this.cmbFilterArea.Margin = new System.Windows.Forms.Padding(0, 5, 20, 0);
+
+            //
+            // lblMonth
+            //
+            this.lblMonth = new System.Windows.Forms.Label();
+            this.lblMonth.AutoSize = true;
+            this.lblMonth.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.lblMonth.ForeColor = AppColors.TextPrimary;
+            this.lblMonth.Text = "Bulan:";
+            this.lblMonth.Margin = new System.Windows.Forms.Padding(0, 8, 5, 0);
+
+            //
+            // cmbFilterMonth
+            //
+            this.cmbFilterMonth.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbFilterMonth.Font = new System.Drawing.Font("Segoe UI", 12F);
+            this.cmbFilterMonth.FormattingEnabled = true;
+            this.cmbFilterMonth.Items.AddRange(new object[] { "Semua", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember" });
+            this.cmbFilterMonth.Width = 160;
+            // Default ke bulan saat ini
+            this.cmbFilterMonth.SelectedIndex = System.DateTime.Now.Month; // 1=Januari dst
+            this.cmbFilterMonth.SelectedIndexChanged += new System.EventHandler(this.Filter_Changed);
+            this.cmbFilterMonth.Margin = new System.Windows.Forms.Padding(0, 5, 0, 0);
 
             // [RESPONSIVE] Use FlowLayoutPanel for filter controls
             var flowFilters = new System.Windows.Forms.FlowLayoutPanel
@@ -202,7 +255,7 @@ namespace mtc_app.features.group_leader.presentation.screens
                 WrapContents = false,
                 Padding = new System.Windows.Forms.Padding(0)
             };
-            flowFilters.Controls.AddRange(new System.Windows.Forms.Control[] { this.lblSort, this.cmbSortTime, this.lblFilter, this.cmbFilterStatus });
+            flowFilters.Controls.AddRange(new System.Windows.Forms.Control[] { this.lblSort, this.cmbSortTime, this.lblFilter, this.cmbFilterStatus, this.lblArea, this.cmbFilterArea, this.lblMonth, this.cmbFilterMonth });
             this.panelFilters.Controls.Add(flowFilters);
 
             // 
