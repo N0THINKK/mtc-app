@@ -173,7 +173,19 @@ namespace mtc_app.features.micrometer_patrol.presentation.screens
                 if (_machines.Count > 0)
                 {
                     cmbMesin.SetDropdownItems(_machines.Select(m => m.Code).ToArray());
-                    cmbMesin.InputValue = _machines[0].Code;
+
+                    // Auto-detect machine from appsettings config
+                    string configMachineId = DatabaseHelper.GetMachineId();
+                    var matchedMachine = _machines.FirstOrDefault(m => m.MachineId.ToString() == configMachineId);
+                    if (matchedMachine != null)
+                    {
+                        cmbMesin.InputValue = matchedMachine.Code;
+                        cmbMesin.Enabled = false; // Lock to configured machine
+                    }
+                    else
+                    {
+                        cmbMesin.InputValue = _machines[0].Code;
+                    }
                 }
             }
             catch (Exception ex)

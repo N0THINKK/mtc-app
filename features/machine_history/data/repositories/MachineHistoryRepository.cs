@@ -361,9 +361,27 @@ namespace mtc_app.features.machine_history.data.repositories
                         
                         if (matchingRecords.Any())
                         {
-                            // Ambil yang paling "buruk" jika sehari ada banyak inspeksi (NG menang lawan OK)
-                            bool hasNG = matchingRecords.Any(r => r.Status != "OK" && r.Status != "PERBAIKAN_OK");
-                            row[dateCol] = hasNG ? "NG" : "OK";
+                            // Ambil record terakhir untuk cell ini
+                            var lastRecord = matchingRecords.Last();
+                            string status = lastRecord.Status?.ToString() ?? "";
+
+                            if (status == "OK" || status == "PERBAIKAN_OK")
+                            {
+                                row[dateCol] = "OK";
+                            }
+                            else if (status == "NG" || status == "NOT_OK")
+                            {
+                                row[dateCol] = "NG";
+                            }
+                            else if (status == "N/A")
+                            {
+                                row[dateCol] = "N/A";
+                            }
+                            else
+                            {
+                                // Nilai numerik atau teks lainnya — tampilkan apa adanya
+                                row[dateCol] = status;
+                            }
                         }
                         else
                         {

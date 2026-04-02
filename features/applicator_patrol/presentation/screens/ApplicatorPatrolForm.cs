@@ -49,12 +49,12 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
         private const int COL3_W = 120;
 
         // Baris  (shared Y agar sejajar, jarak cukup agar tidak menumpuk)
-        private const int ROW_HEADER = 62;
-        private const int ROW_SUB = 128;
-        private const int ROW_COLHDR = 178;
-        private const int ROW_BODY = 208;
+        private const int ROW_HEADER = 50;
+        private const int ROW_SUB = 130;
+        private const int ROW_COLHDR = 168;
+        private const int ROW_BODY = 198;
         private const int BODY_H = 390;
-        private const int ROW_FOOTER = 610;
+        private const int ROW_FOOTER = 600;
 
         // Pagination
         private const int PAGE_SIZE = 10;
@@ -126,7 +126,7 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
                 Text = DateTime.Now.ToString("HH:mm:ss"),
                 Font = new Font(AppFonts.FontFamily, 16, FontStyle.Bold),
                 ForeColor = AppColors.TextPrimary,
-                AutoSize = true, Location = new Point(12, 12)
+                AutoSize = true, Location = new Point(12, 6)
             };
             this.Controls.Add(lblClock);
 
@@ -140,29 +140,29 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
                 Font = new Font(AppFonts.FontFamily, 17, FontStyle.Bold),
                 ForeColor = AppColors.TextPrimary,
                 AutoSize = false, TextAlign = ContentAlignment.MiddleCenter,
-                Bounds = new Rectangle(200, 8, 640, 40)
+                Bounds = new Rectangle(200, 4, 640, 36)
             };
             this.Controls.Add(lblTitle);
 
             btnKeluar = new AppButton
             {
                 Text = "Keluar", Type = AppButton.ButtonType.Secondary,
-                Bounds = new Rectangle(FORM_W - 105, 10, 90, 32)
+                Bounds = new Rectangle(FORM_W - 105, 6, 90, 30)
             };
             btnKeluar.Click += (s, e) => this.Close();
             this.Controls.Add(btnKeluar);
 
             // Divider
-            this.Controls.Add(new Panel { Bounds = new Rectangle(0, 52, FORM_W, 1), BackColor = AppColors.Border });
+            this.Controls.Add(new Panel { Bounds = new Rectangle(0, 42, FORM_W, 1), BackColor = AppColors.Border });
         }
 
         // ─── Header inputs: Tanggal | Shift | NIK | No.Mesin ────────────
         private void BuildHeaderInputs()
         {
-            txtTanggal = new AppInput { LabelText = "Tanggal",   InputType = AppInput.InputTypeEnum.Text, Enabled = false, Bounds = new Rectangle(COL1_X, ROW_HEADER, 150, 58) };
-            cmbShift   = new AppInput { LabelText = "Shift",     InputType = AppInput.InputTypeEnum.Dropdown, AllowCustomText = false, Bounds = new Rectangle(170, ROW_HEADER, 115, 58) };
-            cmbNik     = new AppInput { LabelText = "NIK",       InputType = AppInput.InputTypeEnum.Dropdown, AllowCustomText = true,  Bounds = new Rectangle(295, ROW_HEADER, 145, 58) };
-            cmbMesin   = new AppInput { LabelText = "No. Mesin", InputType = AppInput.InputTypeEnum.Text,     Enabled = false,          Bounds = new Rectangle(450, ROW_HEADER, 210, 58) };
+            txtTanggal = new AppInput { LabelText = "Tanggal",   InputType = AppInput.InputTypeEnum.Text, Enabled = false, Bounds = new Rectangle(COL1_X, ROW_HEADER, 150, 75) };
+            cmbShift   = new AppInput { LabelText = "Shift",     InputType = AppInput.InputTypeEnum.Dropdown, AllowCustomText = false, Bounds = new Rectangle(170, ROW_HEADER, 115, 75) };
+            cmbNik     = new AppInput { LabelText = "NIK",       InputType = AppInput.InputTypeEnum.Dropdown, AllowCustomText = true,  Bounds = new Rectangle(295, ROW_HEADER, 145, 75) };
+            cmbMesin   = new AppInput { LabelText = "No. Mesin", InputType = AppInput.InputTypeEnum.Text,     Enabled = false,          Bounds = new Rectangle(450, ROW_HEADER, 210, 75) };
             this.Controls.AddRange(new Control[] { txtTanggal, cmbShift, cmbNik, cmbMesin });
         }
 
