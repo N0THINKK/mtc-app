@@ -737,6 +737,7 @@ namespace mtc_app.features.technician.presentation.components
 
             area.AxisY.Minimum = 0;
             area.AxisY.Title = "";
+            area.AxisY.LabelStyle.Format = "N0";
 
             int maxVisible = 40; // Fit more bars in one screen for slimmer look
             if (data.Count > maxVisible)
@@ -761,7 +762,7 @@ namespace mtc_app.features.technician.presentation.components
                 // --- MODE 1: Single bar (avg/hour) + target dashed line ---
                 double maxVal = data.Count > 0 ? data.Max(x => x.AveragePerHour) : 0;
                 double maxTarget = data.Count > 0 ? data.Max(x => x.TargetPerHour) : 0;
-                area.AxisY.Maximum = Math.Max(maxVal, maxTarget) > 0 ? Math.Max(maxVal, maxTarget) * 1.2 : 10;
+                area.AxisY.Maximum = Math.Max(maxVal, maxTarget) > 0 ? Math.Ceiling(Math.Max(maxVal, maxTarget) * 1.2) : 10;
 
                 area.AxisY.Title = "Output Per Jam (Pcs)";
 
@@ -805,7 +806,7 @@ namespace mtc_app.features.technician.presentation.components
             {
                 // --- MODE 2: Stacked hourly bars (no avg/tot label) ---
                 double maxVal = data.Count > 0 ? data.Max(x => x.TotalPieces) : 0;
-                area.AxisY.Maximum = maxVal > 0 ? maxVal * 1.2 : 10;
+                area.AxisY.Maximum = maxVal > 0 ? Math.Ceiling(maxVal * 1.2) : 10;
 
                 area.AxisY.Title = "Total Output (Pcs)";
 
@@ -879,7 +880,7 @@ namespace mtc_app.features.technician.presentation.components
             else // Efisiensi Mesin
             {
                 double maxVal = data.Count > 0 ? data.Max(x => x.MonitorTime / 60.0) : 0;
-                area.AxisY.Maximum = maxVal > 0 ? maxVal * 1.2 : 10;
+                area.AxisY.Maximum = maxVal > 0 ? Math.Ceiling(maxVal * 1.2) : 10;
 
                 area.AxisY.Title = "Waktu (Menit)";
 
