@@ -211,6 +211,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     
                     if (request != null)
                     {
+                        request.StatusId = 4; // Repair completely finished
                         request.IsMachineRunning = 1; // Machine is Running
                         request.ProductionResumedAt = DateTime.Now;
                         request.RunElapsedSeconds = _initialElapsedSeconds + (int)(stopwatch?.Elapsed.TotalSeconds ?? 0);
@@ -248,7 +249,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     
                     // 1. Update Ticket: Set Production Resumed Time AND Machine State to Running
                     int totalSeconds = _initialElapsedSeconds + (int)(stopwatch?.Elapsed.TotalSeconds ?? 0);
-                    string sqlTicket = "UPDATE tickets SET production_resumed_at = NOW(), is_machine_running = 1, run_elapsed_seconds = @Secs WHERE ticket_id = @Id";
+                    string sqlTicket = "UPDATE tickets SET status_id = 4, production_resumed_at = NOW(), is_machine_running = 1, run_elapsed_seconds = @Secs WHERE ticket_id = @Id";
                     connection.Execute(sqlTicket, new { Id = _ticketId, Secs = totalSeconds });
 
                     // 2. Update Machine Status: Set to RUNNING (1)
@@ -292,7 +293,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     {
                         connection.Open();
                         // Revert ticket status to 2 (Repairing) and remove finished_at
-                        connection.Execute("UPDATE tickets SET status_id = 2, technician_finished_at = NULL, run_elapsed_seconds = @Secs WHERE ticket_id = @Id", new { Id = _ticketId, Secs = totalSeconds });
+                        connection.Execute("UPDATE tickets SET status_id = 2, technician_finished_at = NULL, inspection_started_at = NULL, run_elapsed_seconds = @Secs WHERE ticket_id = @Id", new { Id = _ticketId, Secs = totalSeconds });
                         
                         // Revert the session to not completing and ended_at to NULL so timer continues correctly
                         connection.Execute("UPDATE ticket_technician_sessions SET is_completing_session = 0, ended_at = NULL WHERE ticket_id = @Id AND is_completing_session = 1", new { Id = _ticketId });
