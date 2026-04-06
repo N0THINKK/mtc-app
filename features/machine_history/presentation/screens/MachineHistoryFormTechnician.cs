@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -235,7 +235,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     }
                 }
             }
-            else if (_ticketStatus == 4)
+            else if (_ticketStatus == 3)
             {
                 _inspectionSeconds++;
             }
@@ -1186,7 +1186,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
-            _ticketStatus = 4; 
+            _ticketStatus = 3; 
             _timer.Stop();
             SaveTimerToDatabase(); 
 
@@ -1197,7 +1197,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     using (var conn = DatabaseHelper.GetConnection()) 
                     {
                         conn.Execute(
-                            "UPDATE tickets SET status_id = 4 WHERE ticket_id = @Id", 
+                            "UPDATE tickets SET status_id = 3, inspection_started_at = NOW() WHERE ticket_id = @Id", 
                             new { Id = _currentTicketId });
                     }
                 } 
@@ -1291,7 +1291,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                         using (var conn = DatabaseHelper.GetConnection()) 
                         {
                             conn.Execute(
-                                "UPDATE tickets SET status_id = 2 WHERE ticket_id = @Id", 
+                                "UPDATE tickets SET status_id = 2, inspection_started_at = NULL WHERE ticket_id = @Id", 
                                 new { Id = _currentTicketId });
                         }
                     } 
