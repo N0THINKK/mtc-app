@@ -162,7 +162,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 AutoSize = false
             };
             
-            _dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110, Value = DateTime.Today.AddDays(-1) };
+            _dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110, Value = DateTime.Today };
             var lblTo = new Label { Text = "s/d", AutoSize = true, Margin = new Padding(5, 5, 5, 0) }; 
             _dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110, Value = DateTime.Today };
             
@@ -468,7 +468,10 @@ namespace mtc_app.features.machine_history.presentation.screens
                     machineId = configId;
                 }
 
-                var history = await _repository.GetHistoryAsync(_dtpStart.Value, _dtpEnd.Value, null, areaFilter, machineId);
+                var startDate = _dtpStart.Value.Date;
+                var endDate = _dtpEnd.Value.Date.AddDays(1).AddTicks(-1);
+
+                var history = await _repository.GetHistoryAsync(startDate, endDate, null, areaFilter, machineId);
                 _historyControl.SetData(history);
             }
             catch (Exception ex)
