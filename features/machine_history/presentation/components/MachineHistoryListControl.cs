@@ -113,13 +113,16 @@ namespace mtc_app.features.machine_history.presentation.components
             Color backColor;
             switch (statusId)
             {
-                case 1: // Waiting
+                case 1: // Lapor Kerusakan
                     backColor = Color.FromArgb(255, 251, 235); // Light Yellow
                     break;
-                case 2: // Repairing
+                case 2: // Sedang Diperbaiki
                     backColor = Color.FromArgb(254, 243, 199); // Amber
                     break;
-                case 3: // Done
+                case 3: // Inspeksi / Menunggu Operator
+                    backColor = Color.FromArgb(240, 249, 255); // Light Blue
+                    break;
+                case 4: // Selesai
                     backColor = Color.FromArgb(236, 253, 245); // Light Green
                     break;
                 default:
