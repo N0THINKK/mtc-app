@@ -302,18 +302,32 @@ namespace mtc_app.features.authentication.presentation.screens
             }
 
             string fetchedFullName = null;
+            long fetchedUserId = 0;
             
-            // Coba ambil full_name dari database jika identitas tidak kosong
+            // Coba ambil dari database jika identitas tidak kosong, jika tidak ada, buat baru
             if (!string.IsNullOrEmpty(identity))
             {
                 try
                 {
                     using (var conn = DatabaseHelper.GetConnection())
                     {
-                        fetchedFullName = conn.QueryFirstOrDefault<string>(
-                            "SELECT full_name FROM users WHERE username = @Username OR nik = @Username LIMIT 1",
+                        var user = conn.QueryFirstOrDefault<UserDto>(
+                            "SELECT user_id as UserId, full_name as FullName FROM users WHERE username = @Username OR nik = @Username LIMIT 1",
                             new { Username = identity }
                         );
+
+                        if (user != null)
+                        {
+                            fetchedUserId = user.UserId;
+                            fetchedFullName = user.FullName;
+                        }
+                        else if (role == "Operator")
+                        {
+                            // AUTO CREATE NEW OPERATOR
+                            string insertSql = "INSERT INTO users (full_name, nik, username, role_id, password) VALUES (@Nik, @Nik, @Nik, 1, '123456'); SELECT LAST_INSERT_ID();";
+                            fetchedUserId = conn.ExecuteScalar<long>(insertSql, new { Nik = identity });
+                            fetchedFullName = identity;
+                        }
                     }
                 }
                 catch { /* Abaikan jika gagal konek DB, tampil nama login saja */ }
@@ -321,6 +335,7 @@ namespace mtc_app.features.authentication.presentation.screens
 
             UserSession.SetUser(new UserDto
             {
+                UserId = fetchedUserId,
                 Username = string.IsNullOrEmpty(identity) ? role : identity,
                 RoleName = role,
                 FullName = fetchedFullName // Menyimpan nama lengkap untuk ditampilkan di Checksheet
