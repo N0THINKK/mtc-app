@@ -162,9 +162,9 @@ namespace mtc_app.features.machine_history.presentation.screens
                 AutoSize = false
             };
             
-            _dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110 };
+            _dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110, Value = DateTime.Today.AddDays(-1) };
             var lblTo = new Label { Text = "s/d", AutoSize = true, Margin = new Padding(5, 5, 5, 0) }; 
-            _dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110 };
+            _dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110, Value = DateTime.Today };
             
             var lblArea = new Label { Text = "Area:", AutoSize = true, Margin = new Padding(10, 5, 5, 0) };
             _cmbArea = new ComboBox 
@@ -188,6 +188,14 @@ namespace mtc_app.features.machine_history.presentation.screens
             _historyControl.BringToFront();
 
             _tabControl.TabPages.Add(tabHistory);
+
+            _tabControl.SelectedIndexChanged += async (s, e) =>
+            {
+                if (_tabControl.SelectedTab == tabHistory)
+                {
+                    await LoadHistoryAsync();
+                }
+            };
 
             _lnkPendingTicket = new LinkLabel
             {
