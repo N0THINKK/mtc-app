@@ -64,7 +64,7 @@ namespace mtc_app.features.admin.presentation.screens
         private void SetupUI()
         {
             this.Size = new Size(1280, 800);
-            this.Text = "MTC System - Administrator Dashboard";
+            this.Text = "Manis - Administrator Dashboard";
             this.BackColor = AppColors.Surface;
 
             // 1. Sidebar Panel
@@ -72,7 +72,7 @@ namespace mtc_app.features.admin.presentation.screens
             pnlSidebar.Controls.Add(new Panel { Dock = DockStyle.Right, Width = 1, BackColor = AppColors.Separator });
             
             Panel pnlBrand = new Panel { Dock = DockStyle.Top, Height = 100, Padding = new Padding(24, 30, 24, 20) };
-            pnlBrand.Controls.Add(new AppLabel { Text = "MTC Admin", Type = AppLabel.LabelType.Header2, ForeColor = AppColors.PrimaryDark, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft });
+            pnlBrand.Controls.Add(new AppLabel { Text = "Manis Admin", Type = AppLabel.LabelType.Header2, ForeColor = AppColors.PrimaryDark, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft });
             pnlSidebar.Controls.Add(pnlBrand);
 
             var flowMenu = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(12, 10, 12, 0), AutoScroll = true };
