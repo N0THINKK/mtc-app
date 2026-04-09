@@ -32,6 +32,11 @@ namespace mtc_app.shared.presentation.components
             this.BackColor = AppColors.Background;
             this.ForeColor = AppColors.TextPrimary;
 
+            if (AppStyles.AppIcon != null)
+            {
+                this.Icon = AppStyles.AppIcon;
+            }
+
             InitializeOfflineServices();
             InitializeStatusBar();
             SubscribeToEvents();

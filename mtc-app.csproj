@@ -11,6 +11,7 @@
     <AssemblyName>Manis</AssemblyName>
     <AssemblyTitle>Manis</AssemblyTitle>
     <Product>Manis</Product>
+    <ApplicationIcon>assets\manis.ico</ApplicationIcon>
     
     <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode> 
     
@@ -44,6 +45,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="assets\manis.ico" LogicalName="AppIcon.ico" />
   </ItemGroup>
 
   <ItemGroup>
