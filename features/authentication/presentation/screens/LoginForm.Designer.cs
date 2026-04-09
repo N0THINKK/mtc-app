@@ -61,7 +61,7 @@ namespace mtc_app.features.authentication.presentation.screens
             this.lblTitle.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.lblTitle.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
             this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Text = "DIGITAL LOGIN";
+            this.lblTitle.Text = "MANIS LOGIN";
             this.lblTitle.Type = mtc_app.shared.presentation.components.AppLabel.LabelType.Header1;
             this.lblTitle.TabIndex = 0;
 
@@ -150,7 +150,7 @@ namespace mtc_app.features.authentication.presentation.screens
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Name = "LoginForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Login";
+            this.Text = "Manis - Login";
 
             this.pnlInputSwap.ResumeLayout(false);
             this.tblLayout.ResumeLayout(false);

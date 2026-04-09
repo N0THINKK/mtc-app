@@ -8,6 +8,9 @@
     <UseWindowsForms>true</UseWindowsForms>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <RootNamespace>mtc_app</RootNamespace>
+    <AssemblyName>Manis</AssemblyName>
+    <AssemblyTitle>Manis</AssemblyTitle>
+    <Product>Manis</Product>
     
     <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode> 
     
