@@ -1,0 +1,36 @@
+using System;
+
+namespace mtc_app.features.technician.data.dtos
+{
+    public class TicketDto
+    {
+        public long TicketId { get; set; }
+        public Guid TicketUuid { get; set; } // Added for offline sync matching
+        public string MachineName { get; set; }
+        public string FailureDetails { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public int StatusId { get; set; }
+        public int? GlRatingScore { get; set; }
+        public DateTime? GlValidatedAt { get; set; }
+        
+        // Additional fields for dynamic display
+        public string TechnicianName { get; set; }
+        public DateTime? StartedAt { get; set; }
+        public DateTime? FinishedAt { get; set; }
+        
+        // Exact DB Timers matching the Technician Form
+        public int ArrivalSeconds { get; set; }
+        public int RepairSeconds { get; set; }
+        public int InspectionSeconds { get; set; }
+        
+        // Machine State (separate from ticket workflow status)
+        public int IsMachineRunning { get; set; }
+    }
+
+    public class TechnicianStatsDto
+    {
+        public int CompletedRepairs { get; set; }
+        public decimal AverageRating { get; set; }
+        public int TotalStars { get; set; }
+    }
+}

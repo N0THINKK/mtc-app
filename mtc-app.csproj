@@ -2,29 +2,60 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net48</TargetFramework>
+    
+    <TargetFramework>net6.0-windows</TargetFramework>
+    
     <UseWindowsForms>true</UseWindowsForms>
-    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <RootNamespace>mtc_app</RootNamespace>
-    <LangVersion>latest</LangVersion>
+    <AssemblyName>Manis</AssemblyName>
+    <AssemblyTitle>Manis</AssemblyTitle>
+    <Product>Manis</Product>
+    
+    <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode> 
+    
+    <Nullable>disable</Nullable> 
+    
+    <!-- Fix for SQLite in SingleFile publish -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract> 
+    
+    <!-- Make it run on ANY Windows (32-bit/64-bit) without installing .NET -->
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="System.Net.Http" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.0.123" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />
-    <PackageReference Include="MySqlConnector" Version="2.2.0" />
+    <PackageReference Include="ClosedXML" Version="0.102.1" />
+    <PackageReference Include="Dapper" Version="2.1.35" />
+    <PackageReference Include="Dapper.SqlBuilder" Version="2.0.78" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+    <PackageReference Include="MySqlConnector" Version="2.3.5" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Data.SQLite" Version="1.0.118" />
+    
+    <PackageReference Include="System.Windows.Forms.DataVisualization" Version="1.0.0-prerelease.20110.1" />
+    
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
   </ItemGroup>
   
   <ItemGroup>
     <Content Include="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="mtc-auto-export\**" />
+    <EmbeddedResource Remove="mtc-auto-export\**" />
+    <None Remove="mtc-auto-export\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="features\group_leader\presentation\screens\" />
+    <Folder Include="features\machine_history\presentation\components\" />
+    <Folder Include="features\rating\presentation\screens\" />
   </ItemGroup>
 
 </Project>

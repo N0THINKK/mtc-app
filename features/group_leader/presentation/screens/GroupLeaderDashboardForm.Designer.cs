@@ -1,0 +1,336 @@
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Windows.Forms;
+using mtc_app.shared.presentation.styles;
+
+namespace mtc_app.features.group_leader.presentation.screens
+{
+    partial class GroupLeaderDashboardForm
+    {
+        private System.ComponentModel.IContainer components = null;
+
+        // Deklarasi Variabel UI (Disesuaikan dengan nama variabel di logic)
+        private Panel panelHeader;
+        private Panel panelStatusBar;
+        private Panel panelFilters;
+        private Panel panelEmptyState;
+        private Label labelTitle;
+        private Label lblTicketStats;
+        private Label lblLastUpdate;
+        private Label lblSystemStatus;
+        private PictureBox picStatusIndicator;
+        private ComboBox cmbSortTime;
+        private ComboBox cmbFilterStatus;
+        private ComboBox cmbFilterArea;
+        private ComboBox cmbFilterMonth;
+        private Label lblSort;
+        private Label lblFilter;
+        private Label lblArea;
+        private Label lblMonth;
+        private System.Windows.Forms.Panel flowTickets;
+        private Label lblEmptyTitle;
+        private Label lblEmptyMessage;
+        private PictureBox picEmptyIcon;
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null)) components.Dispose();
+            base.Dispose(disposing);
+        }
+
+        private void InitializeComponent()
+        {
+            this.components = new System.ComponentModel.Container();
+            this.panelHeader = new System.Windows.Forms.Panel();
+            this.panelStatusBar = new System.Windows.Forms.Panel();
+            this.panelFilters = new System.Windows.Forms.Panel();
+            this.panelEmptyState = new System.Windows.Forms.Panel();
+            this.labelTitle = new System.Windows.Forms.Label();
+            this.lblTicketStats = new System.Windows.Forms.Label();
+            this.lblLastUpdate = new System.Windows.Forms.Label();
+            this.lblSystemStatus = new System.Windows.Forms.Label();
+            this.picStatusIndicator = new System.Windows.Forms.PictureBox();
+            this.cmbSortTime = new System.Windows.Forms.ComboBox();
+            this.cmbFilterStatus = new System.Windows.Forms.ComboBox();
+            this.cmbFilterArea = new System.Windows.Forms.ComboBox();
+            this.cmbFilterMonth = new System.Windows.Forms.ComboBox();
+            this.lblSort = new System.Windows.Forms.Label();
+            this.lblFilter = new System.Windows.Forms.Label();
+            this.lblArea = new System.Windows.Forms.Label();
+            this.lblMonth = new System.Windows.Forms.Label();
+            this.flowTickets = new System.Windows.Forms.Panel();
+            this.lblEmptyTitle = new System.Windows.Forms.Label();
+            this.lblEmptyMessage = new System.Windows.Forms.Label();
+            this.picEmptyIcon = new System.Windows.Forms.PictureBox();
+
+            this.panelHeader.SuspendLayout();
+            this.panelStatusBar.SuspendLayout();
+            this.panelFilters.SuspendLayout();
+            this.panelEmptyState.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.picStatusIndicator)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.picEmptyIcon)).BeginInit();
+            this.SuspendLayout();
+
+            // 
+            // panelHeader
+            // 
+            this.panelHeader.BackColor = mtc_app.shared.presentation.styles.AppColors.CardBackground;
+            this.panelHeader.Controls.Add(this.lblTicketStats);
+            this.panelHeader.Controls.Add(this.labelTitle);
+            this.panelHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this.panelHeader.Height = 70;
+            this.panelHeader.Padding = new System.Windows.Forms.Padding(30, 5, 30, 5);
+            this.panelHeader.Paint += (s, e) => {
+                e.Graphics.DrawLine(new Pen(Color.FromArgb(230, 230, 230)),
+                    0, panelHeader.Height - 1, panelHeader.Width, panelHeader.Height - 1);
+            };
+
+            // 
+            // labelTitle
+            // [RESPONSIVE] Dock instead of hardcoded Location
+            // 
+            this.labelTitle.Text = "Dashboard Group Leader";
+            this.labelTitle.Font = new System.Drawing.Font("Segoe UI", 20F, System.Drawing.FontStyle.Bold);
+            this.labelTitle.ForeColor = AppColors.TextPrimary;
+            this.labelTitle.Dock = System.Windows.Forms.DockStyle.Top;
+            this.labelTitle.AutoSize = true;
+            this.labelTitle.Padding = new System.Windows.Forms.Padding(20, 5, 0, 0);
+
+            // 
+            // lblTicketStats
+            // [RESPONSIVE] Dock instead of hardcoded Location
+            // 
+            this.lblTicketStats.Font = new System.Drawing.Font("Segoe UI Semibold", 12F, System.Drawing.FontStyle.Bold);
+            this.lblTicketStats.ForeColor = AppColors.Primary;
+            this.lblTicketStats.Dock = System.Windows.Forms.DockStyle.Top;
+            this.lblTicketStats.AutoSize = true;
+            this.lblTicketStats.Padding = new System.Windows.Forms.Padding(20, 0, 0, 2);
+            this.lblTicketStats.Text = "Total: 0 | Direview: 0 | Belum: 0";
+
+            // 
+            // panelStatusBar
+            // 
+            this.panelStatusBar.BackColor = System.Drawing.Color.FromArgb(240, 253, 244);
+            // NOTE: Controls are added via flowStatus FlowLayoutPanel below
+            this.panelStatusBar.Dock = System.Windows.Forms.DockStyle.Top;
+            this.panelStatusBar.Height = 35;
+            this.panelStatusBar.Padding = new System.Windows.Forms.Padding(30, 0, 30, 0);
+
+            // 
+            // picStatusIndicator
+            // 
+            this.picStatusIndicator.Size = new System.Drawing.Size(12, 12);
+            this.picStatusIndicator.BackColor = System.Drawing.Color.Transparent;
+            this.picStatusIndicator.Margin = new System.Windows.Forms.Padding(0, 8, 5, 0);
+
+            // 
+            // lblSystemStatus
+            // 
+            this.lblSystemStatus.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
+            this.lblSystemStatus.ForeColor = System.Drawing.Color.FromArgb(21, 128, 61);
+            this.lblSystemStatus.AutoSize = true;
+            this.lblSystemStatus.Text = "Sistem Aktif";
+            this.lblSystemStatus.Margin = new System.Windows.Forms.Padding(0, 5, 15, 0);
+
+            // 
+            // lblLastUpdate
+            // 
+            this.lblLastUpdate.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.lblLastUpdate.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            this.lblLastUpdate.AutoSize = true;
+            this.lblLastUpdate.Text = "Terakhir diperbarui: -";
+            this.lblLastUpdate.Margin = new System.Windows.Forms.Padding(0, 6, 0, 0);
+
+            // [RESPONSIVE] Use FlowLayoutPanel for status bar items
+            var flowStatus = new System.Windows.Forms.FlowLayoutPanel
+            {
+                Dock = System.Windows.Forms.DockStyle.Fill,
+                FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight,
+                WrapContents = false,
+                Padding = new System.Windows.Forms.Padding(20, 10, 20, 0)
+            };
+            flowStatus.Controls.AddRange(new System.Windows.Forms.Control[] { this.picStatusIndicator, this.lblSystemStatus, this.lblLastUpdate });
+            this.panelStatusBar.Controls.Add(flowStatus);
+
+            // 
+            // panelFilters
+            // 
+            this.panelFilters.BackColor = mtc_app.shared.presentation.styles.AppColors.CardBackground;
+            this.panelFilters.Dock = System.Windows.Forms.DockStyle.Top;
+            this.panelFilters.Height = 50;
+            this.panelFilters.Padding = new System.Windows.Forms.Padding(30, 5, 30, 5);
+
+            // 
+            // lblSort
+            // 
+            this.lblSort.AutoSize = true;
+            this.lblSort.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.lblSort.ForeColor = AppColors.TextPrimary;
+            this.lblSort.Text = "Urutkan:";
+            this.lblSort.Margin = new System.Windows.Forms.Padding(0, 8, 5, 0);
+
+            // 
+            // cmbSortTime
+            // 
+            this.cmbSortTime.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbSortTime.Font = new System.Drawing.Font("Segoe UI", 12F);
+            this.cmbSortTime.FormattingEnabled = true;
+            this.cmbSortTime.Items.AddRange(new object[] { "Terbaru", "Terlama" });
+            this.cmbSortTime.Width = 180;
+            this.cmbSortTime.SelectedIndex = 0;
+            this.cmbSortTime.SelectedIndexChanged += new System.EventHandler(this.Filter_Changed);
+            this.cmbSortTime.Margin = new System.Windows.Forms.Padding(0, 5, 20, 0);
+
+            // 
+            // lblFilter
+            // 
+            this.lblFilter.AutoSize = true;
+            this.lblFilter.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.lblFilter.ForeColor = AppColors.TextPrimary;
+            this.lblFilter.Text = "Status:";
+            this.lblFilter.Margin = new System.Windows.Forms.Padding(0, 8, 5, 0);
+
+            // 
+            // cmbFilterStatus
+            // 
+            this.cmbFilterStatus.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbFilterStatus.Font = new System.Drawing.Font("Segoe UI", 12F);
+            this.cmbFilterStatus.FormattingEnabled = true;
+            this.cmbFilterStatus.Items.AddRange(new object[] { "Semua", "Sudah Direview", "Belum Direview" });
+            this.cmbFilterStatus.Width = 220;
+            this.cmbFilterStatus.SelectedIndex = 0;
+            this.cmbFilterStatus.SelectedIndexChanged += new System.EventHandler(this.Filter_Changed);
+            this.cmbFilterStatus.Margin = new System.Windows.Forms.Padding(0, 5, 20, 0);
+
+            //
+            // lblArea
+            //
+            this.lblArea = new System.Windows.Forms.Label();
+            this.lblArea.AutoSize = true;
+            this.lblArea.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.lblArea.ForeColor = AppColors.TextPrimary;
+            this.lblArea.Text = "Area:";
+            this.lblArea.Margin = new System.Windows.Forms.Padding(0, 8, 5, 0);
+
+            //
+            // cmbFilterArea
+            //
+            this.cmbFilterArea.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbFilterArea.Font = new System.Drawing.Font("Segoe UI", 12F);
+            this.cmbFilterArea.FormattingEnabled = true;
+            this.cmbFilterArea.Items.Add("Semua");
+            this.cmbFilterArea.Width = 160;
+            this.cmbFilterArea.SelectedIndex = 0;
+            this.cmbFilterArea.SelectedIndexChanged += new System.EventHandler(this.Filter_Changed);
+            this.cmbFilterArea.Margin = new System.Windows.Forms.Padding(0, 5, 20, 0);
+
+            //
+            // lblMonth
+            //
+            this.lblMonth = new System.Windows.Forms.Label();
+            this.lblMonth.AutoSize = true;
+            this.lblMonth.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.lblMonth.ForeColor = AppColors.TextPrimary;
+            this.lblMonth.Text = "Bulan:";
+            this.lblMonth.Margin = new System.Windows.Forms.Padding(0, 8, 5, 0);
+
+            //
+            // cmbFilterMonth
+            //
+            this.cmbFilterMonth.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbFilterMonth.Font = new System.Drawing.Font("Segoe UI", 12F);
+            this.cmbFilterMonth.FormattingEnabled = true;
+            this.cmbFilterMonth.Items.AddRange(new object[] { "Semua", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember" });
+            this.cmbFilterMonth.Width = 160;
+            // Default ke bulan saat ini
+            this.cmbFilterMonth.SelectedIndex = System.DateTime.Now.Month; // 1=Januari dst
+            this.cmbFilterMonth.SelectedIndexChanged += new System.EventHandler(this.Filter_Changed);
+            this.cmbFilterMonth.Margin = new System.Windows.Forms.Padding(0, 5, 0, 0);
+
+            // [RESPONSIVE] Use FlowLayoutPanel for filter controls
+            var flowFilters = new System.Windows.Forms.FlowLayoutPanel
+            {
+                Dock = System.Windows.Forms.DockStyle.Fill,
+                FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight,
+                WrapContents = false,
+                Padding = new System.Windows.Forms.Padding(0)
+            };
+            flowFilters.Controls.AddRange(new System.Windows.Forms.Control[] { this.lblSort, this.cmbSortTime, this.lblFilter, this.cmbFilterStatus, this.lblArea, this.cmbFilterArea, this.lblMonth, this.cmbFilterMonth });
+            this.panelFilters.Controls.Add(flowFilters);
+
+            // 
+            // panelEmptyState
+            // 
+            this.panelEmptyState.BackColor = System.Drawing.Color.Transparent;
+            this.panelEmptyState.Controls.Add(this.lblEmptyMessage);
+            this.panelEmptyState.Controls.Add(this.lblEmptyTitle);
+            this.panelEmptyState.Controls.Add(this.picEmptyIcon);
+            this.panelEmptyState.Size = new System.Drawing.Size(400, 300);
+            this.panelEmptyState.Visible = false;
+            this.panelEmptyState.Anchor = System.Windows.Forms.AnchorStyles.None;
+
+            // 
+            // picEmptyIcon
+            // 
+            this.picEmptyIcon.Size = new System.Drawing.Size(80, 80);
+            this.picEmptyIcon.Location = new System.Drawing.Point(160, 40);
+            this.picEmptyIcon.BackColor = System.Drawing.Color.Transparent;
+
+            // 
+            // lblEmptyTitle
+            // 
+            this.lblEmptyTitle.Font = new System.Drawing.Font("Segoe UI Semibold", 16F, System.Drawing.FontStyle.Bold);
+            this.lblEmptyTitle.ForeColor = AppColors.TextPrimary;
+            this.lblEmptyTitle.Text = "Tidak Ada Data Tiket";
+            this.lblEmptyTitle.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.lblEmptyTitle.Location = new System.Drawing.Point(50, 140);
+            this.lblEmptyTitle.Size = new System.Drawing.Size(300, 30);
+
+            // 
+            // lblEmptyMessage
+            // 
+            this.lblEmptyMessage.Font = new System.Drawing.Font("Segoe UI", 12F);
+            this.lblEmptyMessage.ForeColor = AppColors.TextSecondary;
+            this.lblEmptyMessage.Text = "Belum ada tiket yang dapat ditampilkan.\nData akan muncul setelah teknisi menyelesaikan perbaikan.";
+            this.lblEmptyMessage.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            this.lblEmptyMessage.Location = new System.Drawing.Point(40, 180); // Adjusted width
+            this.lblEmptyMessage.Size = new System.Drawing.Size(320, 80);
+
+            // 
+            // flowTickets
+            // 
+            this.flowTickets.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowTickets.AutoScroll = true;
+
+            this.flowTickets.Padding = new System.Windows.Forms.Padding(20, 5, 20, 5);
+            this.flowTickets.BackColor = System.Drawing.Color.FromArgb(248, 250, 252);
+            this.flowTickets.Controls.Add(this.panelEmptyState);
+
+            // 
+            // GroupLeaderDashboardForm
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(1400, 800);
+            this.Controls.Add(this.flowTickets);
+            this.Controls.Add(this.panelFilters);
+            this.Controls.Add(this.panelStatusBar);
+            this.Controls.Add(this.panelHeader);
+            this.Name = "GroupLeaderDashboardForm";
+            this.Text = "Dashboard Group Leader";
+            this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
+            this.BackColor = System.Drawing.Color.FromArgb(248, 250, 252);
+
+            this.panelHeader.ResumeLayout(false);
+            this.panelHeader.PerformLayout();
+            this.panelStatusBar.ResumeLayout(false);
+            this.panelStatusBar.PerformLayout();
+            this.panelFilters.ResumeLayout(false);
+            this.panelFilters.PerformLayout();
+            this.panelEmptyState.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.picStatusIndicator)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.picEmptyIcon)).EndInit();
+            this.ResumeLayout(false);
+        }
+    }
+}

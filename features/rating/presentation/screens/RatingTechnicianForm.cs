@@ -1,0 +1,390 @@
+using System;
+using System.Drawing;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using mtc_app.features.technician.data.repositories;
+using mtc_app.shared.presentation.components;
+using mtc_app.shared.presentation.styles;
+using mtc_app.shared.infrastructure;
+using mtc_app.features.technician.data.dtos;
+
+namespace mtc_app.features.rating.presentation.screens
+{
+    public class RatingTechnicianForm : AppBaseForm
+    {
+        private readonly ITechnicianRepository _repository; // Changed to Interface
+        private long _ticketId;
+        private PatrolNgDto _patrolDto;
+        
+        // Input Components
+        private AppStarRating _starRating;
+        private AppInput _inputNote;
+        private AppButton _btnSubmit;
+        
+        // Display Labels
+        private AppLabel _lblOperatorName;
+        private AppLabel _lblMachineName;
+        private AppLabel _lblTechnicianName;
+        private AppLabel _lblFailureDetails;
+        private AppLabel _lblActionDetails;
+        private AppLabel _lblArrivalDuration;
+        private AppLabel _lblRepairDuration;
+        private AppLabel _lblReportTime;
+        private AppLabel _lblFinishTime;
+        
+        // GL Rating Display (Read Only)
+        private AppStarRating _glRatingControl;
+        private AppLabel _lblGlNote;
+        
+        // Sparepart Requests
+        private AppLabel _lblSparepartRequests;
+
+        public RatingTechnicianForm(long ticketId, PatrolNgDto patrolDto = null)
+        {
+            _repository = ServiceLocator.CreateTechnicianRepository(); // Use Factory for Offline Support
+            _ticketId = ticketId;
+            _patrolDto = patrolDto;
+            
+            InitializeCustomComponent();
+            _ = LoadTicketDataAsync();
+        }
+
+        private void InitializeCustomComponent()
+        {
+            this.Text = "Rating Dari Teknisi";
+            this.Size = new Size(500, 850); // Increased height
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.AutoScroll = true;
+
+            FlowLayoutPanel mainLayout = new FlowLayoutPanel();
+            mainLayout.Dock = DockStyle.Fill;
+            mainLayout.FlowDirection = FlowDirection.TopDown;
+            mainLayout.WrapContents = false;
+            mainLayout.Padding = new Padding(AppDimens.MarginLarge);
+            mainLayout.AutoScroll = true;
+            this.Controls.Add(mainLayout);
+
+            // Title
+            mainLayout.Controls.Add(new AppLabel 
+            { 
+                Text = "Penilaian Operator", 
+                Type = AppLabel.LabelType.Header2,
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, AppDimens.MarginLarge)
+            });
+
+            // 1. General Info
+            AddSectionHeader(mainLayout, "Informasi Umum");
+            _lblOperatorName = AddInfoRow(mainLayout, "Operator:");
+            _lblMachineName = AddInfoRow(mainLayout, "Mesin:");
+            _lblTechnicianName = AddInfoRow(mainLayout, "Teknisi:");
+
+            // 2. Report Details
+            AddSectionHeader(mainLayout, "Detail Laporan");
+            _lblFailureDetails = AddDetailRow(mainLayout, "Kerusakan:");
+            _lblActionDetails = AddDetailRow(mainLayout, "Tindakan:");
+
+            // 3. Time Metrics
+            AddSectionHeader(mainLayout, "Durasi Pengerjaan");
+            _lblReportTime = AddInfoRow(mainLayout, "Mulai Lapor:");
+            _lblFinishTime = AddInfoRow(mainLayout, "Selesai Perbaikan:");
+            _lblArrivalDuration = AddInfoRow(mainLayout, "Respon (Arrival):");
+            _lblRepairDuration = AddInfoRow(mainLayout, "Pengerjaan (Repair):");
+
+            // 3.5 Sparepart Requests
+            AddSectionHeader(mainLayout, "Permintaan Sparepart");
+            _lblSparepartRequests = AddDetailRow(mainLayout, "Part yang diminta:");
+
+            // 4. GL Rating (Read Only)
+            AddSectionHeader(mainLayout, "Penilaian GL");
+            
+            // Label removed
+            // mainLayout.Controls.Add(new AppLabel 
+            // { 
+            //     Text = "Rating dari GL:", 
+            //     Type = AppLabel.LabelType.Subtitle,
+            //     AutoSize = true,
+            //     Margin = new Padding(0, AppDimens.MarginSmall, 0, AppDimens.MarginXS)
+            // });
+
+            // _glRatingControl removed
+            // _glRatingControl.Margin = new Padding(0, 0, 0, AppDimens.GapStandard);
+            // mainLayout.Controls.Add(_glRatingControl);
+
+            mainLayout.Controls.Add(new AppLabel 
+            { 
+                Text = "Catatan dari GL:", 
+                Type = AppLabel.LabelType.BodySmall, 
+                Margin = new Padding(0, 0, 0, AppDimens.MarginXS)
+            });
+
+            _lblGlNote = new AppLabel 
+            { 
+                Text = "-", 
+                Type = AppLabel.LabelType.Body, 
+                AutoSize = true,
+                MaximumSize = new Size(440, 0),
+                Margin = new Padding(0, 0, 0, AppDimens.MarginLarge)
+            };
+            mainLayout.Controls.Add(_lblGlNote);
+
+            // 5. Rating Input (Operator)
+            AddSectionHeader(mainLayout, "Penilaian dari Teknisi");
+            
+            // Star Rating Input removed
+            // mainLayout.Controls.Add(new AppLabel 
+            // { 
+            //     Text = "Rating dari Teknisi (1-5):", 
+            //     Type = AppLabel.LabelType.Subtitle,
+            //     AutoSize = true,
+            //     Margin = new Padding(0, 5, 0, 2)
+            // });
+            //
+            // _starRating = new AppStarRating();
+            // _starRating.Rating = 5; // Default
+            // _starRating.Margin = new Padding(0, 0, 0, AppDimens.PaddingStandard);
+            // mainLayout.Controls.Add(_starRating);
+
+            _inputNote = new AppInput
+            {
+                LabelText = "Catatan : ",
+                InputType = AppInput.InputTypeEnum.Text,
+                Multiline = true,
+                Width = 440,
+                Margin = new Padding(0, 0, 0, AppDimens.MarginLarge)
+            };
+            mainLayout.Controls.Add(_inputNote);
+
+            // Submit Button
+            _btnSubmit = new AppButton
+            {
+                Text = "Simpan Penilaian",
+                Type = AppButton.ButtonType.Primary,
+                Width = 440,
+                Height = AppDimens.InputHeight,
+                Margin = new Padding(0, AppDimens.GapStandard, 0, AppDimens.MarginLarge)
+            };
+            _btnSubmit.Click += async (s, e) => await BtnSubmit_ClickAsync(s, e);
+            mainLayout.Controls.Add(_btnSubmit);
+            mainLayout.Controls.Add(new Panel { Height = 40, BackColor = Color.Transparent });
+        }
+
+        private void AddSectionHeader(Control parent, string text)
+        {
+            parent.Controls.Add(new AppLabel 
+            { 
+                Text = text, 
+                Type = AppLabel.LabelType.Title,
+                AutoSize = true,
+                Margin = new Padding(0, AppDimens.GapStandard, 0, AppDimens.GapStandard)
+            });
+            
+            // Divider
+            Panel divider = new Panel
+            {
+                Height = 1,
+                Width = 440,
+                BackColor = AppColors.Separator,
+                Margin = new Padding(0, 0, 0, AppDimens.GapStandard)
+            };
+            parent.Controls.Add(divider);
+        }
+
+        private AppLabel AddInfoRow(Control parent, string label)
+        {
+            FlowLayoutPanel row = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Width = 440,
+                Margin = new Padding(0, 0, 0, AppDimens.MarginSmall)
+            };
+
+            row.Controls.Add(new AppLabel 
+            { 
+                Text = label, 
+                Type = AppLabel.LabelType.BodySmall, 
+                Width = 120, // Increased width for alignment like GL form
+                Margin = new Padding(0, AppDimens.MarginXS, 0, 0)
+            });
+
+            AppLabel valueLabel = new AppLabel 
+            { 
+                Text = "-", 
+                Type = AppLabel.LabelType.Body, 
+                AutoSize = true,
+                MaximumSize = new Size(300, 0)
+            };
+            row.Controls.Add(valueLabel);
+
+            parent.Controls.Add(row);
+            return valueLabel;
+        }
+
+        private AppLabel AddDetailRow(Control parent, string label)
+        {
+            parent.Controls.Add(new AppLabel 
+            { 
+                Text = label, 
+                Type = AppLabel.LabelType.BodySmall, 
+                Margin = new Padding(0, AppDimens.MarginSmall, 0, AppDimens.MarginXS)
+            });
+
+            AppLabel valueLabel = new AppLabel 
+            { 
+                Text = "-", 
+                Type = AppLabel.LabelType.Body, 
+                AutoSize = true,
+                MaximumSize = new Size(440, 0),
+                Margin = new Padding(0, 0, 0, AppDimens.GapStandard)
+            };
+            parent.Controls.Add(valueLabel);
+            return valueLabel;
+        }
+
+        private async Task LoadTicketDataAsync()
+        {
+            try
+            {
+                if (_ticketId == 0 && _patrolDto != null)
+                {
+                    _lblOperatorName.Text = _patrolDto.RoleTarget ?? "-";
+                    _lblMachineName.Text = _patrolDto.MachineName ?? "-";
+                    _lblTechnicianName.Text = "-";
+                    
+                    _lblFailureDetails.Text = _patrolDto.ItemName ?? "-";
+                    _lblActionDetails.Text = _patrolDto.ActionNote ?? "-";
+                    
+                    _lblArrivalDuration.Text = "-";
+                    _lblRepairDuration.Text = "-";
+                    
+                    _lblGlNote.Text = "(Belum dinilai oleh GL)";
+                    _lblSparepartRequests.Text = "(Tidak ada permintaan sparepart)";
+                    
+                    _inputNote.Visible = false;
+                    _btnSubmit.Text = "Tutup";
+                    
+                    return;
+                }
+
+                var data = await _repository.GetTicketDetailAsync(_ticketId);
+
+                if (this.IsDisposed) return;
+
+                if (data != null)
+                {
+                    _lblOperatorName.Text = data.OperatorName ?? "-";
+                    _lblMachineName.Text = data.MachineName ?? "-";
+                    _lblTechnicianName.Text = data.TechnicianName ?? "-";
+                    
+                    // [UI-FIX] Format multi-problem strings into a numbered list
+                    if (!string.IsNullOrEmpty(data.FailureDetails))
+                    {
+                        var problems = data.FailureDetails.Split(new[] { " | " }, StringSplitOptions.None);
+                        _lblFailureDetails.Text = string.Join(Environment.NewLine, problems.Select((p, i) => $"{i + 1}. {p}"));
+                    }
+                    else
+                    {
+                        _lblFailureDetails.Text = "-";
+                    }
+
+                    if (!string.IsNullOrEmpty(data.ActionDetails))
+                    {
+                        var actions = data.ActionDetails.Split(new[] { " | " }, StringSplitOptions.None);
+                        _lblActionDetails.Text = string.Join(Environment.NewLine, actions.Select((a, i) => $"{i + 1}. {a}"));
+                    }
+                    else
+                    {
+                        _lblActionDetails.Text = "-";
+                    }
+
+                    // Populate Time Info
+                    _lblReportTime.Text = data.CreatedAt.ToString("HH:mm");
+                    _lblFinishTime.Text = data.FinishedAt?.ToString("HH:mm") ?? "-";
+
+                    // Calculate Durations
+                    if (data.StartedAt.HasValue)
+                    {
+                        TimeSpan arrival = data.StartedAt.Value - data.CreatedAt;
+                        _lblArrivalDuration.Text = arrival.ToString(@"hh\:mm\:ss");
+                    }
+                    
+                    if (data.StartedAt.HasValue && data.FinishedAt.HasValue)
+                    {
+                        TimeSpan repair = data.FinishedAt.Value - data.StartedAt.Value;
+                        _lblRepairDuration.Text = repair.ToString(@"hh\:mm\:ss");
+                    }
+
+                    // Populate GL Rating (Read Only) - Removed
+                    // if (data.GlRatingScore.HasValue)
+                    //     _glRatingControl.Rating = data.GlRatingScore.Value;
+                    
+                    if (!string.IsNullOrEmpty(data.GlRatingNote))
+                        _lblGlNote.Text = data.GlRatingNote;
+                    else
+                        _lblGlNote.Text = "(Belum dinilai oleh GL)";
+
+                    // Populate Operator Rating (Existing Input) - Star Removed
+                    // if (data.TechRatingScore.HasValue)
+                    //     _starRating.Rating = data.TechRatingScore.Value;
+                    
+                    if (!string.IsNullOrEmpty(data.TechRatingNote))
+                    {
+                        _inputNote.InputValue = data.TechRatingNote;
+                        _inputNote.Enabled = false;
+                        _btnSubmit.Text = "Tutup";
+                    }
+
+                    // Populate Sparepart Requests
+                    if (!string.IsNullOrEmpty(data.SparepartRequests))
+                    {
+                        var parts = data.SparepartRequests.Split(new[] { ", " }, StringSplitOptions.None);
+                        _lblSparepartRequests.Text = string.Join(Environment.NewLine, parts.Select((p, i) => $"{i + 1}. {p}"));
+                    }
+                    else
+                    {
+                        _lblSparepartRequests.Text = "(Tidak ada permintaan sparepart)";
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Data tiket tidak ditemukan!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    this.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Gagal memuat data: {ex.Message}", "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async Task BtnSubmit_ClickAsync(object sender, EventArgs e)
+        {
+            if (_btnSubmit.Text == "Tutup")
+            {
+                this.DialogResult = DialogResult.OK;
+                this.Close();
+                return;
+            }
+
+            try
+            {
+                if (_ticketId > 0)
+                {
+                    // Pass 0 as rating
+                    await _repository.UpdateOperatorRatingAsync(_ticketId, 0, _inputNote.InputValue);
+                }
+                
+                MessageBox.Show("Penilaian operator berhasil disimpan.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                this.DialogResult = DialogResult.OK;
+                this.Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Gagal menyimpan penilaian: {ex.Message}", "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+    }
+}

@@ -1,187 +1,610 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Dapper;
-using mtc_app;
+using mtc_app.features.machine_history.data.dtos;
+using mtc_app.features.machine_history.data.repositories;
 using mtc_app.features.machine_history.presentation.components;
+using mtc_app.shared.presentation.components;
+using mtc_app.shared.presentation.styles;
+using mtc_app.shared.infrastructure;
+using mtc_app.shared.data.repositories;
+using mtc_app.shared.data.session;
+using mtc_app.features.authentication.presentation.screens; 
+using mtc_app.features.applicator_patrol.data.services;
+using System.IO;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
-    public partial class MachineHistoryFormOperator : Form
+    public partial class MachineHistoryFormOperator : AppBaseForm
     {
-        private List<ModernInputControl> _inputs;
+        private readonly IMachineHistoryRepository _repository;
+        private readonly IMasterDataRepository _masterDataRepository;
         
-        // Named references for specific logic
-        private ModernInputControl inputNIK;
-        private ModernInputControl inputApplicator;
-        private ModernInputControl inputProblem;
-        private ModernInputControl inputProblemType;
-
-        public MachineHistoryFormOperator()
+        // CSV paths for prdmst (same as applicator patrol)
+        private static readonly Dictionary<string, string> CsvPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
+            { "AC90", @"C:\AC90HMI\prg\prdmst.csv" },
+            { "AC81", @"" },
+            { "AC95", @"" },
+        };
+        
+        // Header Inputs
+        private AppInput inputOperatorNik; // [BARU] Input untuk NIK Operator
+        private AppInput inputShift;
+        private AppInput inputApplicator;
+        
+        // Dynamic Problem List
+        private FlowLayoutPanel pnlProblems;
+        private AppButton btnAddProblem;
+        private AppButton btnSave;
+        private List<ProblemInputControl> _problemControls = new List<ProblemInputControl>();
+        
+        // History Tab Controls
+        private MachineHistoryListControl _historyControl;
+        private DateTimePicker _dtpStart;
+        private DateTimePicker _dtpEnd;
+        private ComboBox _cmbArea;
+        private AppButton _btnFilter;
+
+        // Pending Ticket Indicator
+        private TabControl _tabControl;
+        private LinkLabel _lnkPendingTicket;
+        private MachineHistoryDto _pendingTicket;
+
+        public MachineHistoryFormOperator() : this(ServiceLocator.CreateMachineHistoryRepository()) { }
+
+        public MachineHistoryFormOperator(IMachineHistoryRepository repository)
+        {
+            _repository = repository;
+            _masterDataRepository = ServiceLocator.CreateMasterDataRepository();
             InitializeComponent();
+            InitializeCustomTabs();
             SetupInputs();
+            
+            this.WindowState = FormWindowState.Maximized;
+            this.KeyPreview = true;
+            this.KeyDown += HandleKeyDown;
+        }
+
+        protected override async void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            this.OnResize(EventArgs.Empty);
+
+            await Task.Delay(50); 
+
+            LoadAreas();
+            LoadApplicatorsFromCsv();
+            await CheckForPendingTicketAsync();
+        }
+
+        // Main Responsive Layout Containers
+        private TableLayoutPanel _rootLayout;
+        private TableLayoutPanel _tab1Layout;
+        private TableLayoutPanel _formLayout; 
+        private TableLayoutPanel _problemsLayout; 
+
+        private void InitializeCustomTabs()
+        {
+            this.Controls.Clear(); 
+
+            // === 1. Root Layout (Header, Content) ===
+            _rootLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                BackColor = AppColors.Background
+            };
+            _rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            _rootLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); 
+            _rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); 
+
+            panelHeader.Dock = DockStyle.Fill;
+            _rootLayout.Controls.Add(panelHeader, 0, 0);
+
+            // === 2. Tab Control (Content) ===
+            _tabControl = new TabControl
+            {
+                Dock = DockStyle.Fill,
+                Font = AppFonts.Body,
+                Padding = new Point(10, 5)
+            };
+            _rootLayout.Controls.Add(_tabControl, 0, 1);
+            this.Controls.Add(_rootLayout);
+
+            // === Tab 1: Report Tab ===
+            var tabReport = new TabPage("Lapor Kerusakan") { BackColor = AppColors.CardBackground };
+
+            _tab1Layout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                Padding = new Padding(20, 10, 0, 10) 
+            };
+            _tab1Layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            _tab1Layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); 
+            _tab1Layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));    
+
+            _formLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                AutoScroll = true,
+                Padding = new Padding(0, 0, 20, 0) 
+            };
+            _formLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            _tab1Layout.Controls.Add(_formLayout, 0, 0);
+
+            panelFooter.Parent = null; 
+            panelFooter.Controls.Clear();
+            panelFooter.Dock = DockStyle.Fill;
+            panelFooter.Height = 80; 
+            panelFooter.Padding = new Padding(0); 
+            _tab1Layout.Controls.Add(panelFooter, 0, 1);
+
+            tabReport.Controls.Add(_tab1Layout);
+            _tabControl.TabPages.Add(tabReport);
+
+            // === Tab 2: History Tab ===
+            var tabHistory = new TabPage("Riwayat Mesin") { BackColor = AppColors.CardBackground };
+            var pnlFilter = new FlowLayoutPanel 
+            { 
+                Dock = DockStyle.Top, 
+                Height = 60, 
+                Padding = new Padding(10, 15, 10, 10),
+                FlowDirection = FlowDirection.LeftToRight,
+                AutoSize = false
+            };
+            
+            _dtpStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110, Value = DateTime.Today };
+            var lblTo = new Label { Text = "s/d", AutoSize = true, Margin = new Padding(5, 5, 5, 0) }; 
+            _dtpEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110, Value = DateTime.Today };
+            
+            var lblArea = new Label { Text = "Area:", AutoSize = true, Margin = new Padding(10, 5, 5, 0) };
+            _cmbArea = new ComboBox 
+            { 
+                DropDownStyle = ComboBoxStyle.DropDownList, 
+                Width = 100,
+                Font = AppFonts.BodySmall
+            };
+            _cmbArea.Items.Add("Semua"); 
+            _cmbArea.SelectedIndex = 0;
+
+            _btnFilter = new AppButton { Text = "Filter", Type = AppButton.ButtonType.Primary, Width = 80, Height = 30, Margin = new Padding(10, 0, 0, 0) };
+            _btnFilter.Click += async (s, e) => await LoadHistoryAsync();
+
+            pnlFilter.Controls.AddRange(new Control[] { _dtpStart, lblTo, _dtpEnd, lblArea, _cmbArea, _btnFilter });
+            tabHistory.Controls.Add(pnlFilter);
+
+            _historyControl = new MachineHistoryListControl { Dock = DockStyle.Fill };
+            _historyControl.ItemClicked += HistoryControl_ItemClicked;
+            tabHistory.Controls.Add(_historyControl);
+            _historyControl.BringToFront();
+
+            _tabControl.TabPages.Add(tabHistory);
+
+            _tabControl.SelectedIndexChanged += async (s, e) =>
+            {
+                if (_tabControl.SelectedTab == tabHistory)
+                {
+                    await LoadHistoryAsync();
+                }
+            };
+
+            _lnkPendingTicket = new LinkLabel
+            {
+                Text = "⚠️ CONTINUE PROBLEM",
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold), 
+                LinkColor = Color.Gold, 
+                ActiveLinkColor = Color.Yellow,
+                LinkBehavior = LinkBehavior.HoverUnderline,
+                AutoSize = true,
+                Visible = false,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Cursor = Cursors.Hand,
+                BackColor = Color.Transparent 
+            };
+            panelHeader.Controls.Add(_lnkPendingTicket);
+            RepositionPendingLink(); 
+            _lnkPendingTicket.LinkClicked += LnkPendingTicket_LinkClicked;
+        }
+        
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            RepositionPendingLink();
+        }
+
+        private void RepositionPendingLink()
+        {
+            if (_lnkPendingTicket != null && panelHeader != null)
+            {
+                _lnkPendingTicket.Location = new Point(panelHeader.Width - _lnkPendingTicket.Width - 5, 15);
+            }
         }
 
         private void SetupInputs()
         {
-            _inputs = new List<ModernInputControl>();
+            void AddToForm(Control c, int bottomMargin = 10)
+            {
+                 c.Dock = DockStyle.Top; 
+                 c.Margin = new Padding(0, 0, 0, bottomMargin);
+                 _formLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                 _formLayout.Controls.Add(c, 0, _formLayout.RowCount++);
+            }
 
-            // 1. NIK Operator
-            inputNIK = CreateInput("NIK Operator", ModernInputControl.InputTypeEnum.Dropdown, true);
-            inputNIK.SetDropdownItems(new[] { "12345", "67890" });
+            // 1. NIK Operator [BARU]
+            inputOperatorNik = CreateInput("NIK Operator", AppInput.InputTypeEnum.Text, true);
+            // Mengisi otomatis NIK dari UserSession jika login
+            if (UserSession.IsLoggedIn)
+            {
+                inputOperatorNik.InputValue = UserSession.CurrentUser?.Username ?? "";
+            }
+            AddToForm(inputOperatorNik);
 
-            // 2. No. Aplikator
-            inputApplicator = CreateInput("No. Aplikator", ModernInputControl.InputTypeEnum.Text, false);
+            // 2. Shift
+            inputShift = CreateInput("Shift", AppInput.InputTypeEnum.Dropdown, true);
+            inputShift.AllowCustomText = false;
+            LoadShiftsFromDB();
+            AddToForm(inputShift);
 
-            // 3. Problem Mesin
-            inputProblem = CreateInput("Problem Mesin", ModernInputControl.InputTypeEnum.Dropdown, true);
-            inputProblem.AllowCustomText = true;
-            inputProblem.SetDropdownItems(new[] {
-                "Bellmouth tidak standart", "Tergores", "Servo",
-                "Fraying Core", "Stripping NG", "Tidak Stripping",
-                "Cacat Crimp sisi A", "Cacat Crimp sisi B",
-                "Cacat Strip sisi A", "Cacat Strip sisi B",
-                "BDCS", "Deformasi Terminal", "Mesin Off",
-                "Terminal Crack", "Rear tidak seimbang",
-                "Insulation Tidak Tercrimping", "Komputer Mati",
-                "Insulation Tercrimping", "CFM mati", "CFM tidak connect",
-                "Conveyor tidak berputar", "Seal error", "Seal Sobek",
-                "Seal Maju Mundur", "Seal tidak Insert",
-                "Jalur Chipping Buntu", "Tekanan Udara NG",
-                "Wire Terbelit", "Damage Insulatiom",
-                "Kanban Tidak Bisa diBarcode", "Flash", "Cross section NG"
-            });
+            // 3. Applicator (Dropdown dari prdmst.csv, bisa kosong)
+            inputApplicator = CreateInput("No. Aplikator", AppInput.InputTypeEnum.Dropdown, false);
+            inputApplicator.AllowCustomText = true;
+            AddToForm(inputApplicator);
 
-            // 4. Jenis Problem
-            inputProblemType = CreateInput("Jenis Problem", ModernInputControl.InputTypeEnum.Dropdown, true);
-            inputProblemType.SetDropdownItems(new[] {
-                "Aplikator", "Servo", "Cutting / Stripping NG",
-                "Rubber Seal", "CPU / Monitor problem", "CFM error", "lainnya"
-            });
+            // 4. Problems Label
+            var lblProblems = new Label 
+            {
+                Text = "Daftar Kerusakan:", 
+                Font = AppFonts.Subtitle,
+                ForeColor = AppColors.TextPrimary,
+                AutoSize = true,
+                Margin = new Padding(0, 20, 0, 5)
+            };
+            AddToForm(lblProblems);
 
-            // Add all to layout
-            mainLayout.Controls.AddRange(_inputs.ToArray());
+            // 5. Problems Container
+            _problemsLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink, 
+                GrowStyle = TableLayoutPanelGrowStyle.AddRows,
+                ColumnCount = 1,
+                Padding = new Padding(0)
+            };
+            _problemsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            
+            _formLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _formLayout.Controls.Add(_problemsLayout, 0, _formLayout.RowCount++);
+
+            // 6. Add Problem Button
+            btnAddProblem = new AppButton
+            {
+                Text = "+ Tambah Problem Lain",
+                Width = 200, 
+                Height = 40,
+                Type = AppButton.ButtonType.Secondary,
+                Margin = new Padding(0, 10, 0, 20)
+            };
+            btnAddProblem.Click += (s, e) => AddProblemInput();
+            AddToForm(btnAddProblem);
+
+            // === Footer Action Button ===
+             btnSave = new AppButton 
+            { 
+                Text = "Panggil Teknisi", 
+                Type = AppButton.ButtonType.Primary, 
+                Height = 55,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(10) 
+            };
+            btnSave.Click += SaveButton_Click;
+            
+            panelFooter.Controls.Add(btnSave);
+
+            AddProblemInput();
         }
 
-        private ModernInputControl CreateInput(string label, ModernInputControl.InputTypeEnum type, bool required)
+        private void AddProblemInput()
         {
-            var input = new ModernInputControl
+            var problemControl = new ProblemInputControl(_problemControls.Count);
+            problemControl.RemoveRequested += (s, e) => RemoveProblemInput(problemControl);
+            problemControl.Dock = DockStyle.Top;
+            
+            _problemControls.Add(problemControl);
+            
+            _problemsLayout.SuspendLayout();
+            _problemsLayout.RowCount = _problemControls.Count;
+            _problemsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 230));
+            _problemsLayout.Controls.Add(problemControl, 0, _problemControls.Count - 1);
+            _problemsLayout.ResumeLayout(true);
+        }
+
+        private void RemoveProblemInput(ProblemInputControl control)
+        {
+            if (_problemControls.Count <= 1)
+            {
+                AutoClosingMessageBox.Show("Minimal harus ada satu problem.", "Info", 1500);
+                return;
+            }
+            
+            _problemControls.Remove(control);
+            
+            // Rebuild the entire TableLayoutPanel to avoid ghost rows
+            _problemsLayout.SuspendLayout();
+            _problemsLayout.Controls.Clear();
+            _problemsLayout.RowStyles.Clear();
+            _problemsLayout.RowCount = _problemControls.Count;
+            
+            for (int i = 0; i < _problemControls.Count; i++)
+            {
+                _problemControls[i].UpdateIndex(i);
+                _problemsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 230));
+                _problemsLayout.Controls.Add(_problemControls[i], 0, i);
+            }
+            _problemsLayout.ResumeLayout(true);
+            
+            control.Dispose();
+            
+            // Explicitly set height to match content and reset scroll
+            _problemsLayout.Height = _problemControls.Count * 230;
+            _formLayout.AutoScrollPosition = new Point(0, 0);
+            _formLayout.PerformLayout();
+        }
+
+        private void HandleKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                if (this.ActiveControl == btnSave) return;
+                this.SelectNextControl(this.ActiveControl, true, true, true, true);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        private AppInput CreateInput(string label, AppInput.InputTypeEnum type, bool required)
+        {
+            return new AppInput
             {
                 LabelText = label,
                 InputType = type,
                 IsRequired = required,
-                Width = 410 // Fixed width for consistency
+                AllowCustomText = (type == AppInput.InputTypeEnum.Dropdown)
             };
-
-            _inputs.Add(input);
-            return input;
         }
 
-        private void SaveButton_Click(object sender, EventArgs e)
+        private async void LoadShiftsFromDB()
         {
-            // Validate all inputs
-            bool isValid = true;
-            foreach (var input in _inputs)
+            try
             {
-                if (!input.ValidateInput())
+                var shifts = await _masterDataRepository.GetShiftsAsync();
+                inputShift.SetDropdownItems(shifts.Select(s => s.ShiftName).ToArray());
+            }
+            catch { /* Ignore */ }
+        }
+
+        private void LoadApplicatorsFromCsv()
+        {
+            try
+            {
+                // Resolve machine code from config
+                string machineCode = "";
+                if (int.TryParse(DatabaseHelper.GetMachineId(), out int configId))
                 {
-                    isValid = false;
+                    var machines = Task.Run(() => _masterDataRepository.GetMachinesAsync()).Result;
+                    var machine = machines?.FirstOrDefault(m => m.MachineId == configId);
+                    if (machine != null) machineCode = machine.Code ?? "";
                 }
-            }
 
-            if (!isValid)
-            {
-                MessageBox.Show("Mohon lengkapi data yang diperlukan.", "Validasi Gagal", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            try 
-            {
-                using (var connection = DatabaseHelper.GetConnection())
+                // Find matching CSV path
+                string csvPath = null;
+                foreach (var key in CsvPaths.Keys)
                 {
-                    connection.Open();
-                    
-                    // 1. Generate UUID & Ticket Code
-                    string uuid = Guid.NewGuid().ToString();
-                    string dateCode = DateTime.Now.ToString("yyMMdd");
-                    
-                    // Get sequence for today (simple approach)
-                    string countSql = "SELECT COUNT(*) FROM tickets WHERE DATE(created_at) = CURDATE()";
-                    int dailyCount = connection.ExecuteScalar<int>(countSql);
-                    string displayCode = $"TKT-{dateCode}-{(dailyCount + 1):D3}"; 
+                    if (!string.IsNullOrEmpty(machineCode) && machineCode.StartsWith(key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        string configured = CsvPaths[key];
+                        if (!string.IsNullOrEmpty(configured))
+                            csvPath = Path.IsPathRooted(configured) ? configured : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, configured);
+                        break;
+                    }
+                }
 
-                    // 2. Resolve IDs
-                    // Operator: Try to find user by NIK (assuming NIK is username), else default to 1 (System/Admin)
-                    // Machine: Default to 1 for now (should come from config)
-                    int operatorId = 1; 
-                    var userCheck = connection.QueryFirstOrDefault<int?>("SELECT user_id FROM users WHERE username = @Nik", new { Nik = inputNIK.InputValue });
-                    if (userCheck.HasValue) operatorId = userCheck.Value;
+                if (string.IsNullOrEmpty(csvPath) || !File.Exists(csvPath)) return;
 
-                    int machineId = 1; 
+                // Read applicators from prdmst.csv
+                var (sideA, sideB) = ApplicatorCsvReader.ReadApplicators(csvPath);
+                var allApplicators = sideA.Union(sideB).OrderBy(x => x).ToArray();
 
-                    // 3. Insert to Database
-                    string insertSql = @"
-                        INSERT INTO tickets 
-                        (ticket_uuid, ticket_display_code, machine_id, operator_id, failure_details, status_id, created_at)
-                        VALUES 
-                        (@Uuid, @Code, @MachineId, @OpId, @Details, 1, NOW());";
-
-                    // Combine Problem Type and Problem Description
-                    string fullDetails = $"[{inputProblemType.InputValue}] {inputProblem.InputValue} (Aplikator: {inputApplicator.InputValue})";
-
-                    connection.Execute(insertSql, new {
-                        Uuid = uuid,
-                        Code = displayCode,
-                        MachineId = machineId,
-                        OpId = operatorId,
-                        Details = fullDetails
-                    });
-
-                    // Sukses Simpan -> Lanjut Buka Form Teknisi
-                    // Kita sembunyikan form ini, dan buka form teknisi.
-                    // Nanti form teknisi perlu logika untuk mengambil tiket terakhir atau tiket berdasarkan UUID.
-                    // Untuk sekarang kita buka saja dulu.
-                    
-                    var technicianForm = new MachineHistoryFormTechnician();
-                    this.Hide(); 
-                    technicianForm.FormClosed += (s, args) => this.Show(); // Show back when closed
-                    technicianForm.Show();
-                    
-                    // Reset inputs
-                    inputProblem.InputValue = "";
-                    inputProblemType.InputValue = "";
+                if (allApplicators.Length > 0)
+                {
+                    inputApplicator.SetDropdownItems(allApplicators);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Gagal menyimpan data ke database:\n{ex.Message}", "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"[MachineHistory] Error loading applicators: {ex.Message}");
+            }
+        }
+
+        private async void LoadAreas()
+        {
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    var areas = await conn.QueryAsync<string>("SELECT area_name FROM machine_areas ORDER BY area_name");
+                    foreach (var area in areas)
+                    {
+                        if (!_cmbArea.Items.Contains(area)) 
+                            _cmbArea.Items.Add(area);
+                    }
+                }
+            }
+            catch { /* Ignore */ }
+        }
+
+        private async Task LoadHistoryAsync()
+        {
+            try
+            {
+                string areaFilter = null;
+                if (_cmbArea.SelectedItem != null && _cmbArea.SelectedItem.ToString() != "Semua")
+                {
+                    areaFilter = _cmbArea.SelectedItem.ToString();
+                }
+
+                int? machineId = null;
+                if (int.TryParse(DatabaseHelper.GetMachineId(), out int configId))
+                {
+                    machineId = configId;
+                }
+
+                var startDate = _dtpStart.Value.Date;
+                var endDate = _dtpEnd.Value.Date.AddDays(1).AddTicks(-1);
+
+                var history = await _repository.GetHistoryAsync(startDate, endDate, null, areaFilter, machineId);
+                _historyControl.SetData(history);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Gagal memuat riwayat: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async void SaveButton_Click(object sender, EventArgs e)
+        {
+            // [BARU] Validasi untuk input NIK Operator juga
+            if (!inputOperatorNik.ValidateInput() || !inputShift.ValidateInput())
+            {
+                MessageBox.Show("Mohon lengkapi data wajib (NIK Operator dan Shift).", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            foreach (var prob in _problemControls)
+            {
+                if (!prob.InputType.ValidateInput() || !prob.InputFailure.ValidateInput())
+                {
+                    MessageBox.Show("Mohon lengkapi detail problem.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+            }
+
+            try 
+            {
+                int machineId = 1;
+                if (int.TryParse(DatabaseHelper.GetMachineId(), out int configId))
+                {
+                    machineId = configId;
+                }
+
+                var request = new CreateTicketRequest
+                {
+                    // [BARU] Mengambil NIK Operator dari form input, bukan dari session langsung
+                    OperatorNik = inputOperatorNik.InputValue, 
+                    ShiftName = inputShift.InputValue,
+                    ApplicatorCode = inputApplicator.InputValue,
+                    MachineId = machineId,
+                    Problems = _problemControls.Select(p => new TicketProblemRequest 
+                    { 
+                        ProblemTypeName = p.InputType.InputValue,
+                        FailureName = p.InputFailure.InputValue 
+                    }).ToList()
+                };
+
+                var result = await _repository.CreateTicketAsync(request);
+
+                string successMsg = (result.TicketId < 0) 
+                    ? "Tiket Disimpan Offline.\nMenunggu Sinkronisasi." 
+                    : $"Tiket Berhasil Dibuat!\nKode: {result.TicketCode}";
+
+                AutoClosingMessageBox.Show(successMsg, "Sukses", 2000);
+
+                OpenTechnicianForm(result.TicketId);
+            }
+            catch (Exception ex)
+            {
+                string msg = ex.Message;
+                if (ex.InnerException != null) msg += $"\nDetails: {ex.InnerException.Message}";
+                MessageBox.Show($"Gagal menyimpan: {msg}", "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void PanelFooter_Paint(object sender, PaintEventArgs e)
         {
-            // Draw top border for footer
-            using (var pen = new Pen(Color.FromArgb(230, 230, 230)))
+            using (var pen = new Pen(AppColors.Separator))
             {
                 e.Graphics.DrawLine(pen, 0, 0, panelFooter.Width, 0);
             }
         }
 
-        protected override void OnResize(EventArgs e)
+        private async Task CheckForPendingTicketAsync()
         {
-            base.OnResize(e);
-            // Responsive width for inputs
-            if (mainLayout != null && _inputs != null)
+            try
             {
-                foreach (var input in _inputs)
+                int machineId = 1;
+                if (int.TryParse(DatabaseHelper.GetMachineId(), out int configId))
                 {
-                    input.Width = mainLayout.ClientSize.Width - 40;
+                    machineId = configId;
+                }
+
+                _pendingTicket = await _repository.GetActiveTicketForMachineAsync(machineId);
+                
+                if (_pendingTicket != null)
+                {
+                    _lnkPendingTicket.Text = $"⚠️ CONTINUE PROBLEM ({_pendingTicket.StatusName.ToUpper()})";
+                    _lnkPendingTicket.Visible = true;
+                    // Recalculate position after text change
+                    RepositionPendingLink();
+                }
+                else
+                {
+                    _lnkPendingTicket.Visible = false;
                 }
             }
+            catch
+            {
+                _lnkPendingTicket.Visible = false;
+            }
+        }
+
+        private async void LnkPendingTicket_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            if (_pendingTicket == null) return;
+
+            _tabControl.SelectedIndex = 1;
+            await LoadHistoryAsync();
+            OpenTechnicianForm(_pendingTicket.TicketId);
+        }
+
+        private void HistoryControl_ItemClicked(object sender, MachineHistoryDto item)
+        {
+            if (item.StatusId == 1 || item.StatusId == 2)
+            {
+                OpenTechnicianForm(item.TicketId);
+            }
+        }
+
+        private void OpenTechnicianForm(long ticketId)
+        {
+            var technicianForm = new MachineHistoryFormTechnician(ticketId);
+            this.Hide();
+            
+            // Current form hides, waits for technician form to close
+            technicianForm.FormClosed += (s, args) =>
+            {
+                // Closing this form triggers the original LoginForm (which opened this) to show itself
+                this.Close();
+            };
+            technicianForm.Show();
         }
     }
 }

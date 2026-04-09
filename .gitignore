@@ -17,6 +17,14 @@ Release/
 x64/
 x86/
 AnyCPU/
+database/
+
+Properties/PublishProfiles/
+publish_86/
+publish_external_64/
+publish_fix_test/
+publish_test/
+
 
 # ===============================
 # .NET Core
@@ -44,3 +52,17 @@ Desktop.ini
 .env.local
 
 appsettings.json
+
+# antigravity rules
+.agent/
+db_maintenance.sql
+db_update_micrometer.sql
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+*.db3
+*.s3db
+*.sl3
+mtc_app.db
+mtc_app.sqlite

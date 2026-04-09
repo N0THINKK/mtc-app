@@ -1,0 +1,237 @@
+using System;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Windows.Forms;
+using mtc_app.shared.presentation.styles;
+using mtc_app.shared.presentation.utils;
+
+namespace mtc_app.features.technician.presentation.components
+{
+    public class TechnicianWorkQueueStatsControl : UserControl
+    {
+        // Ticket Workflow Cards
+        private Panel pnlOpen;
+        private Panel pnlRepairing;
+        private Panel pnlDone;
+        
+        private Label lblOpenValue;
+        private Label lblOpenLabel;
+        private PictureBox iconOpen;
+        
+        private Label lblRepairValue;
+        private Label lblRepairLabel;
+        private PictureBox iconRepair;
+
+        private Label lblDoneValue;
+        private Label lblDoneLabel;
+        private PictureBox iconDone;
+
+        // Machine State Cards (HANYA RUN SEKARANG)
+        private Panel pnlRun;
+        private Label lblRunValue;
+        private Label lblRunLabel;
+        private PictureBox iconRun;
+
+        public TechnicianWorkQueueStatsControl()
+        {
+            InitializeComponent();
+        }
+
+        // UPDATE PARAMETER: format a/b untuk mesin beroperasi
+        public void UpdateStats(int openCount, int repairCount, int doneCount, int runCount, int totalMachine)
+        {
+            lblOpenValue.Text = openCount.ToString();
+            lblRepairValue.Text = repairCount.ToString();
+            lblDoneValue.Text = doneCount.ToString();
+            
+            // Tampilkan rasio a/b
+            lblRunValue.Text = $"{runCount}/{totalMachine}";
+        }
+
+        private void InitializeComponent()
+        {
+            this.pnlOpen = new Panel();
+            this.pnlRepairing = new Panel();
+            this.pnlDone = new Panel();
+            this.pnlRun = new Panel();
+            
+            this.lblOpenValue = new Label();
+            this.lblOpenLabel = new Label();
+            this.iconOpen = new PictureBox();
+            
+            this.lblRepairValue = new Label();
+            this.lblRepairLabel = new Label();
+            this.iconRepair = new PictureBox();
+            
+            this.lblDoneValue = new Label();
+            this.lblDoneLabel = new Label();
+            this.iconDone = new PictureBox();
+
+            this.lblRunValue = new Label();
+            this.lblRunLabel = new Label();
+            this.iconRun = new PictureBox();
+
+            this.SuspendLayout();
+            
+            // Main UserControl
+            this.BackColor = Color.Transparent;
+            this.Size = new Size(1340, 100);
+            this.Padding = new Padding(0);
+
+            // Main container: two groups side by side
+            var flowCards = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Dock = DockStyle.Fill,
+                BackColor = Color.Transparent,
+                Padding = new Padding(0)
+            };
+
+            // ═══ Group 1: Ticket Workflow ═══
+            SetupStatCard(pnlOpen, iconOpen, lblOpenValue, lblOpenLabel,
+                "0", "Belum Ditangani", AppColors.Danger, Color.FromArgb(254, 242, 242));
+
+            SetupStatCard(pnlRepairing, iconRepair, lblRepairValue, lblRepairLabel,
+                "0", "Sedang Diperbaiki", Color.FromArgb(234, 179, 8), Color.FromArgb(254, 252, 232));
+
+            SetupStatCard(pnlDone, iconDone, lblDoneValue, lblDoneLabel,
+                "0", "Selesai", Color.FromArgb(34, 197, 94), Color.FromArgb(240, 253, 244));
+
+            flowCards.Controls.Add(pnlOpen);
+            flowCards.Controls.Add(pnlRepairing);
+            flowCards.Controls.Add(pnlDone);
+
+            // ═══ Separator ═══
+            var separator = new Panel
+            {
+                Width = 2,
+                Height = 80,
+                BackColor = AppColors.Separator,
+                Margin = new Padding(AppDimens.GapStandard, 10, AppDimens.GapStandard, 10)
+            };
+            flowCards.Controls.Add(separator);
+
+            // ═══ Group 2: Machine State (HANYA RUN) ═══
+            SetupStatCard(pnlRun, iconRun, lblRunValue, lblRunLabel,
+                "0/0", "Mesin Beroperasi", Color.FromArgb(34, 197, 94), Color.FromArgb(240, 253, 244));
+
+            flowCards.Controls.Add(pnlRun);
+
+            this.Controls.Add(flowCards);
+
+            this.ResumeLayout(false);
+        }
+
+        private void SetupStatCard(Panel panel, PictureBox icon, Label valueLabel, Label textLabel,
+            string defaultValue, string labelText, Color accentColor, Color bgColor)
+        {
+            // Panel
+            panel.BackColor = AppColors.CardBackground;
+            panel.Size = new Size(210, 100);
+            panel.Margin = new Padding(0, 0, AppDimens.GapStandard, 0);
+            panel.Paint += (s, e) => DrawStatCard(e.Graphics, panel.ClientRectangle, accentColor);
+
+            // Icon
+            icon.Size = new Size(48, 48);
+            icon.Location = new Point(16, 26);
+            icon.BackColor = Color.Transparent;
+            
+            if (labelText.Contains("Belum"))
+                icon.Paint += (s, e) => DrawAlertIcon(e.Graphics, accentColor);
+            else if (labelText.Contains("Sedang"))
+                icon.Paint += (s, e) => DrawWrenchIcon(e.Graphics, accentColor);
+            else if (labelText.Contains("Run") || labelText.Contains("Beroperasi"))
+                icon.Paint += (s, e) => DrawRunIcon(e.Graphics, accentColor);
+            else
+                icon.Paint += (s, e) => DrawCheckCircleIcon(e.Graphics, accentColor);
+
+            // Value Label
+            valueLabel.Font = new Font("Segoe UI", 24F, FontStyle.Bold);
+            valueLabel.ForeColor = AppColors.TextPrimary;
+            valueLabel.Location = new Point(72, 20);
+            valueLabel.AutoSize = true;
+            valueLabel.Text = defaultValue;
+
+            // Text Label
+            textLabel.Font = new Font("Segoe UI", 10F);
+            textLabel.ForeColor = AppColors.TextSecondary;
+            textLabel.Location = new Point(72, 58);
+            textLabel.AutoSize = true;
+            textLabel.Text = labelText;
+
+            // Add controls to panel
+            panel.Controls.Add(textLabel);
+            panel.Controls.Add(valueLabel);
+            panel.Controls.Add(icon);
+
+            // Hover effect
+            panel.MouseEnter += (s, e) => {
+                panel.BackColor = bgColor;
+                panel.Cursor = Cursors.Hand;
+            };
+            panel.MouseLeave += (s, e) => {
+                panel.BackColor = AppColors.CardBackground;
+                panel.Cursor = Cursors.Default;
+            };
+        }
+
+        private void DrawStatCard(Graphics g, Rectangle bounds, Color accentColor)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (GraphicsPath path = GraphicsUtils.GetRoundedRectangle(new Rectangle(0, 0, bounds.Width - 1, bounds.Height - 1), 8))
+            {
+                g.FillPath(new SolidBrush(AppColors.CardBackground), path);
+                g.DrawPath(new Pen(Color.FromArgb(230, 230, 230), 1), path);
+            }
+            using (Pen accentPen = new Pen(accentColor, 3))
+            {
+                g.DrawLine(accentPen, 8, 0, bounds.Width - 8, 0);
+            }
+        }
+
+        private void DrawAlertIcon(Graphics g, Color color)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (Pen pen = new Pen(color, 3))
+            {
+                g.DrawLine(pen, 24, 4, 44, 40);
+                g.DrawLine(pen, 44, 40, 4, 40);
+                g.DrawLine(pen, 4, 40, 24, 4);
+                g.DrawLine(pen, 24, 16, 24, 28);
+                g.DrawLine(pen, 24, 32, 24, 34);
+            }
+        }
+
+        private void DrawWrenchIcon(Graphics g, Color color)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (Pen pen = new Pen(color, 3))
+            {
+                g.DrawLine(pen, 12, 36, 24, 24);
+                g.DrawArc(pen, 20, 8, 20, 20, 270, 270); 
+            }
+        }
+
+        private void DrawRunIcon(Graphics g, Color color)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (Brush brush = new SolidBrush(color))
+            {
+                Point[] points = { new Point(16, 12), new Point(16, 36), new Point(38, 24) };
+                g.FillPolygon(brush, points);
+            }
+        }
+
+        private void DrawCheckCircleIcon(Graphics g, Color color)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (Pen pen = new Pen(color, 3))
+            {
+                g.DrawEllipse(pen, 4, 4, 40, 40);
+                g.DrawLine(pen, 14, 24, 20, 30);
+                g.DrawLine(pen, 20, 30, 34, 16);
+            }
+        }
+    }
+}

@@ -1,0 +1,173 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Threading.Tasks;
+using Dapper;
+using mtc_app.features.stock.data.dtos;
+using mtc_app.features.stock.data.enums;
+
+namespace mtc_app.features.stock.data.repositories
+{
+    public class StockRepository : IStockRepository
+    {
+        public async Task<IEnumerable<PartRequestDto>> GetRequestsAsync(RequestStatus? filter, SortOrder sort)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                if (connection.State != ConnectionState.Open)
+                    connection.Open();
+
+                string sql = @"
+                SELECT 
+                    pr.request_id AS RequestId,
+                    t.ticket_id AS TicketId,
+                    pr.requested_at AS RequestedAt,
+                    pr.ready_at AS ReadyAt,
+                    p.part_code AS PartCode,
+                    COALESCE(p.part_name, pr.part_name_manual) AS PartName,
+                    (SELECT GROUP_CONCAT(DISTINCT u_tech.full_name SEPARATOR ', ')
+                     FROM ticket_technician_sessions tts
+                     JOIN users u_tech ON tts.technician_id = u_tech.user_id
+                     WHERE tts.ticket_id = t.ticket_id
+                    ) AS TechnicianName,
+                    pr.qty AS Qty,
+                    rs.status_name AS StatusName,
+                    pr.status_id AS StatusId,
+                    CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) AS MachineName
+                FROM part_requests pr
+                LEFT JOIN parts p ON pr.part_id = p.part_id
+                LEFT JOIN tickets t ON pr.ticket_id = t.ticket_id
+                LEFT JOIN request_statuses rs ON pr.status_id = rs.status_id
+                LEFT JOIN machines m ON t.machine_id = m.machine_id
+                LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                LEFT JOIN machine_areas ma ON m.area_id = ma.area_id";
+
+                var parameters = new DynamicParameters();
+
+                if (filter.HasValue && filter.Value != RequestStatus.None)
+                {
+                    sql += " WHERE pr.status_id = @StatusId";
+                    parameters.Add("StatusId", (int)filter.Value);
+                }
+
+                string sortDirection = sort == SortOrder.Ascending ? "ASC" : "DESC";
+                sql += $" ORDER BY pr.requested_at {sortDirection}";
+
+                return await connection.QueryAsync<PartRequestDto>(sql, parameters);
+            }
+        }
+
+        public async Task<StockStatsDto> GetStatsAsync()
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                if (connection.State != ConnectionState.Open)
+                    connection.Open();
+
+                // Optimized single query for all stats
+                const string sql = @"
+                    SELECT 
+                        COUNT(*) AS TotalRequests,
+                        COUNT(CASE WHEN status_id = 1 THEN 1 END) AS PendingCount,
+                        COUNT(CASE WHEN status_id = 2 THEN 1 END) AS ReadyCount,
+                        COUNT(CASE WHEN status_id = 4 THEN 1 END) AS RejectedCount
+                    FROM part_requests";
+
+                return await connection.QuerySingleAsync<StockStatsDto>(sql);
+            }
+        }
+
+        public async Task<IEnumerable<PartRequestDto>> GetRequestsByDateAsync(DateTime start, DateTime end)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                if (connection.State != ConnectionState.Open)
+                    connection.Open();
+
+                const string sql = @"
+                SELECT 
+                    pr.request_id AS RequestId,
+                    t.ticket_id AS TicketId,
+                    pr.requested_at AS RequestedAt,
+                    pr.ready_at AS ReadyAt,
+                    p.part_code AS PartCode,
+                    COALESCE(p.part_name, pr.part_name_manual) AS PartName,
+                    (SELECT GROUP_CONCAT(DISTINCT u_tech.full_name SEPARATOR ', ')
+                     FROM ticket_technician_sessions tts
+                     JOIN users u_tech ON tts.technician_id = u_tech.user_id
+                     WHERE tts.ticket_id = t.ticket_id
+                    ) AS TechnicianName,
+                    pr.qty AS Qty,
+                    rs.status_name AS StatusName,
+                    pr.status_id AS StatusId,
+                    CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) AS MachineName
+                FROM part_requests pr
+                LEFT JOIN parts p ON pr.part_id = p.part_id
+                LEFT JOIN tickets t ON pr.ticket_id = t.ticket_id
+                LEFT JOIN request_statuses rs ON pr.status_id = rs.status_id
+                LEFT JOIN machines m ON t.machine_id = m.machine_id
+                LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
+                WHERE pr.requested_at BETWEEN @Start AND @End
+                ORDER BY pr.requested_at DESC";
+
+                return await connection.QueryAsync<PartRequestDto>(sql, new { Start = start, End = end });
+            }
+        }
+
+        public async Task<StockStatsDto> GetStatsByDateAsync(DateTime start, DateTime end)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                if (connection.State != ConnectionState.Open)
+                    connection.Open();
+
+                const string sql = @"
+                    SELECT 
+                        COUNT(*) AS TotalRequests,
+                        COUNT(CASE WHEN status_id = 1 THEN 1 END) AS PendingCount,
+                        COUNT(CASE WHEN status_id = 2 THEN 1 END) AS ReadyCount,
+                        COUNT(CASE WHEN status_id = 4 THEN 1 END) AS RejectedCount
+                    FROM part_requests
+                    WHERE requested_at BETWEEN @Start AND @End";
+
+                return await connection.QuerySingleAsync<StockStatsDto>(sql, new { Start = start, End = end });
+            }
+        }
+
+        public async Task<bool> MarkAsReadyAsync(int requestId)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                if (connection.State != ConnectionState.Open)
+                    connection.Open();
+
+                const string sql = @"
+                    UPDATE part_requests 
+                    SET status_id = 2, ready_at = NOW() 
+                    WHERE request_id = @Id";
+
+                var affectedRows = await connection.ExecuteAsync(sql, new { Id = requestId });
+                return affectedRows > 0;
+            }
+        }
+
+        public async Task<bool> RejectRequestAsync(int requestId)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                if (connection.State != ConnectionState.Open)
+                    connection.Open();
+
+                const string sql = @"
+                    UPDATE part_requests 
+                    SET status_id = 4 
+                    WHERE request_id = @Id";
+
+                var affectedRows = await connection.ExecuteAsync(sql, new { Id = requestId });
+                return affectedRows > 0;
+            }
+        }
+    }
+}
