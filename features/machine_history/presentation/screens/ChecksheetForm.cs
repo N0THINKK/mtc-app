@@ -26,6 +26,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private int _currentMachineId;
         private int _currentTemplateId;
         private List<ChecksheetItemControl> _itemControls = new List<ChecksheetItemControl>();
+        private List<int> _pendingNgItemIds = new List<int>();
 
         public ChecksheetForm(bool isTeknisiMode = false)
         {
@@ -249,12 +250,12 @@ namespace mtc_app.features.machine_history.presentation.screens
                     }
 
                     // 3.5 Ambil ID item yang saat ini masih berstatus NOT OK / pending
-                    var pendingNgItemIds = conn.Query<int>(@"
+                    _pendingNgItemIds = conn.Query<int>(@"
                         SELECT DISTINCT d.item_id
                         FROM patrol_logs l
                         JOIN patrol_log_details d ON l.log_id = d.log_id
                         WHERE l.machine_id = @Id 
-                          AND d.status IN ('NOT_OK', 'NG')
+                          AND d.status IN ('NOT_OK', 'NG', 'NG_CARRYOVER')
                     ", new { Id = _currentMachineId }).ToList();
 
                     // 4. Gambar Pertanyaannya ke Layar secara dinamis
@@ -269,7 +270,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                         };
 
                         // Kunci jika item masih NG
-                        if (pendingNgItemIds.Contains(currentItemId))
+                        if (_pendingNgItemIds.Contains(currentItemId))
                         {
                             rowControl.SetAsPendingNg();
                         }
@@ -333,32 +334,12 @@ namespace mtc_app.features.machine_history.presentation.screens
                         string status = item.ValueString;
                         bool createTicket = false;
 
-                        // // AUTO-TICKETING LOGIC: 
-                        // if (!item.IsOk && item.NeedsTechnician)
-                        // {
-                        //     createTicket = true;
-                        //     try
-                        //     {
-                        //         var historyRepo = new MachineHistoryRepository();
-
-                        //         await historyRepo.CreateTicketAsync(new CreateTicketRequest
-                        //         {
-                        //             MachineId = _currentMachineId,
-                        //             OperatorNik = userNik,
-                        //             ShiftName = "A", // Shift Default
-                        //             ApplicatorCode = "-",
-                        //             Problems = new List<TicketProblemRequest>
-                        //             {
-                        //                 new TicketProblemRequest
-                        //                 {
-                        //                     ProblemTypeName = "Lain-lain",
-                        //                     FailureName = $"[CHECKSHEET] {item.ItemName} NG"
-                        //                 }
-                        //             }
-                        //         });
-                        //     }
-                        //     catch { /* Abaikan error tiket otomatis agar proses simpan patroli utama tetap sukses */ }
-                        // }
+                        // [MODIFIKASI] Cegah terjadinya duplikat data NG di antrean Teknisi
+                        bool isPending = _pendingNgItemIds.Contains(item.ItemId);
+                        if (isPending && (status == "NG" || status == "NOT_OK"))
+                        {
+                            status = "NG_CARRYOVER";
+                        }
 
                         conn.Execute(
                             @"INSERT INTO patrol_log_details (log_id, item_id, status, action_note, is_ticket_created) 

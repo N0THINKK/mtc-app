@@ -1420,15 +1420,23 @@ namespace mtc_app.features.machine_history.presentation.screens
                             }
                             
                             // [BARU] Auto-Resolve Patroli NG items for this machine
-                            // [MODIFIKASI] Auto-Resolve HANYA item NG yang sedang diperbaiki
+                            // [MODIFIKASI] Bersihkan SEMUA data NG duplikat terkait item ini untuk unlocking UI checksheet Operator
                             if (_patrolDetailId > 0)
                             {
-                                string resolveNgSql = @"
-                                    UPDATE patrol_log_details 
-                                    SET status = 'PERBAIKAN_OK'
-                                    WHERE detail_id = @DetailId AND status IN ('NOT_OK', 'NG')";
-                                      
-                                conn.Execute(resolveNgSql, new { DetailId = _patrolDetailId }, trans);
+                                int itemIdToResolve = conn.QueryFirstOrDefault<int>("SELECT item_id FROM patrol_log_details WHERE detail_id = @DetailId", new { DetailId = _patrolDetailId }, trans);
+                                
+                                if (itemIdToResolve > 0)
+                                {
+                                    int ticketMachineId = conn.QueryFirstOrDefault<int>("SELECT machine_id FROM tickets WHERE ticket_id = @TicketId", new { TicketId = _currentTicketId }, trans);
+                                    
+                                    string resolveNgSql = @"
+                                        UPDATE patrol_log_details d
+                                        JOIN patrol_logs l ON d.log_id = l.log_id
+                                        SET d.status = 'PERBAIKAN_OK'
+                                        WHERE l.machine_id = @MachineId AND d.item_id = @ItemId AND d.status IN ('NOT_OK', 'NG', 'NG_CARRYOVER')";
+                                          
+                                    conn.Execute(resolveNgSql, new { MachineId = ticketMachineId, ItemId = itemIdToResolve }, trans);
+                                }
                             }
                             
                             trans.Commit();

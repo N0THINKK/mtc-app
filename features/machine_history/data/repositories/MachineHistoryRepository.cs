@@ -365,11 +365,11 @@ namespace mtc_app.features.machine_history.data.repositories
                             var lastRecord = matchingRecords.Last();
                             string status = lastRecord.Status?.ToString() ?? "";
 
-                            if (status == "OK" || status == "PERBAIKAN_OK")
+                            if (status == "OK")
                             {
                                 row[dateCol] = "OK";
                             }
-                            else if (status == "NG" || status == "NOT_OK")
+                            else if (status == "NG" || status == "NOT_OK" || status == "PERBAIKAN_OK" || status == "NG_CARRYOVER")
                             {
                                 row[dateCol] = "NG";
                             }
@@ -408,7 +408,7 @@ namespace mtc_app.features.machine_history.data.repositories
                     FROM patrol_logs l
                     JOIN patrol_log_details d ON l.log_id = d.log_id
                     WHERE l.machine_id = @MachineId 
-                      AND d.status IN ('NOT_OK', 'NG')
+                      AND d.status IN ('NOT_OK', 'NG', 'NG_CARRYOVER')
                       -- Kita hanya ambil yang benar-benar belum selesai (is_ticket_created tidak menuntaskan masalah secara langsung tanpa tiket ditutup, tapi di sini kita cukup cek status detailnya)
                 ";
                 var result = await connection.QueryAsync<int>(sql, new { MachineId = machineId });
