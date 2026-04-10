@@ -465,5 +465,18 @@ namespace mtc_app.features.admin.data.repositories
                 return await connection.ExecuteAsync("DELETE FROM shift_breaks WHERE id = @id", new { id = breakId }) > 0;
             }
         }
+
+        // ==========================================
+        // PATROL NG MANAGEMENT
+        // ==========================================
+        public async Task<bool> DeletePatrolNgAsync(int detailId)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                // Menghapus detail patroli secara permanen dari tabel patrol_log_details
+                string sql = "DELETE FROM patrol_log_details WHERE detail_id = @DetailId";
+                return await connection.ExecuteAsync(sql, new { DetailId = detailId }) > 0;
+            }
+        }
     }
 }
