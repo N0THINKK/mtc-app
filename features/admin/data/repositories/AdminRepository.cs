@@ -109,6 +109,20 @@ namespace mtc_app.features.admin.data.repositories
             }
         }
 
+        public async Task<IEnumerable<dynamic>> GetMasterMachineAreasDataAsync()
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        area_id as id,
+                        area_name as nama 
+                    FROM machine_areas
+                    ORDER BY area_name ASC";
+                return await connection.QueryAsync(sql);
+            }
+        }
+
         public async Task<IEnumerable<dynamic>> GetMasterSparepartsAsync()
         {
             using (var connection = DatabaseHelper.GetConnection())
@@ -290,6 +304,16 @@ namespace mtc_app.features.admin.data.repositories
                         return await connection.ExecuteAsync(sql, new { kode = data["kode"], typeId = typeId, areaId = areaId }) > 0;
                     }
                 }
+                else if (category == "Area Mesin")
+                {
+                    if (isEdit) {
+                        string sql = "UPDATE machine_areas SET area_name=@nama WHERE area_id=@id";
+                        return await connection.ExecuteAsync(sql, new { nama = data["nama"], id = data["id"] }) > 0;
+                    } else {
+                        string sql = "INSERT INTO machine_areas (area_name) VALUES (@nama)";
+                        return await connection.ExecuteAsync(sql, new { nama = data["nama"] }) > 0;
+                    }
+                }
                 else if (category == "Sparepart")
                 {
                     if (isEdit) {
@@ -329,6 +353,10 @@ namespace mtc_app.features.admin.data.repositories
                 else if (category == "Mesin")
                 {
                     return await connection.ExecuteAsync("UPDATE machines SET is_deleted = 1 WHERE machine_id=@id", new { id }) > 0;
+                }
+                else if (category == "Area Mesin")
+                {
+                    return await connection.ExecuteAsync("DELETE FROM machine_areas WHERE area_id=@id", new { id }) > 0;
                 }
                 else if (category == "Sparepart")
                 {
@@ -467,13 +495,27 @@ namespace mtc_app.features.admin.data.repositories
         }
 
         // ==========================================
-        // PATROL NG MANAGEMENT
+        // PATROL NG & TICKETS MANAGEMENT
         // ==========================================
+        public async Task<bool> DeleteTicketAsync(long ticketId)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                // Eksekusi hapus di tabel-tabel anak terlebih dahulu untuk mencegah issue foreign key, lalu hapus tiket utamanya.
+                string sql = @"
+                    DELETE FROM ticket_problems WHERE ticket_id = @TicketId;
+                    DELETE FROM ticket_technician_sessions WHERE ticket_id = @TicketId;
+                    DELETE FROM part_requests WHERE ticket_id = @TicketId;
+                    DELETE FROM tickets WHERE ticket_id = @TicketId;
+                ";
+                return await connection.ExecuteAsync(sql, new { TicketId = ticketId }) > 0;
+            }
+        }
+
         public async Task<bool> DeletePatrolNgAsync(int detailId)
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // Menghapus detail patroli secara permanen dari tabel patrol_log_details
                 string sql = "DELETE FROM patrol_log_details WHERE detail_id = @DetailId";
                 return await connection.ExecuteAsync(sql, new { DetailId = detailId }) > 0;
             }

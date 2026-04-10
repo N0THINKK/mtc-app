@@ -14,6 +14,7 @@ namespace mtc_app.features.admin.data.repositories
 
         Task<IEnumerable<dynamic>> GetMasterUsersAsync();
         Task<IEnumerable<dynamic>> GetMasterMachinesAsync();
+        Task<IEnumerable<dynamic>> GetMasterMachineAreasDataAsync();
         Task<IEnumerable<dynamic>> GetMasterSparepartsAsync();
 
         Task<IEnumerable<dynamic>> GetMasterProblemTypesAsync();
@@ -40,7 +41,8 @@ namespace mtc_app.features.admin.data.repositories
         Task<bool> SaveShiftBreakAsync(int? breakId, string shiftName, int dayId, int nonOtMinutes, int otMinutes);
         Task<bool> DeleteShiftBreakAsync(int breakId);
 
-        // Patrol NG Management
+        // Patrol NG & Tickets Management
+        Task<bool> DeleteTicketAsync(long ticketId);
         Task<bool> DeletePatrolNgAsync(int detailId);
     }
 }

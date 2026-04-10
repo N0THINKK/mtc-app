@@ -307,6 +307,10 @@ namespace mtc_app.features.admin.presentation.views
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "KODE MESIN", DataPropertyName = "kode", FillWeight = 80 });
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "KONDISI", DataPropertyName = "kondisi", FillWeight = 80 });
                     break;
+                case "Area Mesin":
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", DataPropertyName = "id", FillWeight = 50 });
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "NAMA AREA", DataPropertyName = "nama", FillWeight = 250 });
+                    break;
                 case "Sparepart":
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "KODE PART", DataPropertyName = "kode", FillWeight = 80 });
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "NAMA SPAREPART", DataPropertyName = "nama", FillWeight = 180 });
@@ -330,6 +334,7 @@ namespace mtc_app.features.admin.presentation.views
                 this.Cursor = Cursors.WaitCursor;
                 if (category == "User") _originalData = await _repository.GetMasterUsersAsync();
                 else if (category == "Mesin") _originalData = await _repository.GetMasterMachinesAsync();
+                else if (category == "Area Mesin") _originalData = await _repository.GetMasterMachineAreasDataAsync();
                 else if (category == "Sparepart") _originalData = await _repository.GetMasterSparepartsAsync();
                 else if (category == "Target") _originalData = await _repository.GetOutputTargetsAsync();
                 
@@ -485,19 +490,33 @@ namespace mtc_app.features.admin.presentation.views
                         var dataDict = rowData as IDictionary<string, object>;
                         int idToDelete = Convert.ToInt32(dataDict["id"]);
 
-                        bool success;
-                        if (_currentCategory == "Target")
-                            success = await _repository.DeleteOutputTargetAsync(idToDelete);
-                        else
-                            success = await _repository.DeleteMasterDataAsync(_currentCategory, _currentProblemSubCategory, idToDelete);
+                        try
+                        {
+                            bool success;
+                            if (_currentCategory == "Target")
+                                success = await _repository.DeleteOutputTargetAsync(idToDelete);
+                            else
+                                success = await _repository.DeleteMasterDataAsync(_currentCategory, _currentProblemSubCategory, idToDelete);
 
-                        if (success) {
-                            if (_currentCategory == "Problem" || _currentCategory == "Checksheet") 
-                                LoadSubCategory(_currentProblemSubCategory);
-                            else 
-                                LoadCategory(_currentCategory);
-                        } else {
-                            MessageBox.Show("Gagal menghapus data. Data mungkin sedang dipakai di tabel lain.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            if (success) {
+                                if (_currentCategory == "Problem" || _currentCategory == "Checksheet") 
+                                    LoadSubCategory(_currentProblemSubCategory);
+                                else 
+                                    LoadCategory(_currentCategory);
+                            } else {
+                                MessageBox.Show("Gagal menghapus data. Data mungkin sedang dipakai di tabel lain.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            if (ex.Message.Contains("foreign key") || ex.Message.Contains("REFERENCE"))
+                            {
+                                MessageBox.Show("Tidak dapat menghapus data ini karena masih digunakan (terikat) dengan data lain di sistem (misal: ada mesin yang menggunakan area ini).", "Gagal Menghapus", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            }
+                            else
+                            {
+                                MessageBox.Show($"Terjadi kesalahan saat menghapus data:\n{ex.Message}", "Error Sistem", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
                         }
                     }
                 }
