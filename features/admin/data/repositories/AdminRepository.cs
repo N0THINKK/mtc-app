@@ -405,12 +405,13 @@ namespace mtc_app.features.admin.data.repositories
                         ot.target_id AS id,
                         mt.type_name AS tipe_mesin,
                         ma.area_name AS area,
-                        ot.machine_number AS no_mesin,
+                        m.machine_number AS no_mesin,
                         ot.target_per_hour AS target_per_jam
                     FROM machine_output_targets ot
-                    JOIN machine_types mt ON ot.type_id = mt.type_id
-                    JOIN machine_areas ma ON ot.area_id = ma.area_id
-                    ORDER BY mt.type_name, ma.area_name";
+                    JOIN machines m ON ot.machine_id = m.machine_id
+                    JOIN machine_types mt ON m.type_id = mt.type_id
+                    JOIN machine_areas ma ON m.area_id = ma.area_id
+                    ORDER BY mt.type_name, ma.area_name, m.machine_number";
                 return await connection.QueryAsync(sql);
             }
         }
@@ -419,21 +420,31 @@ namespace mtc_app.features.admin.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
+                int? machineId = await connection.QueryFirstOrDefaultAsync<int?>(
+                    "SELECT machine_id FROM machines WHERE type_id = @typeId AND area_id = @areaId AND machine_number = @machineNumber AND is_deleted = 0",
+                    new { typeId, areaId, machineNumber }
+                );
+
+                if (!machineId.HasValue)
+                {
+                    throw new Exception("Mesin dengan Tipe, Area, dan Nomor tersebut tidak ditemukan di Master Mesin. Harap daftarkan atau periksa kembali data mesin.");
+                }
+
                 if (targetId.HasValue && targetId.Value > 0)
                 {
                     string sql = @"
                         UPDATE machine_output_targets 
-                        SET type_id = @typeId, area_id = @areaId, machine_number = @machineNumber, target_per_hour = @target
+                        SET machine_id = @machineId, target_per_hour = @target
                         WHERE target_id = @targetId";
-                    return await connection.ExecuteAsync(sql, new { targetId = targetId.Value, typeId, areaId, machineNumber, target = targetPerHour }) > 0;
+                    return await connection.ExecuteAsync(sql, new { targetId = targetId.Value, machineId = machineId.Value, target = targetPerHour }) > 0;
                 }
                 else
                 {
                     string sql = @"
-                        INSERT INTO machine_output_targets (type_id, area_id, machine_number, target_per_hour)
-                        VALUES (@typeId, @areaId, @machineNumber, @target)
+                        INSERT INTO machine_output_targets (machine_id, target_per_hour)
+                        VALUES (@machineId, @target)
                         ON DUPLICATE KEY UPDATE target_per_hour = @target";
-                    return await connection.ExecuteAsync(sql, new { typeId, areaId, machineNumber, target = targetPerHour }) > 0;
+                    return await connection.ExecuteAsync(sql, new { machineId = machineId.Value, target = targetPerHour }) > 0;
                 }
             }
         }
