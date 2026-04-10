@@ -14,6 +14,7 @@ namespace mtc_app.features.admin.data.repositories
 
         Task<IEnumerable<dynamic>> GetMasterUsersAsync();
         Task<IEnumerable<dynamic>> GetMasterMachinesAsync();
+        Task<IEnumerable<dynamic>> GetMasterMachineAreasDataAsync();
         Task<IEnumerable<dynamic>> GetMasterSparepartsAsync();
 
         Task<IEnumerable<dynamic>> GetMasterProblemTypesAsync();

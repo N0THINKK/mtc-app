@@ -307,6 +307,10 @@ namespace mtc_app.features.admin.presentation.views
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "KODE MESIN", DataPropertyName = "kode", FillWeight = 80 });
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "KONDISI", DataPropertyName = "kondisi", FillWeight = 80 });
                     break;
+                case "Area Mesin":
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", DataPropertyName = "id", FillWeight = 50 });
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "NAMA AREA", DataPropertyName = "nama", FillWeight = 250 });
+                    break;
                 case "Sparepart":
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "KODE PART", DataPropertyName = "kode", FillWeight = 80 });
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "NAMA SPAREPART", DataPropertyName = "nama", FillWeight = 180 });
@@ -330,6 +334,7 @@ namespace mtc_app.features.admin.presentation.views
                 this.Cursor = Cursors.WaitCursor;
                 if (category == "User") _originalData = await _repository.GetMasterUsersAsync();
                 else if (category == "Mesin") _originalData = await _repository.GetMasterMachinesAsync();
+                else if (category == "Area Mesin") _originalData = await _repository.GetMasterMachineAreasDataAsync();
                 else if (category == "Sparepart") _originalData = await _repository.GetMasterSparepartsAsync();
                 else if (category == "Target") _originalData = await _repository.GetOutputTargetsAsync();
                 

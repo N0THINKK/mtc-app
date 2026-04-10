@@ -120,6 +120,10 @@ namespace mtc_app.features.admin.presentation.screens
                 AddInput("Stok Tersedia", "stok", GetValue("stok"), isNumeric: true);
                 AddInput("Lokasi Rak", "lokasi", GetValue("lokasi"));
             }
+            else if (_category == "Area Mesin")
+            {
+                AddInput("Nama Area Mesin", "nama", GetValue("nama"));
+            }
             else if (_category == "Problem")
             {
                 AddInput($"Nama {_subCategory}", "nama", GetValue("nama"));

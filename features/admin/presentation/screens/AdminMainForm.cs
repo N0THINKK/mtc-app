@@ -90,6 +90,7 @@ namespace mtc_app.features.admin.presentation.screens
             {
                 { "👤 Data User", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("User"); } },
                 { "⚙️ Data Mesin", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Mesin"); } },
+                { "🗺️ Area Mesin", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Area Mesin"); } },
                 { "🔧 Data Sparepart", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Sparepart"); } },
                 { "⚠️ Data Problem", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Problem"); } },
                 { "📋 Data Checksheet", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Checksheet"); } },
