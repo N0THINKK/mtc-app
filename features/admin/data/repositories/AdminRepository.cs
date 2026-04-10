@@ -467,13 +467,27 @@ namespace mtc_app.features.admin.data.repositories
         }
 
         // ==========================================
-        // PATROL NG MANAGEMENT
+        // PATROL NG & TICKETS MANAGEMENT
         // ==========================================
+        public async Task<bool> DeleteTicketAsync(long ticketId)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                // Eksekusi hapus di tabel-tabel anak terlebih dahulu untuk mencegah issue foreign key, lalu hapus tiket utamanya.
+                string sql = @"
+                    DELETE FROM ticket_problems WHERE ticket_id = @TicketId;
+                    DELETE FROM ticket_technician_sessions WHERE ticket_id = @TicketId;
+                    DELETE FROM part_requests WHERE ticket_id = @TicketId;
+                    DELETE FROM tickets WHERE ticket_id = @TicketId;
+                ";
+                return await connection.ExecuteAsync(sql, new { TicketId = ticketId }) > 0;
+            }
+        }
+
         public async Task<bool> DeletePatrolNgAsync(int detailId)
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                // Menghapus detail patroli secara permanen dari tabel patrol_log_details
                 string sql = "DELETE FROM patrol_log_details WHERE detail_id = @DetailId";
                 return await connection.ExecuteAsync(sql, new { DetailId = detailId }) > 0;
             }
