@@ -21,6 +21,7 @@ namespace mtc_app.features.admin.presentation.screens
         private MasterDataView _masterDataView;
         private ReportView _reportView;
         private BackupView _backupView;
+        private NgPatrolAdminView _ngPatrolAdminView;
 
         private UserControl _currentActiveView;
 
@@ -59,6 +60,7 @@ namespace mtc_app.features.admin.presentation.screens
             _masterDataView = new MasterDataView(_repository); 
             _reportView = new ReportView();
             _backupView = new BackupView();
+            _ngPatrolAdminView = new NgPatrolAdminView(_repository);
         }
 
         private void SetupUI()
@@ -95,6 +97,7 @@ namespace mtc_app.features.admin.presentation.screens
                 { "⏱️ Data Waktu Break", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Waktu Break"); } }
             });
 
+            AddMenuButton("🚨 Data Patroli NG", flowMenu, _ngPatrolAdminView, () => _ngPatrolAdminView.LoadData());
             AddMenuButton("🖨️ Laporan / Export", flowMenu, _reportView);
             AddMenuButton("💾 Backup Database", flowMenu, _backupView);
             
