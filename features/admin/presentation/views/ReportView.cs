@@ -39,7 +39,7 @@ namespace mtc_app.features.admin.presentation.views
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     // Ambil semua nama area dari tabel machine_areas
-                    var areas = connection.Query<string>("SELECT area_name FROM machine_areas ORDER BY area_name ASC").ToList();
+                    var areas = connection.Query<string>("SELECT area_name FROM machine_areas WHERE area_name != 'Lain2' ORDER BY area_name ASC").ToList();
                     
                     cmbArea.Items.Clear();
                     cmbArea.Items.Add("Semua Area"); // Pilihan Default

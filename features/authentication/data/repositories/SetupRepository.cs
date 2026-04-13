@@ -20,7 +20,7 @@ namespace mtc_app.features.authentication.data.repositories
             using (var conn = DatabaseHelper.GetConnection())
             {
                 // New Schema: Fetch from lookup table
-                return await conn.QueryAsync<string>("SELECT area_name FROM machine_areas ORDER BY area_name");
+                return await conn.QueryAsync<string>("SELECT area_name FROM machine_areas WHERE area_name != 'Lain2' ORDER BY area_name");
             }
         }
 
