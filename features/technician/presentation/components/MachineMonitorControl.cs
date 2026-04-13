@@ -577,8 +577,8 @@ namespace mtc_app.features.technician.presentation.components
                     {
                         var psData = await conn.QueryAsync(@"
                             SELECT moa.machine_id, 
-                                   SUM(CASE WHEN it.category = 'Planned Stop' THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMin,
-                                   SUM(CASE WHEN it.category = 'Sudden Stop' THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
+                                   SUM(CASE WHEN it.category IN ('Planned Stop', 'Berhenti Terencana') THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMin,
+                                   SUM(CASE WHEN it.category IN ('Sudden Stop', 'Berhenti Tiba Tiba') THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
                             FROM machine_operator_activities moa
                             LEFT JOIN activity_types it ON moa.activity_id = it.id
                             WHERE moa.start_time >= @ShiftStart AND moa.start_time < @ShiftEnd
