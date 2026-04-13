@@ -16,6 +16,12 @@ namespace mtc_app.features.admin.presentation.views
         private IAdminRepository _adminRepo;
         private TechnicianRepository _techRepo; // Untuk fetch data yang sama dengan teknisi
 
+        // Paginasi Controls
+        private System.Collections.Generic.IEnumerable<dynamic> _allNgData;
+        private int _currentPage = 1;
+        private int _pageSize = 20;
+        private shared.presentation.components.PaginationControl paginationTop;
+
         public NgPatrolAdminView(IAdminRepository adminRepo)
         {
             _adminRepo = adminRepo;
@@ -38,8 +44,12 @@ namespace mtc_app.features.admin.presentation.views
                 Type = AppLabel.LabelType.Header2, 
                 Dock = DockStyle.Left,
                 AutoSize = true,
-                TextAlign = ContentAlignment.MiddleLeft
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(0, 0, 10, 0)
             };
+            
+            paginationTop = new shared.presentation.components.PaginationControl { Dock = DockStyle.Left };
+            paginationTop.PageChanged += (s, page) => { _currentPage = page; RenderGrid(); };
             
             Button btnRefresh = new Button
             {
@@ -56,8 +66,9 @@ namespace mtc_app.features.admin.presentation.views
             btnRefresh.FlatAppearance.BorderSize = 0;
             btnRefresh.Click += async (s, e) => await LoadDataAsync();
 
-            pnlHeader.Controls.Add(lblTitle);
             pnlHeader.Controls.Add(btnRefresh);
+            pnlHeader.Controls.Add(paginationTop);
+            pnlHeader.Controls.Add(lblTitle);
 
             // 2. Info Panel
             Panel pnlInfo = new Panel 
@@ -149,11 +160,36 @@ namespace mtc_app.features.admin.presentation.views
                 var list = await _techRepo.GetPatrolNgListAsync("Semua", "DESC", DateTime.Now.AddDays(-30), DateTime.Now);
                 
                 _grid.AutoGenerateColumns = false;
-                _grid.DataSource = list.ToList();
+                
+                _allNgData = list;
+                _currentPage = 1;
+                RenderGrid();
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Gagal memuat data Patroli NG: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void RenderGrid()
+        {
+            if (_allNgData == null)
+            {
+                _grid.DataSource = null;
+                paginationTop.Visible = false;
+                return;
+            }
+
+            var list = _allNgData.ToList();
+            int totalItems = list.Count;
+            
+            var pagedData = list.Skip((_currentPage - 1) * _pageSize).Take(_pageSize).ToList();
+            _grid.DataSource = pagedData;
+
+            paginationTop.Visible = totalItems > 0;
+            if (totalItems > 0)
+            {
+                paginationTop.Setup(totalItems, _pageSize, _currentPage);
             }
         }
 

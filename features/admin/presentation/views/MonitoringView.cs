@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
@@ -21,6 +22,12 @@ namespace mtc_app.features.admin.presentation.views
         private MetricCard cardOpen;
         private MetricCard cardValidate;
         private AppLabel lblLastUpdate;
+
+        // Paginasi Controls
+        private IEnumerable<dynamic> _allTickets;
+        private int _currentPage = 1;
+        private int _pageSize = 20;
+        private PaginationControl paginationTop;
 
         public MonitoringView(IAdminRepository repository)
         {
@@ -94,8 +101,12 @@ namespace mtc_app.features.admin.presentation.views
                 Font = AppFonts.Header3,
                 ForeColor = AppColors.TextPrimary,
                 AutoSize = true,
-                Location = new Point(0, 5)
+                Dock = DockStyle.Left,
+                Padding = new Padding(0, 5, 10, 0)
             };
+
+            paginationTop = new PaginationControl { Dock = DockStyle.Left, Padding = new Padding(10, 5, 0, 0) };
+            paginationTop.PageChanged += (s, page) => { _currentPage = page; RenderGrid(); };
 
             lblLastUpdate = new AppLabel
             {
@@ -108,6 +119,7 @@ namespace mtc_app.features.admin.presentation.views
                 Padding = new Padding(0, 10, 0, 0)
             };
 
+            pnlGridHeader.Controls.Add(paginationTop);
             pnlGridHeader.Controls.Add(lblGridTitle);
             pnlGridHeader.Controls.Add(lblLastUpdate);
 
@@ -452,7 +464,10 @@ namespace mtc_app.features.admin.presentation.views
                 }
 
                 var data = await _repository.GetMonitoringDataAsync();
-                gridTickets.DataSource = data;
+                
+                // Simpan ke memory untuk paginasi
+                _allTickets = data;
+                RenderGrid();
                 
                 lblLastUpdate.Text = $"Terakhir diupdate: {DateTime.Now:HH:mm:ss}";
             }
@@ -463,6 +478,28 @@ namespace mtc_app.features.admin.presentation.views
             finally
             {
                 this.Cursor = Cursors.Default;
+            }
+        }
+
+        private void RenderGrid()
+        {
+            if (_allTickets == null)
+            {
+                gridTickets.DataSource = null;
+                paginationTop.Visible = false;
+                return;
+            }
+
+            var list = _allTickets.ToList();
+            int totalItems = list.Count;
+            
+            var pagedData = list.Skip((_currentPage - 1) * _pageSize).Take(_pageSize).ToList();
+            gridTickets.DataSource = pagedData;
+
+            paginationTop.Visible = totalItems > 0;
+            if (totalItems > 0)
+            {
+                paginationTop.Setup(totalItems, _pageSize, _currentPage);
             }
         }
     }

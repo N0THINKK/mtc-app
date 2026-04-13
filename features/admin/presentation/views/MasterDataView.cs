@@ -27,13 +27,10 @@ namespace mtc_app.features.admin.presentation.views
         private IEnumerable<dynamic> _originalData; 
         private IEnumerable<dynamic> _currentData; 
         private int _currentPage = 1;
-        private int _pageSize = 50;
+        private int _pageSize = 20; // Reverted back to 20 as requested
         
         // Paginasi Controls
-        private Panel pnlPagination;
-        private AppButton btnPrevPage;
-        private AppButton btnNextPage;
-        private Label lblPageInfo;
+        private PaginationControl paginationTop;
 
         // Komponen untuk Tab Problem
         private FlowLayoutPanel pnlProblemTabs;
@@ -58,7 +55,11 @@ namespace mtc_app.features.admin.presentation.views
             Panel pnlHeader = new Panel { Dock = DockStyle.Top, Height = 60, BackColor = Color.Transparent, Padding = new Padding(0, 0, 0, 15) };
 
             // Judul di pojok kiri
-            lblTitle = new AppLabel { Text = "Master Data", Font = AppFonts.Header2, ForeColor = AppColors.TextPrimary, AutoSize = true, Dock = DockStyle.Left };
+            lblTitle = new AppLabel { Text = "Master Data", Font = AppFonts.Header2, ForeColor = AppColors.TextPrimary, AutoSize = true, Dock = DockStyle.Left, Padding=new Padding(0,0,10,0) };
+            
+            // Pagination di sebelah judul
+            paginationTop = new PaginationControl { Dock = DockStyle.Left };
+            paginationTop.PageChanged += (s, page) => { _currentPage = page; RenderGrid(); };
 
             // Tombol Tambah (Akan menempel di pojok kanan)
             btnAdd = new AppButton
@@ -125,7 +126,8 @@ namespace mtc_app.features.admin.presentation.views
             pnlHeader.Controls.Add(btnAdd);     // 1. Paling Kanan
             pnlHeader.Controls.Add(pnlSpacer);  // 2. Jarak kosong
             pnlHeader.Controls.Add(pnlSearch);  // 3. Search Bar
-            pnlHeader.Controls.Add(lblTitle);   // 4. Paling Kiri
+            pnlHeader.Controls.Add(paginationTop); // 4. Sebelah judul
+            pnlHeader.Controls.Add(lblTitle);   // 5. Paling Kiri
 
             // ==========================================
             // 2. PROBLEM TABS SECTION 
@@ -175,37 +177,11 @@ namespace mtc_app.features.admin.presentation.views
             gridData.DefaultCellStyle.Font = AppFonts.BodySmall;
             gridData.DefaultCellStyle.Padding = new Padding(16, 12, 16, 12);
             gridData.RowTemplate.Height = 56;
-            
+
             gridData.DataBindingComplete += (s, e) => gridData.ClearSelection();
             gridData.CellPainting += GridData_CellPainting;
             gridData.CellContentClick += GridData_CellContentClick;
-
-            // ==========================================
-            // PAGINATION UI
-            // ==========================================
-            pnlPagination = new Panel { Dock = DockStyle.Bottom, Height = 40, BackColor = Color.Transparent, Padding = new Padding(0, 10, 0, 0), Visible = false };
             
-            btnPrevPage = new AppButton { Text = "< Sebelumnya", Type = AppButton.ButtonType.Secondary, Width = 120, Dock = DockStyle.Left };
-            btnPrevPage.Click += (s, e) => { if (_currentPage > 1) { _currentPage--; RenderGrid(); } };
-            
-            btnNextPage = new AppButton { Text = "Selanjutnya >", Type = AppButton.ButtonType.Secondary, Width = 120, Dock = DockStyle.Right };
-            btnNextPage.Click += (s, e) => { _currentPage++; RenderGrid(); };
-
-            lblPageInfo = new Label { 
-                Text = "Halaman 1 dari 1", 
-                Font = AppFonts.Body, 
-                ForeColor = AppColors.TextSecondary, 
-                AutoSize = false, 
-                TextAlign = ContentAlignment.MiddleCenter,
-                Dock = DockStyle.Fill 
-            };
-
-            pnlPagination.Controls.Add(btnPrevPage);
-            pnlPagination.Controls.Add(lblPageInfo);
-            pnlPagination.Controls.Add(btnNextPage);
-            
-            // Add Pagination First (Bottom Dock), then GridData (Fill Dock)
-            cardGridContainer.Controls.Add(pnlPagination);
             cardGridContainer.Controls.Add(gridData);
             
             this.Controls.Add(cardGridContainer);
@@ -262,26 +238,21 @@ namespace mtc_app.features.admin.presentation.views
             if (_currentData == null)
             {
                 gridData.DataSource = null;
-                pnlPagination.Visible = false;
+                paginationTop.Visible = false;
                 return;
             }
 
             var list = _currentData.ToList();
             int totalItems = list.Count;
-            int totalPages = (int)Math.Ceiling(totalItems / (double)_pageSize);
-            if (totalPages == 0) totalPages = 1;
-
-            if (_currentPage > totalPages) _currentPage = totalPages;
-            if (_currentPage < 1) _currentPage = 1;
 
             var pagedData = list.Skip((_currentPage - 1) * _pageSize).Take(_pageSize).ToList();
             gridData.DataSource = pagedData;
 
-            lblPageInfo.Text = $"Halaman {_currentPage} dari {totalPages} (Total: {totalItems} data)";
-            btnPrevPage.Enabled = _currentPage > 1;
-            btnNextPage.Enabled = _currentPage < totalPages;
-            
-            pnlPagination.Visible = totalItems > 0;
+            paginationTop.Visible = totalItems > 0;
+            if (totalItems > 0)
+            {
+                paginationTop.Setup(totalItems, _pageSize, _currentPage);
+            }
         }
 
         private void ResetSearchBox()

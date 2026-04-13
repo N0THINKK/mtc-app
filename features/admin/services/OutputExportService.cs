@@ -85,7 +85,7 @@ namespace mtc_app.features.admin.services
                         FROM shift_breaks
                         GROUP BY day_id
                     ) brk ON brk.day_id = (WEEKDAY(DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR))) + 1)
-                    WHERE 1=1 AND mpl.created_at BETWEEN @StartDate AND @EndDate";
+                    WHERE 1=1 AND mpl.created_at BETWEEN @StartDate AND @EndDate AND ma.area_name != 'Lain2'";
 
                 if (area != "Semua Area") {
                     sql += " AND ma.area_name = @Area";

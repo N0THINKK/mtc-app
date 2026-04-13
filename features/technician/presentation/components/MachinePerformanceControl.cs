@@ -45,7 +45,7 @@ namespace mtc_app.features.technician.presentation.components
 
                 using (var conn = DatabaseHelper.GetConnection())
                 {
-                    var areas = await conn.QueryAsync<string>("SELECT area_name FROM machine_areas ORDER BY area_name");
+                    var areas = await conn.QueryAsync<string>("SELECT area_name FROM machine_areas WHERE area_name != 'Lain2' ORDER BY area_name");
                     foreach (var area in areas) cmbArea.Items.Add(area);
                 }
             }
