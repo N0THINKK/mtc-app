@@ -25,6 +25,15 @@ namespace mtc_app.features.admin.presentation.views
         // Tambahan untuk Fitur Search
         private TextBox txtSearch;
         private IEnumerable<dynamic> _originalData; 
+        private IEnumerable<dynamic> _currentData; 
+        private int _currentPage = 1;
+        private int _pageSize = 50;
+        
+        // Paginasi Controls
+        private Panel pnlPagination;
+        private AppButton btnPrevPage;
+        private AppButton btnNextPage;
+        private Label lblPageInfo;
 
         // Komponen untuk Tab Problem
         private FlowLayoutPanel pnlProblemTabs;
@@ -171,6 +180,32 @@ namespace mtc_app.features.admin.presentation.views
             gridData.CellPainting += GridData_CellPainting;
             gridData.CellContentClick += GridData_CellContentClick;
 
+            // ==========================================
+            // PAGINATION UI
+            // ==========================================
+            pnlPagination = new Panel { Dock = DockStyle.Bottom, Height = 40, BackColor = Color.Transparent, Padding = new Padding(0, 10, 0, 0), Visible = false };
+            
+            btnPrevPage = new AppButton { Text = "< Sebelumnya", Type = AppButton.ButtonType.Secondary, Width = 120, Dock = DockStyle.Left };
+            btnPrevPage.Click += (s, e) => { if (_currentPage > 1) { _currentPage--; RenderGrid(); } };
+            
+            btnNextPage = new AppButton { Text = "Selanjutnya >", Type = AppButton.ButtonType.Secondary, Width = 120, Dock = DockStyle.Right };
+            btnNextPage.Click += (s, e) => { _currentPage++; RenderGrid(); };
+
+            lblPageInfo = new Label { 
+                Text = "Halaman 1 dari 1", 
+                Font = AppFonts.Body, 
+                ForeColor = AppColors.TextSecondary, 
+                AutoSize = false, 
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill 
+            };
+
+            pnlPagination.Controls.Add(btnPrevPage);
+            pnlPagination.Controls.Add(lblPageInfo);
+            pnlPagination.Controls.Add(btnNextPage);
+            
+            // Add Pagination First (Bottom Dock), then GridData (Fill Dock)
+            cardGridContainer.Controls.Add(pnlPagination);
             cardGridContainer.Controls.Add(gridData);
             
             this.Controls.Add(cardGridContainer);
@@ -193,7 +228,9 @@ namespace mtc_app.features.admin.presentation.views
             // Jika kosong, kembalikan ke data full
             if (string.IsNullOrWhiteSpace(keyword) || keyword == "pencarian...")
             {
-                gridData.DataSource = _originalData.ToList();
+                _currentData = _originalData;
+                _currentPage = 1;
+                RenderGrid();
                 return;
             }
 
@@ -215,7 +252,36 @@ namespace mtc_app.features.admin.presentation.views
             }).ToList();
 
             // Tampilkan hasil saringan ke grid
-            gridData.DataSource = filteredList;
+            _currentData = filteredList;
+            _currentPage = 1;
+            RenderGrid();
+        }
+
+        private void RenderGrid()
+        {
+            if (_currentData == null)
+            {
+                gridData.DataSource = null;
+                pnlPagination.Visible = false;
+                return;
+            }
+
+            var list = _currentData.ToList();
+            int totalItems = list.Count;
+            int totalPages = (int)Math.Ceiling(totalItems / (double)_pageSize);
+            if (totalPages == 0) totalPages = 1;
+
+            if (_currentPage > totalPages) _currentPage = totalPages;
+            if (_currentPage < 1) _currentPage = 1;
+
+            var pagedData = list.Skip((_currentPage - 1) * _pageSize).Take(_pageSize).ToList();
+            gridData.DataSource = pagedData;
+
+            lblPageInfo.Text = $"Halaman {_currentPage} dari {totalPages} (Total: {totalItems} data)";
+            btnPrevPage.Enabled = _currentPage > 1;
+            btnNextPage.Enabled = _currentPage < totalPages;
+            
+            pnlPagination.Visible = totalItems > 0;
         }
 
         private void ResetSearchBox()
@@ -338,7 +404,9 @@ namespace mtc_app.features.admin.presentation.views
                 else if (category == "Sparepart") _originalData = await _repository.GetMasterSparepartsAsync();
                 else if (category == "Target") _originalData = await _repository.GetOutputTargetsAsync();
                 
-                gridData.DataSource = _originalData?.ToList();
+                _currentData = _originalData;
+                _currentPage = 1;
+                RenderGrid();
             }
             catch (Exception ex) { MessageBox.Show($"Gagal memuat {category}:\n" + ex.Message, "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             finally { this.Cursor = Cursors.Default; }
@@ -401,7 +469,9 @@ namespace mtc_app.features.admin.presentation.views
                 else if (subCategory == "Checksheet Teknisi") _originalData = await _repository.GetMasterChecksheetsAsync("Teknisi"); 
                 else if (_currentCategory == "Waktu Break") _originalData = await _repository.GetShiftBreaksAsync(subCategory);
 
-                gridData.DataSource = _originalData?.ToList();
+                _currentData = _originalData;
+                _currentPage = 1;
+                RenderGrid();
             }
             catch (Exception ex) { MessageBox.Show($"Gagal memuat {subCategory}:\n" + ex.Message, "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             finally { this.Cursor = Cursors.Default; }
