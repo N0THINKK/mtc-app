@@ -72,7 +72,6 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Padding = new Padding(20, 0, 20, 20)
             };
             this.Controls.Add(_pnlContent);
-            _pnlContent.BringToFront(); // Memastikan _pnlContent merender mengisi sisa ruang di bawah pnlHeader
 
             // DataGridView
             _dgvHistory = new DataGridView
@@ -166,8 +165,12 @@ namespace mtc_app.features.machine_history.presentation.screens
             // Tambahkan ke form
             this.Controls.Add(pnlBottom);
             
-            // Pastikan panel ini tidak tertutup oleh grid konten
-            pnlBottom.BringToFront(); 
+            // Atur Z-Index agar pnlBottom dan pnlHeader memakan space pinggir form terlebih dahulu
+            // Dan _pnlContent yang bersifat Dock.Fill akan mengisi sisa space di tengah tanpa overlap
+            pnlHeader.SendToBack();
+            pnlBottom.SendToBack();
+            _lblStatus.SendToBack();
+            _pnlContent.BringToFront(); 
             // =========================================================
         }
 
