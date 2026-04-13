@@ -216,8 +216,36 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Controls.Add(btnLogout);
         }
 
+        private void StopCurrentDowntime()
+        {
+            if (_currentActiveRecordId != null)
+            {
+                try
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        string sql = "UPDATE machine_operator_activities SET end_time = @Now WHERE id = @Id";
+                        conn.Execute(sql, new { Now = DateTime.Now, Id = _currentActiveRecordId.Value });
+                    }
+                }
+                catch { }
+                finally
+                {
+                    _currentActiveRecordId = null;
+                    if (this.IsHandleCreated && !this.IsDisposed) SetButtonToRunState();
+                }
+            }
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            StopCurrentDowntime();
+            base.OnFormClosing(e);
+        }
+
         private void BtnHistory_Click(object sender, EventArgs e)
         {
+            StopCurrentDowntime();
             var historyForm = new MachineHistoryFormOperator();
             this.Hide();
             historyForm.FormClosed += (s, args) => this.Show(); 
@@ -226,6 +254,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void BtnChecksheet_Click(object sender, EventArgs e)
         {
+            StopCurrentDowntime();
             var checkForm = new ChecksheetForm(isTeknisiMode: false);
             this.Hide();
             checkForm.FormClosed += (s, args) => this.Show();
@@ -234,6 +263,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void BtnApplicatorPatrol_Click(object sender, EventArgs e)
         {
+            StopCurrentDowntime();
             var form = new ApplicatorPatrolForm(
                 mtc_app.shared.infrastructure.ServiceLocator.CreateApplicatorPatrolRepository(),
                 mtc_app.shared.infrastructure.ServiceLocator.CreateMasterDataRepository());
@@ -244,6 +274,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void BtnMicrometer_Click(object sender, EventArgs e)
         {
+            StopCurrentDowntime();
             var microForm = new mtc_app.features.micrometer_patrol.presentation.screens.MicrometerPatrolForm(
                 mtc_app.shared.infrastructure.ServiceLocator.CreateMicrometerPatrolRepository(),
                 mtc_app.shared.infrastructure.ServiceLocator.CreateMasterDataRepository());
@@ -288,15 +319,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 else
                 {
                     // State is STOP, going to RUN
-                    using (var conn = DatabaseHelper.GetConnection())
-                    {
-                        // Calc duration natively via DATEDIFF or dynamically in DB wait, I'll let the user SQL query calculate it or I can just save end_time
-                        string sql = "UPDATE machine_operator_activities SET end_time = @Now WHERE id = @Id";
-                        conn.Execute(sql, new { Now = DateTime.Now, Id = _currentActiveRecordId.Value });
-                        
-                        _currentActiveRecordId = null;
-                        SetButtonToRunState();
-                    }
+                    StopCurrentDowntime();
                 }
             }
             catch (Exception ex)
