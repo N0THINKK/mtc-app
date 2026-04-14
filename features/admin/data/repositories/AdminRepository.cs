@@ -54,7 +54,8 @@ namespace mtc_app.features.admin.data.repositories
                     CASE WHEN HOUR(l.created_at) >= 7 AND HOUR(l.created_at) < 15 THEN 'Shift 1' WHEN HOUR(l.created_at) >= 15 AND HOUR(l.created_at) < 23 THEN 'Shift 2' ELSE 'Shift 3' END AS Shift,
                     l.status_mesin AS Status, l.keterangan AS Keterangan
                 FROM machine_process_logs l JOIN machines m ON l.machine_id = m.machine_id JOIN machine_areas ma ON m.area_id = ma.area_id JOIN machine_types mt ON m.type_id = mt.type_id
-                WHERE l.created_at BETWEEN @Start AND @End AND ma.area_name != 'Lain2'";
+                WHERE l.created_at BETWEEN @Start AND @End 
+                AND m.area_id NOT IN (SELECT area_id FROM machine_areas WHERE area_name = 'Lain2')";
 
             if (!string.IsNullOrEmpty(areaName) && areaName != "Semua Area") sql += " AND ma.area_name = @AreaName";
             sql += " ORDER BY l.created_at ASC";
