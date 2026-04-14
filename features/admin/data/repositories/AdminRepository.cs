@@ -46,20 +46,24 @@ namespace mtc_app.features.admin.data.repositories
         {
             DateTime startOfMonth = new DateTime(year, month, 1);
             DateTime endOfMonth = startOfMonth.AddMonths(1).AddSeconds(-1);
-            var connection = DatabaseHelper.GetConnection(); 
             
-            string sql = @"
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                int? lain2Id = connection.QueryFirstOrDefault<int?>("SELECT area_id FROM machine_areas WHERE area_name = 'Lain2'");
+                
+                string sql = @"
                 SELECT 
                     l.created_at AS Tanggal, CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) AS NamaMesin, ma.area_name AS Area,
                     CASE WHEN HOUR(l.created_at) >= 7 AND HOUR(l.created_at) < 15 THEN 'Shift 1' WHEN HOUR(l.created_at) >= 15 AND HOUR(l.created_at) < 23 THEN 'Shift 2' ELSE 'Shift 3' END AS Shift,
                     l.status_mesin AS Status, l.keterangan AS Keterangan
                 FROM machine_process_logs l JOIN machines m ON l.machine_id = m.machine_id JOIN machine_areas ma ON m.area_id = ma.area_id JOIN machine_types mt ON m.type_id = mt.type_id
-                WHERE l.created_at BETWEEN @Start AND @End 
-                AND m.area_id NOT IN (SELECT area_id FROM machine_areas WHERE area_name = 'Lain2')";
+                WHERE l.created_at BETWEEN @Start AND @End";
 
+            if (lain2Id.HasValue) sql += " AND m.area_id != @Lain2Id";
             if (!string.IsNullOrEmpty(areaName) && areaName != "Semua Area") sql += " AND ma.area_name = @AreaName";
             sql += " ORDER BY l.created_at ASC";
-            return connection.Query<dynamic>(sql, new { Start = startOfMonth, End = endOfMonth, AreaName = areaName }, buffered: false, commandTimeout: 300);
+            return connection.Query<dynamic>(sql, new { Start = startOfMonth, End = endOfMonth, AreaName = areaName, Lain2Id = lain2Id }, buffered: false, commandTimeout: 300);
+            }
         }
 
         // ==========================================
