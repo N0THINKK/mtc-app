@@ -47,6 +47,7 @@ namespace mtc_app.features.admin.services
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
+                int? lain2Id = await connection.QueryFirstOrDefaultAsync<int?>("SELECT area_id FROM machine_areas WHERE area_name = 'Lain2'");
                 string sql = @"
                     SELECT 
                         DATE_FORMAT(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR), '%d %M %Y') AS TanggalProduksi,
