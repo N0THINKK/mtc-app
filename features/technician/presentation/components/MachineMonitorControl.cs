@@ -29,6 +29,13 @@ namespace mtc_app.features.technician.presentation.components
         private bool _sortAscending = false;
         private bool _isLoading = false;
 
+        // Background cache state — "Load Fast, Cache All" strategy
+        private Dictionary<int, List<dynamic>> _bgCache = null;
+        private Dictionary<int, List<dynamic>> _bgDowntimeCache = null;
+        private bool _bgCacheReady = false;
+        private DateTime _bgCacheShiftStart;
+        private DateTime _bgCacheShiftEnd;
+
         // Array mapping actual active hours (index) to effective hours (value)
         // Index 0 is 1.0 to prevent division by zero for the 0th hour.
         // Index 1-9: Regular shift (Total max = 8.00). 8.0 spread across 9 hours.
@@ -250,6 +257,7 @@ namespace mtc_app.features.technician.presentation.components
             _comboShift.SelectedIndexChanged += async (s, e) =>
             {
                 _dtpDateFilter.Enabled = _comboShift.SelectedIndex != 0;
+                _bgCacheReady = false; // Invalidate cache on shift change
                 await LoadData();
             };
             var lblShift = new Label { Text = "Shift:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
@@ -257,7 +265,7 @@ namespace mtc_app.features.technician.presentation.components
             // 5. Date Picker
             _dtpDateFilter = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 110, Font = AppFonts.BodySmall, Margin = new Padding(0, 10, 10, 0) };
             _dtpDateFilter.Enabled = false;
-            _dtpDateFilter.ValueChanged += async (s, e) => await LoadData();
+            _dtpDateFilter.ValueChanged += async (s, e) => { _bgCacheReady = false; await LoadData(); };
             var lblDate = new Label { Text = "Tanggal:", AutoSize = true, Font = AppFonts.BodySmall, Margin = new Padding(0, 13, 5, 0) };
 
             flowRight.Controls.Add(_comboSort);
@@ -505,23 +513,40 @@ namespace mtc_app.features.technician.presentation.components
                         }
                     }
 
-                    // --- Query 3: FLAT raw logs — NO self-join, NO UNION ALL ---
-                    // The DB only scans machine_process_logs ONCE with index on (created_at, machine_id).
-                    // C# will compute first/last/max per (machine, hour) from ordered rows.
-                    string sqlLogs = @"
-                        SELECT machine_id,
-                               TIMESTAMPDIFF(HOUR, @ShiftStart, created_at) AS hour_index,
-                               produced_pieces,
-                               auto_time,
-                               monitor_time
-                        FROM machine_process_logs
-                        WHERE created_at >= @ShiftStart AND created_at < @ShiftEnd
-                          AND produced_pieces > 0
-                        ORDER BY machine_id, created_at";
+                    // --- Query 3: FLAT raw logs — "Load Fast, Cache All" ---
+                    // Check if background cache is ready for THIS shift
+                    var machineIds = machines.Keys.ToList();
+                    bool useBgCache = _bgCacheReady
+                        && _bgCacheShiftStart == shiftStart
+                        && _bgCacheShiftEnd == shiftEnd;
 
-                    var logRows = await conn.QueryAsync(sqlLogs, 
-                        new { ShiftStart = shiftStart, ShiftEnd = shiftEnd }, 
-                        commandTimeout: 30);
+                    IEnumerable<dynamic> logRows;
+                    if (useBgCache)
+                    {
+                        // INSTAN: Ambil dari memory cache, filter by area's machine_ids
+                        logRows = machineIds
+                            .Where(id => _bgCache.ContainsKey(id))
+                            .SelectMany(id => _bgCache[id]);
+                    }
+                    else
+                    {
+                        // QUERY DB: Filter by area's machine_ids only
+                        string sqlLogs = @"
+                            SELECT machine_id,
+                                   TIMESTAMPDIFF(HOUR, @ShiftStart, created_at) AS hour_index,
+                                   produced_pieces,
+                                   auto_time,
+                                   monitor_time
+                            FROM machine_process_logs
+                            WHERE created_at >= @ShiftStart AND created_at < @ShiftEnd
+                              AND produced_pieces > 0
+                              AND machine_id IN @MachineIds
+                            ORDER BY machine_id, created_at";
+
+                        logRows = await conn.QueryAsync(sqlLogs,
+                            new { ShiftStart = shiftStart, ShiftEnd = shiftEnd, MachineIds = machineIds },
+                            commandTimeout: 120);
+                    }
 
                     // --- C# ALGORITHM: Compute first/last/max per (machine, hour) ---
                     foreach (var row in logRows)
@@ -575,14 +600,26 @@ namespace mtc_app.features.technician.presentation.components
                     // --- Query 5: Downtime categories (Planned / Sudden) ---
                     try
                     {
-                        var psData = await conn.QueryAsync(@"
-                            SELECT moa.machine_id, 
-                                   SUM(CASE WHEN it.category IN ('Planned Stop', 'Berhenti Terencana') THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMin,
-                                   SUM(CASE WHEN it.category IN ('Sudden Stop', 'Berhenti Tiba Tiba') THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
-                            FROM machine_operator_activities moa
-                            LEFT JOIN activity_types it ON moa.activity_id = it.id
-                            WHERE moa.start_time >= @ShiftStart AND moa.start_time < @ShiftEnd
-                            GROUP BY moa.machine_id", new { ShiftStart = shiftStart, ShiftEnd = shiftEnd });
+                        IEnumerable<dynamic> psData;
+                        if (useBgCache && _bgDowntimeCache != null)
+                        {
+                            // INSTAN: Ambil dari memory cache
+                            psData = machineIds
+                                .Where(id => _bgDowntimeCache.ContainsKey(id))
+                                .SelectMany(id => _bgDowntimeCache[id]);
+                        }
+                        else
+                        {
+                            psData = await conn.QueryAsync(@"
+                                SELECT moa.machine_id, 
+                                       SUM(CASE WHEN it.category IN ('Planned Stop', 'Berhenti Terencana') THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMin,
+                                       SUM(CASE WHEN it.category IN ('Sudden Stop', 'Berhenti Tiba Tiba') THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
+                                FROM machine_operator_activities moa
+                                LEFT JOIN activity_types it ON moa.activity_id = it.id
+                                WHERE moa.start_time >= @ShiftStart AND moa.start_time < @ShiftEnd
+                                  AND moa.machine_id IN @MachineIds
+                                GROUP BY moa.machine_id", new { ShiftStart = shiftStart, ShiftEnd = shiftEnd, MachineIds = machineIds });
+                        }
 
                         foreach (var row in psData)
                         {
@@ -597,6 +634,12 @@ namespace mtc_app.features.technician.presentation.components
                     catch { /* Quiet fallback */ }
 
                 } // End single connection
+
+                // Trigger background pre-load untuk SEMUA area (jika belum di-cache)
+                if (!_bgCacheReady || _bgCacheShiftStart != shiftStart)
+                {
+                    _ = Task.Run(async () => await PreloadAllAreasAsync(shiftStart, shiftEnd));
+                }
 
                 // ══════════════════════════════════════════════════════════
                 // C# POST-PROCESSING (unchanged logic)
@@ -975,6 +1018,81 @@ namespace mtc_app.features.technician.presentation.components
                 _chart.Series.Add(sSudden);
                 _chart.Series.Add(sIdle);
                 _chart.Series.Add(sEffLabel);
+            }
+        }
+
+        /// <summary>
+        /// Background pre-loads ALL areas' data for the current shift.
+        /// Once complete, area switching becomes instant (0 DB queries).
+        /// </summary>
+        private async Task PreloadAllAreasAsync(DateTime shiftStart, DateTime shiftEnd)
+        {
+            try
+            {
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Open();
+
+                    // Fetch ALL logs for this shift (no machine_id filter)
+                    string sql = @"
+                        SELECT machine_id,
+                               TIMESTAMPDIFF(HOUR, @ShiftStart, created_at) AS hour_index,
+                               produced_pieces,
+                               auto_time,
+                               monitor_time
+                        FROM machine_process_logs
+                        WHERE created_at >= @ShiftStart AND created_at < @ShiftEnd
+                          AND produced_pieces > 0
+                        ORDER BY machine_id, created_at";
+
+                    var allRows = await conn.QueryAsync(sql,
+                        new { ShiftStart = shiftStart, ShiftEnd = shiftEnd },
+                        commandTimeout: 300);
+
+                    // Group by machine_id into Dictionary
+                    var cache = new Dictionary<int, List<dynamic>>();
+                    foreach (var row in allRows)
+                    {
+                        int mId = (int)row.machine_id;
+                        if (!cache.ContainsKey(mId))
+                            cache[mId] = new List<dynamic>();
+                        cache[mId].Add(row);
+                    }
+
+                    // Fetch ALL downtime data for this shift
+                    var dtRows = await conn.QueryAsync(@"
+                        SELECT moa.machine_id,
+                               SUM(CASE WHEN it.category IN ('Planned Stop','Berhenti Terencana')
+                                   THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMin,
+                               SUM(CASE WHEN it.category IN ('Sudden Stop','Berhenti Tiba Tiba')
+                                   THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
+                        FROM machine_operator_activities moa
+                        LEFT JOIN activity_types it ON moa.activity_id = it.id
+                        WHERE moa.start_time >= @ShiftStart AND moa.start_time < @ShiftEnd
+                        GROUP BY moa.machine_id",
+                        new { ShiftStart = shiftStart, ShiftEnd = shiftEnd });
+
+                    var dtCache = new Dictionary<int, List<dynamic>>();
+                    foreach (var row in dtRows)
+                    {
+                        int mId = Convert.ToInt32(row.machine_id);
+                        dtCache[mId] = new List<dynamic> { row };
+                    }
+
+                    // Atomic swap — mark cache as ready
+                    _bgCache = cache;
+                    _bgDowntimeCache = dtCache;
+                    _bgCacheShiftStart = shiftStart;
+                    _bgCacheShiftEnd = shiftEnd;
+                    _bgCacheReady = true;
+
+                    System.Diagnostics.Debug.WriteLine($"[BgCache] Pre-loaded {cache.Count} machines for shift {shiftStart:HH:mm} - {shiftEnd:HH:mm}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[BgCache] Error: {ex.Message}");
+                // Gagal pre-load? Tidak masalah, fallback ke query per-area tetap jalan.
             }
         }
 
