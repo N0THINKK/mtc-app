@@ -612,11 +612,11 @@ namespace mtc_app.features.technician.presentation.components
                         {
                             psData = await conn.QueryAsync(@"
                                 SELECT moa.machine_id, 
-                                       SUM(CASE WHEN it.category IN ('Planned Stop', 'Berhenti Terencana') THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMin,
-                                       SUM(CASE WHEN it.category IN ('Sudden Stop', 'Berhenti Tiba Tiba') THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
+                                       SUM(CASE WHEN it.category IN ('Planned Stop', 'Berhenti Terencana') THEN TIMESTAMPDIFF(MINUTE, GREATEST(moa.start_time, @ShiftStart), LEAST(IFNULL(moa.end_time, NOW()), @ShiftEnd)) ELSE 0 END) AS PlannedMin,
+                                       SUM(CASE WHEN it.category IN ('Sudden Stop', 'Berhenti Tiba Tiba') THEN TIMESTAMPDIFF(MINUTE, GREATEST(moa.start_time, @ShiftStart), LEAST(IFNULL(moa.end_time, NOW()), @ShiftEnd)) ELSE 0 END) AS SuddenMin
                                 FROM machine_operator_activities moa
                                 LEFT JOIN activity_types it ON moa.activity_id = it.id
-                                WHERE moa.start_time >= @ShiftStart AND moa.start_time < @ShiftEnd
+                                WHERE moa.start_time < @ShiftEnd AND (moa.end_time IS NULL OR moa.end_time > @ShiftStart)
                                   AND moa.machine_id IN @MachineIds
                                 GROUP BY moa.machine_id", new { ShiftStart = shiftStart, ShiftEnd = shiftEnd, MachineIds = machineIds });
                         }
@@ -626,8 +626,8 @@ namespace mtc_app.features.technician.presentation.components
                             int downtimeMachineId = Convert.ToInt32(row.machine_id);
                             if (machines.TryGetValue(downtimeMachineId, out var downtimeMachine))
                             {
-                                downtimeMachine.PlannedStopMinutes = (double)(row.PlannedMin ?? 0);
-                                downtimeMachine.SuddenStopMinutes = (double)(row.SuddenMin ?? 0);
+                                downtimeMachine.PlannedStopMinutes = Convert.ToDouble(row.PlannedMin ?? 0);
+                                downtimeMachine.SuddenStopMinutes = Convert.ToDouble(row.SuddenMin ?? 0);
                             }
                         }
                     }
@@ -1063,12 +1063,12 @@ namespace mtc_app.features.technician.presentation.components
                     var dtRows = await conn.QueryAsync(@"
                         SELECT moa.machine_id,
                                SUM(CASE WHEN it.category IN ('Planned Stop','Berhenti Terencana')
-                                   THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMin,
+                                   THEN TIMESTAMPDIFF(MINUTE, GREATEST(moa.start_time, @ShiftStart), LEAST(IFNULL(moa.end_time, NOW()), @ShiftEnd)) ELSE 0 END) AS PlannedMin,
                                SUM(CASE WHEN it.category IN ('Sudden Stop','Berhenti Tiba Tiba')
-                                   THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
+                                   THEN TIMESTAMPDIFF(MINUTE, GREATEST(moa.start_time, @ShiftStart), LEAST(IFNULL(moa.end_time, NOW()), @ShiftEnd)) ELSE 0 END) AS SuddenMin
                         FROM machine_operator_activities moa
                         LEFT JOIN activity_types it ON moa.activity_id = it.id
-                        WHERE moa.start_time >= @ShiftStart AND moa.start_time < @ShiftEnd
+                        WHERE moa.start_time < @ShiftEnd AND (moa.end_time IS NULL OR moa.end_time > @ShiftStart)
                         GROUP BY moa.machine_id",
                         new { ShiftStart = shiftStart, ShiftEnd = shiftEnd });
 
