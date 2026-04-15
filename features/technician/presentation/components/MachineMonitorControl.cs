@@ -807,7 +807,7 @@ namespace mtc_app.features.technician.presentation.components
                 double maxTarget = data.Count > 0 ? data.Max(x => x.TargetPerHour) : 0;
                 area.AxisY.Maximum = Math.Max(maxVal, maxTarget) > 0 ? Math.Ceiling(Math.Max(maxVal, maxTarget) * 1.2) : 10;
 
-                area.AxisY.Title = "Output Per Jam (Pcs)";
+                area.AxisY.Title = "Output (Pcs Per Jam)";
 
                 var sBar = new Series("Avg Output/Jam")
                 {
