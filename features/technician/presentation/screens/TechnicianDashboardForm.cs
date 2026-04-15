@@ -361,7 +361,7 @@ namespace mtc_app.features.technician.presentation.screens
             tabStockData.Controls.Add(stockDataControl);
 
             // Tab 3: Performance
-            var tabPerformance = new TabPage("Performa") { BackColor = AppColors.CardBackground };
+            var tabPerformance = new TabPage("Rating") { BackColor = AppColors.CardBackground };
             performanceControl = new TechnicianPerformanceControl(_repository) { Dock = DockStyle.Fill };
             tabPerformance.Controls.Add(performanceControl);
 

@@ -211,7 +211,7 @@ namespace mtc_app.features.technician.presentation.components
             this.Controls.Add(pnlBottom);
             this.Controls.Add(pnlHeader);
 
-            var lblTitle = new Label { Text = "Monitoring Output Efisiensi", Font = AppFonts.PageTitle, ForeColor = AppColors.TextPrimary, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Top, Height = 40 };
+            var lblTitle = new Label { Text = "Monitoring Output Cutting ", Font = AppFonts.PageTitle, ForeColor = AppColors.TextPrimary, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Top, Height = 40 };
             this.Controls.Add(lblTitle);
         }
 
