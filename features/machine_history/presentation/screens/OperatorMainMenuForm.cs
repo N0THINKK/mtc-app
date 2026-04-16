@@ -22,6 +22,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private AppButton btnLogout;
 
         private int? _currentActiveRecordId = null;
+        private DateTime? _offlineStartTime = null; // Tracks activity started while offline
 
         public OperatorMainMenuForm()
         {
@@ -218,20 +219,50 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void StopCurrentDowntime()
         {
-            if (_currentActiveRecordId != null)
+            if (_currentActiveRecordId != null || _offlineStartTime != null)
             {
                 try
                 {
-                    using (var conn = DatabaseHelper.GetConnection())
+                    int mId = GetMachineIdInt();
+
+                    if (_offlineStartTime != null)
                     {
-                        string sql = "UPDATE machine_operator_activities SET end_time = @Now WHERE id = @Id";
-                        conn.Execute(sql, new { Now = DateTime.Now, Id = _currentActiveRecordId.Value });
+                        // Activity was started offline — queue the END action
+                        var payload = new
+                        {
+                            MachineId = mId,
+                            StartTime = _offlineStartTime.Value,
+                            EndTime = DateTime.Now
+                        };
+                        OfflineRepo.AddToQueue("END_ACTIVITY", "machine_operator_activities", payload);
+                    }
+                    else if (_currentActiveRecordId != null)
+                    {
+                        if (NetworkMon.IsOnline)
+                        {
+                            using (var conn = DatabaseHelper.GetConnection())
+                            {
+                                string sql = "UPDATE machine_operator_activities SET end_time = @Now WHERE id = @Id";
+                                conn.Execute(sql, new { Now = DateTime.Now, Id = _currentActiveRecordId.Value });
+                            }
+                        }
+                        else
+                        {
+                            // Was started online but now offline — queue END by record ID
+                            var payload = new
+                            {
+                                RecordId = _currentActiveRecordId.Value,
+                                EndTime = DateTime.Now
+                            };
+                            OfflineRepo.AddToQueue("END_ACTIVITY_BY_ID", "machine_operator_activities", payload);
+                        }
                     }
                 }
                 catch { }
                 finally
                 {
                     _currentActiveRecordId = null;
+                    _offlineStartTime = null;
                     if (this.IsHandleCreated && !this.IsDisposed) SetButtonToRunState();
                 }
             }
@@ -298,19 +329,44 @@ namespace mtc_app.features.machine_history.presentation.screens
                 TimeSpan nowTime = DateTime.Now.TimeOfDay;
                 string shiftName = (nowTime >= new TimeSpan(7, 0, 0) && nowTime < new TimeSpan(19, 0, 0)) ? "Shift Pagi" : "Shift Malam";
 
-                if (_currentActiveRecordId == null)
+                if (_currentActiveRecordId == null && _offlineStartTime == null)
                 {
                     // State is RUN, going to STOP
                     using (var dlg = new ActivitySelectionDialog())
                     {
                         if (dlg.ShowDialog() == DialogResult.OK)
                         {
-                            using (var conn = DatabaseHelper.GetConnection())
+                            if (NetworkMon.IsOnline)
                             {
-                                string sql = "INSERT INTO machine_operator_activities (machine_id, operator_name, activity_id, start_time, shift_name) VALUES (@MId, @OpName, @ActId, @Now, @Shift); SELECT LAST_INSERT_ID();";
-                                int newId = conn.QuerySingle<int>(sql, new { MId = mId, OpName = opName, ActId = dlg.SelectedActivityId, Now = DateTime.Now, Shift = shiftName });
-                                
-                                _currentActiveRecordId = newId;
+                                // Online path — direct INSERT
+                                using (var conn = DatabaseHelper.GetConnection())
+                                {
+                                    string sql = "INSERT INTO machine_operator_activities (machine_id, operator_name, activity_id, start_time, shift_name) VALUES (@MId, @OpName, @ActId, @Now, @Shift); SELECT LAST_INSERT_ID();";
+                                    var startTime = DateTime.Now;
+                                    int newId = conn.QuerySingle<int>(sql, new { MId = mId, OpName = opName, ActId = dlg.SelectedActivityId, Now = startTime, Shift = shiftName });
+                                    
+                                    _currentActiveRecordId = newId;
+                                    SetButtonToIdleState(dlg.SelectedActivityName);
+                                }
+                            }
+                            else
+                            {
+                                // Offline path — queue to SyncQueue
+                                // Truncate milliseconds: MariaDB DATETIME stores second-precision only,
+                                // so END_ACTIVITY must match the exact same truncated value.
+                                var now = DateTime.Now;
+                                var startTime = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second);
+                                var payload = new
+                                {
+                                    MachineId = mId,
+                                    OperatorName = opName,
+                                    ActivityId = dlg.SelectedActivityId,
+                                    StartTime = startTime,
+                                    ShiftName = shiftName
+                                };
+                                OfflineRepo.AddToQueue("START_ACTIVITY", "machine_operator_activities", payload);
+
+                                _offlineStartTime = startTime;
                                 SetButtonToIdleState(dlg.SelectedActivityName);
                             }
                         }
