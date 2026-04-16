@@ -109,16 +109,38 @@ namespace mtc_app.features.machine_history.presentation.screens
                     } catch {
                         _allActivities = conn.Query<ActivityOption>("SELECT id as Id, activity_name as Name, 'Uncategorized' as Category FROM activity_types").ToList();
                     }
-                    
-                    var categories = _allActivities.Select(a => a.Category).Distinct().ToList();
-                    foreach (var c in categories) _cmbCategory.Items.Add(c);
-                    
-                    if (_cmbCategory.Items.Count > 0) _cmbCategory.SelectedIndex = 0;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                MessageBox.Show("Gagal memuat daftar alasan: " + ex.Message);
+                // Fallback to offline
+                try
+                {
+                    var offlineRepo = new mtc_app.shared.data.local.OfflineRepository();
+                    var cached = offlineRepo.GetActivityTypesFromCache();
+                    if (cached != null && cached.Count > 0)
+                    {
+                        _allActivities = cached.Select(c => new ActivityOption { Id = c.Id, Name = c.Name, Category = c.Category }).ToList();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Gagal memuat daftar alasan: Offline server unreachable and no local cache found.");
+                        return;
+                    }
+                }
+                catch (Exception fallbackEx)
+                {
+                    MessageBox.Show("Gagal memuat daftar alasan: " + fallbackEx.Message);
+                    return;
+                }
+            }
+
+            if (_allActivities != null && _allActivities.Count > 0)
+            {
+                var categories = _allActivities.Select(a => a.Category).Where(c => !string.IsNullOrEmpty(c)).Distinct().ToList();
+                foreach (var c in categories) _cmbCategory.Items.Add(c);
+                
+                if (_cmbCategory.Items.Count > 0) _cmbCategory.SelectedIndex = 0;
             }
         }
 
