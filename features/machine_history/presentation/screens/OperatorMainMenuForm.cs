@@ -18,6 +18,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private AppButton btnChecksheet;
         private AppButton btnApplicatorPatrol;
         private AppButton btnMicrometer;
+        private AppButton btnLko;
         private AppButton btnIdleToggle;
         private AppButton btnLogout;
 
@@ -185,12 +186,23 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
             btnApplicatorPatrol.Click += BtnApplicatorPatrol_Click;
 
+            btnLko = new AppButton
+            {
+                Text = "Lembar Kerja Operator (LKO)",
+                Type = AppButton.ButtonType.Secondary,
+                Size = new Size(btnW, btnH),
+                Location = new Point(btnX, startY + (btnH + gap) * 4),
+                Font = new Font("Segoe UI", 13F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnLko.Click += BtnLko_Click;
+
             btnIdleToggle = new AppButton
             {
                 Text = "▶ MESIN RUN (Klik untuk Keluar/Berhenti)",
                 Type = AppButton.ButtonType.Primary,
                 Size = new Size(btnW, btnH),
-                Location = new Point(btnX, startY + (btnH + gap) * 4),
+                Location = new Point(btnX, startY + (btnH + gap) * 5),
                 Font = new Font("Segoe UI", 13F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
@@ -201,7 +213,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Text = "Logout / Kembali",
                 Type = AppButton.ButtonType.Danger, 
                 Size = new Size(200, 40),
-                Location = new Point((550 - 200) / 2, startY + (btnH + gap) * 5),
+                Location = new Point((550 - 200) / 2, startY + (btnH + gap) * 6),
                 Cursor = Cursors.Hand
             };
             btnLogout.Click += (s, e) => this.Close(); 
@@ -212,6 +224,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Controls.Add(btnChecksheet);
             this.Controls.Add(btnMicrometer);
             this.Controls.Add(btnApplicatorPatrol);
+            this.Controls.Add(btnLko);
             this.Controls.Add(btnIdleToggle);
             this.Controls.Add(btnLogout);
         }
@@ -281,6 +294,15 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Hide();
             microForm.FormClosed += (s, args) => this.Show();
             microForm.Show();
+        }
+
+        private void BtnLko_Click(object sender, EventArgs e)
+        {
+            StopCurrentDowntime();
+            var lkoForm = new mtc_app.features.operator_worksheet.presentation.screens.OperatorWorksheetForm();
+            this.Hide();
+            lkoForm.FormClosed += (s, args) => this.Show();
+            lkoForm.Show();
         }
 
         private void BtnIdleToggle_Click(object sender, EventArgs e)
