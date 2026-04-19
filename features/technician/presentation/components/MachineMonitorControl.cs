@@ -513,7 +513,7 @@ namespace mtc_app.features.technician.presentation.components
                         }
                     }
 
-                    // --- Query 3: FLAT raw logs — "Load Fast, Cache All" ---
+                    // --- Query 3: SERVER-SIDE AGGREGATION — ~86K rows → ~1.4K rows ---
                     // Check if background cache is ready for THIS shift
                     var machineIds = machines.Keys.ToList();
                     bool useBgCache = _bgCacheReady
@@ -530,51 +530,42 @@ namespace mtc_app.features.technician.presentation.components
                     }
                     else
                     {
-                        // QUERY DB: Filter by area's machine_ids only
+                        // QUERY DB: Aggregate first/last/max per (machine, hour) in SQL
                         string sqlLogs = @"
                             SELECT machine_id,
                                    TIMESTAMPDIFF(HOUR, @ShiftStart, created_at) AS hour_index,
-                                   produced_pieces,
-                                   auto_time,
-                                   monitor_time
+                                   CAST(SUBSTRING_INDEX(GROUP_CONCAT(produced_pieces ORDER BY created_at ASC), ',', 1) AS SIGNED) AS first_pieces,
+                                   CAST(SUBSTRING_INDEX(GROUP_CONCAT(produced_pieces ORDER BY created_at DESC), ',', 1) AS SIGNED) AS last_pieces,
+                                   MAX(produced_pieces) AS max_pieces,
+                                   MAX(auto_time) AS max_auto,
+                                   MAX(monitor_time) AS max_monitor
                             FROM machine_process_logs
                             WHERE created_at >= @ShiftStart AND created_at < @ShiftEnd
                               AND produced_pieces > 0
                               AND machine_id IN @MachineIds
-                            ORDER BY machine_id, created_at";
+                            GROUP BY machine_id, TIMESTAMPDIFF(HOUR, @ShiftStart, created_at)
+                            ORDER BY machine_id, hour_index";
 
                         logRows = await conn.QueryAsync(sqlLogs,
                             new { ShiftStart = shiftStart, ShiftEnd = shiftEnd, MachineIds = machineIds },
                             commandTimeout: 120);
                     }
 
-                    // --- C# ALGORITHM: Compute first/last/max per (machine, hour) ---
+                    // --- Read pre-aggregated first/last/max per (machine, hour) ---
                     foreach (var row in logRows)
                     {
                         int mId = (int)row.machine_id;
-                        if (!machines.ContainsKey(mId)) continue; // Skip if not in filtered area
+                        if (!machines.ContainsKey(mId)) continue;
 
                         int hIndex = (int)(row.hour_index ?? 0);
                         if (hIndex < 0 || hIndex >= maxShiftHours) continue;
 
-                        long pieces = (long)(row.produced_pieces ?? 0);
-                        double autoTime = (double)(row.auto_time ?? 0);
-                        double monTime = (double)(row.monitor_time ?? 0);
+                        hourFirst[mId][hIndex] = Convert.ToInt64(row.first_pieces ?? 0);
+                        hourLast[mId][hIndex] = Convert.ToInt64(row.last_pieces ?? 0);
+                        hourMax[mId][hIndex] = Convert.ToInt64(row.max_pieces ?? 0);
 
-                        // First piece for this (machine, hour) — set once
-                        if (hourFirst[mId][hIndex] == -1)
-                            hourFirst[mId][hIndex] = pieces;
-
-                        // Last piece — always overwrite (rows are ordered by created_at)
-                        hourLast[mId][hIndex] = pieces;
-
-                        // Max piece — track running max
-                        if (pieces > hourMax[mId][hIndex])
-                            hourMax[mId][hIndex] = pieces;
-
-                        // Auto/Monitor time — take the max across all rows
-                        machines[mId].AutoTime = Math.Max(machines[mId].AutoTime, autoTime);
-                        machines[mId].MonitorTime = Math.Max(machines[mId].MonitorTime, monTime);
+                        machines[mId].AutoTime = Math.Max(machines[mId].AutoTime, Convert.ToDouble(row.max_auto ?? 0));
+                        machines[mId].MonitorTime = Math.Max(machines[mId].MonitorTime, Convert.ToDouble(row.max_monitor ?? 0));
                     }
 
                     // --- Query 4: Targets (tiny table) ---
@@ -1033,17 +1024,20 @@ namespace mtc_app.features.technician.presentation.components
                 {
                     conn.Open();
 
-                    // Fetch ALL logs for this shift (no machine_id filter)
+                    // Fetch ALL logs for this shift — aggregated (no machine_id filter)
                     string sql = @"
                         SELECT machine_id,
                                TIMESTAMPDIFF(HOUR, @ShiftStart, created_at) AS hour_index,
-                               produced_pieces,
-                               auto_time,
-                               monitor_time
+                               CAST(SUBSTRING_INDEX(GROUP_CONCAT(produced_pieces ORDER BY created_at ASC), ',', 1) AS SIGNED) AS first_pieces,
+                               CAST(SUBSTRING_INDEX(GROUP_CONCAT(produced_pieces ORDER BY created_at DESC), ',', 1) AS SIGNED) AS last_pieces,
+                               MAX(produced_pieces) AS max_pieces,
+                               MAX(auto_time) AS max_auto,
+                               MAX(monitor_time) AS max_monitor
                         FROM machine_process_logs
                         WHERE created_at >= @ShiftStart AND created_at < @ShiftEnd
                           AND produced_pieces > 0
-                        ORDER BY machine_id, created_at";
+                        GROUP BY machine_id, TIMESTAMPDIFF(HOUR, @ShiftStart, created_at)
+                        ORDER BY machine_id, hour_index";
 
                     var allRows = await conn.QueryAsync(sql,
                         new { ShiftStart = shiftStart, ShiftEnd = shiftEnd },
