@@ -100,6 +100,13 @@ namespace mtc_app.shared.presentation.components
             _networkMonitor.OnStatusChanged += NetworkMonitor_OnStatusChanged;
             _syncManager.OnSyncStatusChanged += SyncManager_OnSyncStatusChanged;
             _syncManager.OnDeadLetterMoved += SyncManager_OnDeadLetterMoved;
+            
+            var cacheWarmer = ServiceLocator.CacheWarmer;
+            if (cacheWarmer != null)
+            {
+                cacheWarmer.OnCacheWarmStarted += CacheWarmer_OnCacheWarmStarted;
+                cacheWarmer.OnCacheWarmCompleted += CacheWarmer_OnCacheWarmCompleted;
+            }
         }
 
         private void NetworkMonitor_OnStatusChanged(object sender, NetworkStatusEventArgs e)
@@ -112,6 +119,42 @@ namespace mtc_app.shared.presentation.components
             else
             {
                 UpdateConnectionStatus(e.IsOnline);
+            }
+        }
+
+        private void CacheWarmer_OnCacheWarmStarted(object sender, EventArgs e)
+        {
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action(() => {
+                    lblConnectionStatus.Text = "● Online (Saving cache...)";
+                    lblConnectionStatus.ForeColor = AppColors.Info;
+                }));
+            }
+            else
+            {
+                lblConnectionStatus.Text = "● Online (Saving cache...)";
+                lblConnectionStatus.ForeColor = AppColors.Info;
+            }
+        }
+
+        private void CacheWarmer_OnCacheWarmCompleted(object sender, mtc_app.shared.data.services.CacheWarmEventArgs e)
+        {
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action(() => {
+                    if (_networkMonitor.IsOnline) {
+                        lblConnectionStatus.Text = "● Online (Cache saved)";
+                        lblConnectionStatus.ForeColor = AppColors.Success;
+                    }
+                }));
+            }
+            else
+            {
+                if (_networkMonitor.IsOnline) {
+                    lblConnectionStatus.Text = "● Online (Cache saved)";
+                    lblConnectionStatus.ForeColor = AppColors.Success;
+                }
             }
         }
 
@@ -232,6 +275,12 @@ namespace mtc_app.shared.presentation.components
             {
                 _syncManager.OnSyncStatusChanged -= SyncManager_OnSyncStatusChanged;
                 _syncManager.OnDeadLetterMoved -= SyncManager_OnDeadLetterMoved;
+            }
+            var cacheWarmer = ServiceLocator.CacheWarmer;
+            if (cacheWarmer != null)
+            {
+                cacheWarmer.OnCacheWarmStarted -= CacheWarmer_OnCacheWarmStarted;
+                cacheWarmer.OnCacheWarmCompleted -= CacheWarmer_OnCacheWarmCompleted;
             }
 
             base.OnFormClosed(e);

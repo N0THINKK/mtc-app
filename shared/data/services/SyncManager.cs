@@ -157,6 +157,9 @@ namespace mtc_app.shared.data.services
                     
                     case "part_requests":
                         return ProcessPartRequestSync(item);
+
+                    case "machine_operator_activities":
+                        return ProcessActivitySync(item);
                     
                     default:
                         System.Diagnostics.Debug.WriteLine($"[SyncManager] Unknown table: {item.TableName}");
@@ -266,6 +269,91 @@ namespace mtc_app.shared.data.services
                 }
 
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Processes offline machine operator activity records (START/END/END_BY_ID).
+        /// </summary>
+        private bool ProcessActivitySync(SyncQueueItem item)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                var json = Newtonsoft.Json.Linq.JObject.Parse(item.PayloadJson);
+
+                switch (item.ActionType)
+                {
+                    case "START_ACTIVITY":
+                    {
+                        var machineId = json["MachineId"].ToObject<int>();
+                        var operatorName = json["OperatorName"]?.ToString();
+                        var activityId = json["ActivityId"].ToObject<int>();
+                        var startTime = json["StartTime"].ToObject<DateTime>();
+                        var shiftName = json["ShiftName"]?.ToString();
+
+                        string sql = @"INSERT INTO machine_operator_activities 
+                            (machine_id, operator_name, activity_id, start_time, shift_name) 
+                            VALUES (@MachineId, @OperatorName, @ActivityId, @StartTime, @ShiftName)";
+
+                        var affected = connection.Execute(sql, new
+                        {
+                            MachineId = machineId,
+                            OperatorName = operatorName,
+                            ActivityId = activityId,
+                            StartTime = startTime,
+                            ShiftName = shiftName
+                        });
+
+                        System.Diagnostics.Debug.WriteLine($"[SyncManager] START_ACTIVITY synced: machine={machineId}, rows={affected}");
+                        return affected > 0;
+                    }
+
+                    case "END_ACTIVITY":
+                    {
+                        // Match by machine_id + exact start_time (millisecond precision)
+                        var machineId = json["MachineId"].ToObject<int>();
+                        var startTime = json["StartTime"].ToObject<DateTime>();
+                        var endTime = json["EndTime"].ToObject<DateTime>();
+
+                        string sql = @"UPDATE machine_operator_activities 
+                            SET end_time = @EndTime 
+                            WHERE machine_id = @MachineId AND start_time = @StartTime AND end_time IS NULL";
+
+                        var affected = connection.Execute(sql, new
+                        {
+                            MachineId = machineId,
+                            StartTime = startTime,
+                            EndTime = endTime
+                        });
+
+                        System.Diagnostics.Debug.WriteLine($"[SyncManager] END_ACTIVITY synced: machine={machineId}, rows={affected}");
+                        return affected > 0;
+                    }
+
+                    case "END_ACTIVITY_BY_ID":
+                    {
+                        // Activity was started online (has DB id) but ended while offline
+                        var recordId = json["RecordId"].ToObject<int>();
+                        var endTime = json["EndTime"].ToObject<DateTime>();
+
+                        string sql = @"UPDATE machine_operator_activities 
+                            SET end_time = @EndTime 
+                            WHERE id = @RecordId";
+
+                        var affected = connection.Execute(sql, new
+                        {
+                            RecordId = recordId,
+                            EndTime = endTime
+                        });
+
+                        System.Diagnostics.Debug.WriteLine($"[SyncManager] END_ACTIVITY_BY_ID synced: id={recordId}, rows={affected}");
+                        return affected > 0;
+                    }
+
+                    default:
+                        System.Diagnostics.Debug.WriteLine($"[SyncManager] Unknown activity action: {item.ActionType}");
+                        return false;
+                }
             }
         }
 
