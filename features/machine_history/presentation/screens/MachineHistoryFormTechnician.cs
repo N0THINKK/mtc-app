@@ -1419,8 +1419,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                                 }, trans);
                             }
                             
-                            // [BARU] Auto-Resolve Patroli NG items for this machine
-                            // [MODIFIKASI] Bersihkan SEMUA data NG duplikat terkait item ini untuk unlocking UI checksheet Operator
+                            // [BARU] Auto-Resolve NG Cutting items for this machine
+                            var patrolRepo = ServiceLocator.CreateTechnicianRepository();
                             if (_patrolDetailId > 0)
                             {
                                 int itemIdToResolve = conn.QueryFirstOrDefault<int>("SELECT item_id FROM patrol_log_details WHERE detail_id = @DetailId", new { DetailId = _patrolDetailId }, trans);

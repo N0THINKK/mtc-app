@@ -98,7 +98,7 @@ namespace mtc_app.features.admin.presentation.screens
                 { "⏱️ Data Waktu Break", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Waktu Break"); } }
             });
 
-            AddMenuButton("🚨 Data Patroli NG", flowMenu, _ngPatrolAdminView, () => _ngPatrolAdminView.LoadData());
+            AddMenuButton("🚨 Data NG Cutting", flowMenu, _ngPatrolAdminView, () => _ngPatrolAdminView.LoadData());
             AddMenuButton("🖨️ Laporan / Export", flowMenu, _reportView);
             AddMenuButton("💾 Backup Database", flowMenu, _backupView);
             

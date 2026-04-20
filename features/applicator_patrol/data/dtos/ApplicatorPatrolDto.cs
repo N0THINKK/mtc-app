@@ -41,4 +41,24 @@ namespace mtc_app.features.applicator_patrol.data.dtos
         public int TotalNg { get; set; }
         public List<ApplicatorPatrolDetailDto> Details { get; set; } = new List<ApplicatorPatrolDetailDto>();
     }
+
+    // ── DTO untuk Technician Dashboard ─────────────────────────
+    public class ApplicatorNgDto
+    {
+        public int DetailId { get; set; }
+        public int LogId { get; set; }
+        public DateTime PatrolDate { get; set; }
+        public string FormattedPatrolDate => PatrolDate.ToString("dd/MM/yyyy HH:mm");
+        public string MachineName { get; set; }
+        public string Side { get; set; }
+        public string OperatorNik { get; set; }
+        public string ApplicatorCode { get; set; }
+        public string NgItems { get; set; }
+        public string Judgment { get; set; }
+    }
+
+    public class ApplicatorNgStatsDto
+    {
+        public int TotalNgCount { get; set; }
+    }
 }

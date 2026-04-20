@@ -263,7 +263,7 @@ namespace mtc_app.features.technician.data.repositories
         // PATROLI CHECKSHEET (NG LIST)
         // ====================================================================================
 
-        public async Task<IEnumerable<PatrolNgDto>> GetPatrolNgListAsync(string filterStatus, string sortOrder, DateTime start, DateTime end, string roleFilter = "Semua")
+        public async Task<IEnumerable<PatrolNgDto>> GetPatrolNgListAsync(string filterStatus, string sortOrder, DateTime start, DateTime end, string roleFilter = "Semua", string itemFilter = "Semua")
         {
             using (var conn = DatabaseHelper.GetConnection())
             {
@@ -310,12 +310,35 @@ namespace mtc_app.features.technician.data.repositories
                     sql += " AND (i.role_target = 'Operator' OR l.user_nik REGEXP '^[0-9]') ";
                 }
 
+                // Terapkan filter Item NG
+                if (!string.IsNullOrEmpty(itemFilter) && itemFilter != "Semua")
+                {
+                    sql += " AND i.item_name = @ItemFilter ";
+                }
+
                 if (sortOrder == "ASC")
                     sql += " ORDER BY l.patrol_date ASC;";
                 else
                     sql += " ORDER BY l.patrol_date DESC;";
 
-                return await conn.QueryAsync<PatrolNgDto>(sql, new { Start = start, End = end });
+                return await conn.QueryAsync<PatrolNgDto>(sql, new { Start = start, End = end, ItemFilter = itemFilter });
+            }
+        }
+
+        public async Task<IEnumerable<string>> GetPatrolNgItemNamesAsync(DateTime start, DateTime end)
+        {
+            using (var conn = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT DISTINCT i.item_name
+                    FROM patrol_log_details d
+                    JOIN patrol_logs l ON d.log_id = l.log_id
+                    JOIN checksheet_items i ON d.item_id = i.item_id
+                    WHERE l.patrol_date BETWEEN @Start AND @End
+                      AND d.status IN ('NOT_OK', 'NG', 'PERBAIKAN_OK')
+                    ORDER BY i.item_name ASC;";
+
+                return await conn.QueryAsync<string>(sql, new { Start = start, End = end });
             }
         }
 

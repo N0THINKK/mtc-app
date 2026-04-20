@@ -176,8 +176,9 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void SaveRating()
         {
-            // Jika tiket tidak ada (contoh: bypass dari Dashboard Patroli NG), 
-            // rating sekadar formalitas UI, tidak dicatat di DB.
+            // Jika tiket tidak ada (contoh: bypass dari Dashboard NG Cutting), 
+            // simpan status secara independen bila diperlukan, 
+            // atau cukup lewati dan kembalikan OK.
             if (_ticketId == 0)
             {
                 this.DialogResult = DialogResult.OK;

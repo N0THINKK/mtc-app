@@ -40,7 +40,7 @@ namespace mtc_app.features.admin.presentation.views
             
             AppLabel lblTitle = new AppLabel 
             { 
-                Text = "Manajemen Data Patroli NG", 
+                Text = "Manajemen Data NG Cutting", 
                 Type = AppLabel.LabelType.Header2, 
                 Dock = DockStyle.Left,
                 AutoSize = true,
@@ -79,7 +79,7 @@ namespace mtc_app.features.admin.presentation.views
             };
             Label lblHelp = new Label
             {
-                Text = "💡 Klik ganda (double-click) pada baris data untuk MENGHAPUS record Patroli NG yang salah input.",
+                Text = "💡 Klik ganda (double-click) pada baris data untuk MENGHAPUS record NG Cutting yang salah input.",
                 ForeColor = AppColors.TextSecondary,
                 Font = AppFonts.Body,
                 Dock = DockStyle.Fill,
@@ -167,7 +167,7 @@ namespace mtc_app.features.admin.presentation.views
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Gagal memuat data Patroli NG: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Gagal memuat data NG Cutting: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -204,7 +204,7 @@ namespace mtc_app.features.admin.presentation.views
                 if (isActionColumn)
                 {
                     var confirm = MessageBox.Show(
-                        $"Apakah Anda yakin ingin menghapus record Patroli NG berikut ini?\n\nMesin: {dto.MachineName}\nItem: {dto.ItemName}\nTanggal: {dto.FormattedPatrolDate}\n\nTindakan ini tidak dapat dibatalkan.",
+                        $"Apakah Anda yakin ingin menghapus record NG Cutting berikut ini?\n\nMesin: {dto.MachineName}\nItem: {dto.ItemName}\nTanggal: {dto.FormattedPatrolDate}\n\nTindakan ini tidak dapat dibatalkan.",
                         "Konfirmasi Hapus",
                         MessageBoxButtons.YesNo,
                         MessageBoxIcon.Warning);

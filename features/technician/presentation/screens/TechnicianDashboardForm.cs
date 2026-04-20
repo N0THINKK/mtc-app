@@ -4,7 +4,7 @@ using System.Windows.Forms;
 using System.Threading.Tasks;
 using mtc_app.features.stock.data.repositories;
 using mtc_app.features.technician.data.repositories;
-// using mtc_app.features.technician.logic; // <-- HAPUS INI
+using mtc_app.features.applicator_patrol.data.repositories;
 using mtc_app.features.technician.presentation.components;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.data.session;
@@ -26,6 +26,7 @@ namespace mtc_app.features.technician.presentation.screens
         private MachineMonitorControl machineMonitorControl;
         private StockDataControl stockDataControl;
         private TechnicianPatrolControl patrolControl;
+        private TechnicianApplicatorPatrolControl applicatorPatrolControl;
         
         // Auto Switch Feature
         private Timer timerTabSwitch;
@@ -300,7 +301,7 @@ namespace mtc_app.features.technician.presentation.screens
                 _autoSwitchStage++;
                 if (_autoSwitchStage >= tabControl.TabCount) 
                 {
-                    // Reached the end of tabs (Patroli NG), loop back to start
+                    // Reached the end of tabs (NG Aplikator), loop back to start
                     _autoSwitchStage = 0;
                     tabControl.SelectedIndex = 0;
                     machineMonitorControl?.ResetAutoSwitch();
@@ -336,6 +337,13 @@ namespace mtc_app.features.technician.presentation.screens
             {
                 await patrolControl.LoadDataAsync(start, end);
             }
+            else if (tabControl.SelectedIndex == 6) // NG Aplikator
+            {
+                if (applicatorPatrolControl != null)
+                {
+                    await applicatorPatrolControl.LoadDataAsync(start, end);
+                }
+            }
         }
 
         // ========================================================
@@ -370,12 +378,16 @@ namespace mtc_app.features.technician.presentation.screens
             machinePerformanceControl = new MachinePerformanceControl(_repository) { Dock = DockStyle.Fill };
             tabMachine.Controls.Add(machinePerformanceControl);
             
-            // Tab 5: Patroli Checksheet
-            var tabPatroli = new TabPage("Patroli NG") { BackColor = AppColors.CardBackground };
+            var tabPatroli = new TabPage("NG Cutting") { BackColor = AppColors.CardBackground };
             patrolControl = new TechnicianPatrolControl(_repository) { Dock = DockStyle.Fill };
             tabPatroli.Controls.Add(patrolControl);
 
-            // Tab 6: Machine Monitor (Real-time)
+            // Tab 6: NG Aplikator
+            var tabApplicator = new TabPage("NG Aplikator") { BackColor = AppColors.CardBackground };
+            applicatorPatrolControl = new TechnicianApplicatorPatrolControl(ServiceLocator.CreateApplicatorPatrolRepository()) { Dock = DockStyle.Fill };
+            tabApplicator.Controls.Add(applicatorPatrolControl);
+
+            // Tab 7: Machine Monitor (Real-time)
             var tabMonitor = new TabPage("Output") { BackColor = AppColors.CardBackground };
             machineMonitorControl = new MachineMonitorControl { Dock = DockStyle.Fill };
             tabMonitor.Controls.Add(machineMonitorControl);
@@ -386,6 +398,7 @@ namespace mtc_app.features.technician.presentation.screens
             tabControl.TabPages.Add(tabPerformance);
             tabControl.TabPages.Add(tabMachine);
             tabControl.TabPages.Add(tabPatroli);
+            tabControl.TabPages.Add(tabApplicator);
 
             // Load data when tab changes
             tabControl.SelectedIndexChanged += (s, e) =>
