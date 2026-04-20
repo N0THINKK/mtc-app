@@ -512,25 +512,15 @@ namespace mtc_app.features.technician.presentation.components
 
                 if (confirm == DialogResult.Yes)
                 {
-                    // Tampilkan Form Penilaian Operator terlebih dahulu
-                    // Dto bisa memiliki TicketId null jika operator mensubmit NG tanpa memicu Auto-Ticket
-                    long ticketIdForRating = dto.TicketId ?? 0;
-                    
-                    using (var ratingForm = new mtc_app.features.rating.presentation.screens.RatingTechnicianForm(ticketIdForRating, dto))
+                    bool success = await _repository.MarkPatrolNgAsResolvedAsync(dto.DetailId);
+                    if (success)
                     {
-                        if (ratingForm.ShowDialog() == DialogResult.OK)
-                        {
-                            bool success = await _repository.MarkPatrolNgAsResolvedAsync(dto.DetailId);
-                            if (success)
-                            {
-                                MessageBox.Show("Berhasil ditandai selesai.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                await LoadDataAsync(_startDate, _endDate);
-                            }
-                            else
-                            {
-                                MessageBox.Show("Gagal memperbarui status. Silakan coba lagi.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            }
-                        }
+                        MessageBox.Show("Berhasil ditandai selesai.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        await LoadDataAsync(_startDate, _endDate);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Gagal memperbarui status. Silakan coba lagi.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
