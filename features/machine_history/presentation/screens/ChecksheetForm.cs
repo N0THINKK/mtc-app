@@ -338,7 +338,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                         bool isPending = _pendingNgItemIds.Contains(item.ItemId);
                         if (isPending && (status == "NG" || status == "NOT_OK"))
                         {
-                            status = "NG_CARRYOVER";
+                            status = "PERBAIKAN_OK";
                         }
 
                         conn.Execute(
