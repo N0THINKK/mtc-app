@@ -43,10 +43,9 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
         // === Aktivitas fields ===
         private TextBox _txtQtyProduksi;
-        private ComboBox _cboDefect1;
-        private ComboBox _cboDefect2;
         private ComboBox _cboKodeDefect;
         private TextBox _txtDefectMesin;
+        private TextBox _txtDefectOperator;
 
         // === Sequen list ===
         private DataGridView _dgvSequen;
@@ -651,12 +650,14 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _txtFrontChA = CreateStyledTextBox("Masukkan Front C/H", fw);
             _txtFrontChA.Location = new Point(16, y);
             _txtFrontChA.ReadOnly = true;
+            _txtFrontChA.Text = "0";
             card.Controls.Add(_txtFrontChA);
             y += 36;
 
             _txtRearChA = CreateStyledTextBox("Masukkan Rear C/H", fw);
             _txtRearChA.Location = new Point(16, y);
             _txtRearChA.ReadOnly = true;
+            _txtRearChA.Text = "0";
             _txtRearChA.BackColor = Color.FromArgb(241, 245, 249);
             card.Controls.Add(_txtRearChA);
             y += 40;
@@ -666,12 +667,14 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _txtFrontCwA = CreateStyledTextBox("Masukkan Front C/W", fw);
             _txtFrontCwA.Location = new Point(16, y);
             _txtFrontCwA.ReadOnly = true;
+            _txtFrontCwA.Text = "0";
             card.Controls.Add(_txtFrontCwA);
             y += 36;
 
             _txtRearCwA = CreateStyledTextBox("Masukkan Rear C/W", fw);
             _txtRearCwA.Location = new Point(16, y);
             _txtRearCwA.ReadOnly = true;
+            _txtRearCwA.Text = "0";
             _txtRearCwA.BackColor = Color.FromArgb(241, 245, 249);
             card.Controls.Add(_txtRearCwA);
             y += 44;
@@ -703,6 +706,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             int y = 44;
             int fw = width - 40;
             int halfW = (fw - 8) / 2;
+            int thirdW = (fw - 16) / 3;
 
             // QTY Produksi
             card.Controls.Add(new Label { Text = "QTY Produksi", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
@@ -712,73 +716,151 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(_txtQtyProduksi);
             y += 42;
 
-            // No. 4M
-            card.Controls.Add(new Label { Text = "No. 4M", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
+            // Kode Defect (dropdown diisi user)
+            card.Controls.Add(new Label { Text = "Kode Defect", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
             y += 20;
-            _cboDefect1 = new ComboBox { Font = FieldValueFont, Size = new Size(halfW, 30), Location = new Point(16, y), DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(248, 250, 252) };
-            _cboDefect1.Items.Add("- Pilih Defect -");
-            _cboDefect1.SelectedIndex = 0;
-            card.Controls.Add(_cboDefect1);
-
-            _cboDefect2 = new ComboBox { Font = FieldValueFont, Size = new Size(halfW, 30), Location = new Point(_cboDefect1.Right + 8, y), DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(248, 250, 252) };
-            _cboDefect2.Items.Add("- Pilih Defect -");
-            _cboDefect2.SelectedIndex = 0;
-            card.Controls.Add(_cboDefect2);
-            y += 42;
-
-            // Kode Defect + Defect Mesin
-            card.Controls.Add(new Label { Text = "Kode Defect  \u24D8", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
-            card.Controls.Add(new Label { Text = "Defect Mesin  \u24D8", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16 + halfW + 8, y) });
-            y += 20;
-
-            _cboKodeDefect = new ComboBox { Font = FieldValueFont, Size = new Size(halfW, 30), Location = new Point(16, y), DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(248, 250, 252) };
-            _cboKodeDefect.Items.Add("- Pilih Defect -");
+            _cboKodeDefect = new ComboBox { Font = FieldValueFont, Size = new Size(fw, 30), Location = new Point(16, y), DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(248, 250, 252) };
+            _cboKodeDefect.Items.AddRange(new object[] {
+                "- Pilih Kode Defect -",
+                "A.1 Core Terurai",
+                "A.2 Core Terpotong",
+                "A.3 Core Tidak teratur",
+                "A.4 Core Maju",
+                "A.5 Core Mundur",
+                "A.6 Tidak Tercrimping",
+                "A.7 Scracth",
+                "B.1 Terminal Tergores",
+                "B.2 Terminal Bengkok ke atas",
+                "B.3 Terminal Bengkok ke bawah",
+                "B.4 Terminal Melintir",
+                "B.5 Terminal Ujung Terpotong",
+                "B.6 Terminal Ujung Terbuka",
+                "B.7 Terminal Ujung Rusak",
+                "B.8 Terminal Bridge terlalu panjang",
+                "B.9 Terminal Centilever Rusak",
+                "B.10 Terminal Lepas dari Circuit",
+                "C.1 Front C/H terlalu tinggi",
+                "C.2 Front C/H terlalu rendah",
+                "C.3 Front C/W terlalu tinggi",
+                "C.4 Front C/W terlalu rendah",
+                "C.5 Front Flash",
+                "D.1 Rear C/H terlalu tinggi",
+                "D.2 Rear C/H terlalu rendah",
+                "D.3 Rear C/W terlalu tinggi",
+                "D.4 Rear C/W terlalu rendah",
+                "D.5 Rear ada di dalam Insulasi",
+                "D.6 Tidak Standart",
+                "E.1 Insulation Tercrimping",
+                "E.2 Insulation Terlalu mundur",
+                "E.3 Insulation Rusak",
+                "E.4 Insulation Tidak rata",
+                "F.1 Seal Terpotong",
+                "F.2 Seal Terbalik",
+                "F.3 Seal Terlalu mundur",
+                "F.4 Seal Terlalu maju",
+                "F.5 Seal Tercrimping",
+                "F.6 Seal Tidak ada",
+                "F.7 Seal Sobek",
+                "G.1 Crimping Ada Benda Asing",
+                "G.2 Crimping Ada 2 Terminal Tercrimping",
+                "G.3 Crimping Tanpa Core",
+                "G.4 Crimping Tanpa Stripping",
+                "H.1 Lance Rusak",
+                "H.2 Stabilizer Rusak",
+                "H.3 Bellmouth Tidak Standart",
+                "H.4 Kondisi core bagian A",
+                "H.5 Resin masuk bagian A",
+                "H.6 Resin barel bagian B Terbuka",
+                "H.7 Core terlihat atas sisi C",
+                "H.8 Core terlihat samping sisi C",
+                "H.9 Sisi punggung",
+                "H.10 Abnormal resin",
+                "H.11 Panjang welding N-OK",
+                "H.12 Circuit tidak terbonder",
+                "H.13 Bonder Retak",
+                "H.14 Stripping kepanjangan"
+            });
             _cboKodeDefect.SelectedIndex = 0;
             card.Controls.Add(_cboKodeDefect);
+            y += 42;
+
+            // Defect Mesin (ReadOnly) + Defect Operator (Editable) side by side
+            card.Controls.Add(new Label { Text = "Defect Mesin (otomatis)", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Defect Operator", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16 + halfW + 8, y) });
+            y += 20;
 
             _txtDefectMesin = CreateStyledTextBox("0", halfW);
-            _txtDefectMesin.Location = new Point(_cboKodeDefect.Right + 8, y);
+            _txtDefectMesin.Location = new Point(16, y);
             _txtDefectMesin.Text = "0";
+            _txtDefectMesin.ReadOnly = true;
+            _txtDefectMesin.BackColor = Color.FromArgb(241, 245, 249);
             card.Controls.Add(_txtDefectMesin);
+
+            _txtDefectOperator = CreateStyledTextBox("Masukkan jumlah defect", halfW);
+            _txtDefectOperator.Location = new Point(_txtDefectMesin.Right + 8, y);
+            _txtDefectOperator.Text = "0";
+            card.Controls.Add(_txtDefectOperator);
             y += 48;
 
-            // Buttons
-            var btnTrack = new Button { Text = "\u2726 Track Defect", Font = new Font("Segoe UI", 9.5F, FontStyle.Bold), Size = new Size(halfW, 36), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(239, 68, 68), ForeColor = Color.White, Cursor = Cursors.Hand };
-            btnTrack.FlatAppearance.BorderSize = 0;
-            card.Controls.Add(btnTrack);
-
-            var btnSave = new Button { Text = "\u2713 Simpan", Font = new Font("Segoe UI", 9.5F, FontStyle.Bold), Size = new Size(halfW, 36), Location = new Point(btnTrack.Right + 8, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(16, 185, 129), ForeColor = Color.White, Cursor = Cursors.Hand };
+            // Button Simpan saja
+            var btnSave = new Button { Text = "\u2713 Simpan", Font = new Font("Segoe UI", 10F, FontStyle.Bold), Size = new Size(fw, 40), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(16, 185, 129), ForeColor = Color.White, Cursor = Cursors.Hand };
             btnSave.FlatAppearance.BorderSize = 0;
             btnSave.Click += BtnSimpanAktivitas_Click;
             card.Controls.Add(btnSave);
-            y += 50;
-
-            // Riwayat Produksi mini-header
-            card.Controls.Add(new Label { Text = "Riwayat Produksi", Font = new Font("Segoe UI", 11F, FontStyle.Bold), ForeColor = Color.FromArgb(15, 23, 42), AutoSize = true, Location = new Point(16, y) });
-            y += 24;
-            card.Controls.Add(new Label { Text = "Sequen     1 - 1 dari 1", Font = new Font("Segoe UI", 9F), ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
 
             return card;
         }
 
-        private void BtnSimpanAktivitas_Click(object sender, EventArgs e)
+        private async void BtnSimpanAktivitas_Click(object sender, EventArgs e)
         {
-            if (_dgvSequen?.CurrentRow == null) return;
-            var rowData = _dgvSequen.CurrentRow.DataBoundItem as LkoService.LkoAggregatedData;
-            if (rowData != null)
+            if (_dgvSequen?.CurrentRow == null)
             {
-                rowData.Log.QtyProduk = _txtQtyProduksi.Text.Trim();
-                rowData.Log.QtyDefect = _txtDefectMesin.Text.Trim();
-                rowData.Log.WaktuSelesaiPengerjaan = DateTime.Now.ToString("HH:mm:ss");
-                try
-                {
-                    _lkoService.SaveWorksheet(rowData.Log);
-                    MessageBox.Show("Data berhasil disimpan.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Gagal menyimpan: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                MessageBox.Show("Pilih sequen terlebih dahulu.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var rowData = _dgvSequen.CurrentRow.DataBoundItem as LkoService.LkoAggregatedData;
+            if (rowData == null) return;
+
+            // Ambil kode defect dari dropdown
+            string kodeDefect = _cboKodeDefect.SelectedIndex > 0 ? _cboKodeDefect.SelectedItem.ToString() : string.Empty;
+
+            // Parse defect operator
+            int.TryParse(_txtDefectOperator.Text.Trim(), out int defectOperator);
+            int.TryParse(_txtQtyProduksi.Text.Trim(), out int qtyProduct);
+
+            // Ambil shift dari combo
+            string shiftName = _cboShift?.SelectedItem is CachedShiftDto shift ? shift.ShiftName : "-";
+
+            var record = new mtc_app.features.operator_worksheet.data.dtos.LkoRecordDto
+            {
+                WaktuSimpan = DateTime.Now,
+                NoMesin = _machineNumber,
+                ShiftName = shiftName,
+                Nik = _nikOperator,
+                Sequen = rowData.DisplaySequen,
+                UrutanKanban = rowData.DisplayUrutanPengerjaan,
+                QtyDefectOperator = defectOperator,
+                KodeDefect = kodeDefect,
+                QtyProduct = qtyProduct
+            };
+
+            try
+            {
+                await _lkoService.SaveToDatabase(record);
+
+                // Update DB record reference di data lokal
+                rowData.DbRecord = record;
+
+                // Refresh riwayat grid
+                _dgvRiwayat.Refresh();
+                _dgvSequen.Refresh();
+
+                MessageBox.Show("Data berhasil disimpan ke database.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Gagal menyimpan: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -864,14 +946,15 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 DefaultCellStyle = new DataGridViewCellStyle { SelectionBackColor = Color.FromArgb(219, 234, 254), SelectionForeColor = Color.FromArgb(15, 23, 42), Padding = new Padding(4) }
             };
             _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "DisplaySequen", Width = 70 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Kombinasi", DataPropertyName = "DisplayKombinasi", Width = 130 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Term A", DataPropertyName = "DisplayTermA", Width = 100 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Term B", DataPropertyName = "DisplayTermB", Width = 100 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Qty", DataPropertyName = "DisplayQty", Width = 70 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Qty Produk", DataPropertyName = "DisplayQtyProduk", Width = 90 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Qty Defect", DataPropertyName = "DisplayQtyDefect", Width = 90 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Mulai", DataPropertyName = "DisplayWaktuMulai", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Selesai", DataPropertyName = "DisplayWaktuSelesai", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", Width = 55 });
+            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Kombinasi", DataPropertyName = "DisplayKombinasi", Width = 120 });
+            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Qty Produk", DataPropertyName = "DisplayQtyProduk", Width = 80 });
+            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Defect Mesin", DataPropertyName = "DisplayQtyDefectMesin", Width = 90 });
+            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Defect Operator", DataPropertyName = "DisplayQtyDefectOperator", Width = 100 });
+            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Kode Defect", DataPropertyName = "DisplayKodeDefect", Width = 140 });
+            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Mulai", DataPropertyName = "DisplayWaktuMulai", Width = 80 });
+            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Selesai", DataPropertyName = "DisplayWaktuSelesai", Width = 80 });
+            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Waktu Simpan", DataPropertyName = "DisplayWaktuSimpan", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
             card.Controls.Add(_dgvRiwayat);
             return card;
         }
@@ -879,11 +962,15 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         // =====================================================================
         //  DATA LOADING
         // =====================================================================
-        private void LoadSequenData()
+        private async void LoadSequenData()
         {
             try
             {
                 _worksheetData = _lkoService.GetAllWorksheetData();
+
+                // Merge dengan data DB (defect operator, kode defect)
+                await _lkoService.MergeDbRecordsAsync(_worksheetData, _machineNumber);
+
                 _dgvSequen.DataSource = _worksheetData;
                 _dgvRiwayat.DataSource = _worksheetData;
             }
@@ -901,12 +988,24 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             _lblLotId.Text = $"Lot ID: {rowData.DisplaySequen}";
             _txtLotTermA.Text = rowData.Master?.TerminalA ?? "";
-            _txtFrontChA.Text = rowData.Master?.PanjangStripSisiA ?? "";
-            _txtRearChA.Text = rowData.Master?.PanjangStripSisiB ?? "";
-            _txtFrontCwA.Text = rowData.Master?.CutLength ?? "";
-            _txtRearCwA.Text = "";
+            _txtFrontChA.Text = !string.IsNullOrWhiteSpace(rowData.Master?.PanjangStripSisiA) ? rowData.Master.PanjangStripSisiA : "0";
+            _txtRearChA.Text = !string.IsNullOrWhiteSpace(rowData.Master?.PanjangStripSisiB) ? rowData.Master.PanjangStripSisiB : "0";
+            _txtFrontCwA.Text = !string.IsNullOrWhiteSpace(rowData.Master?.CutLength) ? rowData.Master.CutLength : "0";
+            _txtRearCwA.Text = "0";
             _txtQtyProduksi.Text = rowData.Log?.QtyProduk ?? "";
             _txtDefectMesin.Text = rowData.Log?.QtyDefect ?? "0";
+
+            // Load dari DB record jika ada
+            _txtDefectOperator.Text = rowData.DbRecord?.QtyDefectOperator.ToString() ?? "0";
+            if (rowData.DbRecord != null && !string.IsNullOrEmpty(rowData.DbRecord.KodeDefect))
+            {
+                int idx = _cboKodeDefect.Items.IndexOf(rowData.DbRecord.KodeDefect);
+                _cboKodeDefect.SelectedIndex = idx >= 0 ? idx : 0;
+            }
+            else
+            {
+                _cboKodeDefect.SelectedIndex = 0;
+            }
         }
 
         // =====================================================================

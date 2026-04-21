@@ -26,4 +26,22 @@ namespace mtc_app.features.operator_worksheet.data.dtos
         public string MunculkanGambarTermB { get; set; } = string.Empty;
         public string KombinasiWire { get; set; } = string.Empty;
     }
+
+    /// <summary>
+    /// DTO untuk menyimpan data LKO operator ke MySQL (Opsi B).
+    /// Data ini terpisah dari PrdLog.csv bawaan mesin.
+    /// </summary>
+    public class LkoRecordDto
+    {
+        public int Id { get; set; }
+        public DateTime WaktuSimpan { get; set; } = DateTime.Now;
+        public string NoMesin { get; set; } = string.Empty;
+        public string ShiftName { get; set; } = string.Empty;
+        public string Nik { get; set; } = string.Empty;
+        public string Sequen { get; set; } = string.Empty;
+        public string UrutanKanban { get; set; } = string.Empty;
+        public int QtyDefectOperator { get; set; } = 0;
+        public string KodeDefect { get; set; } = string.Empty;
+        public int QtyProduct { get; set; } = 0;
+    }
 }
