@@ -376,28 +376,55 @@ namespace mtc_app.shared.data.services
                     var recordHour = json["RecordHour"].ToObject<int>();
                     int delta = item.ActionType == "INCREMENT_QUICK_COUNT" ? 1 : -1;
 
-                    string sql = @"
-                        INSERT INTO operator_quick_counts 
-                        (machine_id, operator_name, shift_name, item_name, record_date, record_hour, total_count)
-                        VALUES (@MachineId, @OpName, @ShiftName, @ItemName, @RecordDate, @RecordHour, @InitialCount)
-                        ON DUPLICATE KEY UPDATE 
-                        total_count = GREATEST(0, total_count + @Delta)";
-
                     int initialCount = delta > 0 ? 1 : 0; 
 
-                    var affected = connection.Execute(sql, new
+                    // Check if row already exists
+                    string checkSql = @"
+                        SELECT id FROM operator_quick_counts 
+                        WHERE machine_id = @MachineId AND operator_name = @OpName 
+                        AND record_date = @RecordDate AND record_hour = @RecordHour 
+                        AND item_name = @ItemName LIMIT 1";
+
+                    var existingId = connection.QueryFirstOrDefault<int?>(checkSql, new
                     {
                         MachineId = machineId,
                         OpName = operatorName,
-                        ShiftName = shiftName,
-                        ItemName = itemName,
                         RecordDate = recordDate.Date,
                         RecordHour = recordHour,
-                        InitialCount = initialCount,
-                        Delta = delta
+                        ItemName = itemName
                     });
 
-                    return affected > 0;
+                    if (existingId.HasValue)
+                    {
+                        // Update existing
+                        string updateSql = @"
+                            UPDATE operator_quick_counts
+                            SET total_count = GREATEST(0, total_count + @Delta)
+                            WHERE id = @Id";
+                        
+                        var affected = connection.Execute(updateSql, new { Id = existingId.Value, Delta = delta });
+                        return affected > 0;
+                    }
+                    else
+                    {
+                        // Insert new
+                        string insertSql = @"
+                            INSERT INTO operator_quick_counts 
+                            (machine_id, operator_name, shift_name, item_name, record_date, record_hour, total_count)
+                            VALUES (@MachineId, @OpName, @ShiftName, @ItemName, @RecordDate, @RecordHour, @InitialCount)";
+                            
+                        var affected = connection.Execute(insertSql, new
+                        {
+                            MachineId = machineId,
+                            OpName = operatorName,
+                            ShiftName = shiftName,
+                            ItemName = itemName,
+                            RecordDate = recordDate.Date,
+                            RecordHour = recordHour,
+                            InitialCount = initialCount
+                        });
+                        return affected > 0;
+                    }
                 }
                 return false;
             }
