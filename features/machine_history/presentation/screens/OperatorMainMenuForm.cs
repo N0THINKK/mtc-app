@@ -24,10 +24,21 @@ namespace mtc_app.features.machine_history.presentation.screens
         private int? _currentActiveRecordId = null;
         private DateTime? _offlineStartTime = null; // Tracks activity started while offline
 
+        // Quick Counters
+        private System.Collections.Generic.Dictionary<string, int> _quickCounts = new System.Collections.Generic.Dictionary<string, int>
+        {
+            { "Wire", 0 },
+            { "Applikator A", 0 },
+            { "Applikator B", 0 },
+            { "Double", 0 }
+        };
+        private System.Collections.Generic.Dictionary<string, Label> _lblCounts = new System.Collections.Generic.Dictionary<string, Label>();
+
         public OperatorMainMenuForm()
         {
             InitializeUI();
             CheckActiveIdleStatus();
+            FetchCurrentHourCounts();
         }
 
         protected override void OnLoad(EventArgs e)
@@ -112,7 +123,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             // Restrict maximum form height to ensure it fits small screens, enabling AutoScroll naturally
             var screenHeight = Screen.PrimaryScreen.WorkingArea.Height;
-            int desiredHeight = 580;
+            int desiredHeight = 770; // Increased to fit new quick counters
             this.Size = new Size(550, Math.Min(desiredHeight, screenHeight - 60));
             this.StartPosition = FormStartPosition.Manual;
 
@@ -186,12 +197,28 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
             btnApplicatorPatrol.Click += BtnApplicatorPatrol_Click;
 
+            int currentY = startY + (btnH + gap) * 4;
+            int rowHeight = 48;
+            int rowGap = 10;
+
+            AddQuickCountRow("Wire", btnX, currentY, btnW, rowHeight);
+            currentY += rowHeight + rowGap;
+            
+            AddQuickCountRow("Applikator A", btnX, currentY, btnW, rowHeight);
+            currentY += rowHeight + rowGap;
+            
+            AddQuickCountRow("Applikator B", btnX, currentY, btnW, rowHeight);
+            currentY += rowHeight + rowGap;
+            
+            AddQuickCountRow("Double", btnX, currentY, btnW, rowHeight);
+            currentY += rowHeight + (gap * 2); // Extra spacing before MESIN RUN button
+
             btnIdleToggle = new AppButton
             {
                 Text = "▶ MESIN RUN (Klik untuk Keluar/Berhenti)",
                 Type = AppButton.ButtonType.Primary,
                 Size = new Size(btnW, btnH),
-                Location = new Point(btnX, startY + (btnH + gap) * 4),
+                Location = new Point(btnX, currentY),
                 Font = new Font("Segoe UI", 13F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
@@ -202,7 +229,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Text = "Logout / Kembali",
                 Type = AppButton.ButtonType.Danger, 
                 Size = new Size(200, 40),
-                Location = new Point((550 - 200) / 2, startY + (btnH + gap) * 5),
+                Location = new Point((550 - 200) / 2, currentY + btnH + gap),
                 Cursor = Cursors.Hand
             };
             btnLogout.Click += (s, e) => this.Close(); 
@@ -381,6 +408,143 @@ namespace mtc_app.features.machine_history.presentation.screens
             catch (Exception ex)
             {
                 MessageBox.Show("Gagal mengupdate status: " + ex.Message, "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void AddQuickCountRow(string itemName, int x, int y, int width, int height)
+        {
+            int btnWidth = 60;
+            int innerGap = 8;
+            int lblWidth = width - (btnWidth * 2) - (innerGap * 2);
+
+            var btnMinus = new AppButton
+            {
+                Text = "-",
+                Type = AppButton.ButtonType.Secondary,
+                Size = new Size(btnWidth, height),
+                Location = new Point(x, y),
+                Font = new Font("Segoe UI", 20F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+
+            var lblDisplay = new Label
+            {
+                Text = $"{itemName}: 0",
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                ForeColor = AppColors.PrimaryDark,
+                BackColor = AppColors.RowHover,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Size = new Size(lblWidth, height),
+                Location = new Point(x + btnWidth + innerGap, y)
+            };
+
+            var btnPlus = new AppButton
+            {
+                Text = "+",
+                Type = AppButton.ButtonType.Primary,
+                Size = new Size(btnWidth, height),
+                Location = new Point(x + btnWidth + innerGap + lblWidth + innerGap, y),
+                Font = new Font("Segoe UI", 18F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+
+            btnMinus.Click += (s, e) => UpdateQuickCount(itemName, -1, lblDisplay);
+            btnPlus.Click += (s, e) => UpdateQuickCount(itemName, 1, lblDisplay);
+
+            _lblCounts[itemName] = lblDisplay;
+
+            this.Controls.Add(btnMinus);
+            this.Controls.Add(lblDisplay);
+            this.Controls.Add(btnPlus);
+        }
+
+        private void FetchCurrentHourCounts()
+        {
+            if (!NetworkMon.IsOnline) return;
+
+            try
+            {
+                int mId = GetMachineIdInt();
+                string opName = UserSession.CurrentUser?.Username ?? "Unknown";
+
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    string sql = @"
+                        SELECT item_name, total_count 
+                        FROM operator_quick_counts 
+                        WHERE machine_id = @MId AND operator_name = @OpName 
+                        AND record_date = @RecordDate AND record_hour = @RecordHour";
+
+                    var results = conn.Query(sql, new 
+                    { 
+                        MId = mId, 
+                        OpName = opName, 
+                        RecordDate = DateTime.Now.Date,
+                        RecordHour = DateTime.Now.Hour
+                    });
+
+                    foreach (var row in results)
+                    {
+                        string itemName = row.item_name;
+                        int count = (int)row.total_count;
+
+                        if (_quickCounts.ContainsKey(itemName))
+                        {
+                            _quickCounts[itemName] = count;
+                            if (_lblCounts.TryGetValue(itemName, out var lbl))
+                            {
+                                lbl.Text = $"{itemName}: {count}";
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Fetch quick counts error: " + ex.Message);
+            }
+        }
+
+        private void UpdateQuickCount(string itemName, int delta, Label lbl)
+        {
+            if (!_quickCounts.ContainsKey(itemName)) return;
+
+            int current = _quickCounts[itemName];
+            int newCount = current + delta;
+            if (newCount < 0) newCount = 0;
+            if (newCount == current) return;
+
+            _quickCounts[itemName] = newCount;
+            lbl.Text = $"{itemName}: {newCount}";
+
+            try
+            {
+                int mId = GetMachineIdInt();
+                string opName = UserSession.CurrentUser?.Username ?? "Unknown";
+                TimeSpan nowTime = DateTime.Now.TimeOfDay;
+                string shiftName = (nowTime >= new TimeSpan(7, 0, 0) && nowTime < new TimeSpan(19, 0, 0)) ? "Shift Pagi" : "Shift Malam";
+
+                var payload = new
+                {
+                    MachineId = mId,
+                    OperatorName = opName,
+                    ShiftName = shiftName,
+                    ItemName = itemName,
+                    RecordDate = DateTime.Now.Date,
+                    RecordHour = DateTime.Now.Hour
+                };
+
+                string actionType = delta > 0 ? "INCREMENT_QUICK_COUNT" : "DECREMENT_QUICK_COUNT";
+                OfflineRepo.AddToQueue(actionType, "operator_quick_counts", payload);
+
+                if (NetworkMon.IsOnline)
+                {
+                    SyncMgr?.SyncNow();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Queue quick count error: " + ex.Message);
             }
         }
     }
