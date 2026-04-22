@@ -78,6 +78,7 @@ namespace mtc_app.features.admin.services
                             SUM(CASE WHEN it.category IN ('Sudden Stop', 'Berhenti Tiba Tiba') THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
                         FROM machine_operator_activities moa
                         LEFT JOIN activity_types it ON moa.activity_id = it.id
+                        WHERE moa.start_time >= @StartDate AND moa.start_time < @EndDatePlusOne
                         GROUP BY moa.machine_id, DATE(DATE_SUB(moa.start_time, INTERVAL 7 HOUR))
                     ) act ON act.machine_id = m.machine_id 
                             AND act.act_date = DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR))
@@ -100,7 +101,7 @@ namespace mtc_app.features.admin.services
                     GROUP BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)), m.machine_id, mt.type_name, ma.area_name, m.machine_number, PlannedMin, SuddenMin, BreakMin
                     ORDER BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)) DESC, mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC";
                 
-                var results = await connection.QueryAsync<DailyOutputDto>(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area, Lain2Id = lain2Id }, commandTimeout: 300);
+                var results = await connection.QueryAsync<DailyOutputDto>(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), EndDatePlusOne = endDate.Date.AddDays(1), Area = area, Lain2Id = lain2Id }, commandTimeout: 300);
                 
                 var dataTable = new DataTable("Output Harian");
                 dataTable.Columns.Add("Tanggal Produksi", typeof(string));

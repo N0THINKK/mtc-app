@@ -80,16 +80,18 @@ namespace mtc_app.features.admin.presentation.views
                         btnExport.Text = "Memproses Data...";
                         Application.DoEvents(); // Agar UI tidak lag
 
-                        // Melempar parameter 'areaName' ke dalam fungsi fetch data
-                        var dataDetailTask = FetchDataForReportAsync(dateStart.Value, dateEnd.Value, areaName);
-                        var dataRekapBulananTask = FetchMonthlyDowntimeSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
-                        var dataOutputHarianTask = OutputExportService.FetchDailyOutputSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
+                        // Sequential execution: NAS 2GB RAM can't handle 3 heavy queries in parallel
+                        btnExport.Text = "Memproses Data... (1/3)";
+                        Application.DoEvents();
+                        var dataDetail = await FetchDataForReportAsync(dateStart.Value, dateEnd.Value, areaName);
 
-                        await Task.WhenAll(dataDetailTask, dataRekapBulananTask, dataOutputHarianTask);
+                        btnExport.Text = "Memproses Data... (2/3)";
+                        Application.DoEvents();
+                        var dataRekapBulanan = await FetchMonthlyDowntimeSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
 
-                        var dataDetail = dataDetailTask.Result;
-                        var dataRekapBulanan = dataRekapBulananTask.Result;
-                        var dataOutputHarian = dataOutputHarianTask.Result;
+                        btnExport.Text = "Memproses Data... (3/3)";
+                        Application.DoEvents();
+                        var dataOutputHarian = await OutputExportService.FetchDailyOutputSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
 
                         using (var workbook = new XLWorkbook())
                         {
