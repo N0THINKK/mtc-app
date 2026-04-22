@@ -24,12 +24,12 @@ namespace mtc_app.features.machine_history.presentation.screens
         private readonly IMachineHistoryRepository _repository;
         private readonly IMasterDataRepository _masterDataRepository;
         
-        // CSV paths for prdmst (same as applicator patrol)
-        private static readonly Dictionary<string, string> CsvPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        // Excel paths for MasterAplikator (same as applicator patrol)
+        private static readonly Dictionary<string, string> ExcelPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            { "AC90", @"C:\AC90HMI\prg\prdmst.csv" },
-            { "AC81", @"" },
-            { "AC95", @"" },
+            { "AC90", @"C:\AC90HMI\MasterAplikator.xls" },
+            { "AC95", @"D:\AC95HMI\MasterAplikator.xls" },
+            { "AC81", @"" }
         };
         
         // Header Inputs
@@ -78,7 +78,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             await Task.Delay(50); 
 
             LoadAreas();
-            LoadApplicatorsFromCsv();
+            LoadApplicatorsFromExcel();
             await CheckForPendingTicketAsync();
         }
 
@@ -392,7 +392,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             catch { /* Ignore */ }
         }
 
-        private void LoadApplicatorsFromCsv()
+        private void LoadApplicatorsFromExcel()
         {
             try
             {
@@ -405,23 +405,30 @@ namespace mtc_app.features.machine_history.presentation.screens
                     if (machine != null) machineCode = machine.Code ?? "";
                 }
 
-                // Find matching CSV path
-                string csvPath = null;
-                foreach (var key in CsvPaths.Keys)
+                // Find matching Excel path
+                string excelPath = null;
+                foreach (var key in ExcelPaths.Keys)
                 {
                     if (!string.IsNullOrEmpty(machineCode) && machineCode.StartsWith(key, StringComparison.OrdinalIgnoreCase))
                     {
-                        string configured = CsvPaths[key];
+                        string configured = ExcelPaths[key];
                         if (!string.IsNullOrEmpty(configured))
-                            csvPath = Path.IsPathRooted(configured) ? configured : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, configured);
+                        {
+                            excelPath = Path.IsPathRooted(configured) ? configured : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, configured);
+                            if (!File.Exists(excelPath) && excelPath.EndsWith(".xls", StringComparison.OrdinalIgnoreCase))
+                            {
+                                string fallback = excelPath + "x";
+                                if (File.Exists(fallback)) excelPath = fallback;
+                            }
+                        }
                         break;
                     }
                 }
 
-                if (string.IsNullOrEmpty(csvPath) || !File.Exists(csvPath)) return;
+                if (string.IsNullOrEmpty(excelPath) || !File.Exists(excelPath)) return;
 
-                // Read applicators from prdmst.csv
-                var (sideA, sideB) = ApplicatorCsvReader.ReadApplicators(csvPath);
+                // Read applicators from MasterAplikator.xls
+                var (sideA, sideB) = ApplicatorExcelReader.ReadApplicators(excelPath, machineCode);
                 var allApplicators = sideA.Union(sideB).OrderBy(x => x).ToArray();
 
                 if (allApplicators.Length > 0)
