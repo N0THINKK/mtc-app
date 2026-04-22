@@ -90,16 +90,24 @@ namespace mtc_app.features.operator_worksheet.services
             {
                 var dbRecords = await _dbRepository.GetTodayRecordsAsync(noMesin);
 
+                var consumedIds = new HashSet<int>();
+                
                 foreach (var item in data)
                 {
-                    // Match berdasarkan sequen + urutan
+                    // Skip jika sequen kosong
+                    if (string.IsNullOrWhiteSpace(item.DisplaySequen)) continue;
+                    
+                    // Match berdasarkan sequen + urutan (exact match)
                     var dbMatch = dbRecords.FirstOrDefault(r =>
+                        !consumedIds.Contains(r.Id) &&
+                        !string.IsNullOrWhiteSpace(r.Sequen) &&
                         r.Sequen == item.DisplaySequen &&
-                        r.UrutanKanban == item.DisplayUrutanPengerjaan);
+                        (r.UrutanKanban ?? "") == (item.DisplayUrutanPengerjaan ?? ""));
 
                     if (dbMatch != null)
                     {
                         item.DbRecord = dbMatch;
+                        consumedIds.Add(dbMatch.Id);
                     }
                 }
             }

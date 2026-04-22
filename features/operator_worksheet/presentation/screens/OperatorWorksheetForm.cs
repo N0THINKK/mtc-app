@@ -24,8 +24,12 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private Label _lblNoMesin;
         private ComboBox _cboShift;    // Dropdown shift dari database
         private Label _lblNik;
-        private Label _lblQtyTotal;    // "QTY: 123 / 777"
-        private ProgressBar _pbQty;    // visual progress
+        
+        // Qty UI
+        private Label _lblGrossQty;
+        private ProgressBar _pbGrossQty;
+        private Label _lblNetQty;
+        private ProgressBar _pbNetQty;
 
         // === Content panels ===
         private Panel _pnlContent;
@@ -51,10 +55,18 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private DataGridView _dgvSequen;
 
         // === Riwayat Produksi ===
-        private DataGridView _dgvRiwayat;
+        // private DataGridView _dgvRiwayat;
+        
+        // === Sequen Tersimpan (Kotak Kecil) ===
+        private DataGridView _dgvTersimpan;
 
         // === Loaded data ===
         private List<LkoService.LkoAggregatedData> _worksheetData = new List<LkoService.LkoAggregatedData>();
+
+        // === Active source tracking ===
+        private enum ActiveGrid { Sequen, Tersimpan }
+        private ActiveGrid _activeSource = ActiveGrid.Sequen;
+        private LkoService.LkoAggregatedData _activeRowData = null;
 
         // === Header data ===
         private string _machineNumber = "-";
@@ -217,14 +229,14 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _pnlContent.Controls.Add(pnlAktivitas);
 
             // === RIGHT: Sequen ===
-            var pnlSequen = CreateSequenPanel(col3W, topRowHeight);
+            var pnlSequen = CreateSequenPanel(col3W, 310);
             pnlSequen.Location = new Point(pnlAktivitas.Right + gap, 12);
             _pnlContent.Controls.Add(pnlSequen);
 
-            // === BOTTOM: Riwayat Produksi ===
-            var pnlRiwayat = CreateRiwayatPanel(contentW, 180);
-            pnlRiwayat.Location = new Point(16, pnlInputProduksi.Bottom + gap);
-            _pnlContent.Controls.Add(pnlRiwayat);
+            // === RIGHT BOTTOM: Tersimpan ===
+            var pnlTersimpan = CreateTersimpanPanel(col3W, 194);
+            pnlTersimpan.Location = new Point(pnlAktivitas.Right + gap, pnlSequen.Bottom + gap);
+            _pnlContent.Controls.Add(pnlTersimpan);
 
             this.Controls.Add(_pnlContent);
 
@@ -385,6 +397,17 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             };
             pnl.Controls.Add(_lblTanggal);
 
+            // ---- Deteksi No Urut dari No Mesin ----
+            string displayMesin = _machineNumber;
+            string displayUrut = "-";
+            
+            if (_machineNumber.ToLower().Contains(".trx-"))
+            {
+                int idx = _machineNumber.ToLower().IndexOf(".trx-");
+                displayMesin = _machineNumber.Substring(0, idx).ToUpper();
+                displayUrut = _machineNumber.Substring(idx + 5);
+            }
+
             // ---- No Mesin ----
             int noMesinX = _lblTanggal.Right + 28;
             var lblMesinLabel = new Label
@@ -400,7 +423,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             _lblNoMesin = new Label
             {
-                Text = _machineNumber,
+                Text = displayMesin,
                 Font = valueFont,
                 ForeColor = valueColor,
                 AutoSize = true,
@@ -409,8 +432,32 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             };
             pnl.Controls.Add(_lblNoMesin);
 
+            // ---- No Urut ----
+            int noUrutX = _lblNoMesin.Right + 28;
+            var lblUrutLabel = new Label
+            {
+                Text = "No. Urut :",
+                Font = labelFont,
+                ForeColor = labelColor,
+                AutoSize = true,
+                Location = new Point(noUrutX, labelY),
+                BackColor = Color.Transparent
+            };
+            pnl.Controls.Add(lblUrutLabel);
+
+            var lblUrutVal = new Label
+            {
+                Text = displayUrut,
+                Font = valueFont,
+                ForeColor = valueColor,
+                AutoSize = true,
+                Location = new Point(lblUrutLabel.Right + 4, labelY),
+                BackColor = Color.Transparent
+            };
+            pnl.Controls.Add(lblUrutVal);
+
             // ---- Shift (ComboBox) ----
-            int shiftX = _lblNoMesin.Right + 28;
+            int shiftX = lblUrutVal.Right + 28;
             var lblShiftLabel = new Label
             {
                 Text = "Shift :",
@@ -478,84 +525,60 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             pnl.Controls.Add(_lblNik);
 
             // ---- QTY section (right-aligned) ----
-            // Build QTY from right to left
-            int qtyAreaRight = pnl.Width - 20;
+            int rightEdge = pnl.Width - 20;
 
-            // Progress mini-bar
-            _pbQty = new ProgressBar
+            // NET QTY Bar (Kanan)
+            _pbNetQty = new ProgressBar
             {
-                Minimum = 0,
-                Maximum = Math.Max(_qtyTarget, 1),
-                Value = Math.Min(_qtyDone, Math.Max(_qtyTarget, 1)),
-                Size = new Size(30, 16),
+                Minimum = 0, Maximum = 100, Value = 0,
+                Size = new Size(50, 16),
                 BackColor = Color.FromArgb(226, 232, 240),
                 Style = ProgressBarStyle.Continuous
             };
-            _pbQty.Location = new Point(qtyAreaRight - _pbQty.Width, labelY);
-            _pbQty.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            pnl.Controls.Add(_pbQty);
+            _pbNetQty.Location = new Point(rightEdge - _pbNetQty.Width, labelY);
+            _pbNetQty.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            pnl.Controls.Add(_pbNetQty);
 
-            // QTY value "123 / 777"
-            string doneStr = _qtyDone.ToString();
-            string targetStr = _qtyTarget.ToString();
-
-            _lblQtyTotal = new Label
+            _lblNetQty = new Label
             {
-                Text = $"QTY:  ",
-                Font = labelFont,
-                ForeColor = labelColor,
-                AutoSize = true,
-                BackColor = Color.Transparent
-            };
-
-            var lblQtyValues = new Label
-            {
+                Text = "OK: - / -",
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(22, 163, 74), // green-600
                 AutoSize = true,
                 BackColor = Color.Transparent,
-                Location = new Point(0, labelY)
             };
+            _lblNetQty.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            pnl.Controls.Add(_lblNetQty);
 
-            // We'll use the Paint event for dual-color rendering
-            lblQtyValues.Font = valueFont;
-            lblQtyValues.Text = $"QTY:  {doneStr} / {targetStr}";
-            lblQtyValues.ForeColor = valueColor;
-
-            // Measure total width
-            int qtyTextWidth = TextRenderer.MeasureText(lblQtyValues.Text, valueFont).Width + 8;
-            lblQtyValues.Location = new Point(_pbQty.Left - qtyTextWidth - 12, labelY);
-            lblQtyValues.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-
-            // Custom paint for coloring the "done" number green
-            lblQtyValues.Paint += (s, pe) =>
+            // GROSS QTY Bar (Kiri)
+            _pbGrossQty = new ProgressBar
             {
-                var lbl = (Label)s;
-                pe.Graphics.Clear(lbl.BackColor);
-                pe.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-
-                string prefix = "QTY:  ";
-                string done = doneStr;
-                string separator = " / ";
-                string target = targetStr;
-
-                int x = 0;
-                // "QTY:  " in gray
-                TextRenderer.DrawText(pe.Graphics, prefix, labelFont, new Point(x, 0), labelColor);
-                x += TextRenderer.MeasureText(prefix, labelFont).Width - 4;
-
-                // done number in green
-                Color greenColor = Color.FromArgb(34, 197, 94); // green-500
-                TextRenderer.DrawText(pe.Graphics, done, valueFont, new Point(x, 0), greenColor);
-                x += TextRenderer.MeasureText(done, valueFont).Width - 4;
-
-                // " / " in default
-                TextRenderer.DrawText(pe.Graphics, separator, valueFont, new Point(x, 0), valueColor);
-                x += TextRenderer.MeasureText(separator, valueFont).Width - 4;
-
-                // target in bold dark
-                TextRenderer.DrawText(pe.Graphics, target, valueFont, new Point(x, 0), valueColor);
+                Minimum = 0, Maximum = 100, Value = 0,
+                Size = new Size(50, 16),
+                BackColor = Color.FromArgb(226, 232, 240),
+                Style = ProgressBarStyle.Continuous
             };
+            _pbGrossQty.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            pnl.Controls.Add(_pbGrossQty);
 
-            pnl.Controls.Add(lblQtyValues);
+            _lblGrossQty = new Label
+            {
+                Text = "Gross: - / -",
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                ForeColor = valueColor,
+                AutoSize = true,
+                BackColor = Color.Transparent,
+            };
+            _lblGrossQty.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            pnl.Controls.Add(_lblGrossQty);
+            
+            // Adjust layout after dummy text creation
+            _lblNetQty.Location = new Point(_pbNetQty.Left - TextRenderer.MeasureText(_lblNetQty.Text, _lblNetQty.Font).Width - 8, labelY);
+            _pbGrossQty.Location = new Point(_lblNetQty.Left - _pbGrossQty.Width - 16, labelY);
+            _lblGrossQty.Location = new Point(_pbGrossQty.Left - TextRenderer.MeasureText(_lblGrossQty.Text, _lblGrossQty.Font).Width - 8, labelY);
+
+            // To properly handle dynamic width changes on update, you'd usually hook into a layout event, 
+            // but UpdateHeaderQty() sets the text directly. We'll adjust location in UpdateHeaderQty.
 
             return pnl;
         }
@@ -813,14 +836,20 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
         private async void BtnSimpanAktivitas_Click(object sender, EventArgs e)
         {
-            if (_dgvSequen?.CurrentRow == null)
+            if (_activeRowData == null)
             {
                 MessageBox.Show("Pilih sequen terlebih dahulu.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            var rowData = _dgvSequen.CurrentRow.DataBoundItem as LkoService.LkoAggregatedData;
-            if (rowData == null) return;
+            var rowData = _activeRowData;
+
+            // Cegah simpan ulang dari grid SEQUEN jika sudah tersimpan
+            if (_activeSource == ActiveGrid.Sequen && rowData.DbRecord != null)
+            {
+                MessageBox.Show("Sequen ini sudah tersimpan. Gunakan tabel 'Sudah Tersimpan' untuk mengedit.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
 
             // Ambil kode defect dari dropdown
             string kodeDefect = _cboKodeDefect.SelectedIndex > 0 ? _cboKodeDefect.SelectedItem.ToString() : string.Empty;
@@ -828,6 +857,14 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Parse defect operator
             int.TryParse(_txtDefectOperator.Text.Trim(), out int defectOperator);
             int.TryParse(_txtQtyProduksi.Text.Trim(), out int qtyProduct);
+
+            // Validasi: jika defect operator > 0, wajib pilih kode defect
+            if (defectOperator > 0 && string.IsNullOrEmpty(kodeDefect))
+            {
+                MessageBox.Show("Jika ada Defect Operator, wajib memilih Kode Defect.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                _cboKodeDefect.Focus();
+                return;
+            }
 
             // Ambil shift dari combo
             string shiftName = _cboShift?.SelectedItem is CachedShiftDto shift ? shift.ShiftName : "-";
@@ -852,11 +889,16 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 // Update DB record reference di data lokal
                 rowData.DbRecord = record;
 
-                // Refresh riwayat grid
-                _dgvRiwayat.Refresh();
+                // Refresh grid agar langsung muncul
+                var savedData = _worksheetData.Where(x => x.DbRecord != null).ToList();
+                _dgvTersimpan.DataSource = null;
+                _dgvTersimpan.DataSource = savedData;
                 _dgvSequen.Refresh();
 
-                MessageBox.Show("Data berhasil disimpan ke database.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                string aksi = _activeSource == ActiveGrid.Tersimpan ? "diperbarui" : "disimpan";
+                MessageBox.Show($"Data berhasil {aksi}.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                
+                UpdateHeaderQty();
             }
             catch (Exception ex)
             {
@@ -904,6 +946,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", Width = 55 });
             _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Kombinasi", HeaderText = "Kombinasi", DataPropertyName = "DisplayKombinasi", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
             _dgvSequen.SelectionChanged += DgvSequen_SelectionChanged;
+            _dgvSequen.CellFormatting += DgvSequen_CellFormatting;
 
             txtSearch.TextChanged += (s, e) =>
             {
@@ -919,15 +962,15 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         // =====================================================================
         //  BOTTOM PANEL: Riwayat Produksi
         // =====================================================================
-        private Panel CreateRiwayatPanel(int width, int height)
+        private Panel CreateTersimpanPanel(int width, int height)
         {
             var card = CreateCard(width, height);
-            card.Controls.Add(new Label { Text = "Riwayat Produksi", Font = new Font("Segoe UI", 11F, FontStyle.Bold), ForeColor = Color.FromArgb(15, 23, 42), AutoSize = true, Location = new Point(16, 12) });
+            card.Controls.Add(new Label { Text = "SUDAH TERSIMPAN", Font = new Font("Segoe UI", 11F, FontStyle.Bold), ForeColor = Color.FromArgb(34, 197, 94), AutoSize = true, Location = new Point(16, 12) });
 
-            _dgvRiwayat = new DataGridView
+            _dgvTersimpan = new DataGridView
             {
                 Location = new Point(16, 38),
-                Size = new Size(width - 36, height - 54),
+                Size = new Size(width - 32, height - 54),
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.None,
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
@@ -943,19 +986,14 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 RowTemplate = { Height = 28 },
                 EnableHeadersVisualStyles = false,
                 ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(248, 250, 252), ForeColor = Color.FromArgb(71, 85, 105), Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
-                DefaultCellStyle = new DataGridViewCellStyle { SelectionBackColor = Color.FromArgb(219, 234, 254), SelectionForeColor = Color.FromArgb(15, 23, 42), Padding = new Padding(4) }
+                DefaultCellStyle = new DataGridViewCellStyle { SelectionBackColor = Color.FromArgb(220, 252, 231), SelectionForeColor = Color.FromArgb(15, 23, 42), Padding = new Padding(4) }
             };
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "DisplaySequen", Width = 70 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", Width = 55 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Kombinasi", DataPropertyName = "DisplayKombinasi", Width = 120 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Qty Produk", DataPropertyName = "DisplayQtyProduk", Width = 80 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Defect Mesin", DataPropertyName = "DisplayQtyDefectMesin", Width = 90 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Defect Operator", DataPropertyName = "DisplayQtyDefectOperator", Width = 100 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Kode Defect", DataPropertyName = "DisplayKodeDefect", Width = 140 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Mulai", DataPropertyName = "DisplayWaktuMulai", Width = 80 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Selesai", DataPropertyName = "DisplayWaktuSelesai", Width = 80 });
-            _dgvRiwayat.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Waktu Simpan", DataPropertyName = "DisplayWaktuSimpan", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
-            card.Controls.Add(_dgvRiwayat);
+            _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "DisplaySequen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", Width = 80 });
+
+            _dgvTersimpan.SelectionChanged += DgvTersimpan_SelectionChanged;
+
+            card.Controls.Add(_dgvTersimpan);
             return card;
         }
 
@@ -971,13 +1009,53 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 // Merge dengan data DB (defect operator, kode defect)
                 await _lkoService.MergeDbRecordsAsync(_worksheetData, _machineNumber);
 
+                // Grid Kanan: Semua data dari Jissk
                 _dgvSequen.DataSource = _worksheetData;
-                _dgvRiwayat.DataSource = _worksheetData;
+                
+                // Kotak Kecil Bawah: Hanya data yang sudah pernah disimpan (dikerjakan)
+                var savedData = _worksheetData.Where(x => x.DbRecord != null).ToList();
+                _dgvTersimpan.DataSource = savedData;
+                
+                UpdateHeaderQty();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"LoadSequenData error: {ex.Message}");
             }
+        }
+
+        private void UpdateHeaderQty()
+        {
+            if (_worksheetData == null) return;
+            
+            int targetSum = 0;
+            int grossSum = 0;
+            int defectSum = 0;
+
+            foreach(var item in _worksheetData) {
+                // hanya yang sudah disimpan via tombol Simpan
+                if (item.DbRecord != null) {
+                    if (int.TryParse(item.Log?.QtyProduk, out int gQty)) grossSum += gQty;
+                    defectSum += item.DbRecord.QtyDefectOperator;
+                }
+            }
+            
+            int netSum = grossSum - defectSum;
+            
+            // Progress bar = rasio OK / Gross
+            _pbGrossQty.Maximum = Math.Max(grossSum, 1);
+            _pbGrossQty.Value = Math.Min(grossSum, _pbGrossQty.Maximum);
+            
+            _pbNetQty.Maximum = Math.Max(grossSum, 1);
+            _pbNetQty.Value = Math.Min(Math.Max(netSum, 0), _pbNetQty.Maximum);
+            
+            _lblGrossQty.Text = $"Gross: {grossSum}";
+            _lblNetQty.Text = $"OK: {netSum}";
+
+            // Realign
+            _lblNetQty.Left = _pbNetQty.Left - TextRenderer.MeasureText(_lblNetQty.Text, _lblNetQty.Font).Width - 8;
+            _pbGrossQty.Left = _lblNetQty.Left - _pbGrossQty.Width - 16;
+            _lblGrossQty.Left = _pbGrossQty.Left - TextRenderer.MeasureText(_lblGrossQty.Text, _lblGrossQty.Font).Width - 8;
         }
 
         private void DgvSequen_SelectionChanged(object sender, EventArgs e)
@@ -986,6 +1064,26 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             var rowData = _dgvSequen.CurrentRow.DataBoundItem as LkoService.LkoAggregatedData;
             if (rowData == null) return;
 
+            _activeSource = ActiveGrid.Sequen;
+            _activeRowData = rowData;
+
+            PopulateInputFields(rowData);
+        }
+
+        private void DgvTersimpan_SelectionChanged(object sender, EventArgs e)
+        {
+            if (_dgvTersimpan?.CurrentRow == null) return;
+            var rowData = _dgvTersimpan.CurrentRow.DataBoundItem as LkoService.LkoAggregatedData;
+            if (rowData == null) return;
+
+            _activeSource = ActiveGrid.Tersimpan;
+            _activeRowData = rowData;
+
+            PopulateInputFields(rowData);
+        }
+
+        private void PopulateInputFields(LkoService.LkoAggregatedData rowData)
+        {
             _lblLotId.Text = $"Lot ID: {rowData.DisplaySequen}";
             _txtLotTermA.Text = rowData.Master?.TerminalA ?? "";
             _txtFrontChA.Text = !string.IsNullOrWhiteSpace(rowData.Master?.PanjangStripSisiA) ? rowData.Master.PanjangStripSisiA : "0";
@@ -1005,6 +1103,19 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             else
             {
                 _cboKodeDefect.SelectedIndex = 0;
+            }
+        }
+
+        private void DgvSequen_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+            var rowData = _dgvSequen.Rows[e.RowIndex].DataBoundItem as LkoService.LkoAggregatedData;
+            if (rowData?.DbRecord != null)
+            {
+                e.CellStyle.BackColor = Color.FromArgb(220, 252, 231);       // hijau muda
+                e.CellStyle.ForeColor = Color.FromArgb(22, 101, 52);         // hijau tua
+                e.CellStyle.SelectionBackColor = Color.FromArgb(187, 247, 208);
+                e.CellStyle.SelectionForeColor = Color.FromArgb(22, 101, 52);
             }
         }
 

@@ -66,21 +66,18 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                     if (string.IsNullOrWhiteSpace(line)) continue;
                     
                     var parts = line.Split(',');
-                    if (parts.Length >= 11)
+                    if (parts.Length >= 45) // KombinasiWire ada di indeks 44
                     {
                         result.Add(new PrdmstDto
                         {
                             UrutanSequen = parts[0]?.Trim(),
                             Sequen = parts[1]?.Trim(),
-                            CutLength = parts[2]?.Trim(),
+                            CutLength = parts[5]?.Trim(), // Kolom ke-6
+                            // QTY mungkin tidak di 3, tapi kita skip atau mapping seadanya
                             Qty = parts[3]?.Trim(),
-                            PanjangStripSisiA = parts[4]?.Trim(),
-                            PanjangStripSisiB = parts[5]?.Trim(),
-                            TerminalA = parts[6]?.Trim(),
-                            TerminalB = parts[7]?.Trim(),
-                            MunculkanGambarTermA = parts[8]?.Trim(),
-                            MunculkanGambarTermB = parts[9]?.Trim(),
-                            KombinasiWire = parts[10]?.Trim()
+                            TerminalA = parts[11]?.Trim(), // Kolom ke-12
+                            TerminalB = parts[12]?.Trim(), // Kolom ke-13
+                            KombinasiWire = parts[44]?.Trim() // Ditemukan di index 44
                         });
                     }
                 }
