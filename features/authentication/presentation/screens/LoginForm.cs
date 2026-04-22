@@ -357,7 +357,8 @@ namespace mtc_app.features.authentication.presentation.screens
                 case "Teknisi" when string.IsNullOrEmpty(identity):
                     return new TechnicianDashboardForm();
                 case "Teknisi":
-                    return new mtc_app.features.technician.presentation.screens.TechnicianMainMenuForm();
+                    // Sementara langsung masuk ke patroli harian (mesin/cutting)
+                    return new mtc_app.features.machine_history.presentation.screens.ChecksheetForm(isTeknisiMode: true);
                 case "Operator":
                     return new OperatorMainMenuForm();
                 case "Stock":
