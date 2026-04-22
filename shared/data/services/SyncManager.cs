@@ -161,6 +161,9 @@ namespace mtc_app.shared.data.services
                     case "machine_operator_activities":
                         return ProcessActivitySync(item);
                     
+                    case "operator_quick_counts":
+                        return ProcessQuickCountSync(item);
+                    
                     default:
                         System.Diagnostics.Debug.WriteLine($"[SyncManager] Unknown table: {item.TableName}");
                         return false;
@@ -354,6 +357,49 @@ namespace mtc_app.shared.data.services
                         System.Diagnostics.Debug.WriteLine($"[SyncManager] Unknown activity action: {item.ActionType}");
                         return false;
                 }
+            }
+        }
+
+        private bool ProcessQuickCountSync(SyncQueueItem item)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                var json = Newtonsoft.Json.Linq.JObject.Parse(item.PayloadJson);
+
+                if (item.ActionType == "INCREMENT_QUICK_COUNT" || item.ActionType == "DECREMENT_QUICK_COUNT")
+                {
+                    var machineId = json["MachineId"].ToObject<int>();
+                    var operatorName = json["OperatorName"]?.ToString() ?? "";
+                    var shiftName = json["ShiftName"]?.ToString() ?? "";
+                    var itemName = json["ItemName"]?.ToString() ?? "";
+                    var recordDate = json["RecordDate"].ToObject<DateTime>();
+                    var recordHour = json["RecordHour"].ToObject<int>();
+                    int delta = item.ActionType == "INCREMENT_QUICK_COUNT" ? 1 : -1;
+
+                    string sql = @"
+                        INSERT INTO operator_quick_counts 
+                        (machine_id, operator_name, shift_name, item_name, record_date, record_hour, total_count)
+                        VALUES (@MachineId, @OpName, @ShiftName, @ItemName, @RecordDate, @RecordHour, @InitialCount)
+                        ON DUPLICATE KEY UPDATE 
+                        total_count = GREATEST(0, total_count + @Delta)";
+
+                    int initialCount = delta > 0 ? 1 : 0; 
+
+                    var affected = connection.Execute(sql, new
+                    {
+                        MachineId = machineId,
+                        OpName = operatorName,
+                        ShiftName = shiftName,
+                        ItemName = itemName,
+                        RecordDate = recordDate.Date,
+                        RecordHour = recordHour,
+                        InitialCount = initialCount,
+                        Delta = delta
+                    });
+
+                    return affected > 0;
+                }
+                return false;
             }
         }
 
