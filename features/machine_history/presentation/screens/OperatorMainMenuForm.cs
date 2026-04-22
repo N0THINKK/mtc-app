@@ -24,6 +24,9 @@ namespace mtc_app.features.machine_history.presentation.screens
         private int? _currentActiveRecordId = null;
         private DateTime? _offlineStartTime = null; // Tracks activity started while offline
 
+        private int _currentTrackedHour = DateTime.Now.Hour;
+        private System.Windows.Forms.Timer _hourCheckTimer;
+
         // Quick Counters
         private System.Collections.Generic.Dictionary<string, int> _quickCounts = new System.Collections.Generic.Dictionary<string, int>
         {
@@ -39,6 +42,33 @@ namespace mtc_app.features.machine_history.presentation.screens
             InitializeUI();
             CheckActiveIdleStatus();
             FetchCurrentHourCounts();
+
+            _hourCheckTimer = new System.Windows.Forms.Timer { Interval = 60000 };
+            _hourCheckTimer.Tick += (s, e) => CheckHourChange();
+            _hourCheckTimer.Start();
+
+            // Subscribe to sync completion to update cache with latest DB state
+            SyncMgr.OnSyncStatusChanged += SyncMgr_OnSyncStatusChanged;
+        }
+
+        private void SyncMgr_OnSyncStatusChanged(object sender, mtc_app.shared.data.services.SyncStatusEventArgs e)
+        {
+            if (e.Status == mtc_app.shared.data.services.SyncStatus.Complete)
+            {
+                if (this.IsHandleCreated && !this.IsDisposed)
+                {
+                    this.BeginInvoke(new Action(() => FetchCurrentHourCounts()));
+                }
+            }
+        }
+
+        private void CheckHourChange()
+        {
+            if (DateTime.Now.Hour != _currentTrackedHour)
+            {
+                _currentTrackedHour = DateTime.Now.Hour;
+                FetchCurrentHourCounts();
+            }
         }
 
         protected override void OnLoad(EventArgs e)
@@ -297,6 +327,12 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            if (SyncMgr != null)
+            {
+                SyncMgr.OnSyncStatusChanged -= SyncMgr_OnSyncStatusChanged;
+            }
+            _hourCheckTimer?.Stop();
+            _hourCheckTimer?.Dispose();
             StopCurrentDowntime();
             base.OnFormClosing(e);
         }
@@ -460,40 +496,104 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void FetchCurrentHourCounts()
         {
-            if (!NetworkMon.IsOnline) return;
+            // Reset to zero baseline
+            foreach (var key in new System.Collections.Generic.List<string>(_quickCounts.Keys))
+            {
+                _quickCounts[key] = 0;
+            }
 
+            int mId = GetMachineIdInt();
+            string opName = UserSession.CurrentUser?.Username ?? "Unknown";
+            int currentHour = DateTime.Now.Hour;
+            DateTime currentDate = DateTime.Now.Date;
+
+            string cacheKey = $"QuickCount_{mId}_{opName}_{currentDate:yyyyMMdd}_{currentHour}";
+
+            // Fetch from Remote DB if online
+            if (NetworkMon.IsOnline)
+            {
+                try
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        string sql = @"
+                            SELECT item_name, total_count 
+                            FROM operator_quick_counts 
+                            WHERE machine_id = @MId AND operator_name = @OpName 
+                            AND record_date = @RecordDate AND record_hour = @RecordHour";
+
+                        var results = conn.Query(sql, new 
+                        { 
+                            MId = mId, 
+                            OpName = opName, 
+                            RecordDate = currentDate,
+                            RecordHour = currentHour
+                        });
+
+                        foreach (var row in results)
+                        {
+                            string itemName = row.item_name;
+                            int count = (int)row.total_count;
+
+                            if (_quickCounts.ContainsKey(itemName))
+                            {
+                                _quickCounts[itemName] = count;
+                            }
+                        }
+
+                        OfflineRepo.SetCache(cacheKey, _quickCounts, TimeSpan.FromHours(12));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine("Fetch quick counts DB error: " + ex.Message);
+                }
+            }
+            else
+            {
+                try
+                {
+                    var cached = OfflineRepo.GetCache<System.Collections.Generic.Dictionary<string, int>>(cacheKey);
+                    if (cached != null)
+                    {
+                        foreach (var kvp in cached)
+                        {
+                            if (_quickCounts.ContainsKey(kvp.Key))
+                            {
+                                _quickCounts[kvp.Key] = kvp.Value;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine("Fetch quick counts Cache error: " + ex.Message);
+                }
+            }
+
+            // Include pending offline deltas for current hour
             try
             {
-                int mId = GetMachineIdInt();
-                string opName = UserSession.CurrentUser?.Username ?? "Unknown";
-
-                using (var conn = DatabaseHelper.GetConnection())
+                var queueItems = OfflineRepo.GetPendingItems();
+                foreach (var item in queueItems)
                 {
-                    string sql = @"
-                        SELECT item_name, total_count 
-                        FROM operator_quick_counts 
-                        WHERE machine_id = @MId AND operator_name = @OpName 
-                        AND record_date = @RecordDate AND record_hour = @RecordHour";
-
-                    var results = conn.Query(sql, new 
-                    { 
-                        MId = mId, 
-                        OpName = opName, 
-                        RecordDate = DateTime.Now.Date,
-                        RecordHour = DateTime.Now.Hour
-                    });
-
-                    foreach (var row in results)
+                    if (item.TableName == "operator_quick_counts" && 
+                        (item.ActionType == "INCREMENT_QUICK_COUNT" || item.ActionType == "DECREMENT_QUICK_COUNT"))
                     {
-                        string itemName = row.item_name;
-                        int count = (int)row.total_count;
+                        var json = Newtonsoft.Json.Linq.JObject.Parse(item.PayloadJson);
+                        int hmId = json["MachineId"]?.ToObject<int>() ?? 0;
+                        string hopName = json["OperatorName"]?.ToString() ?? "";
+                        string hItemName = json["ItemName"]?.ToString() ?? "";
+                        DateTime hRecordDate = json["RecordDate"]?.ToObject<DateTime>() ?? DateTime.MinValue;
+                        int hRecordHour = json["RecordHour"]?.ToObject<int>() ?? -1;
 
-                        if (_quickCounts.ContainsKey(itemName))
+                        if (hmId == mId && hopName == opName && hRecordDate.Date == currentDate && hRecordHour == currentHour)
                         {
-                            _quickCounts[itemName] = count;
-                            if (_lblCounts.TryGetValue(itemName, out var lbl))
+                            int delta = item.ActionType == "INCREMENT_QUICK_COUNT" ? 1 : -1;
+                            if (_quickCounts.ContainsKey(hItemName))
                             {
-                                lbl.Text = $"{itemName}: {count}";
+                                int newCount = _quickCounts[hItemName] + delta;
+                                _quickCounts[hItemName] = Math.Max(0, newCount);
                             }
                         }
                     }
@@ -501,12 +601,23 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Fetch quick counts error: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("Fetch quick counts offline error: " + ex.Message);
+            }
+
+            // Update UI Labels
+            foreach (var kvp in _quickCounts)
+            {
+                if (_lblCounts.TryGetValue(kvp.Key, out var lbl))
+                {
+                    lbl.Text = $"{kvp.Key}: {kvp.Value}";
+                }
             }
         }
 
         private void UpdateQuickCount(string itemName, int delta, Label lbl)
         {
+            CheckHourChange();
+
             if (!_quickCounts.ContainsKey(itemName)) return;
 
             int current = _quickCounts[itemName];
