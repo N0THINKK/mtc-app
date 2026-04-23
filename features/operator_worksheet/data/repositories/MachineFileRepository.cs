@@ -60,28 +60,32 @@ namespace mtc_app.features.operator_worksheet.data.repositories
 
             try
             {
-                var lines = File.ReadAllLines(filePath);
-                foreach (var line in lines)
+                using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var sr = new StreamReader(fs))
                 {
-                    if (string.IsNullOrWhiteSpace(line)) continue;
-                    
-                    var parts = line.Split(',');
-                    if (parts.Length >= 45) // KombinasiWire ada di indeks 44
+                    string line;
+                    while ((line = sr.ReadLine()) != null)
                     {
-                        result.Add(new PrdmstDto
+                        if (string.IsNullOrWhiteSpace(line)) continue;
+                        
+                        var parts = line.Split(',');
+                        if (parts.Length >= 45) // KombinasiWire ada di indeks 44
                         {
-                            UrutanSequen = parts[0]?.Trim(),
-                            Sequen = parts[1]?.Trim(),
-                            CutLength = parts[5]?.Trim(), // Kolom ke-6
-                            Qty = parts[3]?.Trim(),
-                            TerminalA = parts[11]?.Trim(),     // Kolom ke-12
-                            TerminalB = parts[12]?.Trim(),     // Kolom ke-13
-                            HasTerminalA = parts[13]?.Trim(),  // Kolom ke-14
-                            HasTerminalB = parts[14]?.Trim(),  // Kolom ke-15
-                            SealA = parts[15]?.Trim(),         // Kolom ke-16
-                            SealB = parts[16]?.Trim(),         // Kolom ke-17
-                            KombinasiWire = parts[44]?.Trim()  // Kolom ke-45
-                        });
+                            result.Add(new PrdmstDto
+                            {
+                                UrutanSequen = parts[0]?.Trim(),
+                                Sequen = parts[1]?.Trim(),
+                                CutLength = parts[5]?.Trim(), // Kolom ke-6
+                                Qty = parts[3]?.Trim(),
+                                TerminalA = parts[11]?.Trim(),     // Kolom ke-12
+                                TerminalB = parts[12]?.Trim(),     // Kolom ke-13
+                                HasTerminalA = parts[13]?.Trim(),  // Kolom ke-14
+                                HasTerminalB = parts[14]?.Trim(),  // Kolom ke-15
+                                SealA = parts[15]?.Trim(),         // Kolom ke-16
+                                SealB = parts[16]?.Trim(),         // Kolom ke-17
+                                KombinasiWire = !string.IsNullOrWhiteSpace(parts[43]?.Trim()) ? parts[43].Trim() : parts[44]?.Trim()  // Kolom ke-44 (nama wire), fallback ke kolom ke-45
+                            });
+                        }
                     }
                 }
             }

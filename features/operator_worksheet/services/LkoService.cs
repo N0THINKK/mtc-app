@@ -45,18 +45,57 @@ namespace mtc_app.features.operator_worksheet.services
         /// Ambil SEMUA baris dari PrdLog.csv, join dengan PrdMst, dan join dengan DB records.
         /// Tidak ada filter unik - setiap baris PrdLog ditampilkan.
         /// </summary>
-        public List<LkoAggregatedData> GetAllWorksheetData()
+        public List<LkoAggregatedData> GetAllWorksheetData(string noMesin = "")
         {
             var logs = _fileRepository.GetPrdLogs();
             var masters = _fileRepository.GetPrdMst();
 
             var result = new List<LkoAggregatedData>();
 
-            // Tampilkan SEMUA baris dari PrdLog (bukan hanya sequen unik)
+            // Tentukan prefix mesin dari noMesin.
+            // Format noMesin: "AC90.TRX-10" -> ambil angka setelah '-' -> 10 -> J
+            char expectedPrefix = '\0'; // null char = tidak filter
+            if (!string.IsNullOrWhiteSpace(noMesin) && noMesin.Contains("-"))
+            {
+                string afterDash = noMesin.Substring(noMesin.LastIndexOf('-') + 1);
+                if (int.TryParse(afterDash, out int mId) && mId >= 1 && mId <= 26)
+                {
+                    expectedPrefix = (char)('A' + mId - 1);
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[LKO] noMesin='{noMesin}', expectedPrefix='{expectedPrefix}'");
+            System.Diagnostics.Debug.WriteLine($"[LKO] Total masters: {masters.Count}, Total logs: {logs.Count}");
+
             foreach (var log in logs)
             {
-                var matchingMaster = masters.FirstOrDefault(m => m.Sequen == log.Sequen && m.UrutanSequen == log.UrutanPengerjaan) 
-                                     ?? masters.FirstOrDefault(m => m.Sequen == log.Sequen); // Fallback jika urutan tidak cocok/kosong
+                PrdmstDto matchingMaster = null;
+
+                if (expectedPrefix != '\0' && !string.IsNullOrWhiteSpace(log.Sequen))
+                {
+                    // Ambil angka murni dari log.Sequen (misal "50 BU2" jadi "50", " 50 " jadi "50")
+                    string logDigits = new string(log.Sequen.Where(char.IsDigit).ToArray());
+                    
+                    if (int.TryParse(logDigits, out int seqNumber))
+                    {
+                        // Bangun format yang dicari, misal J0050
+                        string targetUrutan = $"{expectedPrefix}{seqNumber:D4}";
+
+                        // Match langsung dengan kolom pertama di PRDMST (m.UrutanSequen)
+                        matchingMaster = masters.FirstOrDefault(m => 
+                            !string.IsNullOrWhiteSpace(m.UrutanSequen) && 
+                            m.UrutanSequen.Trim().Equals(targetUrutan, StringComparison.OrdinalIgnoreCase));
+                    }
+                }
+
+                if (matchingMaster != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LKO] MATCH: log.Seq={log.Sequen} -> master.UrutSeq={matchingMaster.UrutanSequen}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LKO] NO MATCH: log.Seq={log.Sequen}");
+                }
 
                 result.Add(new LkoAggregatedData
                 {

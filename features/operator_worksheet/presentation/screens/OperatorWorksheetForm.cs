@@ -172,7 +172,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // === QTY dari PrdLog.csv ===
             try
             {
-                var data = _lkoService.GetAllWorksheetData();
+                var data = _lkoService.GetAllWorksheetData(_machineNumber);
                 _qtyTarget = data.Count;
                 _qtyDone = data.Count(d => !string.IsNullOrWhiteSpace(d.Log?.QtyProduk) && d.Log.QtyProduk != "0");
             }
@@ -1035,7 +1035,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         {
             try
             {
-                _worksheetData = _lkoService.GetAllWorksheetData();
+                _worksheetData = _lkoService.GetAllWorksheetData(_machineNumber);
 
                 // Merge dengan data DB (defect operator, kode defect)
                 await _lkoService.MergeDbRecordsAsync(_worksheetData, _machineNumber);
