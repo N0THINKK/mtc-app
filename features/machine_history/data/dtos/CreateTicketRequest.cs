@@ -14,11 +14,15 @@ namespace mtc_app.features.machine_history.data.dtos
         // Offline Lifecycle Fields
         public string TechnicianNik { get; set; }
         public DateTime? StartedAt { get; set; }
+        public DateTime? InspectionStartedAt { get; set; }
         public DateTime? FinishedAt { get; set; }
         public DateTime? ProductionResumedAt { get; set; }
         public int StatusId { get; set; } = 1; // Default Open
         public int IsMachineRunning { get; set; } = 0; // Machine State: 0=Stop, 1=Run
         public int RunElapsedSeconds { get; set; } = 0; // Accumulated Operator Wait Time
+        public int ArrivalElapsedSeconds { get; set; } = 0;
+        public int RepairElapsedSeconds { get; set; } = 0;
+        public int InspectionElapsedSeconds { get; set; } = 0;
 
         // Technician Completion Fields
         public int CounterStroke { get; set; }
@@ -27,6 +31,7 @@ namespace mtc_app.features.machine_history.data.dtos
         public string TechRatingNote { get; set; }
 
         public int GlRatingScore { get; set; } // Operator/GL Rating
+        public string GlRatingNote { get; set; }
         
         // Sparepart Requests (for offline sync)
         public List<string> SparepartRequests { get; set; } = new List<string>();

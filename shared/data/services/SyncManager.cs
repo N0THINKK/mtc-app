@@ -56,6 +56,9 @@ namespace mtc_app.shared.data.services
             // Subscribe to network status changes
             _networkMonitor.OnStatusChanged += OnNetworkStatusChanged;
 
+            // Clear stale dead letter items from previous sessions
+            try { _offlineRepo.ClearDeadLetters(); } catch { }
+
             // Start periodic sync timer
             _syncTimer = new Timer(TrySyncAsync, null, syncIntervalMs, syncIntervalMs);
         }
@@ -180,11 +183,143 @@ namespace mtc_app.shared.data.services
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
+                connection.Open();
                 // Determine payload type and execute appropriate SQL
                 var json = Newtonsoft.Json.Linq.JObject.Parse(item.PayloadJson);
                 
                 // Case-insensitive key check helper
                 bool HasKey(string key) => json.GetValue(key, StringComparison.OrdinalIgnoreCase) != null;
+
+                if (!string.IsNullOrEmpty(item.ActionType))
+                {
+                    if (item.ActionType == "VERIFY_TECHNICIAN")
+                    {
+                        var tId = json.GetValue("TicketId", StringComparison.OrdinalIgnoreCase).ToObject<long>();
+                        var nik = json.GetValue("TechnicianNik", StringComparison.OrdinalIgnoreCase)?.ToString();
+                        
+                        var tech = connection.QueryFirstOrDefault<int?>(
+                            "SELECT user_id FROM users WHERE nik = @Nik AND role_id = 2", new { Nik = nik });
+                        
+                        if (tech.HasValue)
+                        {
+                            connection.Execute(
+                                "UPDATE tickets SET status_id = 2, technician_id = @Id, started_at = COALESCE(started_at, NOW()), is_machine_running = 0 WHERE ticket_id = @TId", 
+                                new { Id = tech.Value, TId = tId });
+                            
+                            // Don't bother with advanced sessions if queued, just updating the ticket is sufficient for data integrity.
+                            return true;
+                        }
+                        return true; // Mark as handled if user not found (avoids infinite queue lock)
+                    }
+                    else if (item.ActionType == "INSPECTION_START")
+                    {
+                        var tId = json.GetValue("TicketId", StringComparison.OrdinalIgnoreCase).ToObject<long>();
+                        connection.Execute("UPDATE tickets SET status_id = 3, inspection_started_at = NOW() WHERE ticket_id = @Id", new { Id = tId });
+                        return true;
+                    }
+                    else if (item.ActionType == "RUN_MACHINE")
+                    {
+                        var tId = json.GetValue("TicketId", StringComparison.OrdinalIgnoreCase).ToObject<long>();
+                        var totalSeconds = json.GetValue("TotalSeconds", StringComparison.OrdinalIgnoreCase)?.ToObject<int>() ?? 0;
+                        connection.Execute("UPDATE tickets SET status_id = 4, production_resumed_at = NOW(), is_machine_running = 1, run_elapsed_seconds = @Secs WHERE ticket_id = @Id", new { Id = tId, Secs = totalSeconds });
+                        
+                        var machineId = connection.QueryFirstOrDefault<int>("SELECT machine_id FROM tickets WHERE ticket_id = @Id", new { Id = tId });
+                        if (machineId > 0)
+                        {
+                            connection.Execute("UPDATE machines SET current_status_id = 1 WHERE machine_id = @MachineId", new { MachineId = machineId });
+                        }
+                        return true;
+                    }
+                    else if (item.ActionType == "REVERT_REPAIRING")
+                    {
+                        var tId = json.GetValue("TicketId", StringComparison.OrdinalIgnoreCase).ToObject<long>();
+                        var totalSeconds = json.GetValue("TotalSeconds", StringComparison.OrdinalIgnoreCase)?.ToObject<int>() ?? 0;
+                        connection.Execute("UPDATE tickets SET status_id = 2, technician_finished_at = NULL, inspection_started_at = NULL, run_elapsed_seconds = @Secs WHERE ticket_id = @Id", new { Id = tId, Secs = totalSeconds });
+                        connection.Execute("UPDATE ticket_technician_sessions SET is_completing_session = 0, ended_at = NULL WHERE ticket_id = @Id AND is_completing_session = 1", new { Id = tId });
+                        return true;
+                    }
+                    else if (item.ActionType == "RATING_GL")
+                    {
+                        var tId = json.GetValue("TicketId", StringComparison.OrdinalIgnoreCase).ToObject<long>();
+                        var score = json.GetValue("Score", StringComparison.OrdinalIgnoreCase).ToObject<int>();
+                        var note = json.GetValue("Note", StringComparison.OrdinalIgnoreCase)?.ToString();
+                        connection.Execute("UPDATE tickets SET gl_rating_score = @Score, gl_rating_note = @Note WHERE ticket_id = @Id", new { Id = tId, Score = score, Note = note });
+                        return true;
+                    }
+                    else if (item.ActionType == "FINISH_TICKET")
+                    {
+                        using (var trans = connection.BeginTransaction())
+                        {
+                            try
+                            {
+                                var tId = json.GetValue("TicketId", StringComparison.OrdinalIgnoreCase).ToObject<long>();
+                                var cnt = json.GetValue("CounterStroke", StringComparison.OrdinalIgnoreCase)?.ToObject<int>() ?? 0;
+                                var is4M = json.GetValue("Is4M", StringComparison.OrdinalIgnoreCase)?.ToObject<int>() ?? 0;
+                                var sc = json.GetValue("TechRatingScore", StringComparison.OrdinalIgnoreCase)?.ToObject<int>() ?? 0;
+                                var nt = json.GetValue("TechRatingNote", StringComparison.OrdinalIgnoreCase)?.ToString();
+                                var patrolDetailId = json.GetValue("PatrolDetailId", StringComparison.OrdinalIgnoreCase)?.ToObject<int>() ?? 0;
+                                
+                                var arr = json.GetValue("ArrivalElapsedSeconds", StringComparison.OrdinalIgnoreCase)?.ToObject<int>() ?? 0;
+                                var rep = json.GetValue("RepairElapsedSeconds", StringComparison.OrdinalIgnoreCase)?.ToObject<int>() ?? 0;
+                                var ins = json.GetValue("InspectionElapsedSeconds", StringComparison.OrdinalIgnoreCase)?.ToObject<int>() ?? 0;
+
+                                string sql = "UPDATE tickets SET status_id = 3, technician_finished_at = NOW(), counter_stroke = @Cnt, is_4m = @Is4M, tech_rating_score = @Sc, tech_rating_note = @Nt, arrival_elapsed_seconds = @Arr, repair_elapsed_seconds = @Rep, inspection_elapsed_seconds = @Ins WHERE ticket_id = @Id";
+                                connection.Execute(sql, new { Cnt = cnt, Is4M = is4M, Sc = sc, Nt = nt, Arr = arr, Rep = rep, Ins = ins, Id = tId }, trans);
+
+                                var problemsToken = json.GetValue("Problems", StringComparison.OrdinalIgnoreCase);
+                                if (problemsToken != null)
+                                {
+                                    string detailSql = @"
+                                        UPDATE ticket_problems SET 
+                                            problem_type_id = @TId, problem_type_remarks = @TRem,
+                                            failure_id = @FId, failure_remarks = @FRem,
+                                            root_cause_id = @CId, root_cause_remarks = @CRem, 
+                                            action_id = @AId, action_details_manual = @ARem 
+                                        WHERE problem_id = @PId";
+
+                                    foreach (var probToken in problemsToken)
+                                    {
+                                        var pObj = probToken.ToObject<Newtonsoft.Json.Linq.JObject>();
+                                        var pId = pObj.GetValue("ProblemId", StringComparison.OrdinalIgnoreCase).ToObject<int>();
+                                        var typeName = pObj.GetValue("ProblemTypeName", StringComparison.OrdinalIgnoreCase)?.ToString();
+                                        var failName = pObj.GetValue("FailureName", StringComparison.OrdinalIgnoreCase)?.ToString();
+                                        var causeName = pObj.GetValue("CauseName", StringComparison.OrdinalIgnoreCase)?.ToString();
+                                        var actName = pObj.GetValue("ActionName", StringComparison.OrdinalIgnoreCase)?.ToString();
+
+                                        int? tType = GetOrCreateMasterData(connection, trans, "problem_types", "type_id", "type_name", typeName);
+                                        int? fId = GetOrCreateMasterData(connection, trans, "failures", "failure_id", "failure_name", failName);
+                                        int? cId = GetOrCreateMasterData(connection, trans, "failure_causes", "cause_id", "cause_name", causeName);
+                                        int? aId = GetOrCreateMasterData(connection, trans, "actions", "action_id", "action_name", actName);
+
+                                        connection.Execute(detailSql, new { TId = tType, TRem = (string)null, FId = fId, FRem = (string)null, CId = cId, CRem = (string)null, AId = aId, ARem = (string)null, PId = pId }, trans);
+                                    }
+                                }
+
+                                if (patrolDetailId > 0)
+                                {
+                                    int itemIdToResolve = connection.QueryFirstOrDefault<int>("SELECT item_id FROM patrol_log_details WHERE detail_id = @DetailId", new { DetailId = patrolDetailId }, trans);
+                                    if (itemIdToResolve > 0)
+                                    {
+                                        int ticketMachineId = connection.QueryFirstOrDefault<int>("SELECT machine_id FROM tickets WHERE ticket_id = @TicketId", new { TicketId = tId }, trans);
+                                        string resolveNgSql = @"
+                                            UPDATE patrol_log_details d
+                                            JOIN patrol_logs l ON d.log_id = l.log_id
+                                            SET d.status = 'PERBAIKAN_OK'
+                                            WHERE l.machine_id = @MachineId AND d.item_id = @ItemId AND d.status IN ('NOT_OK', 'NG', 'NG_CARRYOVER')";
+                                        connection.Execute(resolveNgSql, new { MachineId = ticketMachineId, ItemId = itemIdToResolve }, trans);
+                                    }
+                                }
+                                trans.Commit();
+                                return true;
+                            }
+                            catch
+                            {
+                                trans.Rollback();
+                                throw;
+                            }
+                        }
+                    }
+                }
 
                 // Check if it's a ValidateTicketPayload (has TicketId and Rating)
                 if (HasKey("TicketId") && HasKey("Rating"))
@@ -206,13 +341,8 @@ namespace mtc_app.shared.data.services
 
                     try 
                     {
-                        var affected = connection.Execute(sql, new { TicketId = ticketUuidStr, Rating = rating, Note = note });
-                        if (affected == 0)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[SyncManager] Validation Sync Failed: Ticket {ticketUuidStr} not found in DB.");
-                            // Consider retrying or checking if ticket exists by ID?
-                        }
-                        return affected > 0;
+                        connection.Execute(sql, new { TicketId = ticketUuidStr, Rating = rating, Note = note });
+                        return true;
                     }
                     catch (Exception ex)
                     {
@@ -237,8 +367,8 @@ namespace mtc_app.shared.data.services
 
                     try
                     {
-                        var affected = connection.Execute(sql, new { TicketId = ticketId, Score = score, Comment = comment });
-                        return affected > 0;
+                        connection.Execute(sql, new { TicketId = ticketId, Score = score, Comment = comment });
+                        return true;
                     }
                     catch (Exception ex)
                     {
@@ -248,7 +378,7 @@ namespace mtc_app.shared.data.services
                 }
 
                 System.Diagnostics.Debug.WriteLine($"[SyncManager] Unknown payload structure for tickets table: {item.PayloadJson}");
-                return false;
+                return true; // Discard unknown items to prevent infinite retry loop
             }
         }
 
@@ -470,6 +600,29 @@ namespace mtc_app.shared.data.services
                 _networkMonitor.OnStatusChanged -= OnNetworkStatusChanged;
                 _syncTimer?.Dispose();
             }
+        }
+
+        private int? GetOrCreateMasterData(System.Data.IDbConnection conn, System.Data.IDbTransaction trans, string tableName, string idCol, string nameCol, string rawValue)
+        {
+            if (string.IsNullOrWhiteSpace(rawValue)) return null;
+
+            var words = rawValue.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 0; i < words.Length; i++)
+            {
+                string word = words[i];
+                if (word.Equals("aus", StringComparison.OrdinalIgnoreCase)) words[i] = "Aus";
+                else if (word.Length >= 2 && word.Length <= 3) words[i] = word.ToUpper();
+                else words[i] = char.ToUpper(word[0]) + word.Substring(1).ToLower();
+            }
+            string formattedValue = string.Join(" ", words);
+
+            string checkSql = $"SELECT {idCol} FROM {tableName} WHERE {nameCol} = @Name";
+            var existingId = conn.QueryFirstOrDefault<int?>(checkSql, new { Name = formattedValue }, trans);
+
+            if (existingId.HasValue) return existingId.Value;
+
+            string insertSql = $"INSERT INTO {tableName} ({nameCol}) VALUES (@Name); SELECT LAST_INSERT_ID();";
+            return conn.ExecuteScalar<int>(insertSql, new { Name = formattedValue }, trans);
         }
     }
 
