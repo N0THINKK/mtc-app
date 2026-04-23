@@ -133,13 +133,15 @@ namespace mtc_app.features.machine_history.data.repositories
                         string insertTicketSql = @"
                             INSERT INTO tickets (
                                 ticket_uuid, ticket_display_code, machine_id, shift_id, operator_id, applicator_code, 
-                                status_id, is_machine_running, technician_id, started_at, technician_finished_at, production_resumed_at,
-                                counter_stroke, is_4m, tech_rating_score, tech_rating_note, created_at
+                                status_id, is_machine_running, technician_id, started_at, inspection_started_at, technician_finished_at, production_resumed_at,
+                                counter_stroke, is_4m, tech_rating_score, tech_rating_note, gl_rating_score, gl_rating_note, 
+                                arrival_elapsed_seconds, repair_elapsed_seconds, inspection_elapsed_seconds, run_elapsed_seconds, created_at
                             )
                             VALUES (
                                 @Uuid, @Code, @MachineId, @ShiftId, @OpId, @AppCode, 
-                                @StatusId, @IsRunning, @TechId, @Started, @Finished, @Resumed,
-                                @Counter, @Is4M, @Rating, @RatingNote, NOW()
+                                @StatusId, @IsRunning, @TechId, @Started, @Inspection, @Finished, @Resumed,
+                                @Counter, @Is4M, @TechRating, @TechNote, @GlRating, @GlNote, 
+                                @Arrival, @Repair, @Inspect, @RunElapsed, NOW()
                             );
                             SELECT LAST_INSERT_ID();";
 
@@ -154,12 +156,19 @@ namespace mtc_app.features.machine_history.data.repositories
                             IsRunning = request.IsMachineRunning,
                             TechId = techId,
                             Started = request.StartedAt,
+                            Inspection = request.InspectionStartedAt,
                             Finished = request.FinishedAt,
                             Resumed = request.ProductionResumedAt,
                             Counter = request.CounterStroke,
                             Is4M = request.Is4M ? 1 : 0,
-                            Rating = request.TechRatingScore,
-                            RatingNote = request.TechRatingNote
+                            TechRating = request.TechRatingScore,
+                            TechNote = request.TechRatingNote,
+                            GlRating = request.GlRatingScore,
+                            GlNote = request.GlRatingNote,
+                            Arrival = request.ArrivalElapsedSeconds,
+                            Repair = request.RepairElapsedSeconds,
+                            Inspect = request.InspectionElapsedSeconds,
+                            RunElapsed = request.RunElapsedSeconds
                         }, trans);
 
                         // 2. Insert Session Log (Jika ada teknisi)

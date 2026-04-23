@@ -197,6 +197,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     {
                         // Use GlRatingScore for operator/GL rating
                         request.GlRatingScore = ratingControl.Rating; 
+                        request.GlRatingNote = _inputNote.InputValue;
                         
                         mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
                     }
@@ -206,22 +207,30 @@ namespace mtc_app.features.machine_history.presentation.screens
                     MessageBox.Show($"Error saving offline: {ex.Message}");
                 }
             }
-            // Online Mode
+            // Online Mode (or Queue if offline)
             else
             {
-                try
+                bool isOnline = mtc_app.shared.infrastructure.ServiceLocator.NetworkMonitor.CheckNow();
+                if (!isOnline)
                 {
-                    using (var conn = DatabaseHelper.GetConnection())
-                    {
-                        conn.Open();
-                        string sql = "UPDATE tickets SET gl_rating_score = @Score, gl_rating_note = @Note WHERE ticket_id = @Id";
-                        conn.Execute(sql, new { Id = _ticketId, Score = ratingControl.Rating, Note = _inputNote.InputValue });
-                    }
+                    mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.AddToQueue("RATING_GL", "tickets", new { TicketId = _ticketId, Score = ratingControl.Rating, Note = _inputNote.InputValue });
                 }
-                catch (Exception ex)
+                else
                 {
-                     MessageBox.Show($"Error saving rating: {ex.Message}");
-                     return;
+                    try
+                    {
+                        using (var conn = DatabaseHelper.GetConnection())
+                        {
+                            conn.Open();
+                            string sql = "UPDATE tickets SET gl_rating_score = @Score, gl_rating_note = @Note WHERE ticket_id = @Id";
+                            conn.Execute(sql, new { Id = _ticketId, Score = ratingControl.Rating, Note = _inputNote.InputValue });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                         MessageBox.Show($"Error saving rating: {ex.Message}");
+                         return;
+                    }
                 }
             }
 

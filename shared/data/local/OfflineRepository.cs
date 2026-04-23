@@ -375,6 +375,21 @@ namespace mtc_app.shared.data.local
             }
         }
 
+        /// <summary>
+        /// Clears all items from the dead letter queue.
+        /// </summary>
+        public void ClearDeadLetters()
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    ExecuteNonQuery(connection, "DELETE FROM SyncDeadLetter;");
+                }
+            }
+        }
+
         #endregion
 
         #region Ticket Cache Operations
