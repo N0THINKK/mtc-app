@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using Dapper;
@@ -62,6 +63,10 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         
         // === Sequen Tersimpan (Kotak Kecil) ===
         private DataGridView _dgvTersimpan;
+
+        // === Gambar Terminal ===
+        private PictureBox _picTerminal;
+        private Label _lblImageInfo;
 
         // === Loaded data ===
         private List<LkoService.LkoAggregatedData> _worksheetData = new List<LkoService.LkoAggregatedData>();
@@ -253,6 +258,55 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             var pnlTersimpan = CreateTersimpanPanel(col3W, 194);
             pnlTersimpan.Location = new Point(pnlAktivitas.Right + gap, pnlSequen.Bottom + gap);
             _pnlContent.Controls.Add(pnlTersimpan);
+
+            // === BOTTOM: Gambar Terminal ===
+            int imageAreaTop = pnlInputProduksi.Bottom + gap;
+            int imageAreaWidth = contentW;
+            int imageAreaHeight = 550;
+
+            var pnlGambar = new Panel
+            {
+                Location = new Point(16, imageAreaTop),
+                Size = new Size(imageAreaWidth, imageAreaHeight),
+                BackColor = Color.White,
+                Padding = new Padding(8)
+            };
+            pnlGambar.Paint += (s, ev) =>
+            {
+                using (var pen = new Pen(Color.FromArgb(226, 232, 240), 1)) // slate-200 border
+                    ev.Graphics.DrawRectangle(pen, 0, 0, pnlGambar.Width - 1, pnlGambar.Height - 1);
+            };
+
+            var lblGambarTitle = new Label
+            {
+                Text = "\uD83D\uDCF7  Gambar Terminal",
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 41, 59),
+                AutoSize = true,
+                Location = new Point(12, 8)
+            };
+            pnlGambar.Controls.Add(lblGambarTitle);
+
+            _lblImageInfo = new Label
+            {
+                Text = "Pilih sequen untuk melihat gambar terminal",
+                Font = new Font("Segoe UI", 9F, FontStyle.Italic),
+                ForeColor = Color.FromArgb(148, 163, 184),
+                AutoSize = true,
+                Location = new Point(12, 30)
+            };
+            pnlGambar.Controls.Add(_lblImageInfo);
+
+            _picTerminal = new PictureBox
+            {
+                Location = new Point(12, 50),
+                Size = new Size(imageAreaWidth - 32, imageAreaHeight - 60),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.FromArgb(248, 250, 252),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            pnlGambar.Controls.Add(_picTerminal);
+            _pnlContent.Controls.Add(pnlGambar);
 
             this.Controls.Add(_pnlContent);
 
@@ -1141,6 +1195,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             if (rowData.Master != null)
             {
                 _wireVisualizer?.UpdateData(rowData.Master);
+                LoadTerminalImage(rowData.Master);
             }
         }
 
@@ -1154,6 +1209,56 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 e.CellStyle.ForeColor = Color.FromArgb(22, 101, 52);         // hijau tua
                 e.CellStyle.SelectionBackColor = Color.FromArgb(187, 247, 208);
                 e.CellStyle.SelectionForeColor = Color.FromArgb(22, 101, 52);
+            }
+        }
+        // =====================================================================
+        //  TERMINAL IMAGE LOADER
+        // =====================================================================
+        private void LoadTerminalImage(PrdmstDto master)
+        {
+            if (_picTerminal == null) return;
+
+            try
+            {
+                // Dispose previous image to free memory
+                if (_picTerminal.Image != null)
+                {
+                    _picTerminal.Image.Dispose();
+                    _picTerminal.Image = null;
+                }
+
+                string termA = master.TerminalA?.Trim() ?? "";
+                string kombinasi = master.KombinasiWire?.Trim() ?? "";
+
+                if (string.IsNullOrEmpty(termA))
+                {
+                    _lblImageInfo.Text = "Tidak ada data Terminal A";
+                    return;
+                }
+
+                // Nama file: TerminalA + KombinasiWire (tanpa spasi) + .jpg
+                string fileName = (termA + kombinasi.Replace(" ", "-")) + ".jpg";
+                string imagePath = Path.Combine(@"C:\AC90HMI\prg\Gambar", fileName);
+
+                _lblImageInfo.Text = $"File: {fileName}";
+
+                if (File.Exists(imagePath))
+                {
+                    // Load via stream to avoid file locking
+                    using (var fs = new FileStream(imagePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    {
+                        _picTerminal.Image = Image.FromStream(fs);
+                    }
+                    _lblImageInfo.Text = $"📷 {fileName}";
+                }
+                else
+                {
+                    _lblImageInfo.Text = $"⚠ Gambar tidak ditemukan: {fileName}";
+                }
+            }
+            catch (Exception ex)
+            {
+                _lblImageInfo.Text = $"Error memuat gambar: {ex.Message}";
             }
         }
 
