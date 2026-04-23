@@ -55,7 +55,8 @@ namespace mtc_app.features.operator_worksheet.services
             // Tampilkan SEMUA baris dari PrdLog (bukan hanya sequen unik)
             foreach (var log in logs)
             {
-                var matchingMaster = masters.FirstOrDefault(m => m.Sequen == log.Sequen);
+                var matchingMaster = masters.FirstOrDefault(m => m.Sequen == log.Sequen && m.UrutanSequen == log.UrutanPengerjaan) 
+                                     ?? masters.FirstOrDefault(m => m.Sequen == log.Sequen); // Fallback jika urutan tidak cocok/kosong
 
                 result.Add(new LkoAggregatedData
                 {

@@ -42,7 +42,9 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                             nik = @Nik,
                             qty_defect_operator = @QtyDefectOperator,
                             kode_defect = @KodeDefect,
-                            qty_product = @QtyProduct
+                            qty_product = @QtyProduct,
+                            lot_id_wire = @LotIdWire,
+                            cut_length = @CutLength
                         WHERE id = @Id";
 
                     await connection.ExecuteAsync(updateSql, new
@@ -53,6 +55,8 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                         record.QtyDefectOperator,
                         record.KodeDefect,
                         record.QtyProduct,
+                        record.LotIdWire,
+                        record.CutLength,
                         Id = existingId.Value
                     });
                     return existingId.Value;
@@ -62,9 +66,9 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                     // Insert new record
                     string insertSql = @"
                         INSERT INTO lko_records 
-                            (waktu_simpan, no_mesin, shift_name, nik, sequen, urutan_kanban, qty_defect_operator, kode_defect, qty_product)
+                            (waktu_simpan, no_mesin, shift_name, nik, sequen, urutan_kanban, qty_defect_operator, kode_defect, qty_product, lot_id_wire, cut_length)
                         VALUES 
-                            (@WaktuSimpan, @NoMesin, @ShiftName, @Nik, @Sequen, @UrutanKanban, @QtyDefectOperator, @KodeDefect, @QtyProduct);
+                            (@WaktuSimpan, @NoMesin, @ShiftName, @Nik, @Sequen, @UrutanKanban, @QtyDefectOperator, @KodeDefect, @QtyProduct, @LotIdWire, @CutLength);
                         SELECT LAST_INSERT_ID();";
 
                     return await connection.ExecuteScalarAsync<int>(insertSql, new
@@ -77,7 +81,9 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                         record.UrutanKanban,
                         record.QtyDefectOperator,
                         record.KodeDefect,
-                        record.QtyProduct
+                        record.QtyProduct,
+                        record.LotIdWire,
+                        record.CutLength
                     });
                 }
             }
@@ -99,7 +105,9 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                         urutan_kanban AS UrutanKanban,
                         qty_defect_operator AS QtyDefectOperator,
                         kode_defect AS KodeDefect,
-                        qty_product AS QtyProduct
+                        qty_product AS QtyProduct,
+                        lot_id_wire AS LotIdWire,
+                        cut_length AS CutLength
                     FROM lko_records
                     WHERE no_mesin = @NoMesin
                       AND DATE(waktu_simpan) = CURDATE()

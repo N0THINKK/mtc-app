@@ -73,11 +73,14 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                             UrutanSequen = parts[0]?.Trim(),
                             Sequen = parts[1]?.Trim(),
                             CutLength = parts[5]?.Trim(), // Kolom ke-6
-                            // QTY mungkin tidak di 3, tapi kita skip atau mapping seadanya
                             Qty = parts[3]?.Trim(),
-                            TerminalA = parts[11]?.Trim(), // Kolom ke-12
-                            TerminalB = parts[12]?.Trim(), // Kolom ke-13
-                            KombinasiWire = parts[44]?.Trim() // Ditemukan di index 44
+                            TerminalA = parts[11]?.Trim(),     // Kolom ke-12
+                            TerminalB = parts[12]?.Trim(),     // Kolom ke-13
+                            HasTerminalA = parts[13]?.Trim(),  // Kolom ke-14
+                            HasTerminalB = parts[14]?.Trim(),  // Kolom ke-15
+                            SealA = parts[15]?.Trim(),         // Kolom ke-16
+                            SealB = parts[16]?.Trim(),         // Kolom ke-17
+                            KombinasiWire = parts[44]?.Trim()  // Kolom ke-45
                         });
                     }
                 }

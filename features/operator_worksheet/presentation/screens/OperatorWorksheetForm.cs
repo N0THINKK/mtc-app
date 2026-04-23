@@ -44,12 +44,15 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private Button _btnSisiA;
         private Button _btnSisiB;
         private bool _isSisiA = true;
+        private mtc_app.features.operator_worksheet.presentation.components.WireVisualizerPanel _wireVisualizer;
 
         // === Aktivitas fields ===
         private TextBox _txtQtyProduksi;
         private ComboBox _cboKodeDefect;
         private TextBox _txtDefectMesin;
         private TextBox _txtDefectOperator;
+        private TextBox _txtCutL;
+        private TextBox _txtLotIdWire;
 
         // === Sequen list ===
         private DataGridView _dgvSequen;
@@ -197,13 +200,26 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             pnlInfoHeader.Top = pnlTitleBar.Bottom;
             this.Controls.Add(pnlInfoHeader);
 
+            // ---- 2.5) WIRE VISUALIZER (di bawah header, tengah layar) ----
+            int vizWidth = (int)(this.ClientSize.Width * 0.6);
+            _wireVisualizer = new mtc_app.features.operator_worksheet.presentation.components.WireVisualizerPanel
+            {
+                Left = (this.ClientSize.Width - vizWidth) / 2,
+                Top = pnlInfoHeader.Bottom + 4,
+                Width = vizWidth,
+                Height = 70,
+                BackColor = Color.White
+            };
+            _wireVisualizer.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            this.Controls.Add(_wireVisualizer);
+
             // ---- 3) CONTENT AREA ----
             _pnlContent = new Panel
             {
-                Top = pnlInfoHeader.Bottom,
+                Top = _wireVisualizer.Bottom,
                 Left = 0,
                 Width = this.ClientSize.Width,
-                Height = this.ClientSize.Height - pnlInfoHeader.Bottom,
+                Height = this.ClientSize.Height - _wireVisualizer.Bottom,
                 BackColor = Color.FromArgb(243, 244, 246),
                 AutoScroll = true,
                 Padding = new Padding(16, 12, 16, 12)
@@ -731,6 +747,20 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             int halfW = (fw - 8) / 2;
             int thirdW = (fw - 16) / 3;
 
+            // Lot Id Wire & CutL side by side
+            card.Controls.Add(new Label { Text = "Lot Id Wire", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "CutL", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16 + halfW + 8, y) });
+            y += 20;
+
+            _txtLotIdWire = CreateStyledTextBox("Lot Id Wire", halfW);
+            _txtLotIdWire.Location = new Point(16, y);
+            card.Controls.Add(_txtLotIdWire);
+
+            _txtCutL = CreateStyledTextBox("0", halfW);
+            _txtCutL.Location = new Point(_txtLotIdWire.Right + 8, y);
+            card.Controls.Add(_txtCutL);
+            y += 42;
+
             // QTY Produksi
             card.Controls.Add(new Label { Text = "QTY Produksi", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
             y += 20;
@@ -879,7 +909,9 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 UrutanKanban = rowData.DisplayUrutanPengerjaan,
                 QtyDefectOperator = defectOperator,
                 KodeDefect = kodeDefect,
-                QtyProduct = qtyProduct
+                QtyProduct = qtyProduct,
+                LotIdWire = _txtLotIdWire.Text.Trim(),
+                CutLength = _txtCutL.Text.Trim()
             };
 
             try
@@ -1087,9 +1119,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _txtLotTermA.Text = rowData.Master?.TerminalA ?? "";
             _txtFrontChA.Text = !string.IsNullOrWhiteSpace(rowData.Master?.PanjangStripSisiA) ? rowData.Master.PanjangStripSisiA : "0";
             _txtRearChA.Text = !string.IsNullOrWhiteSpace(rowData.Master?.PanjangStripSisiB) ? rowData.Master.PanjangStripSisiB : "0";
-            _txtFrontCwA.Text = !string.IsNullOrWhiteSpace(rowData.Master?.CutLength) ? rowData.Master.CutLength : "0";
+            _txtFrontCwA.Text = "0";
             _txtRearCwA.Text = "0";
             _txtQtyProduksi.Text = rowData.DbRecord != null ? rowData.DbRecord.QtyProduct.ToString() : (rowData.Log?.QtyProduk ?? "");
+            _txtCutL.Text = rowData.DbRecord != null && !string.IsNullOrEmpty(rowData.DbRecord.CutLength) ? rowData.DbRecord.CutLength : (!string.IsNullOrWhiteSpace(rowData.Master?.CutLength) ? rowData.Master.CutLength : "0");
+            _txtLotIdWire.Text = rowData.DbRecord?.LotIdWire ?? "";
             _txtDefectMesin.Text = rowData.Log?.QtyDefect ?? "0";
 
             // Load dari DB record jika ada
@@ -1102,6 +1136,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             else
             {
                 _cboKodeDefect.SelectedIndex = 0;
+            }
+
+            if (rowData.Master != null)
+            {
+                _wireVisualizer?.UpdateData(rowData.Master);
             }
         }
 

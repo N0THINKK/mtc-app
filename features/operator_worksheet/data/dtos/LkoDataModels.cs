@@ -25,6 +25,10 @@ namespace mtc_app.features.operator_worksheet.data.dtos
         public string MunculkanGambarTermA { get; set; } = string.Empty;
         public string MunculkanGambarTermB { get; set; } = string.Empty;
         public string KombinasiWire { get; set; } = string.Empty;
+        public string HasTerminalA { get; set; } = string.Empty;
+        public string HasTerminalB { get; set; } = string.Empty;
+        public string SealA { get; set; } = string.Empty;
+        public string SealB { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -43,5 +47,7 @@ namespace mtc_app.features.operator_worksheet.data.dtos
         public int QtyDefectOperator { get; set; } = 0;
         public string KodeDefect { get; set; } = string.Empty;
         public int QtyProduct { get; set; } = 0;
+        public string LotIdWire { get; set; } = string.Empty;
+        public string CutLength { get; set; } = string.Empty;
     }
 }
