@@ -5,6 +5,7 @@ using mtc_app.shared.data.session;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 using mtc_app.features.applicator_patrol.presentation.screens;
+using mtc_app.features.operator_worksheet.presentation.screens;
 using Dapper;
 using mtc_app.shared.infrastructure;
 
@@ -18,6 +19,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private AppButton btnChecksheet;
         private AppButton btnApplicatorPatrol;
         private AppButton btnMicrometer;
+        private AppButton btnLko;
         private AppButton btnIdleToggle;
         private AppButton btnLogout;
 
@@ -227,7 +229,18 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
             btnApplicatorPatrol.Click += BtnApplicatorPatrol_Click;
 
-            int currentY = startY + (btnH + gap) * 4;
+            var btnLko = new AppButton
+            {
+                Text = "Lembar Kerja Operator (LKO)",
+                Type = AppButton.ButtonType.Secondary,
+                Size = new Size(btnW, btnH),
+                Location = new Point(btnX, startY + (btnH + gap) * 4),
+                Font = new Font("Segoe UI", 13F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnLko.Click += BtnLko_Click;
+
+            int currentY = startY + (btnH + gap) * 5;
             int rowHeight = 48;
             int rowGap = 10;
 
@@ -270,6 +283,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Controls.Add(btnChecksheet);
             this.Controls.Add(btnMicrometer);
             this.Controls.Add(btnApplicatorPatrol);
+            this.Controls.Add(btnLko);
             this.Controls.Add(btnIdleToggle);
             this.Controls.Add(btnLogout);
         }
@@ -375,6 +389,15 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Hide();
             microForm.FormClosed += (s, args) => this.Show();
             microForm.Show();
+        }
+
+        private void BtnLko_Click(object sender, EventArgs e)
+        {
+            StopCurrentDowntime();
+            var lkoForm = new OperatorWorksheetForm();
+            this.Hide();
+            lkoForm.FormClosed += (s, args) => this.Show();
+            lkoForm.Show();
         }
 
         private void BtnIdleToggle_Click(object sender, EventArgs e)
