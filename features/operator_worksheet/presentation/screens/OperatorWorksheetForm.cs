@@ -404,7 +404,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             if (_machineNumber.ToLower().Contains(".trx-"))
             {
                 int idx = _machineNumber.ToLower().IndexOf(".trx-");
-                displayMesin = _machineNumber.Substring(0, idx).ToUpper();
+                displayMesin = _machineNumber.Substring(0, idx + 4).ToUpper();
                 displayUrut = _machineNumber.Substring(idx + 5);
             }
 
@@ -913,7 +913,6 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         {
             var card = CreateCard(width, height);
             card.Controls.Add(new Label { Text = "SEQUEN", Font = new Font("Segoe UI", 13F, FontStyle.Bold), ForeColor = Color.FromArgb(15, 23, 42), AutoSize = true, Location = new Point(16, 14) });
-            card.Controls.Add(new Label { Text = $"\u25C0\u25CF {_qtyDone}/{_qtyTarget}", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = AppColors.Primary, AutoSize = true, Location = new Point(width - 100, 16) });
 
             int y = 40;
             var txtSearch = CreateStyledTextBox("\uD83D\uDD0D Cari...", width - 36);
@@ -1035,7 +1034,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             foreach(var item in _worksheetData) {
                 // hanya yang sudah disimpan via tombol Simpan
                 if (item.DbRecord != null) {
-                    if (int.TryParse(item.Log?.QtyProduk, out int gQty)) grossSum += gQty;
+                    grossSum += item.DbRecord.QtyProduct;
                     defectSum += item.DbRecord.QtyDefectOperator;
                 }
             }
@@ -1090,7 +1089,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _txtRearChA.Text = !string.IsNullOrWhiteSpace(rowData.Master?.PanjangStripSisiB) ? rowData.Master.PanjangStripSisiB : "0";
             _txtFrontCwA.Text = !string.IsNullOrWhiteSpace(rowData.Master?.CutLength) ? rowData.Master.CutLength : "0";
             _txtRearCwA.Text = "0";
-            _txtQtyProduksi.Text = rowData.Log?.QtyProduk ?? "";
+            _txtQtyProduksi.Text = rowData.DbRecord != null ? rowData.DbRecord.QtyProduct.ToString() : (rowData.Log?.QtyProduk ?? "");
             _txtDefectMesin.Text = rowData.Log?.QtyDefect ?? "0";
 
             // Load dari DB record jika ada
