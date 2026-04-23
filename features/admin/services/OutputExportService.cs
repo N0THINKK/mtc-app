@@ -47,6 +47,7 @@ namespace mtc_app.features.admin.services
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
+                int? lain2Id = await connection.QueryFirstOrDefaultAsync<int?>("SELECT area_id FROM machine_areas WHERE area_name = 'Lain2'");
                 string sql = @"
                     SELECT 
                         DATE_FORMAT(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR), '%d %M %Y') AS TanggalProduksi,
@@ -77,6 +78,7 @@ namespace mtc_app.features.admin.services
                             SUM(CASE WHEN it.category IN ('Sudden Stop', 'Berhenti Tiba Tiba') THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
                         FROM machine_operator_activities moa
                         LEFT JOIN activity_types it ON moa.activity_id = it.id
+                        WHERE moa.start_time >= @StartDate AND moa.start_time < @EndDatePlusOne
                         GROUP BY moa.machine_id, DATE(DATE_SUB(moa.start_time, INTERVAL 7 HOUR))
                     ) act ON act.machine_id = m.machine_id 
                             AND act.act_date = DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR))
@@ -85,7 +87,11 @@ namespace mtc_app.features.admin.services
                         FROM shift_breaks
                         GROUP BY day_id
                     ) brk ON brk.day_id = (WEEKDAY(DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR))) + 1)
-                    WHERE 1=1 AND mpl.created_at BETWEEN @StartDate AND @EndDate AND ma.area_name != 'Lain2'";
+                    WHERE 1=1 AND mpl.created_at BETWEEN @StartDate AND @EndDate";
+                    
+                if (lain2Id.HasValue) {
+                    sql += " AND m.area_id != @Lain2Id";
+                }
 
                 if (area != "Semua Area") {
                     sql += " AND ma.area_name = @Area";
@@ -95,7 +101,7 @@ namespace mtc_app.features.admin.services
                     GROUP BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)), m.machine_id, mt.type_name, ma.area_name, m.machine_number, PlannedMin, SuddenMin, BreakMin
                     ORDER BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)) DESC, mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC";
                 
-                var results = await connection.QueryAsync<DailyOutputDto>(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 300);
+                var results = await connection.QueryAsync<DailyOutputDto>(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), EndDatePlusOne = endDate.Date.AddDays(1), Area = area, Lain2Id = lain2Id }, commandTimeout: 300);
                 
                 var dataTable = new DataTable("Output Harian");
                 dataTable.Columns.Add("Tanggal Produksi", typeof(string));

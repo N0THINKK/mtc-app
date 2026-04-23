@@ -29,6 +29,7 @@ namespace mtc_app.shared.data.services
         private const int HISTORY_DAYS = 90; // Cache last 90 days of history
 
         public event EventHandler<CacheWarmEventArgs> OnCacheWarmCompleted;
+        public event EventHandler OnCacheWarmStarted;
 
         /// <summary>
         /// Creates a new CacheWarmerService.
@@ -46,8 +47,8 @@ namespace mtc_app.shared.data.services
             // Subscribe to network status changes - warm cache when we come online
             _networkMonitor.OnStatusChanged += OnNetworkStatusChanged;
 
-            // Start refresh timer
-            _refreshTimer = new Timer(TryWarmCache, null, Timeout.Infinite, Timeout.Infinite);
+            // Start refresh timer (passes false for light sync)
+            _refreshTimer = new Timer(TryWarmCache, false, Timeout.Infinite, Timeout.Infinite);
         }
 
         /// <summary>
@@ -55,8 +56,8 @@ namespace mtc_app.shared.data.services
         /// </summary>
         public void Start()
         {
-            // Initial warm on startup
-            TryWarmCache(null);
+            // Initial warm on startup (Full Sync)
+            TryWarmCache(true);
 
             // Schedule periodic refresh
             _refreshTimer.Change(_refreshIntervalMs, _refreshIntervalMs);
@@ -66,8 +67,8 @@ namespace mtc_app.shared.data.services
         {
             if (e.IsOnline)
             {
-                // Network came back - warm the cache
-                TryWarmCache(null);
+                // Network came back - warm the cache (Full Sync)
+                TryWarmCache(true);
             }
         }
 
@@ -76,17 +77,28 @@ namespace mtc_app.shared.data.services
             if (_isWarming || !_networkMonitor.IsOnline)
                 return;
 
+            bool isFullSync = state is bool full && full;
+
             Task.Run(async () =>
             {
                 try
                 {
                     _isWarming = true;
-                    System.Diagnostics.Debug.WriteLine("[CacheWarmer] Starting cache warm...");
+                    OnCacheWarmStarted?.Invoke(this, EventArgs.Empty);
+                    System.Diagnostics.Debug.WriteLine($"[CacheWarmer] Starting cache warm... (Full: {isFullSync})");
 
+                    // ALWAYS sync active tickets and push pending uploads
                     int ticketsCached = await WarmTicketCacheAsync();
-                    int historyCached = await WarmHistoryCacheAsync();
-                    int usersCached = await SyncUsersAsync();
-                    var masterDataCounts = await SyncMasterDataAsync();
+                    
+                    int historyCached = 0, usersCached = 0;
+                    
+                    // ONLY sync heavy master data if it's a Full Sync
+                    if (isFullSync)
+                    {
+                        historyCached = await WarmHistoryCacheAsync();
+                        usersCached = await SyncUsersAsync();
+                        var masterDataCounts = await SyncMasterDataAsync();
+                    }
                     
                     // Push pending tickets
                     int ticketsSynced = await SyncPendingTicketsAsync();
@@ -223,10 +235,10 @@ namespace mtc_app.shared.data.services
         /// <summary>
         /// Syncs master data (machines, shifts, problem types, failures) for offline form dropdowns.
         /// </summary>
-        private async Task<(int machines, int shifts, int problemTypes, int failures, int parts)> SyncMasterDataAsync()
+        private async Task<(int machines, int shifts, int problemTypes, int failures, int parts, int activities)> SyncMasterDataAsync()
         {
             int machineCount = 0, shiftCount = 0, problemTypeCount = 0, failureCount = 0;
-            int causeCount = 0, actionCount = 0, partCount = 0; // [FIX] Added partCount
+            int causeCount = 0, actionCount = 0, partCount = 0, activityCount = 0; // [FIX] Added partCount and activityCount
             
             try
             {
@@ -272,7 +284,7 @@ namespace mtc_app.shared.data.services
                     }
 
                     // Sync Failures
-                    var failures = await conn.QueryAsync("SELECT failure_id, failure_name FROM failures");
+                    var failures = await conn.QueryAsync("SELECT failure_id as FailureId, failure_name as FailureName FROM failures");
                     var failureList = failures?.ToList();
                     if (failureList?.Count > 0)
                     {
@@ -306,14 +318,33 @@ namespace mtc_app.shared.data.services
                         _offlineRepo.SavePartsToCache(partList);
                         partCount = partList.Count;
                     }
+
+                    // Sync Activity Types (NEW)
+                    IEnumerable<mtc_app.shared.data.dtos.CachedActivityTypeDto> activities = null;
+                    try 
+                    {
+                        activities = await conn.QueryAsync<mtc_app.shared.data.dtos.CachedActivityTypeDto>("SELECT id as Id, activity_name as Name, category as Category FROM activity_types");
+                    }
+                    catch
+                    {
+                        activities = await conn.QueryAsync<mtc_app.shared.data.dtos.CachedActivityTypeDto>("SELECT id as Id, activity_name as Name, 'Uncategorized' as Category FROM activity_types");
+                    }
+                    var activityList = activities?.ToList();
+                    if (activityList?.Count > 0)
+                    {
+                        _offlineRepo.SaveActivityTypesToCache(activityList);
+                        activityCount = activityList.Count;
+                    }
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[CacheWarmer] Master data sync error: {ex.Message}");
+                string envDesktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                System.IO.File.WriteAllText(System.IO.Path.Combine(envDesktop, "cache_error.txt"), $"Master data sync error: {ex.Message}\n{ex.StackTrace}");
             }
             
-            return (machineCount, shiftCount, problemTypeCount, failureCount, partCount);
+            return (machineCount, shiftCount, problemTypeCount, failureCount, partCount, activityCount);
         }
 
         /// <summary>
@@ -363,7 +394,7 @@ namespace mtc_app.shared.data.services
         /// </summary>
         public void RefreshNow()
         {
-            TryWarmCache(null);
+            TryWarmCache(true);
         }
 
         public void Dispose()

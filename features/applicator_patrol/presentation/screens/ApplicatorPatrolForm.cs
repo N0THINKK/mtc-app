@@ -19,12 +19,12 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
 {
     public class ApplicatorPatrolForm : Form
     {
-        // ── Konfigurasi path CSV per tipe mesin (path ABSOLUT di PC mesin) ───
-        private static readonly Dictionary<string, string> CsvPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        // ── Konfigurasi path Excel per tipe mesin (path ABSOLUT) ───
+        private static readonly Dictionary<string, string> ExcelPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            { "AC90", @"C:\AC90HMI\prg\prdmst.csv" },
+            { "AC90", @"C:\AC90HMI\MasterAplikator.xls" },
+            { "AC95", @"D:\AC95HMI\MasterAplikator.xls" },
             { "AC81", @"" },   // TODO: isi path setelah diketahui
-            { "AC95", @"" },   // TODO: isi path setelah diketahui
         };
 
         // ── Layout constants ─────────────────────────────────────────────
@@ -70,7 +70,6 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
         private string _currentSide = "A";
         private List<string> _sideAApplicators = new List<string>();
         private List<string> _sideBApplicators = new List<string>();
-        private CsvFileWatcherService _fileWatcher;
         private Dictionary<string, string> _judgmentsA = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private Dictionary<string, string> _judgmentsB = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         // Menyimpan ng_items per aplikator (nomor item yg NG, e.g. "1,3")
@@ -115,7 +114,7 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
             BuildActionButtons();
             BuildFooter();
 
-            this.FormClosing += (s, e) => { _clockTimer?.Stop(); _fileWatcher?.Dispose(); };
+            this.FormClosing += (s, e) => { _clockTimer?.Stop(); };
         }
 
         // ─── Top bar: clock + title + keluar ─────────────────────────────
@@ -361,10 +360,9 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
 
         private void LoadApplicatorsForMachine(string machineCode)
         {
-            _fileWatcher?.Dispose();
-            string csvPath = ResolveCsvPath(machineCode);
+            string excelPath = ResolveExcelPath(machineCode);
 
-            if (string.IsNullOrEmpty(csvPath))
+            if (string.IsNullOrEmpty(excelPath))
             {
                 _sideAApplicators = new List<string>();
                 _sideBApplicators = new List<string>();
@@ -372,10 +370,10 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
                 return;
             }
 
-            if (!System.IO.File.Exists(csvPath))
+            if (!System.IO.File.Exists(excelPath))
             {
                 MessageBox.Show(
-                    $"File prdmst.csv tidak ditemukan:\n{csvPath}\n\nPastikan path sudah benar.",
+                    $"File Excel tidak ditemukan:\n{excelPath}\n\nPastikan path MasterAplikator sudah benar.",
                     "File Tidak Ditemukan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 _sideAApplicators = new List<string>();
                 _sideBApplicators = new List<string>();
@@ -383,36 +381,32 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
                 return;
             }
 
-            _fileWatcher = new CsvFileWatcherService(csvPath);
-            var (sideA, sideB) = _fileWatcher.ReadInitial();
+            var (sideA, sideB) = ApplicatorExcelReader.ReadApplicators(excelPath, machineCode);
             _sideAApplicators = sideA;
             _sideBApplicators = sideB;
             RebuildApplicatorRows();
-
-            _fileWatcher.OnApplicatorsChanged += (newA, newB) =>
-            {
-                if (!this.IsDisposed)
-                    this.BeginInvoke(new Action(() =>
-                    {
-                        _sideAApplicators = newA;
-                        _sideBApplicators = newB;
-                        RebuildApplicatorRows();
-                    }));
-            };
-            _fileWatcher.Start();
         }
 
-        private string ResolveCsvPath(string machineCode)
+        private string ResolveExcelPath(string machineCode)
         {
-            foreach (var key in CsvPaths.Keys)
+            foreach (var key in ExcelPaths.Keys)
             {
                 if (!string.IsNullOrEmpty(machineCode) && machineCode.StartsWith(key, StringComparison.OrdinalIgnoreCase))
                 {
-                    string configured = CsvPaths[key];
+                    string configured = ExcelPaths[key];
                     if (string.IsNullOrEmpty(configured)) return null;
-                    return System.IO.Path.IsPathRooted(configured)
+                    
+                    string basePath = System.IO.Path.IsPathRooted(configured)
                         ? configured
                         : System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, configured);
+
+                    if (!System.IO.File.Exists(basePath) && basePath.EndsWith(".xls", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string fallback = basePath + "x";
+                        if (System.IO.File.Exists(fallback)) return fallback;
+                    }
+
+                    return basePath;
                 }
             }
             return null;

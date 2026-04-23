@@ -66,4 +66,14 @@ namespace mtc_app.shared.data.dtos
         public string PartCode { get; set; }
         public string PartName { get; set; }
     }
+
+    /// <summary>
+    /// Cached activity type data for offline dropdowns.
+    /// </summary>
+    public class CachedActivityTypeDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Category { get; set; }
+    }
 }

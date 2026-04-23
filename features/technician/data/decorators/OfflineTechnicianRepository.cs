@@ -226,7 +226,7 @@ namespace mtc_app.features.technician.data.decorators
         // PATROLI CHECKSHEET (NG LIST)
         // ====================================================================================
 
-        public async Task<IEnumerable<PatrolNgDto>> GetPatrolNgListAsync(string filterStatus, string sortOrder, DateTime start, DateTime end, string roleFilter = "Semua")
+        public async Task<IEnumerable<PatrolNgDto>> GetPatrolNgListAsync(string filterStatus, string sortOrder, DateTime start, DateTime end, string roleFilter = "Semua", string itemFilter = "Semua")
         {
             if (!_networkMonitor.IsOnline)
             {
@@ -235,11 +235,28 @@ namespace mtc_app.features.technician.data.decorators
 
             try
             {
-                return await _innerRepository.GetPatrolNgListAsync(filterStatus, sortOrder, start, end, roleFilter);
+                return await _innerRepository.GetPatrolNgListAsync(filterStatus, sortOrder, start, end, roleFilter, itemFilter);
             }
             catch (Exception ex) when (IsNetworkException(ex))
             {
                 return Enumerable.Empty<PatrolNgDto>();
+            }
+        }
+
+        public async Task<IEnumerable<string>> GetPatrolNgItemNamesAsync(DateTime start, DateTime end)
+        {
+            if (!_networkMonitor.IsOnline)
+            {
+                return Enumerable.Empty<string>();
+            }
+
+            try
+            {
+                return await _innerRepository.GetPatrolNgItemNamesAsync(start, end);
+            }
+            catch (Exception ex) when (IsNetworkException(ex))
+            {
+                return Enumerable.Empty<string>();
             }
         }
 

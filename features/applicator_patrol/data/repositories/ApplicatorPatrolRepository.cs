@@ -116,5 +116,58 @@ namespace mtc_app.features.applicator_patrol.data.repositories
                 return rows.ToList();
             }
         }
+
+        // ====================================================================================
+        // TECHNICIAN DASHBOARD (NG APLIKATOR)
+        // ====================================================================================
+
+        public async Task<IEnumerable<ApplicatorNgDto>> GetApplicatorNgListAsync(DateTime start, DateTime end, string sortOrder = "DESC")
+        {
+            using (var conn = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        d.detail_id AS DetailId,
+                        l.log_id AS LogId,
+                        l.patrol_date AS PatrolDate,
+                        CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) AS MachineName,
+                        l.side AS Side,
+                        COALESCE(u.nik, l.operator_nik, u.username) AS OperatorNik,
+                        d.applicator_code AS ApplicatorCode,
+                        d.ng_items AS NgItems,
+                        d.judgment AS Judgment
+                    FROM applicator_patrol_details d
+                    JOIN applicator_patrol_logs l ON d.log_id = l.log_id
+                    JOIN machines m ON l.machine_id = m.machine_id
+                    LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                    LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
+                    LEFT JOIN users u ON u.user_id = l.user_id
+                    WHERE l.patrol_date BETWEEN @Start AND @End 
+                      AND d.judgment = 'NG' ";
+
+                if (sortOrder == "ASC")
+                    sql += " ORDER BY l.patrol_date ASC;";
+                else
+                    sql += " ORDER BY l.patrol_date DESC;";
+
+                return await conn.QueryAsync<ApplicatorNgDto>(sql, new { Start = start, End = end });
+            }
+        }
+
+        public async Task<ApplicatorNgStatsDto> GetApplicatorNgStatsAsync(DateTime start, DateTime end)
+        {
+            using (var conn = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        COUNT(d.detail_id) AS TotalNgCount
+                    FROM applicator_patrol_details d
+                    JOIN applicator_patrol_logs l ON d.log_id = l.log_id
+                    WHERE l.patrol_date BETWEEN @Start AND @End
+                      AND d.judgment = 'NG';";
+
+                return await conn.QueryFirstOrDefaultAsync<ApplicatorNgStatsDto>(sql, new { Start = start, End = end }) ?? new ApplicatorNgStatsDto();
+            }
+        }
     }
 }

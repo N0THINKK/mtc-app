@@ -238,46 +238,48 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
-            // ═══════════════════════════════════════════════════════════════════
-            // ONLINE MODE: Save directly to database
-            // ═══════════════════════════════════════════════════════════════════
-            try
+            // Online Mode
+            else
             {
-                using (var connection = DatabaseHelper.GetConnection())
-                {
-                    connection.Open();
-                    
-                    // 1. Update Ticket: Set Production Resumed Time AND Machine State to Running
-                    int totalSeconds = _initialElapsedSeconds + (int)(stopwatch?.Elapsed.TotalSeconds ?? 0);
-                    string sqlTicket = "UPDATE tickets SET status_id = 4, production_resumed_at = NOW(), is_machine_running = 1, run_elapsed_seconds = @Secs WHERE ticket_id = @Id";
-                    connection.Execute(sqlTicket, new { Id = _ticketId, Secs = totalSeconds });
+                bool isOnline = mtc_app.shared.infrastructure.ServiceLocator.NetworkMonitor.CheckNow();
+                int totalSeconds = _initialElapsedSeconds + (int)(stopwatch?.Elapsed.TotalSeconds ?? 0);
 
-                    // 2. Update Machine Status: Set to RUNNING (1)
-                    // First, get the machine_id for this ticket
-                    int machineId = connection.ExecuteScalar<int>("SELECT machine_id FROM tickets WHERE ticket_id = @Id", new { Id = _ticketId });
-                    
-                    string sqlMachine = "UPDATE machines SET current_status_id = 1 WHERE machine_id = @MachineId";
-                    connection.Execute(sqlMachine, new { MachineId = machineId });
+                if (!isOnline)
+                {
+                    mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.AddToQueue("RUN_MACHINE", "tickets", new { TicketId = _ticketId, TotalSeconds = totalSeconds });
+                }
+                else
+                {
+                    try
+                    {
+                        using (var connection = DatabaseHelper.GetConnection())
+                        {
+                            connection.Open();
+                            string sqlTicket = "UPDATE tickets SET status_id = 4, production_resumed_at = NOW(), is_machine_running = 1, run_elapsed_seconds = @Secs WHERE ticket_id = @Id";
+                            connection.Execute(sqlTicket, new { Id = _ticketId, Secs = totalSeconds });
+
+                            int machineId = connection.ExecuteScalar<int>("SELECT machine_id FROM tickets WHERE ticket_id = @Id", new { Id = _ticketId });
+                            string sqlMachine = "UPDATE machines SET current_status_id = 1 WHERE machine_id = @MachineId";
+                            connection.Execute(sqlMachine, new { MachineId = machineId });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Gagal menyimpan data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
                 }
 
-                // MessageBox.Show("Mesin Running! Waktu produksi tercatat.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                
                 stopwatch?.Stop();
                 timer?.Stop();
                 
-                // Navigate to Rating Form
                 using (var ratingForm = new OperatorRatingForm(_ticketId))
                 {
                     ratingForm.ShowDialog();
                 }
 
-                // Close this form and return OK result
                 this.DialogResult = DialogResult.OK;
                 this.Close();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Gagal menyimpan data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -289,14 +291,19 @@ namespace mtc_app.features.machine_history.presentation.screens
                 
                 if (_ticketId > 0)
                 {
-                    using (var connection = DatabaseHelper.GetConnection())
+                    bool isOnline = mtc_app.shared.infrastructure.ServiceLocator.NetworkMonitor.CheckNow();
+                    if (!isOnline)
                     {
-                        connection.Open();
-                        // Revert ticket status to 2 (Repairing) and remove finished_at
-                        connection.Execute("UPDATE tickets SET status_id = 2, technician_finished_at = NULL, inspection_started_at = NULL, run_elapsed_seconds = @Secs WHERE ticket_id = @Id", new { Id = _ticketId, Secs = totalSeconds });
-                        
-                        // Revert the session to not completing and ended_at to NULL so timer continues correctly
-                        connection.Execute("UPDATE ticket_technician_sessions SET is_completing_session = 0, ended_at = NULL WHERE ticket_id = @Id AND is_completing_session = 1", new { Id = _ticketId });
+                        mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.AddToQueue("REVERT_REPAIRING", "tickets", new { TicketId = _ticketId, TotalSeconds = totalSeconds });
+                    }
+                    else
+                    {
+                        using (var connection = DatabaseHelper.GetConnection())
+                        {
+                            connection.Open();
+                            connection.Execute("UPDATE tickets SET status_id = 2, technician_finished_at = NULL, inspection_started_at = NULL, run_elapsed_seconds = @Secs WHERE ticket_id = @Id", new { Id = _ticketId, Secs = totalSeconds });
+                            connection.Execute("UPDATE ticket_technician_sessions SET is_completing_session = 0, ended_at = NULL WHERE ticket_id = @Id AND is_completing_session = 1", new { Id = _ticketId });
+                        }
                     }
                 }
                 else if (_ticketId < 0)

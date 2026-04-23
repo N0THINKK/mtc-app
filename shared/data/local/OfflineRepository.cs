@@ -182,6 +182,15 @@ namespace mtc_app.shared.data.local
                             CachedAt TEXT NOT NULL
                         );");
 
+                    // CachedActivityTypes table (NEW)
+                    ExecuteNonQuery(connection, @"
+                        CREATE TABLE IF NOT EXISTS CachedActivityTypes (
+                            Id INTEGER PRIMARY KEY,
+                            Name TEXT NOT NULL,
+                            Category TEXT NOT NULL,
+                            CachedAt TEXT NOT NULL
+                        );");
+
                      // PendingTickets table (for offline writes)
                     ExecuteNonQuery(connection, @"
                         CREATE TABLE IF NOT EXISTS PendingTickets (
@@ -362,6 +371,21 @@ namespace mtc_app.shared.data.local
                     {
                         return Convert.ToInt32(cmd.ExecuteScalar());
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Clears all items from the dead letter queue.
+        /// </summary>
+        public void ClearDeadLetters()
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    ExecuteNonQuery(connection, "DELETE FROM SyncDeadLetter;");
                 }
             }
         }
@@ -1099,6 +1123,63 @@ namespace mtc_app.shared.data.local
                                 PartId = Convert.ToInt32(reader["PartId"]),
                                 PartCode = reader["PartCode"]?.ToString(),
                                 PartName = reader["PartName"]?.ToString()
+                            });
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Activity Types (NEW)
+        // ─────────────────────────────────────────────────────────────────────
+
+        public void SaveActivityTypesToCache(IEnumerable<mtc_app.shared.data.dtos.CachedActivityTypeDto> activities)
+        {
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    using (var transaction = connection.BeginTransaction())
+                    {
+                        foreach (var a in activities)
+                        {
+                            string sql = @"INSERT OR REPLACE INTO CachedActivityTypes (Id, Name, Category, CachedAt) VALUES (@Id, @Name, @Category, @Date);";
+                            using (var cmd = new SQLiteCommand(sql, connection, transaction))
+                            {
+                                cmd.Parameters.AddWithValue("@Id", a.Id);
+                                cmd.Parameters.AddWithValue("@Name", a.Name ?? "");
+                                cmd.Parameters.AddWithValue("@Category", a.Category ?? "Uncategorized");
+                                cmd.Parameters.AddWithValue("@Date", DateTime.UtcNow.ToString("o"));
+                                cmd.ExecuteNonQuery();
+                            }
+                        }
+                        transaction.Commit();
+                    }
+                }
+            }
+        }
+
+        public List<CachedActivityTypeDto> GetActivityTypesFromCache()
+        {
+            var result = new List<CachedActivityTypeDto>();
+            lock (_lock)
+            {
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    connection.Open();
+                    using (var cmd = new SQLiteCommand("SELECT Id, Name, Category FROM CachedActivityTypes ORDER BY Name;", connection))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            result.Add(new CachedActivityTypeDto
+                            {
+                                Id = Convert.ToInt32(reader["Id"]),
+                                Name = reader["Name"]?.ToString(),
+                                Category = reader["Category"]?.ToString()
                             });
                         }
                     }

@@ -80,16 +80,18 @@ namespace mtc_app.features.admin.presentation.views
                         btnExport.Text = "Memproses Data...";
                         Application.DoEvents(); // Agar UI tidak lag
 
-                        // Melempar parameter 'areaName' ke dalam fungsi fetch data
-                        var dataDetailTask = FetchDataForReportAsync(dateStart.Value, dateEnd.Value, areaName);
-                        var dataRekapBulananTask = FetchMonthlyDowntimeSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
-                        var dataOutputHarianTask = OutputExportService.FetchDailyOutputSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
+                        // Sequential execution: NAS 2GB RAM can't handle 3 heavy queries in parallel
+                        btnExport.Text = "Memproses Data... (1/3)";
+                        Application.DoEvents();
+                        var dataDetail = await FetchDataForReportAsync(dateStart.Value, dateEnd.Value, areaName);
 
-                        await Task.WhenAll(dataDetailTask, dataRekapBulananTask, dataOutputHarianTask);
+                        btnExport.Text = "Memproses Data... (2/3)";
+                        Application.DoEvents();
+                        var dataRekapBulanan = await FetchMonthlyDowntimeSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
 
-                        var dataDetail = dataDetailTask.Result;
-                        var dataRekapBulanan = dataRekapBulananTask.Result;
-                        var dataOutputHarian = dataOutputHarianTask.Result;
+                        btnExport.Text = "Memproses Data... (3/3)";
+                        Application.DoEvents();
+                        var dataOutputHarian = await OutputExportService.FetchDailyOutputSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
 
                         using (var workbook = new XLWorkbook())
                         {
@@ -205,22 +207,33 @@ namespace mtc_app.features.admin.presentation.views
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                string sql = @"
-                    SELECT v.* FROM view_admin_report v
-                    JOIN tickets t ON v.`ID Tiket` = t.ticket_id
-                    LEFT JOIN machines m ON t.machine_id = m.machine_id
-                    LEFT JOIN machine_types mt ON m.type_id = mt.type_id
-                    LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
+                // Step 1: Get filtered ticket IDs using indexed columns only
+                string idSql = @"
+                    SELECT t.ticket_id 
+                    FROM tickets t
+                    JOIN machines m ON t.machine_id = m.machine_id
+                    JOIN machine_areas ma ON m.area_id = ma.area_id
+                    JOIN machine_types mt ON m.type_id = mt.type_id
                     WHERE t.created_at BETWEEN @StartDate AND @EndDate";
 
                 if (area != "Semua Area") {
-                    sql += " AND ma.area_name = @Area";
+                    idSql += " AND ma.area_name = @Area";
                 }
 
                 // URUTAN KHUSUS: Tipe -> Area -> Angka (Casting String ke Integer) -> Waktu Terbaru
-                sql += " ORDER BY mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC, t.created_at DESC";
+                idSql += " ORDER BY mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC, t.created_at DESC";
+
+                var ticketIds = (await connection.QueryAsync<long>(idSql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 300)).AsList();
+
+                if (ticketIds.Count == 0)
+                {
+                    return new DataTable();
+                }
+
+                // Step 2: Fetch view data only for matching IDs (avoids double-join)
+                string viewSql = $"SELECT * FROM view_admin_report WHERE `ID Tiket` IN @Ids ORDER BY FIELD(`ID Tiket`, {string.Join(",", ticketIds)})";
                 
-                var reader = await connection.ExecuteReaderAsync(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 120);
+                var reader = await connection.ExecuteReaderAsync(viewSql, new { Ids = ticketIds }, commandTimeout: 300);
                 var dataTable = new DataTable();
                 dataTable.Load(reader);
 
@@ -260,7 +273,7 @@ namespace mtc_app.features.admin.presentation.views
                     GROUP BY DATE_FORMAT(t.created_at, '%M %Y'), YEAR(t.created_at), MONTH(t.created_at), m.machine_id, mt.type_name, ma.area_name, m.machine_number
                     ORDER BY YEAR(t.created_at) DESC, MONTH(t.created_at) DESC, mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC";
                 
-                var reader = await connection.ExecuteReaderAsync(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 120);
+                var reader = await connection.ExecuteReaderAsync(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 300);
                 var dataTable = new DataTable();
                 dataTable.Load(reader);
                 return dataTable;
