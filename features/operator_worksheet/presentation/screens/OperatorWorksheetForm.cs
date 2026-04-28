@@ -37,7 +37,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
         // === Input Produksi fields ===
         private Label _lblLotId;
-        private TextBox _txtLotTermA;
+        private TextBox _txtTerminal;
+        private TextBox _txtSeal;
         private TextBox _txtFrontChA;
         private TextBox _txtRearChA;
         private TextBox _txtFrontCwA;
@@ -732,10 +733,21 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(_lblLotId);
             y += 28;
 
-            _txtLotTermA = CreateStyledTextBox("Lot Term A", fw);
-            _txtLotTermA.Location = new Point(16, y);
-            _txtLotTermA.ReadOnly = true;
-            card.Controls.Add(_txtLotTermA);
+            // Terminal & Seal side by side
+            int halfFw = (fw - 8) / 2;
+            card.Controls.Add(new Label { Text = "Terminal", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Seal", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16 + halfFw + 8, y) });
+            y += 20;
+
+            _txtTerminal = CreateStyledTextBox("Terminal", halfFw);
+            _txtTerminal.Location = new Point(16, y);
+            _txtTerminal.ReadOnly = true;
+            card.Controls.Add(_txtTerminal);
+
+            _txtSeal = CreateStyledTextBox("Seal", halfFw);
+            _txtSeal.Location = new Point(_txtTerminal.Right + 8, y);
+            _txtSeal.ReadOnly = true;
+            card.Controls.Add(_txtSeal);
             y += 40;
 
             card.Controls.Add(new Label { Text = "Front C/H", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
@@ -786,6 +798,15 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _btnSisiA.ForeColor = isSisiA ? Color.White : Color.FromArgb(71, 85, 105);
             _btnSisiB.BackColor = !isSisiA ? AppColors.Primary : Color.FromArgb(241, 245, 249);
             _btnSisiB.ForeColor = !isSisiA ? Color.White : Color.FromArgb(71, 85, 105);
+
+            // Update Terminal & Seal fields based on active side
+            if (_activeRowData?.Master != null)
+            {
+                var master = _activeRowData.Master;
+                _txtTerminal.Text = isSisiA ? (master.TerminalA ?? "") : (master.TerminalB ?? "");
+                _txtSeal.Text = isSisiA ? (master.SealA ?? "") : (master.SealB ?? "");
+                LoadTerminalImage(master);
+            }
         }
 
         // =====================================================================
@@ -1170,7 +1191,17 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private void PopulateInputFields(LkoService.LkoAggregatedData rowData)
         {
             _lblLotId.Text = $"Lot ID: {rowData.DisplaySequen}";
-            _txtLotTermA.Text = rowData.Master?.TerminalA ?? "";
+            // Show Terminal & Seal based on active side
+            if (_isSisiA)
+            {
+                _txtTerminal.Text = rowData.Master?.TerminalA ?? "";
+                _txtSeal.Text = rowData.Master?.SealA ?? "";
+            }
+            else
+            {
+                _txtTerminal.Text = rowData.Master?.TerminalB ?? "";
+                _txtSeal.Text = rowData.Master?.SealB ?? "";
+            }
             _txtFrontChA.Text = !string.IsNullOrWhiteSpace(rowData.Master?.PanjangStripSisiA) ? rowData.Master.PanjangStripSisiA : "0";
             _txtRearChA.Text = !string.IsNullOrWhiteSpace(rowData.Master?.PanjangStripSisiB) ? rowData.Master.PanjangStripSisiB : "0";
             _txtFrontCwA.Text = "0";
@@ -1214,6 +1245,27 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         // =====================================================================
         //  TERMINAL IMAGE LOADER
         // =====================================================================
+        // Direktori pencarian gambar (fallback berurutan)
+        private static readonly string[] ImageDirs = new string[]
+        {
+            @"C:\AC90HMI\prg\Gambar",
+            @"C:\AC90 Master Paper\Gambar",
+            @"C:\MTC_System\Gambar"
+        };
+
+        /// <summary>
+        /// Cari file di beberapa direktori, kembalikan path lengkap yang pertama ditemukan.
+        /// </summary>
+        private string FindImageFile(string fileName)
+        {
+            foreach (var dir in ImageDirs)
+            {
+                string fullPath = Path.Combine(dir, fileName);
+                if (File.Exists(fullPath)) return fullPath;
+            }
+            return null;
+        }
+
         private void LoadTerminalImage(PrdmstDto master)
         {
             if (_picTerminal == null) return;
@@ -1227,33 +1279,81 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     _picTerminal.Image = null;
                 }
 
-                string termA = master.TerminalA?.Trim() ?? "";
+                // Pick Terminal & Seal based on active side
+                string terminal = _isSisiA ? (master.TerminalA?.Trim() ?? "") : (master.TerminalB?.Trim() ?? "");
+                string seal = _isSisiA ? (master.SealA?.Trim() ?? "") : (master.SealB?.Trim() ?? "");
+                string hasTerminal = _isSisiA ? (master.HasTerminalA?.Trim() ?? "") : (master.HasTerminalB?.Trim() ?? "");
                 string kombinasi = master.KombinasiWire?.Trim() ?? "";
+                string sisiLabel = _isSisiA ? "A" : "B";
 
-                if (string.IsNullOrEmpty(termA))
+                // Jika indikator HasTerminal bukan "2" → strip only → muat Strip.jpg
+                if (hasTerminal != "2")
                 {
-                    _lblImageInfo.Text = "Tidak ada data Terminal A";
+                    string stripFile = "Strip.jpg";
+                    string stripPath = FindImageFile(stripFile);
+                    if (stripPath != null)
+                    {
+                        using (var fs = new FileStream(stripPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                        {
+                            _picTerminal.Image = Image.FromStream(fs);
+                        }
+                        _lblImageInfo.Text = $"📷 Sisi {sisiLabel}: {stripFile} (Strip Only)";
+                    }
+                    else
+                    {
+                        _lblImageInfo.Text = $"⚠ Sisi {sisiLabel}: Strip Only — {stripFile} tidak ditemukan";
+                    }
                     return;
                 }
 
-                // Nama file: TerminalA + KombinasiWire (tanpa spasi) + .jpg
-                string fileName = (termA + kombinasi.Replace(" ", "-")) + ".jpg";
-                string imagePath = Path.Combine(@"C:\AC90HMI\prg\Gambar", fileName);
-
-                _lblImageInfo.Text = $"File: {fileName}";
-
-                if (File.Exists(imagePath))
+                if (string.IsNullOrEmpty(terminal))
                 {
-                    // Load via stream to avoid file locking
-                    using (var fs = new FileStream(imagePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    _lblImageInfo.Text = $"Tidak ada data Terminal {sisiLabel}";
+                    return;
+                }
+
+                string kombDash = kombinasi.Replace(" ", "-");
+
+                // Priority 1: Terminal + Seal + Kombinasi
+                string fileNameWithSeal = null;
+                if (!string.IsNullOrEmpty(seal))
+                {
+                    fileNameWithSeal = (terminal + seal + kombDash) + ".jpg";
+                }
+
+                // Priority 2: Terminal + Kombinasi
+                string fileNameNoSeal = (terminal + kombDash) + ".jpg";
+
+                // Try loading with seal first
+                string foundPath = null;
+                string usedFileName = null;
+
+                if (fileNameWithSeal != null)
+                {
+                    foundPath = FindImageFile(fileNameWithSeal);
+                    usedFileName = fileNameWithSeal;
+                }
+
+                if (foundPath == null)
+                {
+                    foundPath = FindImageFile(fileNameNoSeal);
+                    usedFileName = fileNameNoSeal;
+                }
+
+                if (foundPath != null)
+                {
+                    using (var fs = new FileStream(foundPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                     {
                         _picTerminal.Image = Image.FromStream(fs);
                     }
-                    _lblImageInfo.Text = $"📷 {fileName}";
+                    _lblImageInfo.Text = $"📷 Sisi {sisiLabel}: {usedFileName}";
                 }
                 else
                 {
-                    _lblImageInfo.Text = $"⚠ Gambar tidak ditemukan: {fileName}";
+                    string tried = fileNameWithSeal != null
+                        ? $"{fileNameWithSeal} / {fileNameNoSeal}"
+                        : fileNameNoSeal;
+                    _lblImageInfo.Text = $"⚠ Gambar tidak ditemukan: {tried}";
                 }
             }
             catch (Exception ex)
