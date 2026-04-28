@@ -187,6 +187,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
 
             // Offline Mode
+            TryResolveSyncedTicketId();
             if (_ticketId < 0)
             {
                 try
@@ -236,6 +237,34 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             this.DialogResult = DialogResult.OK;
             this.Close();
+        }
+
+        /// <summary>
+        /// If the ticket was created offline and has since been synced, resolve the real ticket_id.
+        /// </summary>
+        private void TryResolveSyncedTicketId()
+        {
+            if (_ticketId >= 0) return;
+
+            int pendingId = (int)Math.Abs(_ticketId);
+            var request = mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+            if (request != null) return; // Still pending
+
+            try
+            {
+                if (!mtc_app.shared.infrastructure.ServiceLocator.NetworkMonitor.CheckNow()) return;
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Open();
+                    var realId = conn.QueryFirstOrDefault<long?>(
+                        "SELECT ticket_id FROM tickets WHERE status_id IN (1, 2, 3) ORDER BY created_at DESC LIMIT 1");
+                    if (realId.HasValue && realId.Value > 0)
+                    {
+                        _ticketId = realId.Value;
+                    }
+                }
+            }
+            catch { }
         }
     }
 }
