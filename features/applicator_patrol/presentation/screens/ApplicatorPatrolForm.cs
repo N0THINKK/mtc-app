@@ -396,17 +396,30 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
                     string configured = ExcelPaths[key];
                     if (string.IsNullOrEmpty(configured)) return null;
                     
-                    string basePath = System.IO.Path.IsPathRooted(configured)
+                    string primaryPath = System.IO.Path.IsPathRooted(configured)
                         ? configured
                         : System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, configured);
 
-                    if (!System.IO.File.Exists(basePath) && basePath.EndsWith(".xls", StringComparison.OrdinalIgnoreCase))
+                    // Check primary (.xls or .xlsx fallback)
+                    if (System.IO.File.Exists(primaryPath)) return primaryPath;
+                    if (primaryPath.EndsWith(".xls", StringComparison.OrdinalIgnoreCase))
                     {
-                        string fallback = basePath + "x";
-                        if (System.IO.File.Exists(fallback)) return fallback;
+                        string primaryXlsx = primaryPath + "x";
+                        if (System.IO.File.Exists(primaryXlsx)) return primaryXlsx;
                     }
 
-                    return basePath;
+                    // Fallback to C:\MTC_System\Data
+                    string fileName = System.IO.Path.GetFileName(configured);
+                    string mtcPath = System.IO.Path.Combine(@"C:\MTC_System\Data", fileName);
+                    
+                    if (System.IO.File.Exists(mtcPath)) return mtcPath;
+                    if (mtcPath.EndsWith(".xls", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string mtcXlsx = mtcPath + "x";
+                        if (System.IO.File.Exists(mtcXlsx)) return mtcXlsx;
+                    }
+
+                    return primaryPath; // Return primary as default even if not exists (to show warning)
                 }
             }
             return null;
