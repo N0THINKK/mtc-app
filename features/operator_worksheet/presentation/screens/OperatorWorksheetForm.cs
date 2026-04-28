@@ -25,6 +25,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private Label _lblNoMesin;
         private ComboBox _cboShift;    // Dropdown shift dari database
         private Label _lblNik;
+        private TextBox _txtNoUrut;    // Editable No. Urut
+        private string _machinePrefix = ""; // type.area prefix (tanpa urut)
         
         // Qty UI
         private Label _lblGrossQty;
@@ -184,6 +186,35 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             }
             catch { }
         }
+        /// <summary>
+        /// Reconstruct machine number from prefix + current No. Urut textbox value.
+        /// </summary>
+        private string GetEffectiveMachineNumber()
+        {
+            string urut = _txtNoUrut?.Text?.Trim() ?? "";
+            if (string.IsNullOrEmpty(urut) || string.IsNullOrEmpty(_machinePrefix))
+                return _machineNumber;
+            return $"{_machinePrefix}-{urut}";
+        }
+
+        /// <summary>
+        /// Called when No. Urut value changes — reload sequen data for the new machine number.
+        /// </summary>
+        private void OnNoUrutChanged()
+        {
+            // Zero-pad: jika 1 digit, tambahkan 0 di depan (misal "1" → "01")
+            string urut = _txtNoUrut.Text.Trim();
+            if (urut.Length == 1 && char.IsDigit(urut[0]))
+            {
+                _txtNoUrut.Text = urut.PadLeft(2, '0');
+            }
+
+            string newMachineNumber = GetEffectiveMachineNumber();
+            if (newMachineNumber == _machineNumber) return;
+
+            _machineNumber = newMachineNumber;
+            LoadSequenData();
+        }
 
         // =====================================================================
         //  BUILD UI
@@ -207,13 +238,13 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             this.Controls.Add(pnlInfoHeader);
 
             // ---- 2.5) WIRE VISUALIZER (di bawah header, tengah layar) ----
-            int vizWidth = (int)(this.ClientSize.Width * 0.6);
+            int vizWidth = (int)(this.ClientSize.Width * 0.94);
             _wireVisualizer = new mtc_app.features.operator_worksheet.presentation.components.WireVisualizerPanel
             {
                 Left = (this.ClientSize.Width - vizWidth) / 2,
                 Top = pnlInfoHeader.Bottom + 4,
                 Width = vizWidth,
-                Height = 70,
+                Height = 65,
                 BackColor = Color.White
             };
             _wireVisualizer.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -228,42 +259,40 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 Height = this.ClientSize.Height - _wireVisualizer.Bottom,
                 BackColor = Color.FromArgb(243, 244, 246),
                 AutoScroll = true,
-                Padding = new Padding(16, 12, 16, 12)
+                Padding = new Padding(12, 10, 12, 10)
             };
             _pnlContent.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
 
-            // Calculate column widths (3 columns: 28% / 38% / 34%)
-            int contentW = _pnlContent.Width - 32; // minus padding
-            int gap = 12;
-            int col1W = (int)(contentW * 0.26);
-            int col2W = (int)(contentW * 0.38);
-            int col3W = contentW - col1W - col2W - gap * 2;
-            int topRowHeight = 420;
+            // Calculate column widths for 2-column layout
+            int contentW = this.ClientSize.Width - 36; // minus padding
+            int gap = 8;
+            int colW = (contentW - gap) / 2;
+            int topRowHeight = 440;
 
-            // === LEFT: Input Produksi ===
-            var pnlInputProduksi = CreateInputProduksiPanel(col1W, topRowHeight);
-            pnlInputProduksi.Location = new Point(16, 12);
+            // === ROW 1 LEFT: Input Produksi ===
+            var pnlInputProduksi = CreateInputProduksiPanel(colW, topRowHeight);
+            pnlInputProduksi.Location = new Point(12, 10);
             _pnlContent.Controls.Add(pnlInputProduksi);
 
-            // === MIDDLE: Aktivitas ===
-            var pnlAktivitas = CreateAktivitasPanel(col2W, topRowHeight);
-            pnlAktivitas.Location = new Point(pnlInputProduksi.Right + gap, 12);
+            // === ROW 1 RIGHT: Aktivitas ===
+            var pnlAktivitas = CreateAktivitasPanel(colW, topRowHeight);
+            pnlAktivitas.Location = new Point(pnlInputProduksi.Right + gap, 10);
             _pnlContent.Controls.Add(pnlAktivitas);
 
-            // === RIGHT: Sequen ===
-            var pnlSequen = CreateSequenPanel(col3W, 310);
-            pnlSequen.Location = new Point(pnlAktivitas.Right + gap, 12);
+            // === ROW 2 LEFT: Sequen ===
+            var pnlSequen = CreateSequenPanel(colW, 350);
+            pnlSequen.Location = new Point(12, pnlInputProduksi.Bottom + gap);
             _pnlContent.Controls.Add(pnlSequen);
 
-            // === RIGHT BOTTOM: Tersimpan ===
-            var pnlTersimpan = CreateTersimpanPanel(col3W, 194);
-            pnlTersimpan.Location = new Point(pnlAktivitas.Right + gap, pnlSequen.Bottom + gap);
+            // === ROW 2 RIGHT: Tersimpan ===
+            var pnlTersimpan = CreateTersimpanPanel(colW, 350);
+            pnlTersimpan.Location = new Point(pnlSequen.Right + gap, pnlInputProduksi.Bottom + gap);
             _pnlContent.Controls.Add(pnlTersimpan);
 
             // === BOTTOM: Gambar Terminal ===
-            int imageAreaTop = pnlInputProduksi.Bottom + gap;
-            int imageAreaWidth = contentW;
-            int imageAreaHeight = 550;
+            int imageAreaTop = pnlSequen.Bottom + gap;
+            int imageAreaWidth = contentW + gap;
+            int imageAreaHeight = 450;
 
             var pnlGambar = new Panel
             {
@@ -423,7 +452,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             {
                 Left = 0,
                 Width = this.ClientSize.Width,
-                Height = 44,
+                Height = 75, // Taller for 2 rows
                 BackColor = Color.White
             };
             pnl.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -445,211 +474,97 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             Font labelFont = new Font("Segoe UI", 10F);
             Font valueFont = new Font("Segoe UI", 10F, FontStyle.Bold);
 
-            // ---- Tanggal ----
-            var lblTanggalLabel = new Label
-            {
-                Text = "Tanggal :",
-                Font = labelFont,
-                ForeColor = labelColor,
-                AutoSize = true,
-                Location = new Point(leftX, labelY),
-                BackColor = Color.Transparent
-            };
-            pnl.Controls.Add(lblTanggalLabel);
-
-            _lblTanggal = new Label
-            {
-                Text = DateTime.Now.ToString("yyyy/MM/dd"),
-                Font = valueFont,
-                ForeColor = valueColor,
-                AutoSize = true,
-                Location = new Point(lblTanggalLabel.Right + 4, labelY),
-                BackColor = Color.Transparent
-            };
-            pnl.Controls.Add(_lblTanggal);
+            // Row 1
+            int row1Y = 10;
+            int col1X = 20;
+            int col2X = 200;
+            int col3X = 400;
 
             // ---- Deteksi No Urut dari No Mesin ----
             string displayMesin = _machineNumber;
             string displayUrut = "-";
-            
-            if (_machineNumber.ToLower().Contains(".trx-"))
+            int dashIdx = _machineNumber.LastIndexOf('-');
+            if (dashIdx > 0)
             {
-                int idx = _machineNumber.ToLower().IndexOf(".trx-");
-                displayMesin = _machineNumber.Substring(0, idx + 4).ToUpper();
-                displayUrut = _machineNumber.Substring(idx + 5);
+                _machinePrefix = _machineNumber.Substring(0, dashIdx);
+                displayMesin = _machinePrefix;
+                displayUrut = _machineNumber.Substring(dashIdx + 1);
+            }
+            else
+            {
+                _machinePrefix = _machineNumber;
             }
 
+            // ---- Tanggal ----
+            var lblTanggalLabel = new Label { Text = "Tanggal :", Font = labelFont, ForeColor = labelColor, AutoSize = true, Location = new Point(col1X, row1Y), BackColor = Color.Transparent };
+            pnl.Controls.Add(lblTanggalLabel);
+
+            _lblTanggal = new Label { Text = DateTime.Now.ToString("yyyy/MM/dd"), Font = valueFont, ForeColor = valueColor, AutoSize = true, Location = new Point(lblTanggalLabel.Right + 4, row1Y), BackColor = Color.Transparent };
+            pnl.Controls.Add(_lblTanggal);
+
             // ---- No Mesin ----
-            int noMesinX = _lblTanggal.Right + 28;
-            var lblMesinLabel = new Label
-            {
-                Text = "No Mesin :",
-                Font = labelFont,
-                ForeColor = labelColor,
-                AutoSize = true,
-                Location = new Point(noMesinX, labelY),
-                BackColor = Color.Transparent
-            };
+            var lblMesinLabel = new Label { Text = "Mesin :", Font = labelFont, ForeColor = labelColor, AutoSize = true, Location = new Point(col2X, row1Y), BackColor = Color.Transparent };
             pnl.Controls.Add(lblMesinLabel);
 
-            _lblNoMesin = new Label
-            {
-                Text = displayMesin,
-                Font = valueFont,
-                ForeColor = valueColor,
-                AutoSize = true,
-                Location = new Point(lblMesinLabel.Right + 4, labelY),
-                BackColor = Color.Transparent
-            };
+            _lblNoMesin = new Label { Text = displayMesin, Font = valueFont, ForeColor = valueColor, AutoSize = true, Location = new Point(lblMesinLabel.Right + 4, row1Y), BackColor = Color.Transparent };
             pnl.Controls.Add(_lblNoMesin);
 
             // ---- No Urut ----
-            int noUrutX = _lblNoMesin.Right + 28;
-            var lblUrutLabel = new Label
-            {
-                Text = "No. Urut :",
-                Font = labelFont,
-                ForeColor = labelColor,
-                AutoSize = true,
-                Location = new Point(noUrutX, labelY),
-                BackColor = Color.Transparent
-            };
+            var lblUrutLabel = new Label { Text = "Urut :", Font = labelFont, ForeColor = labelColor, AutoSize = true, Location = new Point(col3X, row1Y), BackColor = Color.Transparent };
             pnl.Controls.Add(lblUrutLabel);
 
-            var lblUrutVal = new Label
-            {
-                Text = displayUrut,
-                Font = valueFont,
-                ForeColor = valueColor,
-                AutoSize = true,
-                Location = new Point(lblUrutLabel.Right + 4, labelY),
-                BackColor = Color.Transparent
-            };
-            pnl.Controls.Add(lblUrutVal);
+            _txtNoUrut = new TextBox { Text = displayUrut, Font = valueFont, ForeColor = valueColor, BackColor = Color.White, BorderStyle = BorderStyle.FixedSingle, Size = new Size(60, 24), Location = new Point(lblUrutLabel.Right + 4, row1Y - 2) };
+            _txtNoUrut.Leave += (s, ev) => OnNoUrutChanged();
+            _txtNoUrut.KeyDown += (s, ev) => { if (ev.KeyCode == Keys.Enter) { OnNoUrutChanged(); ev.SuppressKeyPress = true; } };
+            pnl.Controls.Add(_txtNoUrut);
+
+            // Row 2
+            int row2Y = 40;
+            int rightEdge = pnl.Width - 20;
 
             // ---- Shift (ComboBox) ----
-            int shiftX = lblUrutVal.Right + 28;
-            var lblShiftLabel = new Label
-            {
-                Text = "Shift :",
-                Font = labelFont,
-                ForeColor = labelColor,
-                AutoSize = true,
-                Location = new Point(shiftX, labelY),
-                BackColor = Color.Transparent
-            };
+            var lblShiftLabel = new Label { Text = "Shift :", Font = labelFont, ForeColor = labelColor, AutoSize = true, Location = new Point(col1X, row2Y), BackColor = Color.Transparent };
             pnl.Controls.Add(lblShiftLabel);
 
-            _cboShift = new ComboBox
-            {
-                Font = valueFont,
-                ForeColor = valueColor,
-                BackColor = Color.White,
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                FlatStyle = FlatStyle.Flat,
-                Size = new Size(120, 28),
-                Location = new Point(lblShiftLabel.Right + 4, labelY - 4),
-                Cursor = Cursors.Hand
-            };
-
-            // Isi data shift dari database
+            _cboShift = new ComboBox { Font = valueFont, ForeColor = valueColor, BackColor = Color.White, DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, Size = new Size(110, 28), Location = new Point(lblShiftLabel.Right + 4, row2Y - 4), Cursor = Cursors.Hand };
             _cboShift.DisplayMember = "ShiftName";
             _cboShift.ValueMember = "ShiftId";
             if (_shifts != null && _shifts.Count > 0)
             {
                 _cboShift.DataSource = _shifts;
-                // Pilih default berdasarkan jam
-                try
-                {
-                    if (_defaultShiftIndex >= 0 && _defaultShiftIndex < _cboShift.Items.Count)
-                    {
-                        _cboShift.SelectedIndex = _defaultShiftIndex;
-                    }
-                }
-                catch { /* abaikan jika gagal set index */ }
+                try { if (_defaultShiftIndex >= 0 && _defaultShiftIndex < _cboShift.Items.Count) _cboShift.SelectedIndex = _defaultShiftIndex; } catch { }
             }
-
             pnl.Controls.Add(_cboShift);
 
             // ---- NIK ----
-            int nikX = _cboShift.Right + 28;
-            var lblNikLabel = new Label
-            {
-                Text = "NIK :",
-                Font = labelFont,
-                ForeColor = labelColor,
-                AutoSize = true,
-                Location = new Point(nikX, labelY),
-                BackColor = Color.Transparent
-            };
+            var lblNikLabel = new Label { Text = "NIK :", Font = labelFont, ForeColor = labelColor, AutoSize = true, Location = new Point(col2X, row2Y), BackColor = Color.Transparent };
             pnl.Controls.Add(lblNikLabel);
 
-            _lblNik = new Label
-            {
-                Text = _nikOperator,
-                Font = valueFont,
-                ForeColor = valueColor,
-                AutoSize = true,
-                Location = new Point(lblNikLabel.Right + 4, labelY),
-                BackColor = Color.Transparent
-            };
+            _lblNik = new Label { Text = _nikOperator, Font = valueFont, ForeColor = valueColor, AutoSize = true, Location = new Point(lblNikLabel.Right + 4, row2Y), BackColor = Color.Transparent };
             pnl.Controls.Add(_lblNik);
 
-            // ---- QTY section (right-aligned) ----
-            int rightEdge = pnl.Width - 20;
-
-            // NET QTY Bar (Kanan)
-            _pbNetQty = new ProgressBar
-            {
-                Minimum = 0, Maximum = 100, Value = 0,
-                Size = new Size(50, 16),
-                BackColor = Color.FromArgb(226, 232, 240),
-                Style = ProgressBarStyle.Continuous
-            };
-            _pbNetQty.Location = new Point(rightEdge - _pbNetQty.Width, labelY);
+            // ---- QTY section (right-aligned, row 2) ----
+            _pbNetQty = new ProgressBar { Minimum = 0, Maximum = 100, Value = 0, Size = new Size(50, 16), BackColor = Color.FromArgb(226, 232, 240), Style = ProgressBarStyle.Continuous };
+            _pbNetQty.Location = new Point(rightEdge - _pbNetQty.Width, row2Y);
             _pbNetQty.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             pnl.Controls.Add(_pbNetQty);
 
-            _lblNetQty = new Label
-            {
-                Text = "OK: - / -",
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(22, 163, 74), // green-600
-                AutoSize = true,
-                BackColor = Color.Transparent,
-            };
+            _lblNetQty = new Label { Text = "OK: - / -", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(22, 163, 74), AutoSize = true, BackColor = Color.Transparent };
             _lblNetQty.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             pnl.Controls.Add(_lblNetQty);
 
-            // GROSS QTY Bar (Kiri)
-            _pbGrossQty = new ProgressBar
-            {
-                Minimum = 0, Maximum = 100, Value = 0,
-                Size = new Size(50, 16),
-                BackColor = Color.FromArgb(226, 232, 240),
-                Style = ProgressBarStyle.Continuous
-            };
+            _pbGrossQty = new ProgressBar { Minimum = 0, Maximum = 100, Value = 0, Size = new Size(50, 16), BackColor = Color.FromArgb(226, 232, 240), Style = ProgressBarStyle.Continuous };
             _pbGrossQty.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             pnl.Controls.Add(_pbGrossQty);
 
-            _lblGrossQty = new Label
-            {
-                Text = "Gross: - / -",
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                ForeColor = valueColor,
-                AutoSize = true,
-                BackColor = Color.Transparent,
-            };
+            _lblGrossQty = new Label { Text = "Gross: - / -", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = valueColor, AutoSize = true, BackColor = Color.Transparent };
             _lblGrossQty.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             pnl.Controls.Add(_lblGrossQty);
             
-            // Adjust layout after dummy text creation
-            _lblNetQty.Location = new Point(_pbNetQty.Left - TextRenderer.MeasureText(_lblNetQty.Text, _lblNetQty.Font).Width - 8, labelY);
-            _pbGrossQty.Location = new Point(_lblNetQty.Left - _pbGrossQty.Width - 16, labelY);
-            _lblGrossQty.Location = new Point(_pbGrossQty.Left - TextRenderer.MeasureText(_lblGrossQty.Text, _lblGrossQty.Font).Width - 8, labelY);
-
-            // To properly handle dynamic width changes on update, you'd usually hook into a layout event, 
-            // but UpdateHeaderQty() sets the text directly. We'll adjust location in UpdateHeaderQty.
+            // Initial positions
+            _lblNetQty.Location = new Point(_pbNetQty.Left - 70, row2Y);
+            _pbGrossQty.Location = new Point(_lblNetQty.Left - 60, row2Y);
+            _lblGrossQty.Location = new Point(_pbGrossQty.Left - 80, row2Y);
 
             return pnl;
         }
@@ -977,7 +892,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             var record = new mtc_app.features.operator_worksheet.data.dtos.LkoRecordDto
             {
                 WaktuSimpan = DateTime.Now,
-                NoMesin = _machineNumber,
+                NoMesin = GetEffectiveMachineNumber(),
                 ShiftName = shiftName,
                 Nik = _nikOperator,
                 Sequen = rowData.DisplaySequen,
