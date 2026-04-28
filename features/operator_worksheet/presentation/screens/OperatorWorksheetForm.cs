@@ -949,10 +949,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             try
             {
-                await _lkoService.SaveToDatabase(record);
+                bool savedOnline = await _lkoService.SaveToDatabase(record);
 
                 // Update DB record reference di data lokal
                 rowData.DbRecord = record;
+                rowData.IsOffline = !savedOnline;
 
                 // Refresh grid agar langsung muncul
                 var savedData = _worksheetData.Where(x => x.DbRecord != null).ToList();
@@ -961,7 +962,14 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 _dgvSequen.Refresh();
 
                 string aksi = _activeSource == ActiveGrid.Tersimpan ? "diperbarui" : "disimpan";
-                MessageBox.Show($"Data berhasil {aksi}.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (savedOnline)
+                {
+                    MessageBox.Show($"Data berhasil {aksi}.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    MessageBox.Show($"Server tidak tersedia. Data {aksi} secara offline dan akan di-sync otomatis saat koneksi kembali.", "Tersimpan Offline", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
                 
                 UpdateHeaderQty();
             }
