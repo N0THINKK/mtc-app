@@ -71,6 +71,10 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private PictureBox _picTerminal;
         private Label _lblImageInfo;
 
+        // === File watcher for auto-reload ===
+        private FileSystemWatcher _csvWatcher;
+        private System.Windows.Forms.Timer _debounceTimer;
+
         // === Loaded data ===
         private List<LkoService.LkoAggregatedData> _worksheetData = new List<LkoService.LkoAggregatedData>();
 
@@ -97,6 +101,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         {
             LoadHeaderData();
             InitializeUI();
+            SetupFileWatcher();
         }
 
         // =====================================================================
@@ -214,6 +219,44 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             _machineNumber = newMachineNumber;
             LoadSequenData();
+        }
+
+        // =====================================================================
+        //  FILE WATCHER — auto-reload saat PrdLog/prdmst berubah
+        // =====================================================================
+        private void SetupFileWatcher()
+        {
+            string watchDir = @"C:\AC90HMI\prg";
+            if (!Directory.Exists(watchDir)) return;
+
+            // Debounce timer: tunggu 500ms setelah perubahan terakhir sebelum reload
+            _debounceTimer = new System.Windows.Forms.Timer { Interval = 500 };
+            _debounceTimer.Tick += (s, e) =>
+            {
+                _debounceTimer.Stop();
+                LoadSequenData();
+            };
+
+            _csvWatcher = new FileSystemWatcher(watchDir)
+            {
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
+                EnableRaisingEvents = true
+            };
+            _csvWatcher.Filter = "*.csv";
+            _csvWatcher.Changed += OnCsvFileChanged;
+        }
+
+        private void OnCsvFileChanged(object sender, FileSystemEventArgs e)
+        {
+            string name = e.Name?.ToLower() ?? "";
+            if (name == "prdlog.csv" || name == "prdmst.csv")
+            {
+                // Reset debounce timer (invoke on UI thread)
+                if (this.InvokeRequired)
+                    this.BeginInvoke(new Action(() => { _debounceTimer.Stop(); _debounceTimer.Start(); }));
+                else
+                    { _debounceTimer.Stop(); _debounceTimer.Start(); }
+            }
         }
 
         // =====================================================================
