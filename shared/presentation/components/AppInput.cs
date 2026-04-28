@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using mtc_app.shared.presentation.styles;
 
@@ -269,27 +270,19 @@ namespace mtc_app.shared.presentation.components
             comboInput.TextChanged += ComboInput_TextChanged; 
             comboInput.DropDown += (s, e) => DropdownOpened?.Invoke(this, EventArgs.Empty);
             
-            // Fix: Prevent MouseWheel from changing selection when closed and allow page scrolling
-            comboInput.MouseWheel += (s, e) => 
+            // Fix: Prevent MouseWheel from changing selection when closed; bubble scroll to parent
+            comboInput.MouseWheel += (s, e) =>
             {
                 if (!comboInput.DroppedDown)
                 {
-                    if (e is HandledMouseEventArgs handledArgs)
-                    {
-                        handledArgs.Handled = true;
-                    }
-                    
-                    Control parentNode = this.Parent;
-                    while (parentNode != null)
-                    {
-                        if (parentNode is ScrollableControl sc && sc.AutoScroll)
-                        {
-                            sc.Focus();
-                            break;
-                        }
-                        parentNode = parentNode.Parent;
-                    }
+                    if (e is HandledMouseEventArgs handledArgs) handledArgs.Handled = true;
+                    BubbleScrollToParent(e);
                 }
+            };
+
+            textInput.MouseWheel += (s, e) =>
+            {
+                if (!textInput.Multiline) BubbleScrollToParent(e);
             };
 
             comboInput.Visible = false;
@@ -454,5 +447,27 @@ namespace mtc_app.shared.presentation.components
                 comboInput.Visible = true;
             }
         }
+
+        #region Scroll Bubbling
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+        private const int WM_MOUSEWHEEL = 0x020A;
+
+        private void BubbleScrollToParent(MouseEventArgs e)
+        {
+            Control parent = this.Parent;
+            while (parent != null)
+            {
+                if (parent is ScrollableControl sc && sc.AutoScroll)
+                {
+                    // Use unchecked to prevent OverflowException on negative Delta values
+                    IntPtr wParam = new IntPtr(unchecked((int)(e.Delta << 16)));
+                    SendMessage(sc.Handle, WM_MOUSEWHEEL, wParam, IntPtr.Zero);
+                    return;
+                }
+                parent = parent.Parent;
+            }
+        }
+        #endregion
     }
 }

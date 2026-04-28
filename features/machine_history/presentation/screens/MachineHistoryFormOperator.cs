@@ -86,7 +86,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private TableLayoutPanel _rootLayout;
         private TableLayoutPanel _tab1Layout;
         private TableLayoutPanel _formLayout; 
-        private TableLayoutPanel _problemsLayout; 
+        private Panel _problemsLayout; 
 
         private void InitializeCustomTabs()
         {
@@ -270,17 +270,13 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
             AddToForm(lblProblems);
 
-            // 5. Problems Container
-            _problemsLayout = new TableLayoutPanel
+            // 5. Problems Container — plain Panel, height managed manually
+            _problemsLayout = new Panel
             {
                 Dock = DockStyle.Top,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink, 
-                GrowStyle = TableLayoutPanelGrowStyle.AddRows,
-                ColumnCount = 1,
+                Height = 0,
                 Padding = new Padding(0)
             };
-            _problemsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             
             _formLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             _formLayout.Controls.Add(_problemsLayout, 0, _formLayout.RowCount++);
@@ -313,19 +309,22 @@ namespace mtc_app.features.machine_history.presentation.screens
             AddProblemInput();
         }
 
+        private const int ProblemRowHeight = 250;
+
         private void AddProblemInput()
         {
             var problemControl = new ProblemInputControl(_problemControls.Count);
             problemControl.RemoveRequested += (s, e) => RemoveProblemInput(problemControl);
-            problemControl.Dock = DockStyle.Top;
+            problemControl.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             
             _problemControls.Add(problemControl);
             
-            _problemsLayout.SuspendLayout();
-            _problemsLayout.RowCount = _problemControls.Count;
-            _problemsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 230));
-            _problemsLayout.Controls.Add(problemControl, 0, _problemControls.Count - 1);
-            _problemsLayout.ResumeLayout(true);
+            problemControl.Location = new Point(0, (_problemControls.Count - 1) * ProblemRowHeight);
+            problemControl.Width = _problemsLayout.ClientSize.Width;
+            _problemsLayout.Controls.Add(problemControl);
+            
+            _problemsLayout.Height = _problemControls.Count * ProblemRowHeight;
+            _problemsLayout.MinimumSize = new Size(0, _problemsLayout.Height);
         }
 
         private void RemoveProblemInput(ProblemInputControl control)
@@ -337,25 +336,18 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
             
             _problemControls.Remove(control);
+            _problemsLayout.Controls.Remove(control);
+            control.Dispose();
             
-            // Rebuild the entire TableLayoutPanel to avoid ghost rows
-            _problemsLayout.SuspendLayout();
-            _problemsLayout.Controls.Clear();
-            _problemsLayout.RowStyles.Clear();
-            _problemsLayout.RowCount = _problemControls.Count;
-            
+            // Re-position remaining controls
             for (int i = 0; i < _problemControls.Count; i++)
             {
                 _problemControls[i].UpdateIndex(i);
-                _problemsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 230));
-                _problemsLayout.Controls.Add(_problemControls[i], 0, i);
+                _problemControls[i].Location = new Point(0, i * ProblemRowHeight);
             }
-            _problemsLayout.ResumeLayout(true);
             
-            control.Dispose();
-            
-            // Explicitly set height to match content and reset scroll
-            _problemsLayout.Height = _problemControls.Count * 230;
+            _problemsLayout.Height = _problemControls.Count * ProblemRowHeight;
+            _problemsLayout.MinimumSize = new Size(0, _problemsLayout.Height);
             _formLayout.AutoScrollPosition = new Point(0, 0);
             _formLayout.PerformLayout();
         }
