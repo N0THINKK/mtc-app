@@ -62,6 +62,10 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         // === Sequen list ===
         private DataGridView _dgvSequen;
 
+        // === Auto-Save ===
+        private System.Windows.Forms.Timer _autoSaveTimer;
+        private bool _isPopulatingFields = false;
+
         // === Riwayat Produksi ===
         // private DataGridView _dgvRiwayat;
         
@@ -346,6 +350,23 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             this.BackColor = Color.FromArgb(243, 244, 246); // light gray background
             this.FormBorderStyle = FormBorderStyle.None;
             this.DoubleBuffered = true;
+
+            _autoSaveTimer = new System.Windows.Forms.Timer { Interval = 20000 };
+            _autoSaveTimer.Tick += async (s, e) =>
+            {
+                _autoSaveTimer.Stop();
+                if (_activeRowData == null || _activeSource != ActiveGrid.Sequen) return;
+                
+                bool success = await PerformSaveAsync(isAutoSave: true);
+                if (success && _dgvSequen.CurrentRow != null)
+                {
+                    int nextIdx = _dgvSequen.CurrentRow.Index + 1;
+                    if (nextIdx < _dgvSequen.RowCount)
+                    {
+                        _dgvSequen.CurrentCell = _dgvSequen.Rows[nextIdx].Cells[0];
+                    }
+                }
+            };
 
             // ---- 1) TITLE BAR ----
             var pnlTitleBar = CreateTitleBar();
@@ -893,10 +914,12 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             _txtLotIdWire = CreateStyledTextBox("Lot Id Wire", halfW);
             _txtLotIdWire.Location = new Point(16, y);
+            _txtLotIdWire.TextChanged += (s, e) => ResetAutoSaveTimer();
             card.Controls.Add(_txtLotIdWire);
 
             _txtCutL = CreateStyledTextBox("0", halfW);
             _txtCutL.Location = new Point(_txtLotIdWire.Right + 8, y);
+            _txtCutL.TextChanged += (s, e) => ResetAutoSaveTimer();
             card.Controls.Add(_txtCutL);
             y += 42;
 
@@ -905,6 +928,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             y += 20;
             _txtQtyProduksi = CreateStyledTextBox("Masukkan Qty Produksi", fw);
             _txtQtyProduksi.Location = new Point(16, y);
+            _txtQtyProduksi.TextChanged += (s, e) => ResetAutoSaveTimer();
             card.Controls.Add(_txtQtyProduksi);
             y += 42;
 
@@ -912,6 +936,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(new Label { Text = "Kode Defect", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
             y += 20;
             _cboKodeDefect = new ComboBox { Font = FieldValueFont, Size = new Size(fw, 30), Location = new Point(16, y), DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(248, 250, 252) };
+            _cboKodeDefect.SelectedIndexChanged += (s, e) => ResetAutoSaveTimer();
             _cboKodeDefect.Items.AddRange(new object[] {
                 "- Pilih Kode Defect -",
                 "A.1 Core Terurai",
@@ -991,6 +1016,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _txtDefectOperator = CreateStyledTextBox("Masukkan jumlah defect", halfW);
             _txtDefectOperator.Location = new Point(_txtDefectMesin.Right + 8, y);
             _txtDefectOperator.Text = "0";
+            _txtDefectOperator.TextChanged += (s, e) => ResetAutoSaveTimer();
             card.Controls.Add(_txtDefectOperator);
             y += 48;
 
@@ -1005,10 +1031,25 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
         private async void BtnSimpanAktivitas_Click(object sender, EventArgs e)
         {
+            await PerformSaveAsync(isAutoSave: false);
+        }
+
+        private void ResetAutoSaveTimer()
+        {
+            if (_isPopulatingFields) return;
+            if (_activeRowData != null && _activeSource == ActiveGrid.Sequen)
+            {
+                _autoSaveTimer.Stop();
+                _autoSaveTimer.Start();
+            }
+        }
+
+        private async Task<bool> PerformSaveAsync(bool isAutoSave)
+        {
             if (_activeRowData == null)
             {
-                MessageBox.Show("Pilih sequen terlebih dahulu.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
+                if (!isAutoSave) MessageBox.Show("Pilih sequen terlebih dahulu.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
             }
 
             var rowData = _activeRowData;
@@ -1016,8 +1057,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Cegah simpan ulang dari grid SEQUEN jika sudah tersimpan
             if (_activeSource == ActiveGrid.Sequen && rowData.DbRecord != null)
             {
-                MessageBox.Show("Sequen ini sudah tersimpan. Gunakan tabel 'Sudah Tersimpan' untuk mengedit.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
+                if (!isAutoSave) MessageBox.Show("Sequen ini sudah tersimpan. Gunakan tabel 'Sudah Tersimpan' untuk mengedit.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return false;
             }
 
             // Ambil kode defect dari dropdown
@@ -1030,9 +1071,12 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Validasi: jika defect operator > 0, wajib pilih kode defect
             if (defectOperator > 0 && string.IsNullOrEmpty(kodeDefect))
             {
-                MessageBox.Show("Jika ada Defect Operator, wajib memilih Kode Defect.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                _cboKodeDefect.Focus();
-                return;
+                if (!isAutoSave) 
+                {
+                    MessageBox.Show("Jika ada Defect Operator, wajib memilih Kode Defect.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    _cboKodeDefect.Focus();
+                }
+                return false;
             }
 
             // Ambil shift dari combo
@@ -1093,21 +1137,26 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 _dgvTersimpan.DataSource = savedData;
                 _dgvSequen.Refresh();
 
-                string aksi = _activeSource == ActiveGrid.Tersimpan ? "diperbarui" : "disimpan";
-                if (savedOnline)
+                if (!isAutoSave)
                 {
-                    MessageBox.Show($"Data berhasil {aksi}.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                else
-                {
-                    MessageBox.Show($"Server tidak tersedia. Data {aksi} secara offline dan akan di-sync otomatis saat koneksi kembali.", "Tersimpan Offline", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    string aksi = _activeSource == ActiveGrid.Tersimpan ? "diperbarui" : "disimpan";
+                    if (savedOnline)
+                    {
+                        MessageBox.Show($"Data berhasil {aksi}.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Server tidak tersedia. Data {aksi} secara offline dan akan di-sync otomatis saat koneksi kembali.", "Tersimpan Offline", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
                 }
                 
                 UpdateHeaderQty();
+                return true;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Gagal menyimpan: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (!isAutoSave) MessageBox.Show("Gagal menyimpan: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
             }
         }
 
@@ -1285,7 +1334,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _activeSource = ActiveGrid.Sequen;
             _activeRowData = rowData;
 
+            _isPopulatingFields = true;
             PopulateInputFields(rowData);
+            _isPopulatingFields = false;
+            
+            _autoSaveTimer?.Stop(); // Jangan auto-save sampai ada interaksi user
         }
 
         private void DgvTersimpan_SelectionChanged(object sender, EventArgs e)
@@ -1297,7 +1350,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _activeSource = ActiveGrid.Tersimpan;
             _activeRowData = rowData;
 
+            _isPopulatingFields = true;
             PopulateInputFields(rowData);
+            _isPopulatingFields = false;
+            
+            _autoSaveTimer?.Stop(); // Grid tersimpan tidak punya auto-save
         }
 
         private void PopulateInputFields(LkoService.LkoAggregatedData rowData)
