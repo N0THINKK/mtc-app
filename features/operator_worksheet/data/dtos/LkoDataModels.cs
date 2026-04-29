@@ -32,6 +32,27 @@ namespace mtc_app.features.operator_worksheet.data.dtos
     }
 
     /// <summary>
+    /// DTO untuk data dari Jissk.dat — Front/Rear crimp height dan crimp width.
+    /// </summary>
+    public class JisskDto
+    {
+        public string RawSequen { get; set; } = string.Empty; // kolom 2, misal "83360"
+        public string Sequen4 { get; set; } = string.Empty;   // 4 digit terakhir, misal "3360"
+
+        // Sisi A
+        public string FrontChA { get; set; } = "0";
+        public string FrontCwA { get; set; } = "0";
+        public string RearChA { get; set; } = "0";
+        public string RearCwA { get; set; } = "0";
+
+        // Sisi B
+        public string FrontChB { get; set; } = "0";
+        public string FrontCwB { get; set; } = "0";
+        public string RearChB { get; set; } = "0";
+        public string RearCwB { get; set; } = "0";
+    }
+
+    /// <summary>
     /// DTO untuk menyimpan data LKO operator ke MySQL (Opsi B).
     /// Data ini terpisah dari PrdLog.csv bawaan mesin.
     /// </summary>

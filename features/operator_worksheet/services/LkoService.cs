@@ -21,6 +21,7 @@ namespace mtc_app.features.operator_worksheet.services
         {
             public PrdLogDto Log { get; set; }
             public PrdmstDto Master { get; set; }
+            public JisskDto Jissk { get; set; }
             
             // === Data dari DB (Operator input) ===
             public LkoRecordDto DbRecord { get; set; }
@@ -51,6 +52,7 @@ namespace mtc_app.features.operator_worksheet.services
         public List<LkoAggregatedData> GetAllWorksheetData(string noMesin = "")
         {
             var logs = _fileRepository.GetPrdLogs();
+            var jisskData = _fileRepository.GetJisskData();
             var masters = _fileRepository.GetPrdMst();
 
             var result = new List<LkoAggregatedData>();
@@ -100,10 +102,24 @@ namespace mtc_app.features.operator_worksheet.services
                     System.Diagnostics.Debug.WriteLine($"[LKO] NO MATCH: log.Seq={log.Sequen}");
                 }
 
+                // Match Jissk: pad sequen ke 4 digit lalu cocokkan exact
+                // Contoh: sequen "10" → "0010" → cocok dengan Jissk Sequen4 "0010" (dari 10010 atau 20010)
+                JisskDto matchingJissk = null;
+                if (!string.IsNullOrWhiteSpace(log.Sequen))
+                {
+                    string seqDigits = new string(log.Sequen.Where(char.IsDigit).ToArray());
+                    if (int.TryParse(seqDigits, out int seqNum))
+                    {
+                        string padded = seqNum.ToString("D4"); // 10 → "0010"
+                        matchingJissk = jisskData.FirstOrDefault(j => j.Sequen4 == padded);
+                    }
+                }
+
                 result.Add(new LkoAggregatedData
                 {
                     Log = log,
-                    Master = matchingMaster ?? new PrdmstDto { Sequen = log.Sequen }
+                    Master = matchingMaster ?? new PrdmstDto { Sequen = log.Sequen },
+                    Jissk = matchingJissk
                 });
             }
 
@@ -113,10 +129,20 @@ namespace mtc_app.features.operator_worksheet.services
                 bool alreadyExists = result.Any(r => r.Master?.Sequen == master.Sequen);
                 if (!alreadyExists)
                 {
+                    // Juga cari Jissk untuk master tanpa log
+                    JisskDto jForMaster = null;
+                    string mSeqDigits = new string((master.Sequen ?? "").Where(char.IsDigit).ToArray());
+                    if (int.TryParse(mSeqDigits, out int mSeqNum))
+                    {
+                        string mPadded = mSeqNum.ToString("D4");
+                        jForMaster = jisskData.FirstOrDefault(j => j.Sequen4 == mPadded);
+                    }
+
                     result.Add(new LkoAggregatedData
                     {
                         Log = new PrdLogDto { Sequen = master.Sequen },
-                        Master = master
+                        Master = master,
+                        Jissk = jForMaster
                     });
                 }
             }

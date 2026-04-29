@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 using mtc_app.features.operator_worksheet.data.dtos;
 
 namespace mtc_app.features.operator_worksheet.data.repositories
@@ -92,6 +94,71 @@ namespace mtc_app.features.operator_worksheet.data.repositories
             catch (Exception ex)
             {
                 Console.WriteLine($"Error reading prdmst.csv: {ex.Message}");
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Parse Jissk.dat — file fixed-width dari mesin.
+        /// Menggunakan regex untuk menemukan nilai desimal X.XXX (posisi-independen).
+        /// Urutan nilai selalu: FrontChA, FrontCwA, RearChA, RearCwA, FrontChB, FrontCwB, RearChB, RearCwB.
+        /// </summary>
+        public List<JisskDto> GetJisskData()
+        {
+            var result = new List<JisskDto>();
+            string filePath = Path.Combine(_baseDir, "Jissk.dat");
+
+            if (!File.Exists(filePath)) return result;
+
+            // Regex: angka desimal format X.XXX (3 digit di belakang titik)
+            var decimalPattern = new Regex(@"\d\.\d{3}", RegexOptions.Compiled);
+
+            try
+            {
+                using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var sr = new StreamReader(fs))
+                {
+                    string line;
+                    while ((line = sr.ReadLine()) != null)
+                    {
+                        if (string.IsNullOrWhiteSpace(line)) continue;
+
+                        // Ambil kolom kedua (sequence number) dari whitespace-separated tokens
+                        var tokens = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                        if (tokens.Length < 2) continue;
+
+                        string rawSeq = tokens[1].Trim();
+
+                        // Ambil 4 digit terakhir
+                        string seq4 = rawSeq.Length >= 4 ? rawSeq.Substring(rawSeq.Length - 4) : rawSeq;
+
+                        // Cari semua angka desimal X.XXX di baris ini
+                        var matches = decimalPattern.Matches(line);
+
+                        var dto = new JisskDto
+                        {
+                            RawSequen = rawSeq,
+                            Sequen4 = seq4
+                        };
+
+                        // 8 nilai berurutan: FchA, FcwA, RchA, RcwA, FchB, FcwB, RchB, RcwB
+                        if (matches.Count >= 1) dto.FrontChA = matches[0].Value;
+                        if (matches.Count >= 2) dto.FrontCwA = matches[1].Value;
+                        if (matches.Count >= 3) dto.RearChA = matches[2].Value;
+                        if (matches.Count >= 4) dto.RearCwA = matches[3].Value;
+                        if (matches.Count >= 5) dto.FrontChB = matches[4].Value;
+                        if (matches.Count >= 6) dto.FrontCwB = matches[5].Value;
+                        if (matches.Count >= 7) dto.RearChB = matches[6].Value;
+                        if (matches.Count >= 8) dto.RearCwB = matches[7].Value;
+
+                        result.Add(dto);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error reading Jissk.dat: {ex.Message}");
             }
 
             return result;

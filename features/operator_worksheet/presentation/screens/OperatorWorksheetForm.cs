@@ -765,6 +765,36 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 _txtSeal.Text = isSisiA ? (master.SealA ?? "") : (master.SealB ?? "");
                 LoadTerminalImage(master);
             }
+
+            // Update Front/Rear from Jissk based on active side
+            UpdateFrontRearFields(_activeRowData?.Jissk);
+        }
+
+        private void UpdateFrontRearFields(mtc_app.features.operator_worksheet.data.dtos.JisskDto jissk)
+        {
+            if (jissk == null)
+            {
+                _txtFrontChA.Text = "0";
+                _txtFrontCwA.Text = "0";
+                _txtRearChA.Text = "0";
+                _txtRearCwA.Text = "0";
+                return;
+            }
+
+            if (_isSisiA)
+            {
+                _txtFrontChA.Text = jissk.FrontChA;
+                _txtFrontCwA.Text = jissk.FrontCwA;
+                _txtRearChA.Text = jissk.RearChA;
+                _txtRearCwA.Text = jissk.RearCwA;
+            }
+            else
+            {
+                _txtFrontChA.Text = jissk.FrontChB;
+                _txtFrontCwA.Text = jissk.FrontCwB;
+                _txtRearChA.Text = jissk.RearChB;
+                _txtRearCwA.Text = jissk.RearCwB;
+            }
         }
 
         // =====================================================================
@@ -1168,10 +1198,12 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 _txtTerminal.Text = rowData.Master?.TerminalB ?? "";
                 _txtSeal.Text = rowData.Master?.SealB ?? "";
             }
-            _txtFrontChA.Text = !string.IsNullOrWhiteSpace(rowData.Master?.PanjangStripSisiA) ? rowData.Master.PanjangStripSisiA : "0";
-            _txtRearChA.Text = !string.IsNullOrWhiteSpace(rowData.Master?.PanjangStripSisiB) ? rowData.Master.PanjangStripSisiB : "0";
+            _txtFrontChA.Text = "0";
+            _txtRearChA.Text = "0";
             _txtFrontCwA.Text = "0";
             _txtRearCwA.Text = "0";
+            // Populate Front/Rear from Jissk
+            UpdateFrontRearFields(rowData.Jissk);
             _txtQtyProduksi.Text = rowData.DbRecord != null ? rowData.DbRecord.QtyProduct.ToString() : (rowData.Log?.QtyProduk ?? "");
             _txtCutL.Text = rowData.DbRecord != null && !string.IsNullOrEmpty(rowData.DbRecord.CutLength) ? rowData.DbRecord.CutLength : (!string.IsNullOrWhiteSpace(rowData.Master?.CutLength) ? rowData.Master.CutLength : "0");
             _txtLotIdWire.Text = rowData.DbRecord?.LotIdWire ?? "";
