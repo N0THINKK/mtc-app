@@ -24,38 +24,73 @@ namespace mtc_app.features.machine_history.presentation.components
         public AppInput InputAction { get; private set; }
         
         private Label lblHeader;
+        private AppButton btnRemove;
+        private FlowLayoutPanel _headerRow;
+        
+        public event EventHandler RemoveRequested;
 
-        public TechnicianProblemItemControl(long problemId, string problemType, string problemDetail, bool isEnabled)
+        public TechnicianProblemItemControl(long problemId, string problemType, string problemDetail, bool isEnabled, int index = 0)
         {
             ProblemId = problemId;
-            InitializeComponent(problemType, problemDetail, isEnabled);
+            InitializeComponent(problemType, problemDetail, isEnabled, index);
             LoadDropdownData();
         }
 
-        private void InitializeComponent(string problemType, string problemDetail, bool isEnabled)
+        private void InitializeComponent(string problemType, string problemDetail, bool isEnabled, int index)
         {
             int inputHeight = AppDimens.ControlHeight + 55;
             int spacing = AppDimens.SpacingLarge; // 32
 
             this.AutoSize = false;
-            // Header(30) + 4 * (Input + Spacing) + Extra Buffer
+            // Header(40) + 4 * (Input + Spacing) + Extra Buffer
             this.Height = 40 + (4 * (inputHeight + spacing)); 
             this.Margin = new Padding(0, 0, 0, AppDimens.SpacingLarge);
             this.BackColor = Color.Transparent;
 
             int yPos = 0;
 
+            // Header Row: Title + Remove Button side by side
+            _headerRow = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                Height = 36,
+                Width = this.Width,
+                AutoSize = false,
+                WrapContents = false,
+                Location = new Point(0, yPos),
+                BackColor = Color.Transparent,
+                Padding = new Padding(0),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+
             // Header Label
             lblHeader = new Label
             {
-                Text = "Problem Dilaporkan:",
+                Text = $"Problem #{index + 1} Dilaporkan:",
                 Font = AppFonts.Subtitle,
                 ForeColor = AppColors.TextPrimary,
                 AutoSize = true,
-                Location = new Point(0, yPos)
+                Margin = new Padding(0, 5, 10, 0)
             };
-            this.Controls.Add(lblHeader);
-            yPos += 35; // Header height + gap
+            _headerRow.Controls.Add(lblHeader);
+
+            // Remove Button
+            btnRemove = new AppButton
+            {
+                Text = "Hapus",
+                Type = AppButton.ButtonType.Danger,
+                Width = 90,
+                Height = 30,
+                Visible = index > 0,
+                Margin = new Padding(0),
+                Padding = new Padding(0),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            btnRemove.Click += (s, e) => RemoveRequested?.Invoke(this, EventArgs.Empty);
+            _headerRow.Controls.Add(btnRemove);
+
+            this.Controls.Add(_headerRow);
+            yPos += 40; // Header height + gap
 
             // Problem Type Input (pre-filled, editable)
             InputProblemType = new AppInput 
@@ -113,12 +148,19 @@ namespace mtc_app.features.machine_history.presentation.components
             InputProblemDetail.InputValue = problemDetail ?? "";
         }
 
+        public void UpdateIndex(int index, bool isEnabled)
+        {
+            lblHeader.Text = $"Problem #{index + 1} Dilaporkan:";
+            btnRemove.Visible = index > 0;
+        }
+
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
             
             int inputWidth = this.Width - 10;
             
+            if (_headerRow != null) _headerRow.Width = this.Width;
             if (InputProblemType != null) InputProblemType.Width = inputWidth;
             if (InputProblemDetail != null) InputProblemDetail.Width = inputWidth;
             if (InputCause != null) InputCause.Width = inputWidth;

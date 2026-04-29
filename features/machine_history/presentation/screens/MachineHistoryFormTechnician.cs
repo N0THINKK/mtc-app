@@ -519,8 +519,10 @@ namespace mtc_app.features.machine_history.presentation.screens
                             (long)p.problem_id, 
                             (string)p.ProblemType, 
                             (string)p.ProblemDetail, 
-                            _isVerified
+                            _isVerified,
+                            _problemControls.Count
                         );
+                        control.RemoveRequested += (s, ev) => RemoveProblemItem(control);
                         _problemControls.Add(control);
                         pnlProblems.Controls.Add(control);
                     }
@@ -557,7 +559,8 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void BtnAddProblem_Click(object sender, EventArgs e)
         {
-            var control = new TechnicianProblemItemControl(0, "", "", _isVerified); 
+            var control = new TechnicianProblemItemControl(0, "", "", _isVerified, _problemControls.Count); 
+            control.RemoveRequested += (s, ev) => RemoveProblemItem(control);
             _problemControls.Add(control);
             pnlProblems.Controls.Add(control);
             
@@ -568,6 +571,24 @@ namespace mtc_app.features.machine_history.presentation.screens
                  int contentWidth = mainLayout.ClientSize.Width - 80;
                  if (contentWidth < 300) contentWidth = 300;
                  control.Width = contentWidth;
+            }
+        }
+
+        private void RemoveProblemItem(TechnicianProblemItemControl control)
+        {
+            if (_problemControls.Count <= 1)
+            {
+                AutoClosingMessageBox.Show("Minimal harus ada satu problem.", "Info", 1500);
+                return;
+            }
+            
+            _problemControls.Remove(control);
+            pnlProblems.Controls.Remove(control);
+            control.Dispose();
+            
+            for (int i = 0; i < _problemControls.Count; i++)
+            {
+                _problemControls[i].UpdateIndex(i, _isVerified);
             }
         }
 

@@ -85,7 +85,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         // Main Responsive Layout Containers
         private TableLayoutPanel _rootLayout;
         private TableLayoutPanel _tab1Layout;
-        private TableLayoutPanel _formLayout; 
+        private FlowLayoutPanel _formLayout; 
         private Panel _problemsLayout; 
 
         private void InitializeCustomTabs()
@@ -131,14 +131,21 @@ namespace mtc_app.features.machine_history.presentation.screens
             _tab1Layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); 
             _tab1Layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));    
 
-            _formLayout = new TableLayoutPanel
+            _formLayout = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 1,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
                 AutoScroll = true,
                 Padding = new Padding(0, 0, 20, 0) 
             };
-            _formLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            _formLayout.Resize += (s, e) => 
+            {
+                foreach (Control c in _formLayout.Controls)
+                {
+                    c.Width = _formLayout.ClientSize.Width - 20;
+                }
+            };
             _tab1Layout.Controls.Add(_formLayout, 0, 0);
 
             panelFooter.Parent = null; 
@@ -233,10 +240,9 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             void AddToForm(Control c, int bottomMargin = 10)
             {
-                 c.Dock = DockStyle.Top; 
+                 c.Width = _formLayout.ClientSize.Width > 0 ? _formLayout.ClientSize.Width - 20 : 500;
                  c.Margin = new Padding(0, 0, 0, bottomMargin);
-                 _formLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-                 _formLayout.Controls.Add(c, 0, _formLayout.RowCount++);
+                 _formLayout.Controls.Add(c);
             }
 
             // 1. NIK Operator [BARU]
@@ -278,8 +284,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Padding = new Padding(0)
             };
             
-            _formLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            _formLayout.Controls.Add(_problemsLayout, 0, _formLayout.RowCount++);
+            AddToForm(_problemsLayout, 0);
 
             // 6. Add Problem Button
             btnAddProblem = new AppButton
@@ -320,7 +325,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             _problemControls.Add(problemControl);
             
             problemControl.Location = new Point(0, (_problemControls.Count - 1) * ProblemRowHeight);
-            problemControl.Width = _problemsLayout.ClientSize.Width;
+            problemControl.Width = _problemsLayout.ClientSize.Width > 0 ? _problemsLayout.ClientSize.Width : _formLayout.ClientSize.Width - 30;
             _problemsLayout.Controls.Add(problemControl);
             
             _problemsLayout.Height = _problemControls.Count * ProblemRowHeight;
@@ -348,7 +353,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             
             _problemsLayout.Height = _problemControls.Count * ProblemRowHeight;
             _problemsLayout.MinimumSize = new Size(0, _problemsLayout.Height);
-            _formLayout.AutoScrollPosition = new Point(0, 0);
             _formLayout.PerformLayout();
         }
 
