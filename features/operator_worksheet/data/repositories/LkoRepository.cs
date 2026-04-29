@@ -40,11 +40,28 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                             waktu_simpan = @WaktuSimpan,
                             shift_name = @ShiftName,
                             nik = @Nik,
+                            qty_product = @QtyProduct,
+                            qty_defect_mesin = @QtyDefectMesin,
                             qty_defect_operator = @QtyDefectOperator,
                             kode_defect = @KodeDefect,
-                            qty_product = @QtyProduct,
                             lot_id_wire = @LotIdWire,
-                            cut_length = @CutLength
+                            cut_length = @CutLength,
+                            kombinasi_wire = @KombinasiWire,
+                            terminal_a = @TerminalA,
+                            terminal_b = @TerminalB,
+                            seal_a = @SealA,
+                            seal_b = @SealB,
+                            qty_master = @QtyMaster,
+                            front_ch_a = @FrontChA,
+                            front_cw_a = @FrontCwA,
+                            rear_ch_a = @RearChA,
+                            rear_cw_a = @RearCwA,
+                            front_ch_b = @FrontChB,
+                            front_cw_b = @FrontCwB,
+                            rear_ch_b = @RearChB,
+                            rear_cw_b = @RearCwB,
+                            waktu_mulai = @WaktuMulai,
+                            waktu_selesai = @WaktuSelesai
                         WHERE id = @Id";
 
                     await connection.ExecuteAsync(updateSql, new
@@ -52,11 +69,28 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                         record.WaktuSimpan,
                         record.ShiftName,
                         record.Nik,
+                        record.QtyProduct,
+                        record.QtyDefectMesin,
                         record.QtyDefectOperator,
                         record.KodeDefect,
-                        record.QtyProduct,
                         record.LotIdWire,
                         record.CutLength,
+                        record.KombinasiWire,
+                        record.TerminalA,
+                        record.TerminalB,
+                        record.SealA,
+                        record.SealB,
+                        record.QtyMaster,
+                        record.FrontChA,
+                        record.FrontCwA,
+                        record.RearChA,
+                        record.RearCwA,
+                        record.FrontChB,
+                        record.FrontCwB,
+                        record.RearChB,
+                        record.RearCwB,
+                        record.WaktuMulai,
+                        record.WaktuSelesai,
                         Id = existingId.Value
                     });
                     return existingId.Value;
@@ -66,9 +100,21 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                     // Insert new record
                     string insertSql = @"
                         INSERT INTO lko_records 
-                            (waktu_simpan, no_mesin, shift_name, nik, sequen, urutan_kanban, qty_defect_operator, kode_defect, qty_product, lot_id_wire, cut_length)
+                            (waktu_simpan, no_mesin, shift_name, nik, sequen, urutan_kanban,
+                             qty_product, qty_defect_mesin, qty_defect_operator, kode_defect,
+                             lot_id_wire, cut_length,
+                             kombinasi_wire, terminal_a, terminal_b, seal_a, seal_b, qty_master,
+                             front_ch_a, front_cw_a, rear_ch_a, rear_cw_a,
+                             front_ch_b, front_cw_b, rear_ch_b, rear_cw_b,
+                             waktu_mulai, waktu_selesai)
                         VALUES 
-                            (@WaktuSimpan, @NoMesin, @ShiftName, @Nik, @Sequen, @UrutanKanban, @QtyDefectOperator, @KodeDefect, @QtyProduct, @LotIdWire, @CutLength);
+                            (@WaktuSimpan, @NoMesin, @ShiftName, @Nik, @Sequen, @UrutanKanban,
+                             @QtyProduct, @QtyDefectMesin, @QtyDefectOperator, @KodeDefect,
+                             @LotIdWire, @CutLength,
+                             @KombinasiWire, @TerminalA, @TerminalB, @SealA, @SealB, @QtyMaster,
+                             @FrontChA, @FrontCwA, @RearChA, @RearCwA,
+                             @FrontChB, @FrontCwB, @RearChB, @RearCwB,
+                             @WaktuMulai, @WaktuSelesai);
                         SELECT LAST_INSERT_ID();";
 
                     return await connection.ExecuteScalarAsync<int>(insertSql, new
@@ -79,11 +125,28 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                         record.Nik,
                         record.Sequen,
                         record.UrutanKanban,
+                        record.QtyProduct,
+                        record.QtyDefectMesin,
                         record.QtyDefectOperator,
                         record.KodeDefect,
-                        record.QtyProduct,
                         record.LotIdWire,
-                        record.CutLength
+                        record.CutLength,
+                        record.KombinasiWire,
+                        record.TerminalA,
+                        record.TerminalB,
+                        record.SealA,
+                        record.SealB,
+                        record.QtyMaster,
+                        record.FrontChA,
+                        record.FrontCwA,
+                        record.RearChA,
+                        record.RearCwA,
+                        record.FrontChB,
+                        record.FrontCwB,
+                        record.RearChB,
+                        record.RearCwB,
+                        record.WaktuMulai,
+                        record.WaktuSelesai
                     });
                 }
             }
@@ -103,11 +166,28 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                         nik AS Nik,
                         sequen AS Sequen,
                         urutan_kanban AS UrutanKanban,
+                        qty_product AS QtyProduct,
+                        qty_defect_mesin AS QtyDefectMesin,
                         qty_defect_operator AS QtyDefectOperator,
                         kode_defect AS KodeDefect,
-                        qty_product AS QtyProduct,
                         lot_id_wire AS LotIdWire,
-                        cut_length AS CutLength
+                        cut_length AS CutLength,
+                        kombinasi_wire AS KombinasiWire,
+                        terminal_a AS TerminalA,
+                        terminal_b AS TerminalB,
+                        seal_a AS SealA,
+                        seal_b AS SealB,
+                        qty_master AS QtyMaster,
+                        front_ch_a AS FrontChA,
+                        front_cw_a AS FrontCwA,
+                        rear_ch_a AS RearChA,
+                        rear_cw_a AS RearCwA,
+                        front_ch_b AS FrontChB,
+                        front_cw_b AS FrontCwB,
+                        rear_ch_b AS RearChB,
+                        rear_cw_b AS RearCwB,
+                        waktu_mulai AS WaktuMulai,
+                        waktu_selesai AS WaktuSelesai
                     FROM lko_records
                     WHERE no_mesin = @NoMesin
                       AND DATE(waktu_simpan) = CURDATE()

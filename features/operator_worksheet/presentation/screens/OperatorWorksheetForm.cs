@@ -765,6 +765,36 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 _txtSeal.Text = isSisiA ? (master.SealA ?? "") : (master.SealB ?? "");
                 LoadTerminalImage(master);
             }
+
+            // Update Front/Rear from Jissk based on active side
+            UpdateFrontRearFields(_activeRowData?.Jissk);
+        }
+
+        private void UpdateFrontRearFields(mtc_app.features.operator_worksheet.data.dtos.JisskDto jissk)
+        {
+            if (jissk == null)
+            {
+                _txtFrontChA.Text = "0";
+                _txtFrontCwA.Text = "0";
+                _txtRearChA.Text = "0";
+                _txtRearCwA.Text = "0";
+                return;
+            }
+
+            if (_isSisiA)
+            {
+                _txtFrontChA.Text = jissk.FrontChA;
+                _txtFrontCwA.Text = jissk.FrontCwA;
+                _txtRearChA.Text = jissk.RearChA;
+                _txtRearCwA.Text = jissk.RearCwA;
+            }
+            else
+            {
+                _txtFrontChA.Text = jissk.FrontChB;
+                _txtFrontCwA.Text = jissk.FrontCwB;
+                _txtRearChA.Text = jissk.RearChB;
+                _txtRearCwA.Text = jissk.RearCwB;
+            }
         }
 
         // =====================================================================
@@ -932,6 +962,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Ambil shift dari combo
             string shiftName = _cboShift?.SelectedItem is CachedShiftDto shift ? shift.ShiftName : "-";
 
+            int.TryParse(rowData.Log?.QtyDefect ?? "0", out int defectMesin);
+
             var record = new mtc_app.features.operator_worksheet.data.dtos.LkoRecordDto
             {
                 WaktuSimpan = DateTime.Now,
@@ -940,19 +972,43 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 Nik = _nikOperator,
                 Sequen = rowData.DisplaySequen,
                 UrutanKanban = rowData.DisplayUrutanPengerjaan,
+                QtyProduct = qtyProduct,
+                QtyDefectMesin = defectMesin,
                 QtyDefectOperator = defectOperator,
                 KodeDefect = kodeDefect,
-                QtyProduct = qtyProduct,
                 LotIdWire = _txtLotIdWire.Text.Trim(),
-                CutLength = _txtCutL.Text.Trim()
+                CutLength = _txtCutL.Text.Trim(),
+
+                // Master data
+                KombinasiWire = rowData.Master?.KombinasiWire ?? "",
+                TerminalA = rowData.Master?.TerminalA ?? "",
+                TerminalB = rowData.Master?.TerminalB ?? "",
+                SealA = rowData.Master?.SealA ?? "",
+                SealB = rowData.Master?.SealB ?? "",
+                QtyMaster = rowData.Master?.Qty ?? "",
+
+                // Jissk data
+                FrontChA = rowData.Jissk?.FrontChA ?? "0",
+                FrontCwA = rowData.Jissk?.FrontCwA ?? "0",
+                RearChA = rowData.Jissk?.RearChA ?? "0",
+                RearCwA = rowData.Jissk?.RearCwA ?? "0",
+                FrontChB = rowData.Jissk?.FrontChB ?? "0",
+                FrontCwB = rowData.Jissk?.FrontCwB ?? "0",
+                RearChB = rowData.Jissk?.RearChB ?? "0",
+                RearCwB = rowData.Jissk?.RearCwB ?? "0",
+
+                // Waktu mesin
+                WaktuMulai = rowData.Log?.WaktuMulaiPengerjaan ?? "",
+                WaktuSelesai = rowData.Log?.WaktuSelesaiPengerjaan ?? ""
             };
 
             try
             {
-                await _lkoService.SaveToDatabase(record);
+                bool savedOnline = await _lkoService.SaveToDatabase(record);
 
                 // Update DB record reference di data lokal
                 rowData.DbRecord = record;
+                rowData.IsOffline = !savedOnline;
 
                 // Refresh grid agar langsung muncul
                 var savedData = _worksheetData.Where(x => x.DbRecord != null).ToList();
@@ -961,7 +1017,14 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 _dgvSequen.Refresh();
 
                 string aksi = _activeSource == ActiveGrid.Tersimpan ? "diperbarui" : "disimpan";
-                MessageBox.Show($"Data berhasil {aksi}.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (savedOnline)
+                {
+                    MessageBox.Show($"Data berhasil {aksi}.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    MessageBox.Show($"Server tidak tersedia. Data {aksi} secara offline dan akan di-sync otomatis saat koneksi kembali.", "Tersimpan Offline", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
                 
                 UpdateHeaderQty();
             }
@@ -1007,8 +1070,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 DefaultCellStyle = new DataGridViewCellStyle { SelectionBackColor = Color.FromArgb(219, 234, 254), SelectionForeColor = Color.FromArgb(15, 23, 42), Padding = new Padding(4) }
             };
             _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Sequen", HeaderText = "SEQUEN", DataPropertyName = "DisplaySequen", Width = 70 });
-            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", Width = 55 });
-            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Kombinasi", HeaderText = "Kombinasi", DataPropertyName = "DisplayKombinasi", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
             _dgvSequen.SelectionChanged += DgvSequen_SelectionChanged;
             _dgvSequen.CellFormatting += DgvSequen_CellFormatting;
 
@@ -1072,6 +1134,13 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
                 // Merge dengan data DB (defect operator, kode defect)
                 await _lkoService.MergeDbRecordsAsync(_worksheetData, _machineNumber);
+
+                // Sort: urutan terbesar/terbaru di atas
+                _worksheetData = _worksheetData
+                    .OrderByDescending(x => {
+                        int.TryParse(x.DisplayUrutanPengerjaan, out int u);
+                        return u;
+                    }).ToList();
 
                 // Grid Kanan: Semua data dari Jissk
                 _dgvSequen.DataSource = _worksheetData;
@@ -1160,10 +1229,12 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 _txtTerminal.Text = rowData.Master?.TerminalB ?? "";
                 _txtSeal.Text = rowData.Master?.SealB ?? "";
             }
-            _txtFrontChA.Text = !string.IsNullOrWhiteSpace(rowData.Master?.PanjangStripSisiA) ? rowData.Master.PanjangStripSisiA : "0";
-            _txtRearChA.Text = !string.IsNullOrWhiteSpace(rowData.Master?.PanjangStripSisiB) ? rowData.Master.PanjangStripSisiB : "0";
+            _txtFrontChA.Text = "0";
+            _txtRearChA.Text = "0";
             _txtFrontCwA.Text = "0";
             _txtRearCwA.Text = "0";
+            // Populate Front/Rear from Jissk
+            UpdateFrontRearFields(rowData.Jissk);
             _txtQtyProduksi.Text = rowData.DbRecord != null ? rowData.DbRecord.QtyProduct.ToString() : (rowData.Log?.QtyProduk ?? "");
             _txtCutL.Text = rowData.DbRecord != null && !string.IsNullOrEmpty(rowData.DbRecord.CutLength) ? rowData.DbRecord.CutLength : (!string.IsNullOrWhiteSpace(rowData.Master?.CutLength) ? rowData.Master.CutLength : "0");
             _txtLotIdWire.Text = rowData.DbRecord?.LotIdWire ?? "";

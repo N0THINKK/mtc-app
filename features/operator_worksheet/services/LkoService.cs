@@ -21,9 +21,13 @@ namespace mtc_app.features.operator_worksheet.services
         {
             public PrdLogDto Log { get; set; }
             public PrdmstDto Master { get; set; }
+            public JisskDto Jissk { get; set; }
             
             // === Data dari DB (Operator input) ===
             public LkoRecordDto DbRecord { get; set; }
+
+            // === Offline flag ===
+            public bool IsOffline { get; set; } = false;
             
             // Flat properties for UI Databinding
             public string DisplaySequen => Master?.Sequen ?? Log?.Sequen ?? string.Empty;
@@ -48,6 +52,7 @@ namespace mtc_app.features.operator_worksheet.services
         public List<LkoAggregatedData> GetAllWorksheetData(string noMesin = "")
         {
             var logs = _fileRepository.GetPrdLogs();
+            var jisskData = _fileRepository.GetJisskData();
             var masters = _fileRepository.GetPrdMst();
 
             var result = new List<LkoAggregatedData>();
@@ -97,10 +102,26 @@ namespace mtc_app.features.operator_worksheet.services
                     System.Diagnostics.Debug.WriteLine($"[LKO] NO MATCH: log.Seq={log.Sequen}");
                 }
 
+                // Match Jissk: pad sequen ke 4 digit lalu cocokkan exact
+                // Contoh: sequen "10" → "0010" → cocok dengan Jissk Sequen4 "0010" (dari 10010 atau 20010)
+                JisskDto matchingJissk = null;
+                if (!string.IsNullOrWhiteSpace(log.Sequen))
+                {
+                    string seqDigits = new string(log.Sequen.Where(char.IsDigit).ToArray());
+                    if (int.TryParse(seqDigits, out int seqNum))
+                    {
+                        string padded = seqNum.ToString("D4"); // 10 → "0010"
+                        // Ambil yang bukan 0 (ada data Front/Rear)
+                        matchingJissk = jisskData.FirstOrDefault(j => j.Sequen4 == padded && j.FrontChA != "0" && j.FrontChA != "0.000")
+                                     ?? jisskData.FirstOrDefault(j => j.Sequen4 == padded);
+                    }
+                }
+
                 result.Add(new LkoAggregatedData
                 {
                     Log = log,
-                    Master = matchingMaster ?? new PrdmstDto { Sequen = log.Sequen }
+                    Master = matchingMaster ?? new PrdmstDto { Sequen = log.Sequen },
+                    Jissk = matchingJissk
                 });
             }
 
@@ -110,10 +131,21 @@ namespace mtc_app.features.operator_worksheet.services
                 bool alreadyExists = result.Any(r => r.Master?.Sequen == master.Sequen);
                 if (!alreadyExists)
                 {
+                    // Juga cari Jissk untuk master tanpa log
+                    JisskDto jForMaster = null;
+                    string mSeqDigits = new string((master.Sequen ?? "").Where(char.IsDigit).ToArray());
+                    if (int.TryParse(mSeqDigits, out int mSeqNum))
+                    {
+                        string mPadded = mSeqNum.ToString("D4");
+                        jForMaster = jisskData.FirstOrDefault(j => j.Sequen4 == mPadded && j.FrontChA != "0" && j.FrontChA != "0.000")
+                                   ?? jisskData.FirstOrDefault(j => j.Sequen4 == mPadded);
+                    }
+
                     result.Add(new LkoAggregatedData
                     {
                         Log = new PrdLogDto { Sequen = master.Sequen },
-                        Master = master
+                        Master = master,
+                        Jissk = jForMaster
                     });
                 }
             }
@@ -123,21 +155,23 @@ namespace mtc_app.features.operator_worksheet.services
 
         /// <summary>
         /// Muat data DB records hari ini dan gabungkan ke data worksheet.
+        /// Juga merge data offline jika ada.
         /// </summary>
         public async System.Threading.Tasks.Task MergeDbRecordsAsync(List<LkoAggregatedData> data, string noMesin)
         {
+            // 1) Try to merge from MySQL
+            bool isOnline = false;
             try
             {
                 var dbRecords = await _dbRepository.GetTodayRecordsAsync(noMesin);
+                isOnline = true;
 
                 var consumedIds = new HashSet<int>();
                 
                 foreach (var item in data)
                 {
-                    // Skip jika sequen kosong
                     if (string.IsNullOrWhiteSpace(item.DisplaySequen)) continue;
                     
-                    // Match berdasarkan sequen + urutan (exact match)
                     var dbMatch = dbRecords.FirstOrDefault(r =>
                         !consumedIds.Contains(r.Id) &&
                         !string.IsNullOrWhiteSpace(r.Sequen) &&
@@ -147,22 +181,92 @@ namespace mtc_app.features.operator_worksheet.services
                     if (dbMatch != null)
                     {
                         item.DbRecord = dbMatch;
+                        item.IsOffline = false;
                         consumedIds.Add(dbMatch.Id);
                     }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"MergeDbRecords error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"MergeDbRecords (MySQL) error: {ex.Message}");
+            }
+
+            // 2) Also merge offline records (for items not yet matched from DB)
+            try
+            {
+                var offlineRecords = LkoOfflineQueue.GetPendingForMachine(noMesin);
+                foreach (var offRec in offlineRecords)
+                {
+                    var match = data.FirstOrDefault(d =>
+                        d.DbRecord == null &&
+                        d.DisplaySequen == offRec.Sequen &&
+                        (d.DisplayUrutanPengerjaan ?? "") == (offRec.UrutanKanban ?? ""));
+
+                    if (match != null)
+                    {
+                        match.DbRecord = offRec;
+                        match.IsOffline = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MergeDbRecords (offline) error: {ex.Message}");
+            }
+
+            // 3) If online, try to sync any pending offline records
+            if (isOnline)
+            {
+                await SyncOfflineRecordsAsync();
             }
         }
 
         /// <summary>
-        /// Simpan record dari input operator ke MySQL.
+        /// Simpan record: coba MySQL dulu, jika gagal simpan ke antrian offline.
+        /// Returns true if saved online, false if saved offline.
         /// </summary>
-        public async System.Threading.Tasks.Task<int> SaveToDatabase(LkoRecordDto record)
+        public async System.Threading.Tasks.Task<bool> SaveToDatabase(LkoRecordDto record)
         {
-            return await _dbRepository.SaveLkoRecordAsync(record);
+            try
+            {
+                await _dbRepository.SaveLkoRecordAsync(record);
+                return true; // Saved to MySQL
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SaveToDatabase (MySQL) failed: {ex.Message}. Saving offline.");
+                LkoOfflineQueue.Enqueue(record);
+                return false; // Saved offline
+            }
+        }
+
+        /// <summary>
+        /// Sync semua record offline ke MySQL.
+        /// Returns jumlah record yang berhasil di-sync.
+        /// </summary>
+        public async System.Threading.Tasks.Task<int> SyncOfflineRecordsAsync()
+        {
+            var pending = LkoOfflineQueue.GetPending();
+            if (pending.Count == 0) return 0;
+
+            int synced = 0;
+            foreach (var record in pending.ToList())
+            {
+                try
+                {
+                    await _dbRepository.SaveLkoRecordAsync(record);
+                    LkoOfflineQueue.Remove(record);
+                    synced++;
+                }
+                catch
+                {
+                    // Still offline, stop trying
+                    break;
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[LKO] Synced {synced}/{pending.Count} offline records.");
+            return synced;
         }
     }
 }
