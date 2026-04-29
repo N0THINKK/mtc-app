@@ -464,16 +464,30 @@ namespace mtc_app.features.technician.presentation.components
                         int dayId = (int)shiftStart.DayOfWeek;
                         if (dayId == 0) dayId = 7;
 
-                        var b = await conn.QueryFirstOrDefaultAsync(
-                            "SELECT non_ot_minutes, ot_minutes FROM shift_breaks WHERE shift_name = @Shift AND day_id = @Day",
-                            new { Shift = dbShift, Day = dayId });
+                        var ovr = await conn.QueryFirstOrDefaultAsync(
+                            "SELECT non_ot_minutes, ot_minutes FROM shift_break_overrides WHERE shift_name = @Shift AND override_date = @Date",
+                            new { Shift = dbShift, Date = shiftStart.Date });
 
-                        if (b != null)
+                        if (ovr != null)
                         {
                             int currentHourCountTemp = isPastShift ? 12 : Math.Max(1, (int)(DateTime.Now - shiftStart).TotalHours + 1);
                             maxBreakMinutes = currentHourCountTemp > 9
-                                ? ((int)b.non_ot_minutes + (int)b.ot_minutes)
-                                : (int)b.non_ot_minutes;
+                                ? ((int)ovr.non_ot_minutes + (int)ovr.ot_minutes)
+                                : (int)ovr.non_ot_minutes;
+                        }
+                        else
+                        {
+                            var b = await conn.QueryFirstOrDefaultAsync(
+                                "SELECT non_ot_minutes, ot_minutes FROM shift_breaks WHERE shift_name = @Shift AND day_id = @Day",
+                                new { Shift = dbShift, Day = dayId });
+
+                            if (b != null)
+                            {
+                                int currentHourCountTemp = isPastShift ? 12 : Math.Max(1, (int)(DateTime.Now - shiftStart).TotalHours + 1);
+                                maxBreakMinutes = currentHourCountTemp > 9
+                                    ? ((int)b.non_ot_minutes + (int)b.ot_minutes)
+                                    : (int)b.non_ot_minutes;
+                            }
                         }
                     }
                     catch { }
