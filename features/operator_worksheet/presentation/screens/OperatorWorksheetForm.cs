@@ -1339,6 +1339,9 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _isPopulatingFields = false;
             
             _autoSaveTimer?.Stop(); // Jangan auto-save sampai ada interaksi user
+            
+            // Auto scroll ke atas agar form input terlihat
+            if (_pnlContent != null) _pnlContent.AutoScrollPosition = new Point(0, 0);
         }
 
         private void DgvTersimpan_SelectionChanged(object sender, EventArgs e)
@@ -1355,6 +1358,9 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _isPopulatingFields = false;
             
             _autoSaveTimer?.Stop(); // Grid tersimpan tidak punya auto-save
+            
+            // Auto scroll ke atas agar form input terlihat
+            if (_pnlContent != null) _pnlContent.AutoScrollPosition = new Point(0, 0);
         }
 
         private void PopulateInputFields(LkoService.LkoAggregatedData rowData)
