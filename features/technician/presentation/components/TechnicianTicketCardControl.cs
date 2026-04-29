@@ -246,22 +246,15 @@ namespace mtc_app.features.technician.presentation.components
             }
             // ═════════════════════════════════════════════════════════════
 
-            if (ticket.StatusId == 3) // Selesai
+            if (ticket.StatusId == 4) // Selesai
             {
                  if (ticket.FinishedAt.HasValue)
                  {
-                     if (ticket.FinishedAt.Value.Date == DateTime.Now.Date)
-                     {
-                         this.lblTime.Text = FormatDuration(activeDuration);
-                     }
-                     else
-                     {
-                         this.lblTime.Text = $"{FormatFinishedTime(ticket.FinishedAt.Value)} {FormatDuration(activeDuration)}";
-                     }
+                     this.lblTime.Text = $"{FormatFinishedTime(ticket.FinishedAt.Value)} {FormatDuration(activeDuration)}";
                  }
                  else
                  {
-                     this.lblTime.Text = FormatTime(ticket.CreatedAt);
+                     this.lblTime.Text = $"{FormatTime(ticket.CreatedAt)} {FormatDuration(activeDuration)}";
                  }
 
                  _baseBackColor = AppColors.CardBackground;
