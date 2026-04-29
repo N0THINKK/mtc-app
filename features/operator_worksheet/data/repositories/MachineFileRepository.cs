@@ -109,7 +109,19 @@ namespace mtc_app.features.operator_worksheet.data.repositories
             var result = new List<JisskDto>();
             string filePath = Path.Combine(_baseDir, "Jissk.dat");
 
-            if (!File.Exists(filePath)) return result;
+            System.Diagnostics.Debug.WriteLine($"[JISSK] Looking for file: {filePath}");
+            System.Diagnostics.Debug.WriteLine($"[JISSK] File exists: {File.Exists(filePath)}");
+
+            // Fallback: cek langsung di C:\AC90HMI jika tidak ada di prg
+            if (!File.Exists(filePath))
+            {
+                string fallback = @"C:\AC90HMI\Jissk.dat";
+                System.Diagnostics.Debug.WriteLine($"[JISSK] Trying fallback: {fallback}, exists: {File.Exists(fallback)}");
+                if (File.Exists(fallback))
+                    filePath = fallback;
+                else
+                    return result;
+            }
 
             // Regex: angka desimal format X.XXX (3 digit di belakang titik)
             var decimalPattern = new Regex(@"\d\.\d{3}", RegexOptions.Compiled);
@@ -158,9 +170,15 @@ namespace mtc_app.features.operator_worksheet.data.repositories
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error reading Jissk.dat: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[JISSK] Error reading Jissk.dat: {ex.Message}");
             }
 
+            System.Diagnostics.Debug.WriteLine($"[JISSK] Total records loaded: {result.Count}");
+            if (result.Count > 0)
+            {
+                var sample = result[0];
+                System.Diagnostics.Debug.WriteLine($"[JISSK] Sample: RawSeq={sample.RawSequen}, Seq4={sample.Sequen4}, FchA={sample.FrontChA}, FcwA={sample.FrontCwA}");
+            }
             return result;
         }
 

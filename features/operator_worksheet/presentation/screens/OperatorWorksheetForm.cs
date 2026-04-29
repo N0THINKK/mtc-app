@@ -962,6 +962,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Ambil shift dari combo
             string shiftName = _cboShift?.SelectedItem is CachedShiftDto shift ? shift.ShiftName : "-";
 
+            int.TryParse(rowData.Log?.QtyDefect ?? "0", out int defectMesin);
+
             var record = new mtc_app.features.operator_worksheet.data.dtos.LkoRecordDto
             {
                 WaktuSimpan = DateTime.Now,
@@ -970,11 +972,34 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 Nik = _nikOperator,
                 Sequen = rowData.DisplaySequen,
                 UrutanKanban = rowData.DisplayUrutanPengerjaan,
+                QtyProduct = qtyProduct,
+                QtyDefectMesin = defectMesin,
                 QtyDefectOperator = defectOperator,
                 KodeDefect = kodeDefect,
-                QtyProduct = qtyProduct,
                 LotIdWire = _txtLotIdWire.Text.Trim(),
-                CutLength = _txtCutL.Text.Trim()
+                CutLength = _txtCutL.Text.Trim(),
+
+                // Master data
+                KombinasiWire = rowData.Master?.KombinasiWire ?? "",
+                TerminalA = rowData.Master?.TerminalA ?? "",
+                TerminalB = rowData.Master?.TerminalB ?? "",
+                SealA = rowData.Master?.SealA ?? "",
+                SealB = rowData.Master?.SealB ?? "",
+                QtyMaster = rowData.Master?.Qty ?? "",
+
+                // Jissk data
+                FrontChA = rowData.Jissk?.FrontChA ?? "0",
+                FrontCwA = rowData.Jissk?.FrontCwA ?? "0",
+                RearChA = rowData.Jissk?.RearChA ?? "0",
+                RearCwA = rowData.Jissk?.RearCwA ?? "0",
+                FrontChB = rowData.Jissk?.FrontChB ?? "0",
+                FrontCwB = rowData.Jissk?.FrontCwB ?? "0",
+                RearChB = rowData.Jissk?.RearChB ?? "0",
+                RearCwB = rowData.Jissk?.RearCwB ?? "0",
+
+                // Waktu mesin
+                WaktuMulai = rowData.Log?.WaktuMulaiPengerjaan ?? "",
+                WaktuSelesai = rowData.Log?.WaktuSelesaiPengerjaan ?? ""
             };
 
             try
@@ -1045,8 +1070,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 DefaultCellStyle = new DataGridViewCellStyle { SelectionBackColor = Color.FromArgb(219, 234, 254), SelectionForeColor = Color.FromArgb(15, 23, 42), Padding = new Padding(4) }
             };
             _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Sequen", HeaderText = "SEQUEN", DataPropertyName = "DisplaySequen", Width = 70 });
-            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", Width = 55 });
-            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Kombinasi", HeaderText = "Kombinasi", DataPropertyName = "DisplayKombinasi", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
             _dgvSequen.SelectionChanged += DgvSequen_SelectionChanged;
             _dgvSequen.CellFormatting += DgvSequen_CellFormatting;
 
@@ -1110,6 +1134,13 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
                 // Merge dengan data DB (defect operator, kode defect)
                 await _lkoService.MergeDbRecordsAsync(_worksheetData, _machineNumber);
+
+                // Sort: urutan terbesar/terbaru di atas
+                _worksheetData = _worksheetData
+                    .OrderByDescending(x => {
+                        int.TryParse(x.DisplayUrutanPengerjaan, out int u);
+                        return u;
+                    }).ToList();
 
                 // Grid Kanan: Semua data dari Jissk
                 _dgvSequen.DataSource = _worksheetData;

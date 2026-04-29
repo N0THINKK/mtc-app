@@ -111,7 +111,9 @@ namespace mtc_app.features.operator_worksheet.services
                     if (int.TryParse(seqDigits, out int seqNum))
                     {
                         string padded = seqNum.ToString("D4"); // 10 → "0010"
-                        matchingJissk = jisskData.FirstOrDefault(j => j.Sequen4 == padded);
+                        // Ambil yang bukan 0 (ada data Front/Rear)
+                        matchingJissk = jisskData.FirstOrDefault(j => j.Sequen4 == padded && j.FrontChA != "0" && j.FrontChA != "0.000")
+                                     ?? jisskData.FirstOrDefault(j => j.Sequen4 == padded);
                     }
                 }
 
@@ -135,7 +137,8 @@ namespace mtc_app.features.operator_worksheet.services
                     if (int.TryParse(mSeqDigits, out int mSeqNum))
                     {
                         string mPadded = mSeqNum.ToString("D4");
-                        jForMaster = jisskData.FirstOrDefault(j => j.Sequen4 == mPadded);
+                        jForMaster = jisskData.FirstOrDefault(j => j.Sequen4 == mPadded && j.FrontChA != "0" && j.FrontChA != "0.000")
+                                   ?? jisskData.FirstOrDefault(j => j.Sequen4 == mPadded);
                     }
 
                     result.Add(new LkoAggregatedData
