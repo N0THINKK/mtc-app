@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Dapper;
 using mtc_app.features.operator_worksheet.services;
@@ -119,22 +120,44 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 string machineIdStr = DatabaseHelper.GetMachineId();
                 if (int.TryParse(machineIdStr, out int machineId))
                 {
-                    using (var conn = DatabaseHelper.GetConnection())
+                    bool found = false;
+                    try
                     {
-                        var info = Dapper.SqlMapper.QueryFirstOrDefault(conn,
-                            @"SELECT m.machine_number, mt.type_name, ma.area_name 
-                              FROM machines m 
-                              LEFT JOIN machine_types mt ON m.type_id = mt.type_id
-                              LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
-                              WHERE m.machine_id = @Id",
-                            new { Id = machineId });
-
-                        if (info != null)
+                        using (var conn = DatabaseHelper.GetConnection())
                         {
-                            string typeName = info.type_name?.ToString() ?? "";
-                            string areaName = info.area_name?.ToString() ?? "";
-                            string machNum = info.machine_number?.ToString() ?? "";
-                            // Format: type.area-no_urut  (contoh: AC90.NPR-02)
+                            var info = Dapper.SqlMapper.QueryFirstOrDefault(conn,
+                                @"SELECT m.machine_number, mt.type_name, ma.area_name 
+                                  FROM machines m 
+                                  LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                                  LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
+                                  WHERE m.machine_id = @Id",
+                                new { Id = machineId });
+
+                            if (info != null)
+                            {
+                                string typeName = info.type_name?.ToString() ?? "";
+                                string areaName = info.area_name?.ToString() ?? "";
+                                string machNum = info.machine_number?.ToString() ?? "";
+                                _machineNumber = $"{typeName}.{areaName}-{machNum}";
+                                _machinePrefix = $"{typeName}.{areaName}";
+                                _activeMachineId = machineId;
+                                found = true;
+                            }
+                        }
+                    }
+                    catch { }
+
+                    if (!found)
+                    {
+                        // Fallback ke cache offline jika database utama tidak bisa diakses
+                        var offlineRepo = new mtc_app.shared.data.local.OfflineRepository();
+                        var cachedMachines = offlineRepo.GetMachinesFromCache();
+                        var matched = cachedMachines.FirstOrDefault(m => m.MachineId == machineId);
+                        if (matched != null)
+                        {
+                            string machNum = matched.MachineNumber ?? "";
+                            string typeName = matched.MachineType ?? "";
+                            string areaName = matched.MachineArea ?? "";
                             _machineNumber = $"{typeName}.{areaName}-{machNum}";
                             _machinePrefix = $"{typeName}.{areaName}";
                             _activeMachineId = machineId;
@@ -1184,19 +1207,27 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         {
             try
             {
-                _worksheetData = _lkoService.GetAllWorksheetData(_machineNumber);
+                // Offload pembacaan dan parsing file ke background thread agar UI tidak freeze
+                var data = await Task.Run(() => 
+                {
+                    return _lkoService.GetAllWorksheetData(_machineNumber);
+                });
 
-                // Merge dengan data DB (defect operator, kode defect)
-                await _lkoService.MergeDbRecordsAsync(_worksheetData, _machineNumber);
+                // Merge dengan data DB (defect operator, kode defect) -> ini sudah async
+                await _lkoService.MergeDbRecordsAsync(data, _machineNumber);
 
-                // Sort: urutan terbesar/terbaru di atas
-                _worksheetData = _worksheetData
-                    .OrderByDescending(x => {
+                // Sort: urutan terbesar/terbaru di atas (di-offload)
+                data = await Task.Run(() => 
+                {
+                    return data.OrderByDescending(x => {
                         int.TryParse(x.DisplayUrutanPengerjaan, out int u);
                         return u;
                     }).ToList();
+                });
 
-                // Grid Kanan: Semua data dari Jissk
+                _worksheetData = data;
+
+                // Update UI (hanya UI binding yang berjalan di UI thread)
                 _dgvSequen.DataSource = _worksheetData;
                 
                 // Kotak Kecil Bawah: Hanya data yang sudah pernah disimpan (dikerjakan)
