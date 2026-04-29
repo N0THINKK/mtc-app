@@ -13,13 +13,31 @@ namespace mtc_app.features.admin.services
     {
         public string TanggalProduksi { get; set; }
         public string NamaMesin { get; set; }
-        public long? OutputPagi { get; set; }
-        public long? OutputMalam { get; set; }
-        public long? RawAutoSec { get; set; }
-        public long? RawMonitorSec { get; set; }
-        public long? PlannedMin { get; set; }
-        public long? SuddenMin { get; set; }
-        public long? BreakMin { get; set; }
+        
+        public long? OutputPagiNormal { get; set; }
+        public long? OutputPagiOT { get; set; }
+        public long? OutputMalamNormal { get; set; }
+        public long? OutputMalamOT { get; set; }
+        
+        public long? RawAutoPagiNormal { get; set; }
+        public long? RawAutoPagiOT { get; set; }
+        public long? RawAutoMalamNormal { get; set; }
+        public long? RawAutoMalamOT { get; set; }
+        
+        public long? RawMonitorPagiNormal { get; set; }
+        public long? RawMonitorPagiOT { get; set; }
+        public long? RawMonitorMalamNormal { get; set; }
+        public long? RawMonitorMalamOT { get; set; }
+
+        public long? PlannedPagiNormal { get; set; }
+        public long? PlannedPagiOT { get; set; }
+        public long? PlannedMalamNormal { get; set; }
+        public long? PlannedMalamOT { get; set; }
+
+        public long? SuddenPagiNormal { get; set; }
+        public long? SuddenPagiOT { get; set; }
+        public long? SuddenMalamNormal { get; set; }
+        public long? SuddenMalamOT { get; set; }
     }
 
     public static class OutputExportService
@@ -53,19 +71,30 @@ namespace mtc_app.features.admin.services
                         DATE_FORMAT(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR), '%d %M %Y') AS TanggalProduksi,
                         CONCAT(IFNULL(mt.type_name, ''), '.', IFNULL(ma.area_name, ''), '-', LPAD(m.machine_number, 2, '0')) AS NamaMesin,
                         
-                        MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND HOUR(mpl.created_at) < 19 THEN mpl.produced_pieces ELSE 0 END) AS OutputPagi,
-                        MAX(CASE WHEN HOUR(mpl.created_at) < 7 OR HOUR(mpl.created_at) >= 19 THEN mpl.produced_pieces ELSE 0 END) AS OutputMalam,
-                        
-                        (MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND HOUR(mpl.created_at) < 19 THEN mpl.auto_time ELSE 0 END) +
-                         MAX(CASE WHEN HOUR(mpl.created_at) < 7 OR HOUR(mpl.created_at) >= 19 THEN mpl.auto_time ELSE 0 END)) AS RawAutoSec,
-                         
-                        (MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND HOUR(mpl.created_at) < 19 THEN mpl.monitor_time ELSE 0 END) +
-                         MAX(CASE WHEN HOUR(mpl.created_at) < 7 OR HOUR(mpl.created_at) >= 19 THEN mpl.monitor_time ELSE 0 END)) AS RawMonitorSec,
+                        MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND (HOUR(mpl.created_at) < 16 OR (HOUR(mpl.created_at) = 16 AND MINUTE(mpl.created_at) < 30)) THEN mpl.produced_pieces ELSE 0 END) AS OutputPagiNormal,
+                        MAX(CASE WHEN (HOUR(mpl.created_at) = 16 AND MINUTE(mpl.created_at) >= 30) OR HOUR(mpl.created_at) = 17 OR HOUR(mpl.created_at) = 18 THEN mpl.produced_pieces ELSE 0 END) AS OutputPagiOT,
+                        MAX(CASE WHEN HOUR(mpl.created_at) >= 19 OR HOUR(mpl.created_at) < 4 OR (HOUR(mpl.created_at) = 4 AND MINUTE(mpl.created_at) < 30) THEN mpl.produced_pieces ELSE 0 END) AS OutputMalamNormal,
+                        MAX(CASE WHEN (HOUR(mpl.created_at) = 4 AND MINUTE(mpl.created_at) >= 30) OR HOUR(mpl.created_at) = 5 OR HOUR(mpl.created_at) = 6 THEN mpl.produced_pieces ELSE 0 END) AS OutputMalamOT,
 
-                        IFNULL(act.PlannedMin, 0) AS PlannedMin,
-                        IFNULL(act.SuddenMin, 0) AS SuddenMin,
+                        MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND (HOUR(mpl.created_at) < 16 OR (HOUR(mpl.created_at) = 16 AND MINUTE(mpl.created_at) < 30)) THEN mpl.auto_time ELSE 0 END) AS RawAutoPagiNormal,
+                        MAX(CASE WHEN (HOUR(mpl.created_at) = 16 AND MINUTE(mpl.created_at) >= 30) OR HOUR(mpl.created_at) = 17 OR HOUR(mpl.created_at) = 18 THEN mpl.auto_time ELSE 0 END) AS RawAutoPagiOT,
+                        MAX(CASE WHEN HOUR(mpl.created_at) >= 19 OR HOUR(mpl.created_at) < 4 OR (HOUR(mpl.created_at) = 4 AND MINUTE(mpl.created_at) < 30) THEN mpl.auto_time ELSE 0 END) AS RawAutoMalamNormal,
+                        MAX(CASE WHEN (HOUR(mpl.created_at) = 4 AND MINUTE(mpl.created_at) >= 30) OR HOUR(mpl.created_at) = 5 OR HOUR(mpl.created_at) = 6 THEN mpl.auto_time ELSE 0 END) AS RawAutoMalamOT,
 
-                        IFNULL(brk.TotalBreakMin, 0) AS BreakMin
+                        MAX(CASE WHEN HOUR(mpl.created_at) >= 7 AND (HOUR(mpl.created_at) < 16 OR (HOUR(mpl.created_at) = 16 AND MINUTE(mpl.created_at) < 30)) THEN mpl.monitor_time ELSE 0 END) AS RawMonitorPagiNormal,
+                        MAX(CASE WHEN (HOUR(mpl.created_at) = 16 AND MINUTE(mpl.created_at) >= 30) OR HOUR(mpl.created_at) = 17 OR HOUR(mpl.created_at) = 18 THEN mpl.monitor_time ELSE 0 END) AS RawMonitorPagiOT,
+                        MAX(CASE WHEN HOUR(mpl.created_at) >= 19 OR HOUR(mpl.created_at) < 4 OR (HOUR(mpl.created_at) = 4 AND MINUTE(mpl.created_at) < 30) THEN mpl.monitor_time ELSE 0 END) AS RawMonitorMalamNormal,
+                        MAX(CASE WHEN (HOUR(mpl.created_at) = 4 AND MINUTE(mpl.created_at) >= 30) OR HOUR(mpl.created_at) = 5 OR HOUR(mpl.created_at) = 6 THEN mpl.monitor_time ELSE 0 END) AS RawMonitorMalamOT,
+
+                        IFNULL(act.PlannedPagiNormal, 0) AS PlannedPagiNormal,
+                        IFNULL(act.PlannedPagiOT, 0) AS PlannedPagiOT,
+                        IFNULL(act.PlannedMalamNormal, 0) AS PlannedMalamNormal,
+                        IFNULL(act.PlannedMalamOT, 0) AS PlannedMalamOT,
+
+                        IFNULL(act.SuddenPagiNormal, 0) AS SuddenPagiNormal,
+                        IFNULL(act.SuddenPagiOT, 0) AS SuddenPagiOT,
+                        IFNULL(act.SuddenMalamNormal, 0) AS SuddenMalamNormal,
+                        IFNULL(act.SuddenMalamOT, 0) AS SuddenMalamOT
                     FROM machine_process_logs mpl
                     JOIN machines m ON mpl.machine_id = m.machine_id
                     LEFT JOIN machine_types mt ON m.type_id = mt.type_id
@@ -74,19 +103,21 @@ namespace mtc_app.features.admin.services
                         SELECT 
                             moa.machine_id,
                             DATE(DATE_SUB(moa.start_time, INTERVAL 7 HOUR)) AS act_date,
-                            SUM(CASE WHEN it.category IN ('Planned Stop', 'Berhenti Terencana') THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMin,
-                            SUM(CASE WHEN it.category IN ('Sudden Stop', 'Berhenti Tiba Tiba') THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMin
+                            SUM(CASE WHEN it.category IN ('Planned Stop', 'Berhenti Terencana') AND (HOUR(moa.start_time) >= 7 AND (HOUR(moa.start_time) < 16 OR (HOUR(moa.start_time) = 16 AND MINUTE(moa.start_time) < 30))) THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedPagiNormal,
+                            SUM(CASE WHEN it.category IN ('Planned Stop', 'Berhenti Terencana') AND ((HOUR(moa.start_time) = 16 AND MINUTE(moa.start_time) >= 30) OR HOUR(moa.start_time) = 17 OR HOUR(moa.start_time) = 18) THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedPagiOT,
+                            SUM(CASE WHEN it.category IN ('Planned Stop', 'Berhenti Terencana') AND (HOUR(moa.start_time) >= 19 OR HOUR(moa.start_time) < 4 OR (HOUR(moa.start_time) = 4 AND MINUTE(moa.start_time) < 30)) THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMalamNormal,
+                            SUM(CASE WHEN it.category IN ('Planned Stop', 'Berhenti Terencana') AND ((HOUR(moa.start_time) = 4 AND MINUTE(moa.start_time) >= 30) OR HOUR(moa.start_time) = 5 OR HOUR(moa.start_time) = 6) THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS PlannedMalamOT,
+
+                            SUM(CASE WHEN it.category IN ('Sudden Stop', 'Berhenti Tiba Tiba') AND (HOUR(moa.start_time) >= 7 AND (HOUR(moa.start_time) < 16 OR (HOUR(moa.start_time) = 16 AND MINUTE(moa.start_time) < 30))) THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenPagiNormal,
+                            SUM(CASE WHEN it.category IN ('Sudden Stop', 'Berhenti Tiba Tiba') AND ((HOUR(moa.start_time) = 16 AND MINUTE(moa.start_time) >= 30) OR HOUR(moa.start_time) = 17 OR HOUR(moa.start_time) = 18) THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenPagiOT,
+                            SUM(CASE WHEN it.category IN ('Sudden Stop', 'Berhenti Tiba Tiba') AND (HOUR(moa.start_time) >= 19 OR HOUR(moa.start_time) < 4 OR (HOUR(moa.start_time) = 4 AND MINUTE(moa.start_time) < 30)) THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMalamNormal,
+                            SUM(CASE WHEN it.category IN ('Sudden Stop', 'Berhenti Tiba Tiba') AND ((HOUR(moa.start_time) = 4 AND MINUTE(moa.start_time) >= 30) OR HOUR(moa.start_time) = 5 OR HOUR(moa.start_time) = 6) THEN TIMESTAMPDIFF(MINUTE, moa.start_time, IFNULL(moa.end_time, NOW())) ELSE 0 END) AS SuddenMalamOT
                         FROM machine_operator_activities moa
                         LEFT JOIN activity_types it ON moa.activity_id = it.id
                         WHERE moa.start_time >= @StartDate AND moa.start_time < @EndDatePlusOne
                         GROUP BY moa.machine_id, DATE(DATE_SUB(moa.start_time, INTERVAL 7 HOUR))
                     ) act ON act.machine_id = m.machine_id 
                             AND act.act_date = DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR))
-                    LEFT JOIN (
-                        SELECT day_id, SUM(non_ot_minutes + ot_minutes) AS TotalBreakMin
-                        FROM shift_breaks
-                        GROUP BY day_id
-                    ) brk ON brk.day_id = (WEEKDAY(DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR))) + 1)
                     WHERE 1=1 AND mpl.created_at BETWEEN @StartDate AND @EndDate";
                     
                 if (lain2Id.HasValue) {
@@ -98,64 +129,139 @@ namespace mtc_app.features.admin.services
                 }
 
                 sql += @"
-                    GROUP BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)), m.machine_id, mt.type_name, ma.area_name, m.machine_number, PlannedMin, SuddenMin, BreakMin
+                    GROUP BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)), m.machine_id, mt.type_name, ma.area_name, m.machine_number, PlannedPagiNormal, PlannedPagiOT, PlannedMalamNormal, PlannedMalamOT, SuddenPagiNormal, SuddenPagiOT, SuddenMalamNormal, SuddenMalamOT
                     ORDER BY DATE(DATE_SUB(mpl.created_at, INTERVAL 7 HOUR)) DESC, mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC";
                 
                 var results = await connection.QueryAsync<DailyOutputDto>(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), EndDatePlusOne = endDate.Date.AddDays(1), Area = area, Lain2Id = lain2Id }, commandTimeout: 300);
+
                 
+                var overrides = await connection.QueryAsync("SELECT override_date, shift_name, non_ot_minutes, ot_minutes FROM shift_break_overrides WHERE override_date BETWEEN @S AND @E", new { S = startDate.Date, E = endDate.Date.AddDays(1) });
+                var regulars = await connection.QueryAsync("SELECT day_id, shift_name, non_ot_minutes, ot_minutes FROM shift_breaks");
+
+                var overrideList = System.Linq.Enumerable.ToList(overrides);
+                var regularList = System.Linq.Enumerable.ToList(regulars);
+
+                long GetBreakMinutes(DateTime d, string shiftName, bool isOt)
+                {
+                    var ovr = overrideList.Find(o => ((DateTime)o.override_date).Date == d.Date && (string)o.shift_name == shiftName);
+                    if (ovr != null) return isOt ? (long)ovr.ot_minutes : (long)ovr.non_ot_minutes;
+
+                    int dId = (int)d.DayOfWeek;
+                    if (dId == 0) dId = 7;
+                    var reg = regularList.Find(r => (int)r.day_id == dId && (string)r.shift_name == shiftName);
+                    if (reg != null) return isOt ? (long)reg.ot_minutes : (long)reg.non_ot_minutes;
+                    return 0;
+                }
+
                 var dataTable = new DataTable("Output Harian");
                 dataTable.Columns.Add("Tanggal Produksi", typeof(string));
                 dataTable.Columns.Add("Nama Mesin", typeof(string));
+                
                 dataTable.Columns.Add("Output Pagi (Pcs)", typeof(long));
+                dataTable.Columns.Add("Output OT Pagi (Pcs)", typeof(long));
                 dataTable.Columns.Add("Output Malam (Pcs)", typeof(long));
+                dataTable.Columns.Add("Output OT Malam (Pcs)", typeof(long));
                 dataTable.Columns.Add("Total Output (Pcs)", typeof(long));
-                dataTable.Columns.Add("Rata-rata / Jam Pagi (Pcs)", typeof(long));
-                dataTable.Columns.Add("Rata-rata / Jam Malam (Pcs)", typeof(long));
-                dataTable.Columns.Add("Mesin Run (Menit)", typeof(long));
-                dataTable.Columns.Add("Mesin Nyala (Menit)", typeof(long));
-                dataTable.Columns.Add("Break (Menit)", typeof(long));
-                dataTable.Columns.Add("Planned Stop (Menit)", typeof(long));
-                dataTable.Columns.Add("Sudden Stop (Menit)", typeof(long));
+                
+                dataTable.Columns.Add("Rata-rata / Jam Pagi Normal (Pcs)", typeof(long));
+                dataTable.Columns.Add("Rata-rata / Jam Pagi OT (Pcs)", typeof(long));
+                dataTable.Columns.Add("Rata-rata / Jam Malam Normal (Pcs)", typeof(long));
+                dataTable.Columns.Add("Rata-rata / Jam Malam OT (Pcs)", typeof(long));
+                
+                dataTable.Columns.Add("Mesin Run Pagi Normal (Menit)", typeof(long));
+                dataTable.Columns.Add("Mesin Run Pagi OT (Menit)", typeof(long));
+                dataTable.Columns.Add("Mesin Run Malam Normal (Menit)", typeof(long));
+                dataTable.Columns.Add("Mesin Run Malam OT (Menit)", typeof(long));
+                
+                dataTable.Columns.Add("Mesin Nyala Pagi Normal (Menit)", typeof(long));
+                dataTable.Columns.Add("Mesin Nyala Pagi OT (Menit)", typeof(long));
+                dataTable.Columns.Add("Mesin Nyala Malam Normal (Menit)", typeof(long));
+                dataTable.Columns.Add("Mesin Nyala Malam OT (Menit)", typeof(long));
+                
+                dataTable.Columns.Add("Break Pagi Normal (Menit)", typeof(long));
+                dataTable.Columns.Add("Break Pagi OT (Menit)", typeof(long));
+                dataTable.Columns.Add("Break Malam Normal (Menit)", typeof(long));
+                dataTable.Columns.Add("Break Malam OT (Menit)", typeof(long));
+                
+                dataTable.Columns.Add("Planned Pagi Normal (Menit)", typeof(long));
+                dataTable.Columns.Add("Planned Pagi OT (Menit)", typeof(long));
+                dataTable.Columns.Add("Planned Malam Normal (Menit)", typeof(long));
+                dataTable.Columns.Add("Planned Malam OT (Menit)", typeof(long));
+
+                dataTable.Columns.Add("Sudden Pagi Normal (Menit)", typeof(long));
+                dataTable.Columns.Add("Sudden Pagi OT (Menit)", typeof(long));
+                dataTable.Columns.Add("Sudden Malam Normal (Menit)", typeof(long));
+                dataTable.Columns.Add("Sudden Malam OT (Menit)", typeof(long));
                 dataTable.Columns.Add("Efisiensi (%)", typeof(string));
 
                 foreach (var row in results)
                 {
-                    long outPagi = row.OutputPagi ?? 0;
-                    long outMalam = row.OutputMalam ?? 0;
-                    long totalOut = outPagi + outMalam;
+                    DateTime parsedDate = DateTime.Parse(row.TanggalProduksi);
                     
-                    long autoSec = row.RawAutoSec ?? 0;
-                    long monSec = row.RawMonitorSec ?? 0;
-                    
-                    long autoMin = autoSec / 60;
-                    long monMin = monSec / 60;
-                    long nyalaMin = monMin > autoMin ? monMin - autoMin : 0; 
-                    
-                    long planned = row.PlannedMin ?? 0;
-                    long sudden = row.SuddenMin ?? 0;
-                    long breakMin = row.BreakMin ?? 0;
+                    long breakPagiN = GetBreakMinutes(parsedDate, "Shift 1", false);
+                    long breakPagiOT = GetBreakMinutes(parsedDate, "Shift 1", true);
+                    long breakMalamN = GetBreakMinutes(parsedDate, "Shift 2", false);
+                    long breakMalamOT = GetBreakMinutes(parsedDate, "Shift 2", true);
 
-                    // Efisiensi = Mesin Run / (Mesin Run + Mesin Nyala + Planned + Sudden - Break)
-                    double pembagiEfisiensi = autoMin + nyalaMin + planned + sudden - breakMin;
-                    double eff = pembagiEfisiensi > 0 ? ((double)autoMin / pembagiEfisiensi) * 100 : 0;
+                    long outPagiN = row.OutputPagiNormal ?? 0;
+                    long maxPagiTotal = row.OutputPagiOT ?? 0;
+                    long outPagiOT = Math.Max(0, maxPagiTotal - outPagiN);
 
-                    // Standard divider 9.75 representing active available hours in a standard 12H run (8 base + 1.75 overtime scaling)
-                    long rrPagi = (long)((double)outPagi / 9.75);
-                    long rrMalam = (long)((double)outMalam / 9.75);
+                    long outMalamN = row.OutputMalamNormal ?? 0;
+                    long maxMalamTotal = row.OutputMalamOT ?? 0;
+                    long outMalamOT = Math.Max(0, maxMalamTotal - outMalamN);
+
+                    long totalOut = outPagiN + outPagiOT + outMalamN + outMalamOT;
+
+                    long autoPagiN = (row.RawAutoPagiNormal ?? 0) / 60;
+                    long autoPagiOT = Math.Max(0, (row.RawAutoPagiOT ?? 0) / 60 - autoPagiN);
+                    long autoMalamN = (row.RawAutoMalamNormal ?? 0) / 60;
+                    long autoMalamOT = Math.Max(0, (row.RawAutoMalamOT ?? 0) / 60 - autoMalamN);
+
+                    long monPagiN = (row.RawMonitorPagiNormal ?? 0) / 60;
+                    long monPagiOT = Math.Max(0, (row.RawMonitorPagiOT ?? 0) / 60 - monPagiN);
+                    long monMalamN = (row.RawMonitorMalamNormal ?? 0) / 60;
+                    long monMalamOT = Math.Max(0, (row.RawMonitorMalamOT ?? 0) / 60 - monMalamN);
+
+                    long nyalaPagiN = Math.Max(0, monPagiN - autoPagiN);
+                    long nyalaPagiOT = Math.Max(0, monPagiOT - autoPagiOT);
+                    long nyalaMalamN = Math.Max(0, monMalamN - autoMalamN);
+                    long nyalaMalamOT = Math.Max(0, monMalamOT - autoMalamOT);
+
+                    long planPN = row.PlannedPagiNormal ?? 0;
+                    long planPOT = row.PlannedPagiOT ?? 0;
+                    long planMN = row.PlannedMalamNormal ?? 0;
+                    long planMOT = row.PlannedMalamOT ?? 0;
+
+                    long sudPN = row.SuddenPagiNormal ?? 0;
+                    long sudPOT = row.SuddenPagiOT ?? 0;
+                    long sudMN = row.SuddenMalamNormal ?? 0;
+                    long sudMOT = row.SuddenMalamOT ?? 0;
+
+                    long rrPagiN = (long)((double)outPagiN / 9.5);
+                    long rrPagiOT = (long)((double)outPagiOT / 2.5);
+                    long rrMalamN = (long)((double)outMalamN / 9.5);
+                    long rrMalamOT = (long)((double)outMalamOT / 2.5);
+
+                    long totalRun = autoPagiN + autoPagiOT + autoMalamN + autoMalamOT;
+                    long totalNyala = nyalaPagiN + nyalaPagiOT + nyalaMalamN + nyalaMalamOT;
+                    long totalBreak = breakPagiN + breakPagiOT + breakMalamN + breakMalamOT;
+                    long totalPlanned = planPN + planPOT + planMN + planMOT;
+                    long totalSudden = sudPN + sudPOT + sudMN + sudMOT;
+
+                    double pembagiEfisiensi = totalRun + totalNyala + totalPlanned + totalSudden - totalBreak;
+                    double eff = pembagiEfisiensi > 0 ? ((double)totalRun / pembagiEfisiensi) * 100 : 0;
 
                     dataTable.Rows.Add(
                         row.TanggalProduksi,
                         row.NamaMesin,
-                        outPagi,
-                        outMalam,
-                        totalOut,
-                        rrPagi,
-                        rrMalam,
-                        autoMin,
-                        nyalaMin,
-                        breakMin,
-                        planned,
-                        sudden,
+                        outPagiN, outPagiOT, outMalamN, outMalamOT, totalOut,
+                        rrPagiN, rrPagiOT, rrMalamN, rrMalamOT,
+                        autoPagiN, autoPagiOT, autoMalamN, autoMalamOT,
+                        nyalaPagiN, nyalaPagiOT, nyalaMalamN, nyalaMalamOT,
+                        breakPagiN, breakPagiOT, breakMalamN, breakMalamOT,
+                        planPN, planPOT, planMN, planMOT,
+                        sudPN, sudPOT, sudMN, sudMOT,
                         eff.ToString("F1") + " %"
                     );
                 }
@@ -200,7 +306,9 @@ namespace mtc_app.features.admin.services
 
                 foreach (var row in results)
                 {
-                    if ((row.PlannedMin ?? 0) > 0 || (row.SuddenMin ?? 0) > 0)
+                    long totalPlanned = (row.PlannedPagiNormal ?? 0) + (row.PlannedPagiOT ?? 0) + (row.PlannedMalamNormal ?? 0) + (row.PlannedMalamOT ?? 0);
+                    long totalSudden = (row.SuddenPagiNormal ?? 0) + (row.SuddenPagiOT ?? 0) + (row.SuddenMalamNormal ?? 0) + (row.SuddenMalamOT ?? 0);
+                    if (totalPlanned > 0 || totalSudden > 0)
                         machinesWithDowntime.Add(row);
                     else
                         machinesWithoutDowntime.Add(row);
