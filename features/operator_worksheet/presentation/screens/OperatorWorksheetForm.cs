@@ -103,11 +103,47 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _lkoService = new LkoService();
         }
 
-        private void OperatorWorksheetForm_Load(object sender, EventArgs e)
+        private async void OperatorWorksheetForm_Load(object sender, EventArgs e)
         {
-            LoadHeaderData();
-            InitializeUI();
+            // Set default cepat agar UI bisa dirender langsung
+            _machineNumber = "-";
+            _nikOperator = UserSession.CurrentUser?.Username ?? "-";
+
+            InitializeUI(); // Form akan langsung muncul
             SetupFileWatcher();
+
+            // Offload pencarian DB yang lambat ke background thread
+            await Task.Run(() =>
+            {
+                LoadHeaderData();
+            });
+
+            // Perbarui label setelah data DB didapat
+            if (_lblNoMesin != null)
+            {
+                int dashIdx = _machineNumber.LastIndexOf('-');
+                if (dashIdx > 0)
+                {
+                    _machinePrefix = _machineNumber.Substring(0, dashIdx);
+                    _lblNoMesin.Text = _machinePrefix;
+                    if (_txtNoUrut != null) _txtNoUrut.Text = _machineNumber.Substring(dashIdx + 1);
+                }
+                else
+                {
+                    _lblNoMesin.Text = _machineNumber;
+                }
+            }
+
+            if (_cboShift != null && _shifts != null)
+            {
+                _cboShift.DataSource = null;
+                _cboShift.DataSource = _shifts;
+                _cboShift.DisplayMember = "ShiftName";
+                _cboShift.ValueMember = "ShiftId";
+            }
+
+            // Mulai pembacaan CSV/DAT
+            LoadSequenData();
         }
 
         // =====================================================================
@@ -481,9 +517,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             this.Controls.Add(_pnlContent);
 
             this.ResumeLayout(true);
-
-            // Load data ke Sequen list
-            LoadSequenData();
+            
+            // LoadSequenData() dipindahkan ke Form_Load setelah LoadHeaderData selesai
         }
 
         // =====================================================================
