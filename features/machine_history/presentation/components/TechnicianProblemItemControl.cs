@@ -25,7 +25,7 @@ namespace mtc_app.features.machine_history.presentation.components
         
         private Label lblHeader;
         private AppButton btnRemove;
-        private FlowLayoutPanel _headerRow;
+        private Panel _headerRow;
         
         public event EventHandler RemoveRequested;
 
@@ -50,13 +50,10 @@ namespace mtc_app.features.machine_history.presentation.components
             int yPos = 0;
 
             // Header Row: Title + Remove Button side by side
-            _headerRow = new FlowLayoutPanel
+            _headerRow = new Panel
             {
-                FlowDirection = FlowDirection.LeftToRight,
                 Height = 36,
                 Width = this.Width,
-                AutoSize = false,
-                WrapContents = false,
                 Location = new Point(0, yPos),
                 BackColor = Color.Transparent,
                 Padding = new Padding(0),
@@ -70,7 +67,7 @@ namespace mtc_app.features.machine_history.presentation.components
                 Font = AppFonts.Subtitle,
                 ForeColor = AppColors.TextPrimary,
                 AutoSize = true,
-                Margin = new Padding(0, 5, 10, 0)
+                Location = new Point(0, 5)
             };
             _headerRow.Controls.Add(lblHeader);
 
@@ -82,9 +79,8 @@ namespace mtc_app.features.machine_history.presentation.components
                 Width = 90,
                 Height = 30,
                 Visible = index > 0,
-                Margin = new Padding(0),
-                Padding = new Padding(0),
-                TextAlign = ContentAlignment.MiddleCenter
+                Location = new Point(this.Width - 90 - 20, 0),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
             btnRemove.Click += (s, e) => RemoveRequested?.Invoke(this, EventArgs.Empty);
             _headerRow.Controls.Add(btnRemove);

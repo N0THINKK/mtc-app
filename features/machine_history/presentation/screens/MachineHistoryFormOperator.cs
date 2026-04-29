@@ -141,9 +141,23 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
             _formLayout.Resize += (s, e) => 
             {
+                int newWidth = _formLayout.ClientSize.Width - 20;
+                if (newWidth < 100) return; // Prevent collapse
+
                 foreach (Control c in _formLayout.Controls)
                 {
-                    c.Width = _formLayout.ClientSize.Width - 20;
+                    if (c == _problemsLayout)
+                    {
+                        c.Width = newWidth;
+                        foreach (Control pc in _problemsLayout.Controls)
+                        {
+                            pc.Width = newWidth;
+                        }
+                    }
+                    else
+                    {
+                        c.Width = newWidth;
+                    }
                 }
             };
             _tab1Layout.Controls.Add(_formLayout, 0, 0);
@@ -276,12 +290,15 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
             AddToForm(lblProblems);
 
-            // 5. Problems Container — plain Panel, height managed manually
-            _problemsLayout = new Panel
+            // 5. Problems Container — auto-sizing FlowLayoutPanel
+            _problemsLayout = new FlowLayoutPanel
             {
-                Dock = DockStyle.Top,
-                Height = 0,
-                Padding = new Padding(0)
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                Padding = new Padding(0),
+                Margin = new Padding(0)
             };
             
             AddToForm(_problemsLayout, 0);
@@ -320,16 +337,12 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             var problemControl = new ProblemInputControl(_problemControls.Count);
             problemControl.RemoveRequested += (s, e) => RemoveProblemInput(problemControl);
-            problemControl.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            problemControl.Margin = new Padding(0, 0, 0, 0); 
             
             _problemControls.Add(problemControl);
             
-            problemControl.Location = new Point(0, (_problemControls.Count - 1) * ProblemRowHeight);
-            problemControl.Width = _problemsLayout.ClientSize.Width > 0 ? _problemsLayout.ClientSize.Width : _formLayout.ClientSize.Width - 30;
+            problemControl.Width = _formLayout.ClientSize.Width > 20 ? _formLayout.ClientSize.Width - 20 : 500;
             _problemsLayout.Controls.Add(problemControl);
-            
-            _problemsLayout.Height = _problemControls.Count * ProblemRowHeight;
-            _problemsLayout.MinimumSize = new Size(0, _problemsLayout.Height);
         }
 
         private void RemoveProblemInput(ProblemInputControl control)
@@ -348,12 +361,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             for (int i = 0; i < _problemControls.Count; i++)
             {
                 _problemControls[i].UpdateIndex(i);
-                _problemControls[i].Location = new Point(0, i * ProblemRowHeight);
             }
-            
-            _problemsLayout.Height = _problemControls.Count * ProblemRowHeight;
-            _problemsLayout.MinimumSize = new Size(0, _problemsLayout.Height);
-            _formLayout.PerformLayout();
         }
 
         private void HandleKeyDown(object sender, KeyEventArgs e)
