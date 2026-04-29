@@ -964,10 +964,22 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             int.TryParse(rowData.Log?.QtyDefect ?? "0", out int defectMesin);
 
+            string effMesin = GetEffectiveMachineNumber();
+            int? idMesin = null;
+            try
+            {
+                var offlineRepo = new mtc_app.shared.data.local.OfflineRepository();
+                var machines = offlineRepo.GetMachinesFromCache();
+                var matched = machines.FirstOrDefault(m => $"{m.MachineType}.{m.MachineArea}-{m.MachineNumber}" == effMesin);
+                if (matched != null) idMesin = matched.MachineId;
+            }
+            catch { }
+
             var record = new mtc_app.features.operator_worksheet.data.dtos.LkoRecordDto
             {
                 WaktuSimpan = DateTime.Now,
-                NoMesin = GetEffectiveMachineNumber(),
+                NoMesin = effMesin,
+                IdMesin = idMesin,
                 ShiftName = shiftName,
                 Nik = _nikOperator,
                 Sequen = rowData.DisplaySequen,

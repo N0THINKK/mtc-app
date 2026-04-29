@@ -38,6 +38,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                     string updateSql = @"
                         UPDATE lko_records SET
                             waktu_simpan = @WaktuSimpan,
+                            id_mesin = @IdMesin,
                             shift_name = @ShiftName,
                             nik = @Nik,
                             qty_product = @QtyProduct,
@@ -67,6 +68,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                     await connection.ExecuteAsync(updateSql, new
                     {
                         record.WaktuSimpan,
+                        record.IdMesin,
                         record.ShiftName,
                         record.Nik,
                         record.QtyProduct,
@@ -100,7 +102,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                     // Insert new record
                     string insertSql = @"
                         INSERT INTO lko_records 
-                            (waktu_simpan, no_mesin, shift_name, nik, sequen, urutan_kanban,
+                            (waktu_simpan, no_mesin, id_mesin, shift_name, nik, sequen, urutan_kanban,
                              qty_product, qty_defect_mesin, qty_defect_operator, kode_defect,
                              lot_id_wire, cut_length,
                              kombinasi_wire, terminal_a, terminal_b, seal_a, seal_b, qty_master,
@@ -108,7 +110,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                              front_ch_b, front_cw_b, rear_ch_b, rear_cw_b,
                              waktu_mulai, waktu_selesai)
                         VALUES 
-                            (@WaktuSimpan, @NoMesin, @ShiftName, @Nik, @Sequen, @UrutanKanban,
+                            (@WaktuSimpan, @NoMesin, @IdMesin, @ShiftName, @Nik, @Sequen, @UrutanKanban,
                              @QtyProduct, @QtyDefectMesin, @QtyDefectOperator, @KodeDefect,
                              @LotIdWire, @CutLength,
                              @KombinasiWire, @TerminalA, @TerminalB, @SealA, @SealB, @QtyMaster,
@@ -121,6 +123,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                     {
                         record.WaktuSimpan,
                         record.NoMesin,
+                        record.IdMesin,
                         record.ShiftName,
                         record.Nik,
                         record.Sequen,
@@ -162,6 +165,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                         id AS Id,
                         waktu_simpan AS WaktuSimpan,
                         no_mesin AS NoMesin,
+                        id_mesin AS IdMesin,
                         shift_name AS ShiftName,
                         nik AS Nik,
                         sequen AS Sequen,

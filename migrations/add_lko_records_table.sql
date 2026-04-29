@@ -7,6 +7,7 @@ CREATE TABLE `lko_records` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `waktu_simpan` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `no_mesin` VARCHAR(50) NOT NULL,
+  `id_mesin` INT(11) DEFAULT NULL,
   `shift_name` VARCHAR(50) NOT NULL,
   `nik` VARCHAR(50) NOT NULL,
 
@@ -48,5 +49,6 @@ CREATE TABLE `lko_records` (
 
   PRIMARY KEY (`id`),
   INDEX `idx_lko_sequen` (`sequen`),
-  INDEX `idx_lko_mesin_date` (`no_mesin`, `waktu_simpan`)
+  INDEX `idx_lko_mesin_date` (`no_mesin`, `waktu_simpan`),
+  CONSTRAINT `fk_lko_mesin` FOREIGN KEY (`id_mesin`) REFERENCES `machines` (`machine_id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

@@ -61,6 +61,7 @@ namespace mtc_app.features.operator_worksheet.data.dtos
         public int Id { get; set; }
         public DateTime WaktuSimpan { get; set; } = DateTime.Now;
         public string NoMesin { get; set; } = string.Empty;
+        public int? IdMesin { get; set; }
         public string ShiftName { get; set; } = string.Empty;
         public string Nik { get; set; } = string.Empty;
 
