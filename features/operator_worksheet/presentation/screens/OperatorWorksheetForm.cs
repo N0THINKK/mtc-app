@@ -85,6 +85,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
         // === Header data ===
         private string _machineNumber = "-";
+        private int? _activeMachineId = null;
         private List<CachedShiftDto> _shifts = new List<CachedShiftDto>();
         private int _defaultShiftIndex = 0;
         private string _nikOperator = "-";
@@ -135,6 +136,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                             string machNum = info.machine_number?.ToString() ?? "";
                             // Format: type.area-no_urut  (contoh: AC90.NPR-02)
                             _machineNumber = $"{typeName}.{areaName}-{machNum}";
+                            _machinePrefix = $"{typeName}.{areaName}";
+                            _activeMachineId = machineId;
                         }
                     }
                 }
@@ -218,7 +221,57 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             if (newMachineNumber == _machineNumber) return;
 
             _machineNumber = newMachineNumber;
+            UpdateActiveMachineId();
             LoadSequenData();
+        }
+
+        private void UpdateActiveMachineId()
+        {
+            _activeMachineId = null;
+            string effMesin = GetEffectiveMachineNumber();
+            
+            // 1. Coba ambil dari Cache Lokal (Offline)
+            try
+            {
+                var offlineRepo = new mtc_app.shared.data.local.OfflineRepository();
+                var machines = offlineRepo.GetMachinesFromCache();
+                var matched = machines.FirstOrDefault(m => 
+                    string.Equals($"{m.MachineType}.{m.MachineArea}-{m.MachineNumber}", effMesin, StringComparison.OrdinalIgnoreCase)
+                );
+                if (matched != null) _activeMachineId = matched.MachineId;
+            }
+            catch { }
+
+            // 2. Fallback: Ambil langsung dari MySQL (Online)
+            if (_activeMachineId == null)
+            {
+                try
+                {
+                    using (var conn = mtc_app.DatabaseHelper.GetConnection())
+                    {
+                        string sql = @"
+                            SELECT m.machine_id 
+                            FROM machines m
+                            LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                            LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
+                            WHERE CONCAT(COALESCE(mt.type_name, ''), '.', COALESCE(ma.area_name, ''), '-', m.machine_number) = @EffMesin
+                            LIMIT 1";
+                        _activeMachineId = Dapper.SqlMapper.QueryFirstOrDefault<int?>(conn, sql, new { EffMesin = effMesin });
+                    }
+                }
+                catch { }
+            }
+
+            // 3. Fallback terakhir: Config ID
+            if (_activeMachineId == null)
+            {
+                if (int.TryParse(mtc_app.DatabaseHelper.GetMachineId(), out int configId))
+                {
+                    _activeMachineId = configId;
+                }
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"[LKO] Updated _activeMachineId for '{effMesin}' -> {_activeMachineId?.ToString() ?? "NULL"}");
         }
 
         // =====================================================================
@@ -964,22 +1017,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             int.TryParse(rowData.Log?.QtyDefect ?? "0", out int defectMesin);
 
-            string effMesin = GetEffectiveMachineNumber();
-            int? idMesin = null;
-            try
-            {
-                var offlineRepo = new mtc_app.shared.data.local.OfflineRepository();
-                var machines = offlineRepo.GetMachinesFromCache();
-                var matched = machines.FirstOrDefault(m => $"{m.MachineType}.{m.MachineArea}-{m.MachineNumber}" == effMesin);
-                if (matched != null) idMesin = matched.MachineId;
-            }
-            catch { }
-
             var record = new mtc_app.features.operator_worksheet.data.dtos.LkoRecordDto
             {
                 WaktuSimpan = DateTime.Now,
-                NoMesin = effMesin,
-                IdMesin = idMesin,
+                NoMesin = GetEffectiveMachineNumber(),
+                IdMesin = _activeMachineId,
                 ShiftName = shiftName,
                 Nik = _nikOperator,
                 Sequen = rowData.DisplaySequen,
