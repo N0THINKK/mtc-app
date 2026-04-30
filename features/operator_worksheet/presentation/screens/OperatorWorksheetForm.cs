@@ -444,29 +444,30 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             int gap = 8;
             int colW = (contentW - gap) / 2;
             int topRowHeight = 440;
+            int bottomRowHeight = 440;
 
-            // === ROW 1 LEFT: Input Produksi ===
-            var pnlInputProduksi = CreateInputProduksiPanel(colW, topRowHeight);
-            pnlInputProduksi.Location = new Point(12, 10);
-            _pnlContent.Controls.Add(pnlInputProduksi);
+            // === ROW 1 LEFT: Sequen ===
+            var pnlSequen = CreateSequenPanel(colW, topRowHeight);
+            pnlSequen.Location = new Point(12, 10);
+            _pnlContent.Controls.Add(pnlSequen);
 
             // === ROW 1 RIGHT: Aktivitas ===
             var pnlAktivitas = CreateAktivitasPanel(colW, topRowHeight);
-            pnlAktivitas.Location = new Point(pnlInputProduksi.Right + gap, 10);
+            pnlAktivitas.Location = new Point(pnlSequen.Right + gap, 10);
             _pnlContent.Controls.Add(pnlAktivitas);
 
-            // === ROW 2 LEFT: Sequen ===
-            var pnlSequen = CreateSequenPanel(colW, 350);
-            pnlSequen.Location = new Point(12, pnlInputProduksi.Bottom + gap);
-            _pnlContent.Controls.Add(pnlSequen);
-
-            // === ROW 2 RIGHT: Tersimpan ===
-            var pnlTersimpan = CreateTersimpanPanel(colW, 350);
-            pnlTersimpan.Location = new Point(pnlSequen.Right + gap, pnlInputProduksi.Bottom + gap);
+            // === ROW 2 LEFT: Tersimpan ===
+            var pnlTersimpan = CreateTersimpanPanel(colW, bottomRowHeight);
+            pnlTersimpan.Location = new Point(12, pnlSequen.Bottom + gap);
             _pnlContent.Controls.Add(pnlTersimpan);
 
+            // === ROW 2 RIGHT: Input Produksi ===
+            var pnlInputProduksi = CreateInputProduksiPanel(colW, bottomRowHeight);
+            pnlInputProduksi.Location = new Point(pnlTersimpan.Right + gap, pnlAktivitas.Bottom + gap);
+            _pnlContent.Controls.Add(pnlInputProduksi);
+
             // === BOTTOM: Gambar Terminal ===
-            int imageAreaTop = pnlSequen.Bottom + gap;
+            int imageAreaTop = pnlTersimpan.Bottom > pnlInputProduksi.Bottom ? pnlTersimpan.Bottom + gap : pnlInputProduksi.Bottom + gap;
             int imageAreaWidth = contentW + gap;
             int imageAreaHeight = 450;
 
@@ -840,34 +841,39 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(_txtSeal);
             y += 40;
 
-            card.Controls.Add(new Label { Text = "Front C/H", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
-            y += 20;
-            _txtFrontChA = CreateStyledTextBox("Masukkan Front C/H", fw);
-            _txtFrontChA.Location = new Point(16, y);
+            y += 40;
+
+            int labelWidth = 80;
+            int inputWidth = fw - labelWidth - 8;
+
+            card.Controls.Add(new Label { Text = "Front C/H", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
+            _txtFrontChA = CreateStyledTextBox("Masukkan Front C/H", inputWidth);
+            _txtFrontChA.Location = new Point(16 + labelWidth + 8, y);
             _txtFrontChA.ReadOnly = true;
             _txtFrontChA.Text = "0";
             card.Controls.Add(_txtFrontChA);
             y += 36;
 
-            _txtRearChA = CreateStyledTextBox("Masukkan Rear C/H", fw);
-            _txtRearChA.Location = new Point(16, y);
+            card.Controls.Add(new Label { Text = "Rear C/H", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
+            _txtRearChA = CreateStyledTextBox("Masukkan Rear C/H", inputWidth);
+            _txtRearChA.Location = new Point(16 + labelWidth + 8, y);
             _txtRearChA.ReadOnly = true;
             _txtRearChA.Text = "0";
             _txtRearChA.BackColor = Color.FromArgb(241, 245, 249);
             card.Controls.Add(_txtRearChA);
-            y += 40;
+            y += 36;
 
-            card.Controls.Add(new Label { Text = "Front C/W", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
-            y += 20;
-            _txtFrontCwA = CreateStyledTextBox("Masukkan Front C/W", fw);
-            _txtFrontCwA.Location = new Point(16, y);
+            card.Controls.Add(new Label { Text = "Front C/W", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
+            _txtFrontCwA = CreateStyledTextBox("Masukkan Front C/W", inputWidth);
+            _txtFrontCwA.Location = new Point(16 + labelWidth + 8, y);
             _txtFrontCwA.ReadOnly = true;
             _txtFrontCwA.Text = "0";
             card.Controls.Add(_txtFrontCwA);
             y += 36;
 
-            _txtRearCwA = CreateStyledTextBox("Masukkan Rear C/W", fw);
-            _txtRearCwA.Location = new Point(16, y);
+            card.Controls.Add(new Label { Text = "Rear C/W", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
+            _txtRearCwA = CreateStyledTextBox("Masukkan Rear C/W", inputWidth);
+            _txtRearCwA.Location = new Point(16 + labelWidth + 8, y);
             _txtRearCwA.ReadOnly = true;
             _txtRearCwA.Text = "0";
             _txtRearCwA.BackColor = Color.FromArgb(241, 245, 249);
