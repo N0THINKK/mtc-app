@@ -89,6 +89,8 @@ namespace mtc_app.features.operator_worksheet.services
                 jisskDict[j.Sequen4].Add(j);
             }
 
+            var jisskUsageCount = new Dictionary<string, int>();
+
             foreach (var log in logs)
             {
                 PrdmstDto matchingMaster = null;
@@ -113,8 +115,19 @@ namespace mtc_app.features.operator_worksheet.services
                         string padded = seqNum.ToString("D4");
                         if (jisskDict.TryGetValue(padded, out var jList))
                         {
-                            matchingJissk = jList.FirstOrDefault(j => j.FrontChA != "0" && j.FrontChA != "0.000")
-                                         ?? jList.FirstOrDefault();
+                            if (!jisskUsageCount.ContainsKey(padded))
+                                jisskUsageCount[padded] = 0;
+                            
+                            int usageIndex = jisskUsageCount[padded];
+                            if (usageIndex < jList.Count)
+                            {
+                                matchingJissk = jList[usageIndex];
+                                jisskUsageCount[padded]++;
+                            }
+                            else
+                            {
+                                matchingJissk = jList.LastOrDefault(); // fallback ke yang paling bawah jika logs lebih banyak
+                            }
                         }
                     }
                 }
@@ -140,8 +153,19 @@ namespace mtc_app.features.operator_worksheet.services
                         string mPadded = mSeqNum.ToString("D4");
                         if (jisskDict.TryGetValue(mPadded, out var jList))
                         {
-                            jForMaster = jList.FirstOrDefault(j => j.FrontChA != "0" && j.FrontChA != "0.000")
-                                       ?? jList.FirstOrDefault();
+                            if (!jisskUsageCount.ContainsKey(mPadded))
+                                jisskUsageCount[mPadded] = 0;
+
+                            int usageIndex = jisskUsageCount[mPadded];
+                            if (usageIndex < jList.Count)
+                            {
+                                jForMaster = jList[usageIndex];
+                                jisskUsageCount[mPadded]++;
+                            }
+                            else
+                            {
+                                jForMaster = jList.LastOrDefault();
+                            }
                         }
                     }
 
