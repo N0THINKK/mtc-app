@@ -1324,16 +1324,16 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     {
                         // Merge dengan data DB (defect operator, kode defect, status)
                         await _lkoService.MergeDbRecordsAsync(_worksheetData, _machineNumber);
-                        
+
                         // Perbarui UI lagi dari background setelah selesai sync DB
                         if (!this.IsDisposed)
                         {
                             this.BeginInvoke((MethodInvoker)delegate
                             {
-                                _dgvSequen.Refresh(); // Warnai baris yang udah disimpan jadi hijau
+                                _dgvSequen.Refresh();
                                 
                                 var savedData = _worksheetData.Where(x => x.DbRecord != null).ToList();
-                                _dgvTersimpan.DataSource = null; // Force refresh DataGridView
+                                _dgvTersimpan.DataSource = null;
                                 _dgvTersimpan.DataSource = savedData;
                                 
                                 UpdateHeaderQty();
