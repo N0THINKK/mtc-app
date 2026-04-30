@@ -1140,7 +1140,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             {
                 Text = "\u2713 Simpan Terpilih",
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                Size = new Size(fw, 34),
+                Size = new Size(fw / 2 - 4, 34),
                 Location = new Point(16, y),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(34, 197, 94),
@@ -1150,6 +1150,37 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             btnSimpanTerpilih.FlatAppearance.BorderSize = 0;
             btnSimpanTerpilih.Click += BtnSimpanTerpilih_Click;
             card.Controls.Add(btnSimpanTerpilih);
+
+            // Tombol Pilih Semua / Batal Pilih
+            var btnPilihSemua = new Button
+            {
+                Text = "Pilih Semua",
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Size = new Size(fw / 2 - 4, 34),
+                Location = new Point(16 + fw / 2 + 4, y),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(71, 85, 105),
+                ForeColor = Color.White,
+                Cursor = Cursors.Hand
+            };
+            btnPilihSemua.FlatAppearance.BorderSize = 0;
+            btnPilihSemua.Click += (s, ev) =>
+            {
+                if (_dgvSequen.Rows.Count == 0) return;
+                // Toggle: jika sudah ada yang dicentang semua, batal semua
+                bool allChecked = true;
+                foreach (DataGridViewRow r in _dgvSequen.Rows)
+                {
+                    if (r.Cells["Pilih"].Value == null || !(bool)r.Cells["Pilih"].Value) { allChecked = false; break; }
+                }
+                foreach (DataGridViewRow r in _dgvSequen.Rows)
+                {
+                    r.Cells["Pilih"].Value = !allChecked;
+                }
+                btnPilihSemua.Text = allChecked ? "Pilih Semua" : "Batal Pilih";
+                _dgvSequen.RefreshEdit();
+            };
+            card.Controls.Add(btnPilihSemua);
             y += 40;
 
             _dgvSequen = new DataGridView
@@ -1163,21 +1194,43 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 RowHeadersVisible = false,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
-                ReadOnly = true,
+                ReadOnly = false,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                MultiSelect = true,
+                MultiSelect = false,
                 AutoGenerateColumns = false,
                 Font = new Font("Segoe UI", 9.5F),
                 ColumnHeadersHeight = 32,
                 RowTemplate = { Height = 30 },
                 EnableHeadersVisualStyles = false,
                 ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(248, 250, 252), ForeColor = Color.FromArgb(71, 85, 105), Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
-                DefaultCellStyle = new DataGridViewCellStyle { SelectionBackColor = Color.FromArgb(219, 234, 254), SelectionForeColor = Color.FromArgb(15, 23, 42), Padding = new Padding(4) }
+                DefaultCellStyle = new DataGridViewCellStyle { SelectionBackColor = Color.FromArgb(219, 234, 254), SelectionForeColor = Color.FromArgb(15, 23, 42), Padding = new Padding(4) },
+                EditMode = DataGridViewEditMode.EditProgrammatically
             };
-            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Sequen", HeaderText = "SEQUEN", DataPropertyName = "DisplaySequen", Width = 70 });
-            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            // Kolom checkbox — satu-satunya yang bisa diedit
+            var chkCol = new DataGridViewCheckBoxColumn
+            {
+                Name = "Pilih",
+                HeaderText = "✓",
+                Width = 35,
+                FalseValue = false,
+                TrueValue = true,
+                ReadOnly = false
+            };
+            _dgvSequen.Columns.Add(chkCol);
+            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Sequen", HeaderText = "SEQUEN", DataPropertyName = "DisplaySequen", Width = 70, ReadOnly = true });
+            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, ReadOnly = true });
             _dgvSequen.SelectionChanged += DgvSequen_SelectionChanged;
             _dgvSequen.CellFormatting += DgvSequen_CellFormatting;
+
+            // Klik di mana saja pada baris toggle checkbox
+            _dgvSequen.CellClick += (s, ev) =>
+            {
+                if (ev.RowIndex < 0) return;
+                var cell = _dgvSequen.Rows[ev.RowIndex].Cells["Pilih"];
+                bool current = cell.Value != null && (bool)cell.Value;
+                cell.Value = !current;
+                _dgvSequen.RefreshEdit();
+            };
 
             txtSearch.TextChanged += (s, e) =>
             {
@@ -1192,9 +1245,19 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
         private async void BtnSimpanTerpilih_Click(object sender, EventArgs e)
         {
-            if (_dgvSequen.SelectedRows.Count == 0)
+            // Kumpulkan baris yang dicentang
+            var checkedRows = new List<LkoService.LkoAggregatedData>();
+            foreach (DataGridViewRow row in _dgvSequen.Rows)
             {
-                MessageBox.Show("Pilih satu atau lebih sequen terlebih dahulu.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                bool isChecked = row.Cells["Pilih"].Value != null && (bool)row.Cells["Pilih"].Value;
+                if (!isChecked) continue;
+                var rowData = row.DataBoundItem as LkoService.LkoAggregatedData;
+                if (rowData != null) checkedRows.Add(rowData);
+            }
+
+            if (checkedRows.Count == 0)
+            {
+                MessageBox.Show("Centang (✓) satu atau lebih sequen terlebih dahulu.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -1202,11 +1265,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             int savedCount = 0;
             int skippedCount = 0;
 
-            foreach (DataGridViewRow row in _dgvSequen.SelectedRows)
+            foreach (var rowData in checkedRows)
             {
-                var rowData = row.DataBoundItem as LkoService.LkoAggregatedData;
-                if (rowData == null) continue;
-
                 // Skip yang sudah tersimpan
                 if (rowData.DbRecord != null) { skippedCount++; continue; }
 
@@ -1255,6 +1315,10 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 }
                 catch { }
             }
+
+            // Reset semua checkbox
+            foreach (DataGridViewRow row in _dgvSequen.Rows)
+                row.Cells["Pilih"].Value = false;
 
             // Refresh UI
             _dgvSequen.Refresh();
