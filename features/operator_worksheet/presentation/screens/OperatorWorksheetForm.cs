@@ -1222,21 +1222,36 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _dgvSequen.SelectionChanged += DgvSequen_SelectionChanged;
             _dgvSequen.CellFormatting += DgvSequen_CellFormatting;
 
-            // Klik di mana saja pada baris toggle checkbox
+            // Range selection: klik checkbox pertama, lalu klik checkbox kedua → semua di antaranya ikut tercentang
+            int _lastCheckedIndex = -1;
             _dgvSequen.CellClick += (s, ev) =>
             {
                 if (ev.RowIndex < 0) return;
                 var cell = _dgvSequen.Rows[ev.RowIndex].Cells["Pilih"];
                 bool current = cell.Value != null && (bool)cell.Value;
-                cell.Value = !current;
+                bool newVal = !current;
+                cell.Value = newVal;
+
+                if (newVal && _lastCheckedIndex >= 0 && _lastCheckedIndex != ev.RowIndex)
+                {
+                    // Auto-centang semua baris di antara _lastCheckedIndex dan ev.RowIndex
+                    int from = Math.Min(_lastCheckedIndex, ev.RowIndex);
+                    int to = Math.Max(_lastCheckedIndex, ev.RowIndex);
+                    for (int i = from; i <= to; i++)
+                    {
+                        _dgvSequen.Rows[i].Cells["Pilih"].Value = true;
+                    }
+                }
+
+                _lastCheckedIndex = newVal ? ev.RowIndex : -1;
                 _dgvSequen.RefreshEdit();
             };
 
             txtSearch.TextChanged += (s, e) =>
             {
-                string f = txtSearch.Text.Trim().ToLower();
+                string f = txtSearch.Text.Trim();
                 _dgvSequen.DataSource = string.IsNullOrEmpty(f) ? _worksheetData :
-                    _worksheetData.Where(d => (d.DisplaySequen?.ToLower().Contains(f) == true) || (d.DisplayKombinasi?.ToLower().Contains(f) == true)).ToList();
+                    _worksheetData.Where(d => d.DisplaySequen?.Trim() == f).ToList();
             };
 
             card.Controls.Add(_dgvSequen);
