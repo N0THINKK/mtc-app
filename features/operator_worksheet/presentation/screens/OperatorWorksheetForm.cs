@@ -1326,13 +1326,14 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                         await _lkoService.MergeDbRecordsAsync(_worksheetData, _machineNumber);
                         
                         // Perbarui UI lagi dari background setelah selesai sync DB
-                        if (this.IsHandleCreated)
+                        if (!this.IsDisposed)
                         {
-                            this.Invoke((MethodInvoker)delegate
+                            this.BeginInvoke((MethodInvoker)delegate
                             {
                                 _dgvSequen.Refresh(); // Warnai baris yang udah disimpan jadi hijau
                                 
                                 var savedData = _worksheetData.Where(x => x.DbRecord != null).ToList();
+                                _dgvTersimpan.DataSource = null; // Force refresh DataGridView
                                 _dgvTersimpan.DataSource = savedData;
                                 
                                 UpdateHeaderQty();
