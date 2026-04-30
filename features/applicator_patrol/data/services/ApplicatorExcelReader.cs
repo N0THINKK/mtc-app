@@ -52,8 +52,15 @@ namespace mtc_app.features.applicator_patrol.data.services
                                 {
                                     string rowMesin = row[colNoMesin]?.ToString() ?? "";
                                     
-                                    // Hanya filter nomor mesin yang sesuai persis dengan machineCode yang dicari di dropdown
-                                    if (rowMesin.Equals(machineCode, StringComparison.OrdinalIgnoreCase))
+                                    // Bersihkan karakter pemisah (spasi, strip) agar lebih fleksibel
+                                    string cleanRowMesin = new string(rowMesin.Where(c => char.IsLetterOrDigit(c)).ToArray());
+                                    string cleanMachineCode = new string(machineCode.Where(c => char.IsLetterOrDigit(c)).ToArray());
+
+                                    // Cocokkan jika sama persis ATAU jika di excel hanya ditulis "NPR01" padahal machineCode "AC90NPR01"
+                                    bool isMatch = cleanRowMesin.Equals(cleanMachineCode, StringComparison.OrdinalIgnoreCase) || 
+                                                  (!string.IsNullOrEmpty(cleanRowMesin) && cleanMachineCode.EndsWith(cleanRowMesin, StringComparison.OrdinalIgnoreCase));
+
+                                    if (isMatch)
                                     {
                                         string sisi = row[colSisi]?.ToString()?.Trim().ToUpper() ?? "";
                                         string applicator = row[colNoApplikator]?.ToString()?.Trim() ?? "";
