@@ -803,10 +803,6 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(_txtRearCwA);
             y += 44;
 
-            var btnSave = new Button { Text = "\u2713 Simpan", Font = new Font("Segoe UI", 10F, FontStyle.Bold), Size = new Size(fw, 36), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(34, 197, 94), ForeColor = Color.White, Cursor = Cursors.Hand };
-            btnSave.FlatAppearance.BorderSize = 0;
-            card.Controls.Add(btnSave);
-
             return card;
         }
 
@@ -1133,15 +1129,33 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(new Label { Text = "SEQUEN", Font = new Font("Segoe UI", 13F, FontStyle.Bold), ForeColor = Color.FromArgb(15, 23, 42), AutoSize = true, Location = new Point(16, 14) });
 
             int y = 40;
-            var txtSearch = CreateStyledTextBox("\uD83D\uDD0D Cari...", width - 36);
+            int fw = width - 36;
+            var txtSearch = CreateStyledTextBox("\uD83D\uDD0D Cari...", fw);
             txtSearch.Location = new Point(16, y);
             card.Controls.Add(txtSearch);
             y += 38;
 
+            // Tombol Simpan Terpilih
+            var btnSimpanTerpilih = new Button
+            {
+                Text = "\u2713 Simpan Terpilih",
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                Size = new Size(fw, 34),
+                Location = new Point(16, y),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(34, 197, 94),
+                ForeColor = Color.White,
+                Cursor = Cursors.Hand
+            };
+            btnSimpanTerpilih.FlatAppearance.BorderSize = 0;
+            btnSimpanTerpilih.Click += BtnSimpanTerpilih_Click;
+            card.Controls.Add(btnSimpanTerpilih);
+            y += 40;
+
             _dgvSequen = new DataGridView
             {
                 Location = new Point(16, y),
-                Size = new Size(width - 36, height - y - 16),
+                Size = new Size(fw, height - y - 16),
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.None,
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
@@ -1151,6 +1165,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 AllowUserToDeleteRows = false,
                 ReadOnly = true,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                MultiSelect = true,
                 AutoGenerateColumns = false,
                 Font = new Font("Segoe UI", 9.5F),
                 ColumnHeadersHeight = 32,
@@ -1173,6 +1188,84 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             card.Controls.Add(_dgvSequen);
             return card;
+        }
+
+        private async void BtnSimpanTerpilih_Click(object sender, EventArgs e)
+        {
+            if (_dgvSequen.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Pilih satu atau lebih sequen terlebih dahulu.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            string shiftName = _cboShift?.SelectedItem is CachedShiftDto shift ? shift.ShiftName : "-";
+            int savedCount = 0;
+            int skippedCount = 0;
+
+            foreach (DataGridViewRow row in _dgvSequen.SelectedRows)
+            {
+                var rowData = row.DataBoundItem as LkoService.LkoAggregatedData;
+                if (rowData == null) continue;
+
+                // Skip yang sudah tersimpan
+                if (rowData.DbRecord != null) { skippedCount++; continue; }
+
+                int.TryParse(rowData.Log?.QtyDefect ?? "0", out int defectMesin);
+                int.TryParse(rowData.Log?.QtyProduk ?? "0", out int qtyProduct);
+
+                var record = new mtc_app.features.operator_worksheet.data.dtos.LkoRecordDto
+                {
+                    WaktuSimpan = DateTime.Now,
+                    NoMesin = GetEffectiveMachineNumber(),
+                    IdMesin = _activeMachineId,
+                    ShiftName = shiftName,
+                    Nik = _nikOperator,
+                    Sequen = rowData.DisplaySequen,
+                    UrutanKanban = rowData.DisplayUrutanPengerjaan,
+                    QtyProduct = qtyProduct,
+                    QtyDefectMesin = defectMesin,
+                    QtyDefectOperator = 0,
+                    KodeDefect = "",
+                    LotIdWire = "",
+                    CutLength = rowData.Master?.CutLength ?? "",
+                    KombinasiWire = rowData.Master?.KombinasiWire ?? "",
+                    TerminalA = rowData.Master?.TerminalA ?? "",
+                    TerminalB = rowData.Master?.TerminalB ?? "",
+                    SealA = rowData.Master?.SealA ?? "",
+                    SealB = rowData.Master?.SealB ?? "",
+                    QtyMaster = rowData.Master?.Qty ?? "",
+                    FrontChA = rowData.Jissk?.FrontChA ?? "0",
+                    FrontCwA = rowData.Jissk?.FrontCwA ?? "0",
+                    RearChA = rowData.Jissk?.RearChA ?? "0",
+                    RearCwA = rowData.Jissk?.RearCwA ?? "0",
+                    FrontChB = rowData.Jissk?.FrontChB ?? "0",
+                    FrontCwB = rowData.Jissk?.FrontCwB ?? "0",
+                    RearChB = rowData.Jissk?.RearChB ?? "0",
+                    RearCwB = rowData.Jissk?.RearCwB ?? "0",
+                    WaktuMulai = rowData.Log?.WaktuMulaiPengerjaan ?? "",
+                    WaktuSelesai = rowData.Log?.WaktuSelesaiPengerjaan ?? ""
+                };
+
+                try
+                {
+                    bool savedOnline = await _lkoService.SaveToDatabase(record);
+                    rowData.DbRecord = record;
+                    rowData.IsOffline = !savedOnline;
+                    savedCount++;
+                }
+                catch { }
+            }
+
+            // Refresh UI
+            _dgvSequen.Refresh();
+            var savedData = _worksheetData.Where(x => x.DbRecord != null).ToList();
+            _dgvTersimpan.DataSource = null;
+            _dgvTersimpan.DataSource = savedData;
+            UpdateHeaderQty();
+
+            string msg = $"{savedCount} sequen berhasil disimpan.";
+            if (skippedCount > 0) msg += $"\n{skippedCount} sequen dilewati (sudah tersimpan).";
+            MessageBox.Show(msg, "Simpan Terpilih", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // =====================================================================
