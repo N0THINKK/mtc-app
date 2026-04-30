@@ -1303,9 +1303,6 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     return _lkoService.GetAllWorksheetData(_machineNumber);
                 });
 
-                // Merge dengan data DB (defect operator, kode defect) -> ini sudah async
-                await _lkoService.MergeDbRecordsAsync(data, _machineNumber);
-
                 // Sort: urutan terbesar/terbaru di atas (di-offload)
                 data = await Task.Run(() => 
                 {
@@ -1317,14 +1314,36 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
                 _worksheetData = data;
 
-                // Update UI (hanya UI binding yang berjalan di UI thread)
+                // Update UI SECARA INSTAN dengan data lokal yang sudah diparse
                 _dgvSequen.DataSource = _worksheetData;
                 
-                // Kotak Kecil Bawah: Hanya data yang sudah pernah disimpan (dikerjakan)
-                var savedData = _worksheetData.Where(x => x.DbRecord != null).ToList();
-                _dgvTersimpan.DataSource = savedData;
-                
-                UpdateHeaderQty();
+                // Mulai background process untuk sinkronisasi DB (bisa makan waktu kalau koneksi jelek)
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        // Merge dengan data DB (defect operator, kode defect, status)
+                        await _lkoService.MergeDbRecordsAsync(_worksheetData, _machineNumber);
+                        
+                        // Perbarui UI lagi dari background setelah selesai sync DB
+                        if (this.IsHandleCreated)
+                        {
+                            this.Invoke((MethodInvoker)delegate
+                            {
+                                _dgvSequen.Refresh(); // Warnai baris yang udah disimpan jadi hijau
+                                
+                                var savedData = _worksheetData.Where(x => x.DbRecord != null).ToList();
+                                _dgvTersimpan.DataSource = savedData;
+                                
+                                UpdateHeaderQty();
+                            });
+                        }
+                    }
+                    catch (Exception syncEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"DB Sync error: {syncEx.Message}");
+                    }
+                });
             }
             catch (Exception ex)
             {
