@@ -194,7 +194,6 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                         waktu_selesai AS WaktuSelesai
                     FROM lko_records
                     WHERE no_mesin = @NoMesin
-                      AND DATE(waktu_simpan) = CURDATE()
                     ORDER BY waktu_simpan DESC";
 
                 var results = await connection.QueryAsync<LkoRecordDto>(sql, new { NoMesin = noMesin });

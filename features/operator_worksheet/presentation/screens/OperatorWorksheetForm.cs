@@ -106,19 +106,48 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private async void OperatorWorksheetForm_Load(object sender, EventArgs e)
         {
             // Set default cepat agar UI bisa dirender langsung
-            _machineNumber = "-";
             _nikOperator = UserSession.CurrentUser?.Username ?? "-";
 
-            InitializeUI(); // Form akan langsung muncul
-            SetupFileWatcher();
-
-            // Offload pencarian DB yang lambat ke background thread
-            await Task.Run(() =>
+            // === LANGKAH 1: Resolve machine number dari LOKAL (instan, tanpa jaringan) ===
+            _machineNumber = "-";
+            try
             {
-                LoadHeaderData();
-            });
+                string machineIdStr = DatabaseHelper.GetMachineId(); // dari appsettings.json (lokal)
+                if (int.TryParse(machineIdStr, out int machineId))
+                {
+                    _activeMachineId = machineId;
+                    // Baca dari offline cache (SQLite lokal, instan)
+                    var offlineRepo = new mtc_app.shared.data.local.OfflineRepository();
+                    var cachedMachines = offlineRepo.GetMachinesFromCache();
+                    var matched = cachedMachines.FirstOrDefault(m => m.MachineId == machineId);
+                    if (matched != null)
+                    {
+                        string machNum = matched.MachineNumber ?? "";
+                        string typeName = matched.MachineType ?? "";
+                        string areaName = matched.MachineArea ?? "";
+                        _machineNumber = $"{typeName}.{areaName}-{machNum}";
+                        _machinePrefix = $"{typeName}.{areaName}";
+                    }
+                }
+            }
+            catch { _machineNumber = "-"; }
 
-            // Perbarui label setelah data DB didapat
+            // === LANGKAH 1.5: Shift HARDCODE (instan, tanpa query DB) ===
+            _shifts = new List<CachedShiftDto>
+            {
+                new CachedShiftDto { ShiftId = 1, ShiftName = "A1" },
+                new CachedShiftDto { ShiftId = 2, ShiftName = "A2" },
+                new CachedShiftDto { ShiftId = 3, ShiftName = "B1" },
+                new CachedShiftDto { ShiftId = 4, ShiftName = "B2" },
+                new CachedShiftDto { ShiftId = 5, ShiftName = "NS" }
+            };
+            TimeSpan nowTime = DateTime.Now.TimeOfDay;
+            // Auto-select: A1 untuk pagi (07:00-19:00), B1 untuk malam (19:00-07:00)
+            _defaultShiftIndex = (nowTime >= new TimeSpan(7, 0, 0) && nowTime < new TimeSpan(19, 0, 0)) ? 0 : 2;
+
+            InitializeUI(); // Form akan langsung muncul
+
+            // Update label mesin langsung (data sudah ada dari lokal)
             if (_lblNoMesin != null)
             {
                 int dashIdx = _machineNumber.LastIndexOf('-');
@@ -134,129 +163,23 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 }
             }
 
-            if (_cboShift != null && _shifts != null)
+            // Pasang shift combo langsung
+            if (_cboShift != null)
             {
-                _cboShift.DataSource = null;
                 _cboShift.DataSource = _shifts;
                 _cboShift.DisplayMember = "ShiftName";
                 _cboShift.ValueMember = "ShiftId";
+                if (_defaultShiftIndex >= 0 && _defaultShiftIndex < _shifts.Count)
+                    _cboShift.SelectedIndex = _defaultShiftIndex;
             }
 
-            // Mulai pembacaan CSV/DAT
+            SetupFileWatcher();
+
+            // === LANGKAH 2: Mulai baca CSV/DAT LANGSUNG (tidak menunggu DB) ===
             LoadSequenData();
         }
 
-        // =====================================================================
-        //  HEADER DATA
-        // =====================================================================
-        private void LoadHeaderData()
-        {
-            // === NIK dari Session ===
-            _nikOperator = UserSession.CurrentUser?.Username ?? "-";
 
-            // === No Mesin dari database config ===
-            try
-            {
-                string machineIdStr = DatabaseHelper.GetMachineId();
-                if (int.TryParse(machineIdStr, out int machineId))
-                {
-                    bool found = false;
-                    try
-                    {
-                        using (var conn = DatabaseHelper.GetConnection())
-                        {
-                            var info = Dapper.SqlMapper.QueryFirstOrDefault(conn,
-                                @"SELECT m.machine_number, mt.type_name, ma.area_name 
-                                  FROM machines m 
-                                  LEFT JOIN machine_types mt ON m.type_id = mt.type_id
-                                  LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
-                                  WHERE m.machine_id = @Id",
-                                new { Id = machineId });
-
-                            if (info != null)
-                            {
-                                string typeName = info.type_name?.ToString() ?? "";
-                                string areaName = info.area_name?.ToString() ?? "";
-                                string machNum = info.machine_number?.ToString() ?? "";
-                                _machineNumber = $"{typeName}.{areaName}-{machNum}";
-                                _machinePrefix = $"{typeName}.{areaName}";
-                                _activeMachineId = machineId;
-                                found = true;
-                            }
-                        }
-                    }
-                    catch { }
-
-                    if (!found)
-                    {
-                        // Fallback ke cache offline jika database utama tidak bisa diakses
-                        var offlineRepo = new mtc_app.shared.data.local.OfflineRepository();
-                        var cachedMachines = offlineRepo.GetMachinesFromCache();
-                        var matched = cachedMachines.FirstOrDefault(m => m.MachineId == machineId);
-                        if (matched != null)
-                        {
-                            string machNum = matched.MachineNumber ?? "";
-                            string typeName = matched.MachineType ?? "";
-                            string areaName = matched.MachineArea ?? "";
-                            _machineNumber = $"{typeName}.{areaName}-{machNum}";
-                            _machinePrefix = $"{typeName}.{areaName}";
-                            _activeMachineId = machineId;
-                        }
-                    }
-                }
-            }
-            catch { _machineNumber = "-"; }
-
-            // === Shift dari database ===
-            try
-            {
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    _shifts = conn.Query<CachedShiftDto>(
-                        "SELECT shift_id AS ShiftId, shift_name AS ShiftName FROM shifts ORDER BY shift_id"
-                    ).ToList();
-                }
-
-                // Auto-select berdasarkan jam saat ini
-                TimeSpan now = DateTime.Now.TimeOfDay;
-                bool isPagi = now >= new TimeSpan(7, 0, 0) && now < new TimeSpan(19, 0, 0);
-                // Cari index shift yang cocok (nama mengandung "Pagi"/"A" untuk pagi, "Malam"/"B" untuk malam)
-                for (int i = 0; i < _shifts.Count; i++)
-                {
-                    string name = _shifts[i].ShiftName?.ToUpper() ?? "";
-                    if (isPagi && (name.Contains("PAGI") || name.Contains("SIANG") || name == "A" || name == "1"))
-                    {
-                        _defaultShiftIndex = i;
-                        break;
-                    }
-                    if (!isPagi && (name.Contains("MALAM") || name == "B" || name == "2"))
-                    {
-                        _defaultShiftIndex = i;
-                        break;
-                    }
-                }
-            }
-            catch
-            {
-                // Fallback jika DB tidak tersedia
-                _shifts = new List<CachedShiftDto>
-                {
-                    new CachedShiftDto { ShiftId = 1, ShiftName = "A" },
-                    new CachedShiftDto { ShiftId = 2, ShiftName = "B" }
-                };
-                TimeSpan now = DateTime.Now.TimeOfDay;
-                _defaultShiftIndex = (now >= new TimeSpan(7, 0, 0) && now < new TimeSpan(19, 0, 0)) ? 0 : 1;
-            }
-
-            // === QTY dari PrdLog.csv ===
-            try
-            {
-                var data = _lkoService.GetAllWorksheetData(_machineNumber);
-                _qtyTarget = data.Count;
-                _qtyDone = data.Count(d => !string.IsNullOrWhiteSpace(d.Log?.QtyProduk) && d.Log.QtyProduk != "0");
-            }
-            catch { }
-        }
         /// <summary>
         /// Reconstruct machine number from prefix + current No. Urut textbox value.
         /// </summary>
@@ -510,7 +433,13 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 Size = new Size(imageAreaWidth - 32, imageAreaHeight - 60),
                 SizeMode = PictureBoxSizeMode.Zoom,
                 BackColor = Color.FromArgb(248, 250, 252),
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.FixedSingle,
+                Cursor = Cursors.Hand
+            };
+            _picTerminal.Click += (s, ev) =>
+            {
+                if (_picTerminal.Image == null) return;
+                ShowZoomableImage(_picTerminal.Image, _lblImageInfo.Text);
             };
             pnlGambar.Controls.Add(_picTerminal);
             _pnlContent.Controls.Add(pnlGambar);
@@ -880,10 +809,6 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(_txtRearCwA);
             y += 44;
 
-            var btnSave = new Button { Text = "\u2713 Simpan", Font = new Font("Segoe UI", 10F, FontStyle.Bold), Size = new Size(fw, 36), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(34, 197, 94), ForeColor = Color.White, Cursor = Cursors.Hand };
-            btnSave.FlatAppearance.BorderSize = 0;
-            card.Controls.Add(btnSave);
-
             return card;
         }
 
@@ -1210,15 +1135,64 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(new Label { Text = "SEQUEN", Font = new Font("Segoe UI", 13F, FontStyle.Bold), ForeColor = Color.FromArgb(15, 23, 42), AutoSize = true, Location = new Point(16, 14) });
 
             int y = 40;
-            var txtSearch = CreateStyledTextBox("\uD83D\uDD0D Cari...", width - 36);
+            int fw = width - 36;
+            var txtSearch = CreateStyledTextBox("\uD83D\uDD0D Cari...", fw);
             txtSearch.Location = new Point(16, y);
             card.Controls.Add(txtSearch);
             y += 38;
 
+            // Tombol Simpan Terpilih
+            var btnSimpanTerpilih = new Button
+            {
+                Text = "\u2713 Simpan Terpilih",
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                Size = new Size(fw / 2 - 4, 34),
+                Location = new Point(16, y),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(34, 197, 94),
+                ForeColor = Color.White,
+                Cursor = Cursors.Hand
+            };
+            btnSimpanTerpilih.FlatAppearance.BorderSize = 0;
+            btnSimpanTerpilih.Click += BtnSimpanTerpilih_Click;
+            card.Controls.Add(btnSimpanTerpilih);
+
+            // Tombol Pilih Semua / Batal Pilih
+            var btnPilihSemua = new Button
+            {
+                Text = "Pilih Semua",
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Size = new Size(fw / 2 - 4, 34),
+                Location = new Point(16 + fw / 2 + 4, y),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(71, 85, 105),
+                ForeColor = Color.White,
+                Cursor = Cursors.Hand
+            };
+            btnPilihSemua.FlatAppearance.BorderSize = 0;
+            btnPilihSemua.Click += (s, ev) =>
+            {
+                if (_dgvSequen.Rows.Count == 0) return;
+                // Toggle: jika sudah ada yang dicentang semua, batal semua
+                bool allChecked = true;
+                foreach (DataGridViewRow r in _dgvSequen.Rows)
+                {
+                    if (r.Cells["Pilih"].Value == null || !(bool)r.Cells["Pilih"].Value) { allChecked = false; break; }
+                }
+                foreach (DataGridViewRow r in _dgvSequen.Rows)
+                {
+                    r.Cells["Pilih"].Value = !allChecked;
+                }
+                btnPilihSemua.Text = allChecked ? "Pilih Semua" : "Batal Pilih";
+                _dgvSequen.RefreshEdit();
+            };
+            card.Controls.Add(btnPilihSemua);
+            y += 40;
+
             _dgvSequen = new DataGridView
             {
                 Location = new Point(16, y),
-                Size = new Size(width - 36, height - y - 16),
+                Size = new Size(fw, height - y - 16),
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.None,
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
@@ -1226,30 +1200,157 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 RowHeadersVisible = false,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
-                ReadOnly = true,
+                ReadOnly = false,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                MultiSelect = false,
                 AutoGenerateColumns = false,
                 Font = new Font("Segoe UI", 9.5F),
                 ColumnHeadersHeight = 32,
                 RowTemplate = { Height = 30 },
                 EnableHeadersVisualStyles = false,
                 ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(248, 250, 252), ForeColor = Color.FromArgb(71, 85, 105), Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
-                DefaultCellStyle = new DataGridViewCellStyle { SelectionBackColor = Color.FromArgb(219, 234, 254), SelectionForeColor = Color.FromArgb(15, 23, 42), Padding = new Padding(4) }
+                DefaultCellStyle = new DataGridViewCellStyle { SelectionBackColor = Color.FromArgb(219, 234, 254), SelectionForeColor = Color.FromArgb(15, 23, 42), Padding = new Padding(4) },
+                EditMode = DataGridViewEditMode.EditProgrammatically
             };
-            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Sequen", HeaderText = "SEQUEN", DataPropertyName = "DisplaySequen", Width = 70 });
-            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            // Kolom checkbox — satu-satunya yang bisa diedit
+            var chkCol = new DataGridViewCheckBoxColumn
+            {
+                Name = "Pilih",
+                HeaderText = "✓",
+                Width = 35,
+                FalseValue = false,
+                TrueValue = true,
+                ReadOnly = false
+            };
+            _dgvSequen.Columns.Add(chkCol);
+            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Sequen", HeaderText = "SEQUEN", DataPropertyName = "DisplaySequen", Width = 70, ReadOnly = true });
+            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, ReadOnly = true });
             _dgvSequen.SelectionChanged += DgvSequen_SelectionChanged;
             _dgvSequen.CellFormatting += DgvSequen_CellFormatting;
 
+            // Range selection: klik checkbox pertama, lalu klik checkbox kedua → semua di antaranya ikut tercentang
+            int _lastCheckedIndex = -1;
+            _dgvSequen.CellClick += (s, ev) =>
+            {
+                if (ev.RowIndex < 0) return;
+                var cell = _dgvSequen.Rows[ev.RowIndex].Cells["Pilih"];
+                bool current = cell.Value != null && (bool)cell.Value;
+                bool newVal = !current;
+                cell.Value = newVal;
+
+                if (newVal && _lastCheckedIndex >= 0 && _lastCheckedIndex != ev.RowIndex)
+                {
+                    // Auto-centang semua baris di antara _lastCheckedIndex dan ev.RowIndex
+                    int from = Math.Min(_lastCheckedIndex, ev.RowIndex);
+                    int to = Math.Max(_lastCheckedIndex, ev.RowIndex);
+                    for (int i = from; i <= to; i++)
+                    {
+                        _dgvSequen.Rows[i].Cells["Pilih"].Value = true;
+                    }
+                }
+
+                _lastCheckedIndex = newVal ? ev.RowIndex : -1;
+                _dgvSequen.RefreshEdit();
+            };
+
             txtSearch.TextChanged += (s, e) =>
             {
-                string f = txtSearch.Text.Trim().ToLower();
+                string f = txtSearch.Text.Trim();
                 _dgvSequen.DataSource = string.IsNullOrEmpty(f) ? _worksheetData :
-                    _worksheetData.Where(d => (d.DisplaySequen?.ToLower().Contains(f) == true) || (d.DisplayKombinasi?.ToLower().Contains(f) == true)).ToList();
+                    _worksheetData.Where(d => d.DisplaySequen?.Trim() == f).ToList();
             };
 
             card.Controls.Add(_dgvSequen);
             return card;
+        }
+
+        private async void BtnSimpanTerpilih_Click(object sender, EventArgs e)
+        {
+            // Kumpulkan baris yang dicentang
+            var checkedRows = new List<LkoService.LkoAggregatedData>();
+            foreach (DataGridViewRow row in _dgvSequen.Rows)
+            {
+                bool isChecked = row.Cells["Pilih"].Value != null && (bool)row.Cells["Pilih"].Value;
+                if (!isChecked) continue;
+                var rowData = row.DataBoundItem as LkoService.LkoAggregatedData;
+                if (rowData != null) checkedRows.Add(rowData);
+            }
+
+            if (checkedRows.Count == 0)
+            {
+                MessageBox.Show("Centang (✓) satu atau lebih sequen terlebih dahulu.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            string shiftName = _cboShift?.SelectedItem is CachedShiftDto shift ? shift.ShiftName : "-";
+            int savedCount = 0;
+            int skippedCount = 0;
+
+            foreach (var rowData in checkedRows)
+            {
+                // Skip yang sudah tersimpan
+                if (rowData.DbRecord != null) { skippedCount++; continue; }
+
+                int.TryParse(rowData.Log?.QtyDefect ?? "0", out int defectMesin);
+                int.TryParse(rowData.Log?.QtyProduk ?? "0", out int qtyProduct);
+
+                var record = new mtc_app.features.operator_worksheet.data.dtos.LkoRecordDto
+                {
+                    WaktuSimpan = DateTime.Now,
+                    NoMesin = GetEffectiveMachineNumber(),
+                    IdMesin = _activeMachineId,
+                    ShiftName = shiftName,
+                    Nik = _nikOperator,
+                    Sequen = rowData.DisplaySequen,
+                    UrutanKanban = rowData.DisplayUrutanPengerjaan,
+                    QtyProduct = qtyProduct,
+                    QtyDefectMesin = defectMesin,
+                    QtyDefectOperator = 0,
+                    KodeDefect = "",
+                    LotIdWire = "",
+                    CutLength = rowData.Master?.CutLength ?? "",
+                    KombinasiWire = rowData.Master?.KombinasiWire ?? "",
+                    TerminalA = rowData.Master?.TerminalA ?? "",
+                    TerminalB = rowData.Master?.TerminalB ?? "",
+                    SealA = rowData.Master?.SealA ?? "",
+                    SealB = rowData.Master?.SealB ?? "",
+                    QtyMaster = rowData.Master?.Qty ?? "",
+                    FrontChA = rowData.Jissk?.FrontChA ?? "0",
+                    FrontCwA = rowData.Jissk?.FrontCwA ?? "0",
+                    RearChA = rowData.Jissk?.RearChA ?? "0",
+                    RearCwA = rowData.Jissk?.RearCwA ?? "0",
+                    FrontChB = rowData.Jissk?.FrontChB ?? "0",
+                    FrontCwB = rowData.Jissk?.FrontCwB ?? "0",
+                    RearChB = rowData.Jissk?.RearChB ?? "0",
+                    RearCwB = rowData.Jissk?.RearCwB ?? "0",
+                    WaktuMulai = rowData.Log?.WaktuMulaiPengerjaan ?? "",
+                    WaktuSelesai = rowData.Log?.WaktuSelesaiPengerjaan ?? ""
+                };
+
+                try
+                {
+                    bool savedOnline = await _lkoService.SaveToDatabase(record);
+                    rowData.DbRecord = record;
+                    rowData.IsOffline = !savedOnline;
+                    savedCount++;
+                }
+                catch { }
+            }
+
+            // Reset semua checkbox
+            foreach (DataGridViewRow row in _dgvSequen.Rows)
+                row.Cells["Pilih"].Value = false;
+
+            // Refresh UI
+            _dgvSequen.Refresh();
+            var savedData = _worksheetData.Where(x => x.DbRecord != null).ToList();
+            _dgvTersimpan.DataSource = null;
+            _dgvTersimpan.DataSource = savedData;
+            UpdateHeaderQty();
+
+            string msg = $"{savedCount} sequen berhasil disimpan.";
+            if (skippedCount > 0) msg += $"\n{skippedCount} sequen dilewati (sudah tersimpan).";
+            MessageBox.Show(msg, "Simpan Terpilih", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // =====================================================================
@@ -1324,15 +1425,16 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     {
                         // Merge dengan data DB (defect operator, kode defect, status)
                         await _lkoService.MergeDbRecordsAsync(_worksheetData, _machineNumber);
-                        
+
                         // Perbarui UI lagi dari background setelah selesai sync DB
-                        if (this.IsHandleCreated)
+                        if (!this.IsDisposed)
                         {
-                            this.Invoke((MethodInvoker)delegate
+                            this.BeginInvoke((MethodInvoker)delegate
                             {
-                                _dgvSequen.Refresh(); // Warnai baris yang udah disimpan jadi hijau
+                                _dgvSequen.Refresh();
                                 
                                 var savedData = _worksheetData.Where(x => x.DbRecord != null).ToList();
+                                _dgvTersimpan.DataSource = null;
                                 _dgvTersimpan.DataSource = savedData;
                                 
                                 UpdateHeaderQty();
@@ -1597,6 +1699,157 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             {
                 _lblImageInfo.Text = $"Error memuat gambar: {ex.Message}";
             }
+        }
+
+        // =====================================================================
+        //  ZOOMABLE IMAGE POPUP
+        // =====================================================================
+        private void ShowZoomableImage(System.Drawing.Image sourceImage, string title)
+        {
+            var popup = new Form
+            {
+                Text = title,
+                StartPosition = FormStartPosition.CenterScreen,
+                Size = new Size(Math.Min(Screen.PrimaryScreen.WorkingArea.Width - 100, 1200),
+                               Math.Min(Screen.PrimaryScreen.WorkingArea.Height - 100, 800)),
+                BackColor = Color.FromArgb(30, 30, 30),
+                FormBorderStyle = FormBorderStyle.None,
+                ShowInTaskbar = false,
+                KeyPreview = true
+            };
+
+            // Buat copy dari image agar tidak terganggu dispose
+            var imgCopy = new Bitmap(sourceImage);
+            float zoomLevel = 1.0f;
+            PointF offset = PointF.Empty;
+            bool isDragging = false;
+            Point dragStart = Point.Empty;
+            PointF offsetStart = PointF.Empty;
+
+            // Panel gambar utama (custom paint)
+            var canvas = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(30, 30, 30),
+                Cursor = Cursors.Hand
+            };
+            canvas.GetType().GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).SetValue(canvas, true);
+
+            // Label zoom di pojok
+            var lblZoom = new Label
+            {
+                Text = "100%",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(120, 0, 0, 0),
+                AutoSize = true,
+                Location = new Point(12, 12),
+                Padding = new Padding(6, 3, 6, 3)
+            };
+            canvas.Controls.Add(lblZoom);
+
+            // Tombol close
+            var btnClose = new Button
+            {
+                Text = "✕ Tutup",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(180, 220, 38, 38),
+                FlatStyle = FlatStyle.Flat,
+                Size = new Size(90, 36),
+                Cursor = Cursors.Hand
+            };
+            btnClose.FlatAppearance.BorderSize = 0;
+            btnClose.Location = new Point(popup.Width - btnClose.Width - 16, 12);
+            btnClose.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnClose.Click += (s, ev) => popup.Close();
+            canvas.Controls.Add(btnClose);
+
+            // Label instruksi
+            var lblHelp = new Label
+            {
+                Text = "Scroll = Zoom  |  Drag = Geser  |  Klik Tutup / tekan Esc",
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = Color.FromArgb(180, 180, 180),
+                AutoSize = true,
+                Location = new Point(12, popup.Height - 35),
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Left
+            };
+            canvas.Controls.Add(lblHelp);
+
+            // Paint
+            canvas.Paint += (s, ev) =>
+            {
+                ev.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                ev.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+                float drawW = imgCopy.Width * zoomLevel;
+                float drawH = imgCopy.Height * zoomLevel;
+
+                // Center image + offset
+                float cx = (canvas.Width - drawW) / 2 + offset.X;
+                float cy = (canvas.Height - drawH) / 2 + offset.Y;
+
+                ev.Graphics.DrawImage(imgCopy, cx, cy, drawW, drawH);
+            };
+
+            // Scroll = Zoom
+            canvas.MouseWheel += (s, ev) =>
+            {
+                float oldZoom = zoomLevel;
+                if (ev.Delta > 0)
+                    zoomLevel = Math.Min(zoomLevel * 1.2f, 10f);
+                else
+                    zoomLevel = Math.Max(zoomLevel / 1.2f, 0.1f);
+
+                lblZoom.Text = $"{(int)(zoomLevel * 100)}%";
+                canvas.Invalidate();
+            };
+
+            // Drag = Pan
+            canvas.MouseDown += (s, ev) =>
+            {
+                if (ev.Button == MouseButtons.Left)
+                {
+                    isDragging = true;
+                    dragStart = ev.Location;
+                    offsetStart = offset;
+                    canvas.Cursor = Cursors.SizeAll;
+                }
+            };
+            canvas.MouseMove += (s, ev) =>
+            {
+                if (isDragging)
+                {
+                    offset = new PointF(
+                        offsetStart.X + ev.X - dragStart.X,
+                        offsetStart.Y + ev.Y - dragStart.Y);
+                    canvas.Invalidate();
+                }
+            };
+            canvas.MouseUp += (s, ev) =>
+            {
+                isDragging = false;
+                canvas.Cursor = Cursors.Hand;
+            };
+
+            // Double click = reset zoom
+            canvas.MouseDoubleClick += (s, ev) =>
+            {
+                zoomLevel = 1.0f;
+                offset = PointF.Empty;
+                lblZoom.Text = "100%";
+                canvas.Invalidate();
+            };
+
+            popup.Controls.Add(canvas);
+            popup.KeyDown += (s, ev) => { if (ev.KeyCode == Keys.Escape) popup.Close(); };
+            popup.FormClosed += (s, ev) => imgCopy.Dispose();
+
+            // Focus canvas agar scroll langsung bisa
+            popup.Shown += (s, ev) => canvas.Focus();
+
+            popup.ShowDialog(this);
         }
 
         // =====================================================================

@@ -69,8 +69,27 @@ namespace mtc_app.features.operator_worksheet.services
                 }
             }
 
-            System.Diagnostics.Debug.WriteLine($"[LKO] noMesin='{noMesin}', expectedPrefix='{expectedPrefix}'");
-            System.Diagnostics.Debug.WriteLine($"[LKO] Total masters: {masters.Count}, Total logs: {logs.Count}");
+            // Pre-build dictionary untuk lookup O(1) alih-alih O(n) per baris
+            var masterDict = new Dictionary<string, PrdmstDto>(StringComparer.OrdinalIgnoreCase);
+            foreach (var m in masters)
+            {
+                if (!string.IsNullOrWhiteSpace(m.UrutanSequen))
+                {
+                    string key = m.UrutanSequen.Trim();
+                    if (!masterDict.ContainsKey(key)) masterDict[key] = m;
+                }
+            }
+
+            // Pre-build dictionary untuk Jissk lookup
+            var jisskDict = new Dictionary<string, List<JisskDto>>();
+            foreach (var j in jisskData)
+            {
+                if (!jisskDict.ContainsKey(j.Sequen4))
+                    jisskDict[j.Sequen4] = new List<JisskDto>();
+                jisskDict[j.Sequen4].Add(j);
+            }
+
+            var jisskUsageCount = new Dictionary<string, int>();
 
             foreach (var log in logs)
             {
@@ -78,42 +97,38 @@ namespace mtc_app.features.operator_worksheet.services
 
                 if (expectedPrefix != '\0' && !string.IsNullOrWhiteSpace(log.Sequen))
                 {
-                    // Ambil angka murni dari log.Sequen (misal "50 BU2" jadi "50", " 50 " jadi "50")
                     string logDigits = new string(log.Sequen.Where(char.IsDigit).ToArray());
                     
                     if (int.TryParse(logDigits, out int seqNumber))
                     {
-                        // Bangun format yang dicari, misal J0050
                         string targetUrutan = $"{expectedPrefix}{seqNumber:D4}";
-
-                        // Match langsung dengan kolom pertama di PRDMST (m.UrutanSequen)
-                        matchingMaster = masters.FirstOrDefault(m => 
-                            !string.IsNullOrWhiteSpace(m.UrutanSequen) && 
-                            m.UrutanSequen.Trim().Equals(targetUrutan, StringComparison.OrdinalIgnoreCase));
+                        masterDict.TryGetValue(targetUrutan, out matchingMaster);
                     }
                 }
 
-                if (matchingMaster != null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[LKO] MATCH: log.Seq={log.Sequen} -> master.UrutSeq={matchingMaster.UrutanSequen}");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine($"[LKO] NO MATCH: log.Seq={log.Sequen}");
-                }
-
-                // Match Jissk: pad sequen ke 4 digit lalu cocokkan exact
-                // Contoh: sequen "10" → "0010" → cocok dengan Jissk Sequen4 "0010" (dari 10010 atau 20010)
                 JisskDto matchingJissk = null;
                 if (!string.IsNullOrWhiteSpace(log.Sequen))
                 {
                     string seqDigits = new string(log.Sequen.Where(char.IsDigit).ToArray());
                     if (int.TryParse(seqDigits, out int seqNum))
                     {
-                        string padded = seqNum.ToString("D4"); // 10 → "0010"
-                        // Ambil yang bukan 0 (ada data Front/Rear)
-                        matchingJissk = jisskData.FirstOrDefault(j => j.Sequen4 == padded && j.FrontChA != "0" && j.FrontChA != "0.000")
-                                     ?? jisskData.FirstOrDefault(j => j.Sequen4 == padded);
+                        string padded = seqNum.ToString("D4");
+                        if (jisskDict.TryGetValue(padded, out var jList))
+                        {
+                            if (!jisskUsageCount.ContainsKey(padded))
+                                jisskUsageCount[padded] = 0;
+                            
+                            int usageIndex = jisskUsageCount[padded];
+                            if (usageIndex < jList.Count)
+                            {
+                                matchingJissk = jList[usageIndex];
+                                jisskUsageCount[padded]++;
+                            }
+                            else
+                            {
+                                matchingJissk = jList.LastOrDefault(); // fallback ke yang paling bawah jika logs lebih banyak
+                            }
+                        }
                     }
                 }
 
@@ -131,14 +146,27 @@ namespace mtc_app.features.operator_worksheet.services
                 bool alreadyExists = result.Any(r => r.Master?.Sequen == master.Sequen);
                 if (!alreadyExists)
                 {
-                    // Juga cari Jissk untuk master tanpa log
                     JisskDto jForMaster = null;
                     string mSeqDigits = new string((master.Sequen ?? "").Where(char.IsDigit).ToArray());
                     if (int.TryParse(mSeqDigits, out int mSeqNum))
                     {
                         string mPadded = mSeqNum.ToString("D4");
-                        jForMaster = jisskData.FirstOrDefault(j => j.Sequen4 == mPadded && j.FrontChA != "0" && j.FrontChA != "0.000")
-                                   ?? jisskData.FirstOrDefault(j => j.Sequen4 == mPadded);
+                        if (jisskDict.TryGetValue(mPadded, out var jList))
+                        {
+                            if (!jisskUsageCount.ContainsKey(mPadded))
+                                jisskUsageCount[mPadded] = 0;
+
+                            int usageIndex = jisskUsageCount[mPadded];
+                            if (usageIndex < jList.Count)
+                            {
+                                jForMaster = jList[usageIndex];
+                                jisskUsageCount[mPadded]++;
+                            }
+                            else
+                            {
+                                jForMaster = jList.LastOrDefault();
+                            }
+                        }
                     }
 
                     result.Add(new LkoAggregatedData

@@ -25,23 +25,27 @@ namespace mtc_app.features.operator_worksheet.data.repositories
 
             try
             {
-                var lines = File.ReadAllLines(filePath);
-                foreach (var line in lines)
+                using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var sr = new StreamReader(fs))
                 {
-                    if (string.IsNullOrWhiteSpace(line)) continue;
-                    
-                    var parts = line.Split(',');
-                    if (parts.Length >= 6)
+                    string line;
+                    while ((line = sr.ReadLine()) != null)
                     {
-                        result.Add(new PrdLogDto
+                        if (string.IsNullOrWhiteSpace(line)) continue;
+                        
+                        var parts = line.Split(',');
+                        if (parts.Length >= 6)
                         {
-                            Sequen = parts[0]?.Trim(),
-                            UrutanPengerjaan = parts[1]?.Trim(),
-                            WaktuMulaiPengerjaan = parts[2]?.Trim(),
-                            WaktuSelesaiPengerjaan = parts[3]?.Trim(),
-                            QtyProduk = parts[4]?.Trim(),
-                            QtyDefect = parts[5]?.Trim()
-                        });
+                            result.Add(new PrdLogDto
+                            {
+                                Sequen = parts[0]?.Trim(),
+                                UrutanPengerjaan = parts[1]?.Trim(),
+                                WaktuMulaiPengerjaan = parts[2]?.Trim(),
+                                WaktuSelesaiPengerjaan = parts[3]?.Trim(),
+                                QtyProduk = parts[4]?.Trim(),
+                                QtyDefect = parts[5]?.Trim()
+                            });
+                        }
                     }
                 }
             }
