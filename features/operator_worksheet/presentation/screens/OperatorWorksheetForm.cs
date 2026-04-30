@@ -132,6 +132,15 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             }
             catch { _machineNumber = "-"; }
 
+            // === LANGKAH 1.5: Shift HARDCODE (instan, tanpa query DB) ===
+            _shifts = new List<CachedShiftDto>
+            {
+                new CachedShiftDto { ShiftId = 1, ShiftName = "A1" },
+                new CachedShiftDto { ShiftId = 2, ShiftName = "A2" }
+            };
+            TimeSpan nowTime = DateTime.Now.TimeOfDay;
+            _defaultShiftIndex = (nowTime >= new TimeSpan(7, 0, 0) && nowTime < new TimeSpan(19, 0, 0)) ? 0 : 1;
+
             InitializeUI(); // Form akan langsung muncul
 
             // Update label mesin langsung (data sudah ada dari lokal)
@@ -150,142 +159,23 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 }
             }
 
+            // Pasang shift combo langsung
+            if (_cboShift != null)
+            {
+                _cboShift.DataSource = _shifts;
+                _cboShift.DisplayMember = "ShiftName";
+                _cboShift.ValueMember = "ShiftId";
+                if (_defaultShiftIndex >= 0 && _defaultShiftIndex < _shifts.Count)
+                    _cboShift.SelectedIndex = _defaultShiftIndex;
+            }
+
             SetupFileWatcher();
 
             // === LANGKAH 2: Mulai baca CSV/DAT LANGSUNG (tidak menunggu DB) ===
             LoadSequenData();
-
-            // === LANGKAH 3: Query DB untuk shift di background (tidak blocking) ===
-            _ = Task.Run(() =>
-            {
-                LoadHeaderData();
-            }).ContinueWith(t =>
-            {
-                if (this.IsDisposed) return;
-                this.BeginInvoke((MethodInvoker)delegate
-                {
-                    if (_cboShift != null && _shifts != null)
-                    {
-                        _cboShift.DataSource = null;
-                        _cboShift.DataSource = _shifts;
-                        _cboShift.DisplayMember = "ShiftName";
-                        _cboShift.ValueMember = "ShiftId";
-                    }
-                });
-            }, TaskScheduler.Default);
         }
 
-        // =====================================================================
-        //  HEADER DATA
-        // =====================================================================
-        private void LoadHeaderData()
-        {
-            // === NIK dari Session ===
-            _nikOperator = UserSession.CurrentUser?.Username ?? "-";
 
-            // === No Mesin dari database config ===
-            try
-            {
-                string machineIdStr = DatabaseHelper.GetMachineId();
-                if (int.TryParse(machineIdStr, out int machineId))
-                {
-                    bool found = false;
-                    try
-                    {
-                        using (var conn = DatabaseHelper.GetConnection())
-                        {
-                            var info = Dapper.SqlMapper.QueryFirstOrDefault(conn,
-                                @"SELECT m.machine_number, mt.type_name, ma.area_name 
-                                  FROM machines m 
-                                  LEFT JOIN machine_types mt ON m.type_id = mt.type_id
-                                  LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
-                                  WHERE m.machine_id = @Id",
-                                new { Id = machineId });
-
-                            if (info != null)
-                            {
-                                string typeName = info.type_name?.ToString() ?? "";
-                                string areaName = info.area_name?.ToString() ?? "";
-                                string machNum = info.machine_number?.ToString() ?? "";
-                                _machineNumber = $"{typeName}.{areaName}-{machNum}";
-                                _machinePrefix = $"{typeName}.{areaName}";
-                                _activeMachineId = machineId;
-                                found = true;
-                            }
-                        }
-                    }
-                    catch { }
-
-                    if (!found)
-                    {
-                        // Fallback ke cache offline jika database utama tidak bisa diakses
-                        var offlineRepo = new mtc_app.shared.data.local.OfflineRepository();
-                        var cachedMachines = offlineRepo.GetMachinesFromCache();
-                        var matched = cachedMachines.FirstOrDefault(m => m.MachineId == machineId);
-                        if (matched != null)
-                        {
-                            string machNum = matched.MachineNumber ?? "";
-                            string typeName = matched.MachineType ?? "";
-                            string areaName = matched.MachineArea ?? "";
-                            _machineNumber = $"{typeName}.{areaName}-{machNum}";
-                            _machinePrefix = $"{typeName}.{areaName}";
-                            _activeMachineId = machineId;
-                        }
-                    }
-                }
-            }
-            catch { _machineNumber = "-"; }
-
-            // === Shift dari database ===
-            try
-            {
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    _shifts = conn.Query<CachedShiftDto>(
-                        "SELECT shift_id AS ShiftId, shift_name AS ShiftName FROM shifts ORDER BY shift_id"
-                    ).ToList();
-                }
-
-                // Auto-select berdasarkan jam saat ini
-                TimeSpan now = DateTime.Now.TimeOfDay;
-                bool isPagi = now >= new TimeSpan(7, 0, 0) && now < new TimeSpan(19, 0, 0);
-                // Cari index shift yang cocok (nama mengandung "Pagi"/"A" untuk pagi, "Malam"/"B" untuk malam)
-                for (int i = 0; i < _shifts.Count; i++)
-                {
-                    string name = _shifts[i].ShiftName?.ToUpper() ?? "";
-                    if (isPagi && (name.Contains("PAGI") || name.Contains("SIANG") || name == "A" || name == "1"))
-                    {
-                        _defaultShiftIndex = i;
-                        break;
-                    }
-                    if (!isPagi && (name.Contains("MALAM") || name == "B" || name == "2"))
-                    {
-                        _defaultShiftIndex = i;
-                        break;
-                    }
-                }
-            }
-            catch
-            {
-                // Fallback jika DB tidak tersedia
-                _shifts = new List<CachedShiftDto>
-                {
-                    new CachedShiftDto { ShiftId = 1, ShiftName = "A" },
-                    new CachedShiftDto { ShiftId = 2, ShiftName = "B" }
-                };
-                TimeSpan now = DateTime.Now.TimeOfDay;
-                _defaultShiftIndex = (now >= new TimeSpan(7, 0, 0) && now < new TimeSpan(19, 0, 0)) ? 0 : 1;
-            }
-
-            // === QTY dari PrdLog.csv ===
-            try
-            {
-                var data = _lkoService.GetAllWorksheetData(_machineNumber);
-                _qtyTarget = data.Count;
-                _qtyDone = data.Count(d => !string.IsNullOrWhiteSpace(d.Log?.QtyProduk) && d.Log.QtyProduk != "0");
-            }
-            catch { }
-        }
         /// <summary>
         /// Reconstruct machine number from prefix + current No. Urut textbox value.
         /// </summary>
