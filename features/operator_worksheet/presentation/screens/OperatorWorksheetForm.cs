@@ -136,10 +136,14 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _shifts = new List<CachedShiftDto>
             {
                 new CachedShiftDto { ShiftId = 1, ShiftName = "A1" },
-                new CachedShiftDto { ShiftId = 2, ShiftName = "A2" }
+                new CachedShiftDto { ShiftId = 2, ShiftName = "A2" },
+                new CachedShiftDto { ShiftId = 3, ShiftName = "B1" },
+                new CachedShiftDto { ShiftId = 4, ShiftName = "B2" },
+                new CachedShiftDto { ShiftId = 5, ShiftName = "NS" }
             };
             TimeSpan nowTime = DateTime.Now.TimeOfDay;
-            _defaultShiftIndex = (nowTime >= new TimeSpan(7, 0, 0) && nowTime < new TimeSpan(19, 0, 0)) ? 0 : 1;
+            // Auto-select: A1 untuk pagi (07:00-19:00), B1 untuk malam (19:00-07:00)
+            _defaultShiftIndex = (nowTime >= new TimeSpan(7, 0, 0) && nowTime < new TimeSpan(19, 0, 0)) ? 0 : 2;
 
             InitializeUI(); // Form akan langsung muncul
 
