@@ -106,19 +106,35 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private async void OperatorWorksheetForm_Load(object sender, EventArgs e)
         {
             // Set default cepat agar UI bisa dirender langsung
-            _machineNumber = "-";
             _nikOperator = UserSession.CurrentUser?.Username ?? "-";
 
-            InitializeUI(); // Form akan langsung muncul
-            SetupFileWatcher();
-
-            // Offload pencarian DB yang lambat ke background thread
-            await Task.Run(() =>
+            // === LANGKAH 1: Resolve machine number dari LOKAL (instan, tanpa jaringan) ===
+            _machineNumber = "-";
+            try
             {
-                LoadHeaderData();
-            });
+                string machineIdStr = DatabaseHelper.GetMachineId(); // dari appsettings.json (lokal)
+                if (int.TryParse(machineIdStr, out int machineId))
+                {
+                    _activeMachineId = machineId;
+                    // Baca dari offline cache (SQLite lokal, instan)
+                    var offlineRepo = new mtc_app.shared.data.local.OfflineRepository();
+                    var cachedMachines = offlineRepo.GetMachinesFromCache();
+                    var matched = cachedMachines.FirstOrDefault(m => m.MachineId == machineId);
+                    if (matched != null)
+                    {
+                        string machNum = matched.MachineNumber ?? "";
+                        string typeName = matched.MachineType ?? "";
+                        string areaName = matched.MachineArea ?? "";
+                        _machineNumber = $"{typeName}.{areaName}-{machNum}";
+                        _machinePrefix = $"{typeName}.{areaName}";
+                    }
+                }
+            }
+            catch { _machineNumber = "-"; }
 
-            // Perbarui label setelah data DB didapat
+            InitializeUI(); // Form akan langsung muncul
+
+            // Update label mesin langsung (data sudah ada dari lokal)
             if (_lblNoMesin != null)
             {
                 int dashIdx = _machineNumber.LastIndexOf('-');
@@ -134,16 +150,29 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 }
             }
 
-            if (_cboShift != null && _shifts != null)
-            {
-                _cboShift.DataSource = null;
-                _cboShift.DataSource = _shifts;
-                _cboShift.DisplayMember = "ShiftName";
-                _cboShift.ValueMember = "ShiftId";
-            }
+            SetupFileWatcher();
 
-            // Mulai pembacaan CSV/DAT
+            // === LANGKAH 2: Mulai baca CSV/DAT LANGSUNG (tidak menunggu DB) ===
             LoadSequenData();
+
+            // === LANGKAH 3: Query DB untuk shift di background (tidak blocking) ===
+            _ = Task.Run(() =>
+            {
+                LoadHeaderData();
+            }).ContinueWith(t =>
+            {
+                if (this.IsDisposed) return;
+                this.BeginInvoke((MethodInvoker)delegate
+                {
+                    if (_cboShift != null && _shifts != null)
+                    {
+                        _cboShift.DataSource = null;
+                        _cboShift.DataSource = _shifts;
+                        _cboShift.DisplayMember = "ShiftName";
+                        _cboShift.ValueMember = "ShiftId";
+                    }
+                });
+            }, TaskScheduler.Default);
         }
 
         // =====================================================================
