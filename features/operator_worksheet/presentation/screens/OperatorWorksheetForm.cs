@@ -1404,13 +1404,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     return _lkoService.GetAllWorksheetData(_machineNumber);
                 });
 
-                // Sort: urutan terbesar/terbaru di atas (di-offload)
+                // Reverse urutan dari file: baris terbawah di file muncul paling atas di UI
                 data = await Task.Run(() => 
                 {
-                    return data.OrderByDescending(x => {
-                        int.TryParse(x.DisplayUrutanPengerjaan, out int u);
-                        return u;
-                    }).ToList();
+                    data.Reverse();
+                    return data;
                 });
 
                 _worksheetData = data;
