@@ -42,8 +42,8 @@ namespace mtc_app.features.machine_history.presentation.screens
         public OperatorMainMenuForm()
         {
             InitializeUI();
-            CheckActiveIdleStatus();
-            FetchCurrentHourCounts();
+            CheckActiveIdleStatusAsync();
+            FetchCurrentHourCountsAsync();
 
             _hourCheckTimer = new System.Windows.Forms.Timer { Interval = 60000 };
             _hourCheckTimer.Tick += (s, e) => CheckHourChange();
@@ -59,7 +59,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 if (this.IsHandleCreated && !this.IsDisposed)
                 {
-                    this.BeginInvoke(new Action(() => FetchCurrentHourCounts()));
+                    this.BeginInvoke(new Action(() => FetchCurrentHourCountsAsync()));
                 }
             }
         }
@@ -69,7 +69,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             if (DateTime.Now.Hour != _currentTrackedHour)
             {
                 _currentTrackedHour = DateTime.Now.Hour;
-                FetchCurrentHourCounts();
+                FetchCurrentHourCountsAsync();
             }
         }
 
@@ -106,7 +106,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             return 0; // Fallback or invalid
         }
 
-        private void CheckActiveIdleStatus()
+        private async void CheckActiveIdleStatusAsync()
         {
             try
             {
@@ -116,16 +116,23 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     var sql = "SELECT id, activity_id, (SELECT activity_name FROM activity_types WHERE id = activity_id) as act_name FROM machine_operator_activities WHERE machine_id = @MId AND end_time IS NULL ORDER BY start_time DESC LIMIT 1";
-                    var activeRec = conn.QueryFirstOrDefault(sql, new { MId = mId });
-                    if (activeRec != null)
+                    var activeRec = await conn.QueryFirstOrDefaultAsync(sql, new { MId = mId });
+                    
+                    if (this.IsHandleCreated && !this.IsDisposed)
                     {
-                        _currentActiveRecordId = Convert.ToInt32(activeRec.id);
-                        string actName = activeRec.act_name?.ToString() ?? "Unknown";
-                        SetButtonToIdleState(actName);
-                    }
-                    else
-                    {
-                        SetButtonToRunState();
+                        this.Invoke(new Action(() => 
+                        {
+                            if (activeRec != null)
+                            {
+                                _currentActiveRecordId = Convert.ToInt32(activeRec.id);
+                                string actName = activeRec.act_name?.ToString() ?? "Unknown";
+                                SetButtonToIdleState(actName);
+                            }
+                            else
+                            {
+                                SetButtonToRunState();
+                            }
+                        }));
                     }
                 }
             }
@@ -517,7 +524,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Controls.Add(btnPlus);
         }
 
-        private void FetchCurrentHourCounts()
+        private async void FetchCurrentHourCountsAsync()
         {
             // Reset to zero baseline
             foreach (var key in new System.Collections.Generic.List<string>(_quickCounts.Keys))
@@ -545,7 +552,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                             WHERE machine_id = @MId AND operator_name = @OpName 
                             AND record_date = @RecordDate AND record_hour = @RecordHour";
 
-                        var results = conn.Query(sql, new 
+                        var results = await conn.QueryAsync(sql, new 
                         { 
                             MId = mId, 
                             OpName = opName, 
@@ -627,13 +634,19 @@ namespace mtc_app.features.machine_history.presentation.screens
                 System.Diagnostics.Debug.WriteLine("Fetch quick counts offline error: " + ex.Message);
             }
 
-            // Update UI Labels
-            foreach (var kvp in _quickCounts)
+            // Update UI Labels safely on UI thread
+            if (this.IsHandleCreated && !this.IsDisposed)
             {
-                if (_lblCounts.TryGetValue(kvp.Key, out var lbl))
+                this.Invoke(new Action(() => 
                 {
-                    lbl.Text = $"{kvp.Key}: {kvp.Value}";
-                }
+                    foreach (var kvp in _quickCounts)
+                    {
+                        if (_lblCounts.TryGetValue(kvp.Key, out var lbl))
+                        {
+                            lbl.Text = $"{kvp.Key}: {kvp.Value}";
+                        }
+                    }
+                }));
             }
         }
 
