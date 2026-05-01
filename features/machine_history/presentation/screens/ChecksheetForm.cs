@@ -21,6 +21,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private Button btnLihatNg; // [BARU] Deklarasi di tingkat class agar bisa diakses event Resize
         private AppButton btnHistory; // Tombol riwayat checksheet
         private Label lblMachineInfo;
+        private ComboBox cmbShift;
 
         private readonly bool _isTeknisiMode;
         private int _currentMachineId;
@@ -46,7 +47,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.FormBorderStyle = FormBorderStyle.Sizable;
 
             // --- HEADER ---
-            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = 100, BackColor = AppColors.CardBackground };
+            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = 100, BackColor = AppColors.CardBackground, Width = this.Width };
             Label lblTitle = new Label { Text = this.Text, Font = new Font("Segoe UI", 16F, FontStyle.Bold), ForeColor = AppColors.TextPrimary, AutoSize = true, Location = new Point(20, 15) };
             lblMachineInfo = new Label { Text = "Loading...", Font = new Font("Segoe UI", 11F), ForeColor = AppColors.TextSecondary, AutoSize = true, Location = new Point(20, 45) };
 
@@ -84,9 +85,25 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Location = new Point(20, 70)
             };
 
+            Label lblShift = new Label { Text = "Shift:", Font = new Font("Segoe UI", 11F), ForeColor = AppColors.TextPrimary, AutoSize = true, Location = new Point(650, 45), Anchor = AnchorStyles.Top | AnchorStyles.Right };
+            cmbShift = new ComboBox { 
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 11F),
+                Location = new Point(700, 42),
+                Width = 150,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            cmbShift.Items.Add("Shift A");
+            cmbShift.Items.Add("Shift B");
+            
+            DateTime now = DateTime.Now;
+            cmbShift.SelectedIndex = (now.TimeOfDay >= new TimeSpan(7, 0, 0) && now.TimeOfDay < new TimeSpan(19, 0, 0)) ? 0 : 1;
+
             pnlHeader.Controls.Add(lblTitle);
             pnlHeader.Controls.Add(lblMachineInfo);
             pnlHeader.Controls.Add(lblPelaksanaInfo);
+            pnlHeader.Controls.Add(lblShift);
+            pnlHeader.Controls.Add(cmbShift);
 
             // --- AREA PERTANYAAN (SCROLLABLE) ---
             pnlQuestions = new FlowLayoutPanel
@@ -324,9 +341,9 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     // 1. Catat Header Patroli
-                    // Kolom user_nik di database bersifat string, sehingga aman diisi NIK angka maupun Inisial huruf.
-                    string insertLogSql = "INSERT INTO patrol_logs (machine_id, user_nik, shift) VALUES (@MachId, @Nik, 'A'); SELECT LAST_INSERT_ID();";
-                    int logId = conn.QuerySingle<int>(insertLogSql, new { MachId = _currentMachineId, Nik = userNik });
+                    string currentShift = cmbShift.SelectedItem.ToString() == "Shift A" ? "A" : "B";
+                    string insertLogSql = "INSERT INTO patrol_logs (machine_id, user_nik, shift) VALUES (@MachId, @Nik, @Shift); SELECT LAST_INSERT_ID();";
+                    int logId = conn.QuerySingle<int>(insertLogSql, new { MachId = _currentMachineId, Nik = userNik, Shift = currentShift });
 
                     // 7. Simpan Detail Pemeriksaan
                     foreach (var item in _itemControls)
@@ -413,7 +430,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 }
                 else
                 {
-                    radOk = new RadioButton { Text = "OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.SeaGreen, AutoSize = true, Location = new Point(30, 65), Cursor = Cursors.Hand };
+                    radOk = new RadioButton { Text = "OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.SeaGreen, AutoSize = true, Location = new Point(30, 65), Cursor = Cursors.Hand, Checked = true };
                     radNotOk = new RadioButton { Text = "NOT OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.Crimson, AutoSize = true, Location = new Point(100, 65), Cursor = Cursors.Hand };
                     radNa = new RadioButton { Text = "N/A", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.DimGray, AutoSize = true, Location = new Point(210, 65), Cursor = Cursors.Hand };
 
