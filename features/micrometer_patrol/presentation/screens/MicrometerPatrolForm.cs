@@ -114,12 +114,31 @@ namespace mtc_app.features.micrometer_patrol.presentation.screens
             // Bottom Panel
             Panel pnlBottom = new Panel { Dock = DockStyle.Bottom, Height = 80, BackColor = AppColors.CardBackground, Padding = new Padding(30, 15, 30, 15) };
             btnBatal = new AppButton { Text = "Keluar", Type = AppButton.ButtonType.Secondary, Width = 150, Dock = DockStyle.Left };
-            btnSimpan = new AppButton { Text = "Simpan", Type = AppButton.ButtonType.Primary, Width = 150, Dock = DockStyle.Right };
+            
+            Panel pnlRight = new Panel { Dock = DockStyle.Right, Width = 320, BackColor = Color.Transparent };
+            
+            AppButton btnHistory = new AppButton { Text = "History", Type = AppButton.ButtonType.Secondary, Width = 150, Location = new Point(0, 0) };
+            btnHistory.Click += BtnHistory_Click;
+            
+            btnSimpan = new AppButton { Text = "Simpan", Type = AppButton.ButtonType.Primary, Width = 150, Location = new Point(170, 0) };
+            
+            pnlRight.Controls.Add(btnHistory);
+            pnlRight.Controls.Add(btnSimpan);
 
             pnlBottom.Controls.Add(btnBatal);
-            pnlBottom.Controls.Add(btnSimpan);
+            pnlBottom.Controls.Add(pnlRight);
             this.Controls.Add(pnlBottom);
             pnlBottom.SendToBack();
+        }
+
+        private void BtnHistory_Click(object sender, EventArgs e)
+        {
+            this.Hide();
+            using (var historyForm = new MicrometerPatrolHistoryForm(_repository))
+            {
+                historyForm.ShowDialog(this);
+            }
+            this.Show();
         }
 
         private async void SetupFormAsync()
