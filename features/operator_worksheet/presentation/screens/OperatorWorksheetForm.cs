@@ -42,6 +42,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private Label _lblLotId;
         private TextBox _txtTerminal;
         private TextBox _txtSeal;
+        private TextBox _txtCutL;
         private TextBox _txtFrontChA;
         private TextBox _txtRearChA;
         private TextBox _txtFrontCwA;
@@ -56,8 +57,10 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private ComboBox _cboKodeDefect;
         private TextBox _txtDefectMesin;
         private TextBox _txtDefectOperator;
-        private TextBox _txtCutL;
         private TextBox _txtLotIdWire;
+        private TextBox _txtLotIdTerminalA;
+        private TextBox _txtLotIdTerminalB;
+        private TextBox _txtIssueKanban;
 
         // === Sequen list ===
         private DataGridView _dgvSequen;
@@ -770,6 +773,14 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(_txtSeal);
             y += 40;
 
+            // CutL (read-only dari prdmst, sama untuk Sisi A dan B)
+            card.Controls.Add(new Label { Text = "CutL", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
+            y += 20;
+            _txtCutL = CreateStyledTextBox("0", fw);
+            _txtCutL.Location = new Point(16, y);
+            _txtCutL.ReadOnly = true;
+            _txtCutL.BackColor = Color.FromArgb(241, 245, 249);
+            card.Controls.Add(_txtCutL);
             y += 40;
 
             int labelWidth = 80;
@@ -873,9 +884,9 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             int halfW = (fw - 8) / 2;
             int thirdW = (fw - 16) / 3;
 
-            // Lot Id Wire & CutL side by side
+            // Lot Id Wire & Issue Kanban side by side
             card.Controls.Add(new Label { Text = "Lot Id Wire", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
-            card.Controls.Add(new Label { Text = "CutL", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16 + halfW + 8, y) });
+            card.Controls.Add(new Label { Text = "Issue Kanban", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16 + halfW + 8, y) });
             y += 20;
 
             _txtLotIdWire = CreateStyledTextBox("Lot Id Wire", halfW);
@@ -883,10 +894,26 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _txtLotIdWire.TextChanged += (s, e) => ResetAutoSaveTimer();
             card.Controls.Add(_txtLotIdWire);
 
-            _txtCutL = CreateStyledTextBox("0", halfW);
-            _txtCutL.Location = new Point(_txtLotIdWire.Right + 8, y);
-            _txtCutL.TextChanged += (s, e) => ResetAutoSaveTimer();
-            card.Controls.Add(_txtCutL);
+            _txtIssueKanban = CreateStyledTextBox("Issue Kanban", halfW);
+            _txtIssueKanban.Location = new Point(_txtLotIdWire.Right + 8, y);
+            _txtIssueKanban.TextChanged += (s, e) => ResetAutoSaveTimer();
+            card.Controls.Add(_txtIssueKanban);
+            y += 42;
+
+            // Lot Id Terminal A & Lot Id Terminal B side by side
+            card.Controls.Add(new Label { Text = "Lot Id Terminal A", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Lot Id Terminal B", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16 + halfW + 8, y) });
+            y += 20;
+
+            _txtLotIdTerminalA = CreateStyledTextBox("Lot Id Terminal A", halfW);
+            _txtLotIdTerminalA.Location = new Point(16, y);
+            _txtLotIdTerminalA.TextChanged += (s, e) => ResetAutoSaveTimer();
+            card.Controls.Add(_txtLotIdTerminalA);
+
+            _txtLotIdTerminalB = CreateStyledTextBox("Lot Id Terminal B", halfW);
+            _txtLotIdTerminalB.Location = new Point(_txtLotIdTerminalA.Right + 8, y);
+            _txtLotIdTerminalB.TextChanged += (s, e) => ResetAutoSaveTimer();
+            card.Controls.Add(_txtLotIdTerminalB);
             y += 42;
 
             // QTY Produksi
@@ -986,11 +1013,18 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(_txtDefectOperator);
             y += 48;
 
-            // Button Simpan saja
-            var btnSave = new Button { Text = "\u2713 Simpan", Font = new Font("Segoe UI", 10F, FontStyle.Bold), Size = new Size(fw, 40), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(16, 185, 129), ForeColor = Color.White, Cursor = Cursors.Hand };
+            // Button Simpan
+            var btnSave = new Button { Text = "\u2713 Simpan", Font = new Font("Segoe UI", 9.5F, FontStyle.Bold), Size = new Size(fw, 34), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(16, 185, 129), ForeColor = Color.White, Cursor = Cursors.Hand };
             btnSave.FlatAppearance.BorderSize = 0;
             btnSave.Click += BtnSimpanAktivitas_Click;
             card.Controls.Add(btnSave);
+            y += 38;
+
+            // Button Lihat Record
+            var btnLihatRecord = new Button { Text = "📋 Lihat Record", Font = new Font("Segoe UI", 9F, FontStyle.Regular), Size = new Size(fw, 30), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(59, 130, 246), ForeColor = Color.White, Cursor = Cursors.Hand };
+            btnLihatRecord.FlatAppearance.BorderSize = 0;
+            btnLihatRecord.Click += (s, e) => ShowSavedRecordsPopup();
+            card.Controls.Add(btnLihatRecord);
 
             return card;
         }
@@ -1064,6 +1098,9 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 QtyDefectOperator = defectOperator,
                 KodeDefect = kodeDefect,
                 LotIdWire = _txtLotIdWire.Text.Trim(),
+                LotIdTerminalA = _txtLotIdTerminalA.Text.Trim(),
+                LotIdTerminalB = _txtLotIdTerminalB.Text.Trim(),
+                IssueKanban = _txtIssueKanban.Text.Trim(),
                 CutLength = _txtCutL.Text.Trim(),
 
                 // Master data
@@ -1308,6 +1345,9 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     QtyDefectOperator = 0,
                     KodeDefect = "",
                     LotIdWire = "",
+                    LotIdTerminalA = "",
+                    LotIdTerminalB = "",
+                    IssueKanban = "",
                     CutLength = rowData.Master?.CutLength ?? "",
                     KombinasiWire = rowData.Master?.KombinasiWire ?? "",
                     TerminalA = rowData.Master?.TerminalA ?? "",
@@ -1562,6 +1602,9 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _txtQtyProduksi.Text = rowData.DbRecord != null ? rowData.DbRecord.QtyProduct.ToString() : (rowData.Log?.QtyProduk ?? "");
             _txtCutL.Text = rowData.DbRecord != null && !string.IsNullOrEmpty(rowData.DbRecord.CutLength) ? rowData.DbRecord.CutLength : (!string.IsNullOrWhiteSpace(rowData.Master?.CutLength) ? rowData.Master.CutLength : "0");
             _txtLotIdWire.Text = rowData.DbRecord?.LotIdWire ?? "";
+            _txtLotIdTerminalA.Text = rowData.DbRecord?.LotIdTerminalA ?? "";
+            _txtLotIdTerminalB.Text = rowData.DbRecord?.LotIdTerminalB ?? "";
+            _txtIssueKanban.Text = rowData.DbRecord?.IssueKanban ?? "";
             _txtDefectMesin.Text = rowData.Log?.QtyDefect ?? "0";
 
             // Load dari DB record jika ada
@@ -1762,15 +1805,15 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             };
             canvas.Controls.Add(lblZoom);
 
-            // Tombol close
+            // Tombol close — besar dan mencolok agar mudah ditemukan
             var btnClose = new Button
             {
-                Text = "✕ Tutup",
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Text = "✕ TUTUP",
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
                 ForeColor = Color.White,
-                BackColor = Color.FromArgb(180, 220, 38, 38),
+                BackColor = Color.FromArgb(220, 38, 38),
                 FlatStyle = FlatStyle.Flat,
-                Size = new Size(90, 36),
+                Size = new Size(130, 44),
                 Cursor = Cursors.Hand
             };
             btnClose.FlatAppearance.BorderSize = 0;
@@ -1779,10 +1822,13 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             btnClose.Click += (s, ev) => popup.Close();
             canvas.Controls.Add(btnClose);
 
+            // Klik kanan di mana saja juga bisa close
+            canvas.MouseClick += (s, ev) => { if (ev.Button == MouseButtons.Right) popup.Close(); };
+
             // Label instruksi
             var lblHelp = new Label
             {
-                Text = "Scroll = Zoom  |  Drag = Geser  |  Klik Tutup / tekan Esc",
+                Text = "Scroll = Zoom  |  Drag = Geser  |  Klik kanan / Esc = Tutup",
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Color.FromArgb(180, 180, 180),
                 AutoSize = true,
@@ -1865,10 +1911,195 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             popup.ShowDialog(this);
         }
+        // =====================================================================
+        //  POPUP: LIHAT SEMUA RECORD TERSIMPAN
+        // =====================================================================
+        private async void ShowSavedRecordsPopup()
+        {
+            var popup = new Form
+            {
+                Text = "Record LKO Tersimpan",
+                StartPosition = FormStartPosition.CenterScreen,
+                Size = new Size(
+                    Math.Min(Screen.PrimaryScreen.WorkingArea.Width - 60, 1400),
+                    Math.Min(Screen.PrimaryScreen.WorkingArea.Height - 60, 800)),
+                BackColor = Color.FromArgb(243, 244, 246),
+                FormBorderStyle = FormBorderStyle.Sizable,
+                MinimizeBox = false,
+                MaximizeBox = true,
+                KeyPreview = true
+            };
+            popup.KeyDown += (s, ev) => { if (ev.KeyCode == Keys.Escape) popup.Close(); };
 
-        // =====================================================================
-        //  NATIVE METHODS (for window dragging)
-        // =====================================================================
+            // Title label
+            var lblTitle = new Label
+            {
+                Text = "📋 Record LKO Tersimpan — " + GetEffectiveMachineNumber(),
+                Font = new Font("Segoe UI", 13F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(15, 23, 42),
+                AutoSize = true,
+                Location = new Point(16, 12)
+            };
+            popup.Controls.Add(lblTitle);
+
+            // Close button
+            var btnClose = new Button
+            {
+                Text = "✕ Tutup",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(220, 38, 38),
+                FlatStyle = FlatStyle.Flat,
+                Size = new Size(100, 36),
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            btnClose.FlatAppearance.BorderSize = 0;
+            btnClose.Location = new Point(popup.ClientSize.Width - btnClose.Width - 16, 10);
+            btnClose.Click += (s, ev) => popup.Close();
+            popup.Controls.Add(btnClose);
+
+            // DataGridView
+            var dgv = new DataGridView
+            {
+                Location = new Point(16, 52),
+                Size = new Size(popup.ClientSize.Width - 32, popup.ClientSize.Height - 68),
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                ReadOnly = true,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.FixedSingle,
+                RowHeadersVisible = false,
+                Font = new Font("Segoe UI", 9F),
+                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+                {
+                    BackColor = Color.FromArgb(30, 41, 59),
+                    ForeColor = Color.White,
+                    Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                    Alignment = DataGridViewContentAlignment.MiddleCenter,
+                    Padding = new Padding(4)
+                },
+                EnableHeadersVisualStyles = false,
+                RowTemplate = { Height = 28 },
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Padding = new Padding(4),
+                    SelectionBackColor = Color.FromArgb(219, 234, 254),
+                    SelectionForeColor = Color.FromArgb(15, 23, 42)
+                }
+            };
+            dgv.AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(248, 250, 252) };
+            popup.Controls.Add(dgv);
+
+            // Loading indicator
+            var lblLoading = new Label
+            {
+                Text = "⏳ Memuat data...",
+                Font = new Font("Segoe UI", 11F, FontStyle.Italic),
+                ForeColor = Color.FromArgb(100, 116, 139),
+                AutoSize = true,
+                Location = new Point(popup.ClientSize.Width / 2 - 60, popup.ClientSize.Height / 2)
+            };
+            popup.Controls.Add(lblLoading);
+            lblLoading.BringToFront();
+
+            popup.Show(this);
+
+            // Load data from DB
+            try
+            {
+                var records = await Task.Run(async () =>
+                {
+                    var repo = new mtc_app.features.operator_worksheet.data.repositories.LkoRepository();
+                    return await repo.GetTodayRecordsAsync(GetEffectiveMachineNumber());
+                });
+
+                lblLoading.Visible = false;
+
+                if (records == null || records.Count == 0)
+                {
+                    lblLoading.Text = "Belum ada record tersimpan hari ini.";
+                    lblLoading.Visible = true;
+                    return;
+                }
+
+                // Build DataTable for clean column names
+                var dt = new System.Data.DataTable();
+                dt.Columns.Add("No", typeof(int));
+                dt.Columns.Add("Waktu Simpan", typeof(string));
+                dt.Columns.Add("Sequen", typeof(string));
+                dt.Columns.Add("Urutan", typeof(string));
+                dt.Columns.Add("Shift", typeof(string));
+                dt.Columns.Add("NIK", typeof(string));
+                dt.Columns.Add("Kombinasi Wire", typeof(string));
+                dt.Columns.Add("Terminal A", typeof(string));
+                dt.Columns.Add("Terminal B", typeof(string));
+                dt.Columns.Add("Seal A", typeof(string));
+                dt.Columns.Add("Seal B", typeof(string));
+                dt.Columns.Add("Qty Master", typeof(string));
+                dt.Columns.Add("CutL", typeof(string));
+                dt.Columns.Add("Qty Produk", typeof(int));
+                dt.Columns.Add("Defect Mesin", typeof(int));
+                dt.Columns.Add("Defect Operator", typeof(int));
+                dt.Columns.Add("Kode Defect", typeof(string));
+                dt.Columns.Add("Lot Id Wire", typeof(string));
+                dt.Columns.Add("Lot Id Term A", typeof(string));
+                dt.Columns.Add("Lot Id Term B", typeof(string));
+                dt.Columns.Add("Issue Kanban", typeof(string));
+                dt.Columns.Add("Front CH A", typeof(string));
+                dt.Columns.Add("Front CW A", typeof(string));
+                dt.Columns.Add("Rear CH A", typeof(string));
+                dt.Columns.Add("Rear CW A", typeof(string));
+                dt.Columns.Add("Front CH B", typeof(string));
+                dt.Columns.Add("Front CW B", typeof(string));
+                dt.Columns.Add("Rear CH B", typeof(string));
+                dt.Columns.Add("Rear CW B", typeof(string));
+                dt.Columns.Add("Waktu Mulai", typeof(string));
+                dt.Columns.Add("Waktu Selesai", typeof(string));
+
+                int no = 1;
+                // Records already sorted DESC from repo, reverse to show oldest first
+                records.Reverse();
+                foreach (var r in records)
+                {
+                    dt.Rows.Add(
+                        no++,
+                        r.WaktuSimpan.ToString("yyyy-MM-dd HH:mm:ss"),
+                        r.Sequen, r.UrutanKanban,
+                        r.ShiftName, r.Nik,
+                        r.KombinasiWire,
+                        r.TerminalA, r.TerminalB,
+                        r.SealA, r.SealB,
+                        r.QtyMaster, r.CutLength,
+                        r.QtyProduct, r.QtyDefectMesin, r.QtyDefectOperator,
+                        r.KodeDefect,
+                        r.LotIdWire, r.LotIdTerminalA, r.LotIdTerminalB,
+                        r.IssueKanban,
+                        r.FrontChA, r.FrontCwA, r.RearChA, r.RearCwA,
+                        r.FrontChB, r.FrontCwB, r.RearChB, r.RearCwB,
+                        r.WaktuMulai, r.WaktuSelesai
+                    );
+                }
+
+                dgv.DataSource = dt;
+
+                // Kolom No kecil saja
+                if (dgv.Columns.Contains("No"))
+                    dgv.Columns["No"].Width = 40;
+
+                lblTitle.Text = $"📋 Record LKO Tersimpan — {GetEffectiveMachineNumber()} ({records.Count} record)";
+            }
+            catch (Exception ex)
+            {
+                lblLoading.Text = $"❌ Gagal memuat data: {ex.Message}";
+                lblLoading.ForeColor = Color.FromArgb(220, 38, 38);
+            }
+        }
+
+
         private static class NativeMethods
         {
             [System.Runtime.InteropServices.DllImport("user32.dll")]

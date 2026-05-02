@@ -75,6 +75,9 @@ namespace mtc_app.features.operator_worksheet.data.dtos
         public int QtyDefectOperator { get; set; } = 0;
         public string KodeDefect { get; set; } = string.Empty;
         public string LotIdWire { get; set; } = string.Empty;
+        public string LotIdTerminalA { get; set; } = string.Empty;
+        public string LotIdTerminalB { get; set; } = string.Empty;
+        public string IssueKanban { get; set; } = string.Empty;
         public string CutLength { get; set; } = string.Empty;
 
         // Master data (prdmst)
