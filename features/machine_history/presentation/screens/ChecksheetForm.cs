@@ -93,8 +93,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Width = 150,
                 Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
-            cmbShift.Items.Add("Shift A");
-            cmbShift.Items.Add("Shift B");
+            cmbShift.Items.Add("Shift Pagi");
+            cmbShift.Items.Add("Shift Malam");
             
             DateTime now = DateTime.Now;
             cmbShift.SelectedIndex = (now.TimeOfDay >= new TimeSpan(7, 0, 0) && now.TimeOfDay < new TimeSpan(19, 0, 0)) ? 0 : 1;
@@ -341,7 +341,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     // 1. Catat Header Patroli
-                    string currentShift = cmbShift.SelectedItem.ToString() == "Shift A" ? "A" : "B";
+                    string currentShift = cmbShift.SelectedItem.ToString() == "Shift Pagi" ? "A" : "B";
                     string insertLogSql = "INSERT INTO patrol_logs (machine_id, user_nik, shift) VALUES (@MachId, @Nik, @Shift); SELECT LAST_INSERT_ID();";
                     int logId = conn.QuerySingle<int>(insertLogSql, new { MachId = _currentMachineId, Nik = userNik, Shift = currentShift });
 
