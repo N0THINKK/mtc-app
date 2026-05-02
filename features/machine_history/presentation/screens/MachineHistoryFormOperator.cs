@@ -24,14 +24,6 @@ namespace mtc_app.features.machine_history.presentation.screens
         private readonly IMachineHistoryRepository _repository;
         private readonly IMasterDataRepository _masterDataRepository;
         
-        // Excel paths for MasterAplikator (same as applicator patrol)
-        private static readonly Dictionary<string, string> ExcelPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "AC90", @"C:\AC90HMI\MasterAplikator.xls" },
-            { "AC95", @"D:\AC95HMI\MasterAplikator.xls" },
-            { "AC81", @"" }
-        };
-        
         // Header Inputs
         private AppInput inputOperatorNik; // [BARU] Input untuk NIK Operator
         private AppInput inputShift;
@@ -409,27 +401,15 @@ namespace mtc_app.features.machine_history.presentation.screens
                     if (machine != null) machineCode = machine.Code ?? "";
                 }
 
-                // Find matching Excel path
-                string excelPath = null;
-                foreach (var key in ExcelPaths.Keys)
+                // Hardcode Excel path based on request
+                string excelPath = @"C:\MTC_System\Data\MasterAplikator.xls";
+                if (!File.Exists(excelPath))
                 {
-                    if (!string.IsNullOrEmpty(machineCode) && machineCode.StartsWith(key, StringComparison.OrdinalIgnoreCase))
-                    {
-                        string configured = ExcelPaths[key];
-                        if (!string.IsNullOrEmpty(configured))
-                        {
-                            excelPath = Path.IsPathRooted(configured) ? configured : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, configured);
-                            if (!File.Exists(excelPath) && excelPath.EndsWith(".xls", StringComparison.OrdinalIgnoreCase))
-                            {
-                                string fallback = excelPath + "x";
-                                if (File.Exists(fallback)) excelPath = fallback;
-                            }
-                        }
-                        break;
-                    }
+                    string fallback = excelPath + "x";
+                    if (File.Exists(fallback)) excelPath = fallback;
                 }
 
-                if (string.IsNullOrEmpty(excelPath) || !File.Exists(excelPath)) return;
+                if (!File.Exists(excelPath)) return;
 
                 // Read applicators from MasterAplikator.xls
                 var (sideA, sideB) = ApplicatorExcelReader.ReadApplicators(excelPath, machineCode);

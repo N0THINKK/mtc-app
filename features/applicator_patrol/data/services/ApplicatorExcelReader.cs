@@ -45,6 +45,7 @@ namespace mtc_app.features.applicator_patrol.data.services
                             int colNoMesin = GetColumnIndex(table, "NoMesin");
                             int colNoApplikator = GetColumnIndex(table, "NoApplikator");
                             int colSisi = GetColumnIndex(table, "Sisi");
+                            int colSerial = GetColumnIndex(table, "Serial");
 
                             if (colNoMesin != -1 && colNoApplikator != -1 && colSisi != -1)
                             {
@@ -64,11 +65,13 @@ namespace mtc_app.features.applicator_patrol.data.services
                                     {
                                         string sisi = row[colSisi]?.ToString()?.Trim().ToUpper() ?? "";
                                         string applicator = row[colNoApplikator]?.ToString()?.Trim() ?? "";
+                                        string serial = colSerial != -1 ? (row[colSerial]?.ToString()?.Trim() ?? "") : "";
 
                                         if (!string.IsNullOrEmpty(applicator))
                                         {
-                                            if (sisi == "A") sideA.Add(applicator);
-                                            else if (sisi == "B") sideB.Add(applicator);
+                                            string displayValue = string.IsNullOrEmpty(serial) ? applicator : $"{applicator}  ({serial})";
+                                            if (sisi == "A") sideA.Add(displayValue);
+                                            else if (sisi == "B") sideB.Add(displayValue);
                                         }
                                     }
                                 }

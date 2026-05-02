@@ -11,6 +11,12 @@ namespace mtc_app.features.operator_worksheet.services
         private readonly MachineFileRepository _fileRepository;
         private readonly ILkoRepository _dbRepository;
 
+        /// <summary>
+        /// Apakah data PrdLog terakhir dibaca dari XML (AC95)?
+        /// UI bisa gunakan ini untuk mengganti label kolom "Urutan" → "Waktu".
+        /// </summary>
+        public bool IsXmlSource => _fileRepository.IsXmlSource;
+
         public LkoService()
         {
             _fileRepository = new MachineFileRepository();

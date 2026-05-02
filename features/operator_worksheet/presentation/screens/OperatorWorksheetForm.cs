@@ -1383,7 +1383,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 DefaultCellStyle = new DataGridViewCellStyle { SelectionBackColor = Color.FromArgb(220, 252, 231), SelectionForeColor = Color.FromArgb(15, 23, 42), Padding = new Padding(4) }
             };
             _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "DisplaySequen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
-            _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", Width = 80 });
+            _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", Width = 80 });
 
             _dgvTersimpan.SelectionChanged += DgvTersimpan_SelectionChanged;
 
@@ -1415,6 +1415,22 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
                 // Update UI SECARA INSTAN dengan data lokal yang sudah diparse
                 _dgvSequen.DataSource = _worksheetData;
+
+                // Jika sumber data XML (AC95), ganti label kolom "Urutan" → "Waktu"
+                if (_lkoService.IsXmlSource)
+                {
+                    if (_dgvSequen.Columns.Contains("Urutan"))
+                        _dgvSequen.Columns["Urutan"].HeaderText = "Waktu";
+                    if (_dgvTersimpan.Columns.Contains("Urutan"))
+                        _dgvTersimpan.Columns["Urutan"].HeaderText = "Waktu";
+                }
+                else
+                {
+                    if (_dgvSequen.Columns.Contains("Urutan"))
+                        _dgvSequen.Columns["Urutan"].HeaderText = "Urutan";
+                    if (_dgvTersimpan.Columns.Contains("Urutan"))
+                        _dgvTersimpan.Columns["Urutan"].HeaderText = "Urutan";
+                }
                 
                 // Mulai background process untuk sinkronisasi DB (bisa makan waktu kalau koneksi jelek)
                 _ = Task.Run(async () =>

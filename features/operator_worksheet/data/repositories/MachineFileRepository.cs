@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using mtc_app.features.operator_worksheet.data.dtos;
 
 namespace mtc_app.features.operator_worksheet.data.repositories
@@ -16,42 +17,112 @@ namespace mtc_app.features.operator_worksheet.data.repositories
             _baseDir = baseDir;
         }
 
+        /// <summary>
+        /// Flag apakah data PrdLog terakhir yang dibaca berasal dari XML (AC95).
+        /// Digunakan oleh UI untuk mengganti label kolom "Urutan" → "Waktu".
+        /// </summary>
+        public bool IsXmlSource { get; private set; } = false;
+
         public List<PrdLogDto> GetPrdLogs()
         {
             var result = new List<PrdLogDto>();
             string filePath = Path.Combine(_baseDir, "PrdLog.csv");
-            
-            if (!File.Exists(filePath)) return result;
 
-            try
+            // Jika PrdLog.csv ada (AC90), baca dari CSV
+            if (File.Exists(filePath))
             {
-                using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                using (var sr = new StreamReader(fs))
+                IsXmlSource = false;
+                try
                 {
-                    string line;
-                    while ((line = sr.ReadLine()) != null)
+                    using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    using (var sr = new StreamReader(fs))
                     {
-                        if (string.IsNullOrWhiteSpace(line)) continue;
-                        
-                        var parts = line.Split(',');
-                        if (parts.Length >= 6)
+                        string line;
+                        while ((line = sr.ReadLine()) != null)
                         {
-                            result.Add(new PrdLogDto
+                            if (string.IsNullOrWhiteSpace(line)) continue;
+                            
+                            var parts = line.Split(',');
+                            if (parts.Length >= 6)
                             {
-                                Sequen = parts[0]?.Trim(),
-                                UrutanPengerjaan = parts[1]?.Trim(),
-                                WaktuMulaiPengerjaan = parts[2]?.Trim(),
-                                WaktuSelesaiPengerjaan = parts[3]?.Trim(),
-                                QtyProduk = parts[4]?.Trim(),
-                                QtyDefect = parts[5]?.Trim()
-                            });
+                                result.Add(new PrdLogDto
+                                {
+                                    Sequen = parts[0]?.Trim(),
+                                    UrutanPengerjaan = parts[1]?.Trim(),
+                                    WaktuMulaiPengerjaan = parts[2]?.Trim(),
+                                    WaktuSelesaiPengerjaan = parts[3]?.Trim(),
+                                    QtyProduk = parts[4]?.Trim(),
+                                    QtyDefect = parts[5]?.Trim()
+                                });
+                            }
                         }
                     }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error reading PrdLog.csv: {ex.Message}");
+                }
+                return result;
+            }
+
+            // Fallback: cek ProductionLog.xml untuk AC95
+            string[] xmlFallbacks = new[]
+            {
+                @"D:\AC95\prg\HMI\RelationalData\ProductionLog.xml",
+                @"C:\AC95\prg\HMI\RelationalData\ProductionLog.xml"
+            };
+
+            string xmlPath = null;
+            foreach (var fb in xmlFallbacks)
+            {
+                if (File.Exists(fb)) { xmlPath = fb; break; }
+            }
+
+            if (xmlPath == null) return result;
+
+            IsXmlSource = true;
+            try
+            {
+                XDocument doc;
+                using (var fs = new FileStream(xmlPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    doc = XDocument.Load(fs);
+                }
+
+                // Namespace dari XML: http://schemas.datacontract.org/2004/07/AWP_HMI.Models.Production.Private
+                XNamespace ns = doc.Root.GetDefaultNamespace();
+
+                foreach (var el in doc.Root.Elements(ns + "ProductionLog"))
+                {
+                    string jobNo = el.Element(ns + "_jobNo")?.Value?.Trim() ?? "";
+                    string endDt = el.Element(ns + "_endDateTime")?.Value?.Trim() ?? "";
+                    string startDt = el.Element(ns + "_startDateTime")?.Value?.Trim() ?? "";
+                    string goodPiece = el.Element(ns + "_goodPiece")?.Value?.Trim() ?? "0";
+                    string missPiece = el.Element(ns + "_missPiece")?.Value?.Trim() ?? "0";
+
+                    // Format datetime agar ringkas untuk kolom "Waktu"
+                    string displayEnd = endDt;
+                    if (DateTime.TryParse(endDt, out DateTime dtEnd))
+                        displayEnd = dtEnd.ToString("HH:mm:ss");
+
+                    string displayStart = startDt;
+                    if (DateTime.TryParse(startDt, out DateTime dtStart))
+                        displayStart = dtStart.ToString("HH:mm:ss");
+
+                    result.Add(new PrdLogDto
+                    {
+                        Sequen = jobNo,
+                        UrutanPengerjaan = displayEnd,          // Di AC95: kolom "Urutan" diganti "Waktu" (end time)
+                        WaktuMulaiPengerjaan = displayStart,
+                        WaktuSelesaiPengerjaan = displayEnd,
+                        QtyProduk = goodPiece,
+                        QtyDefect = missPiece
+                    });
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error reading PrdLog.csv: {ex.Message}");
+                Console.WriteLine($"Error reading ProductionLog.xml: {ex.Message}");
             }
 
             return result;
@@ -62,7 +133,27 @@ namespace mtc_app.features.operator_worksheet.data.repositories
             var result = new List<PrdmstDto>();
             string filePath = Path.Combine(_baseDir, "prdmst.csv");
             
-            if (!File.Exists(filePath)) return result;
+            if (!File.Exists(filePath))
+            {
+                string[] fallbacks = new[]
+                {
+                    @"D:\AC95\Kanban\prdmst.csv",
+                    @"C:\AC95\Kanban\prdmst.csv"
+                };
+
+                bool found = false;
+                foreach (var fb in fallbacks)
+                {
+                    if (File.Exists(fb))
+                    {
+                        filePath = fb;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) return result;
+            }
 
             try
             {
@@ -116,15 +207,29 @@ namespace mtc_app.features.operator_worksheet.data.repositories
             System.Diagnostics.Debug.WriteLine($"[JISSK] Looking for file: {filePath}");
             System.Diagnostics.Debug.WriteLine($"[JISSK] File exists: {File.Exists(filePath)}");
 
-            // Fallback: cek langsung di C:\AC90HMI jika tidak ada di prg
+            // Fallback: cek di beberapa path alternatif
             if (!File.Exists(filePath))
             {
-                string fallback = @"C:\AC90HMI\Jissk.dat";
-                System.Diagnostics.Debug.WriteLine($"[JISSK] Trying fallback: {fallback}, exists: {File.Exists(fallback)}");
-                if (File.Exists(fallback))
-                    filePath = fallback;
-                else
-                    return result;
+                string[] fallbacks = new[]
+                {
+                    @"C:\AC90HMI\Jissk.dat",
+                    @"D:\AC95\Backup Jissk\jissk.dat",
+                    @"C:\AC95\Backup Jissk\jissk.dat"
+                };
+
+                bool found = false;
+                foreach (var fb in fallbacks)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[JISSK] Trying fallback: {fb}, exists: {File.Exists(fb)}");
+                    if (File.Exists(fb))
+                    {
+                        filePath = fb;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) return result;
             }
 
             // Regex: angka desimal format X.XXX (3 digit di belakang titik)

@@ -19,14 +19,6 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
 {
     public class ApplicatorPatrolForm : Form
     {
-        // ── Konfigurasi path Excel per tipe mesin (path ABSOLUT) ───
-        private static readonly Dictionary<string, string> ExcelPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "AC90", @"C:\AC90HMI\MasterAplikator.xls" },
-            { "AC95", @"D:\AC95HMI\MasterAplikator.xls" },
-            { "AC81", @"" },   // TODO: isi path setelah diketahui
-        };
-
         // ── Layout constants ─────────────────────────────────────────────
         //  Semua zona berbagi Y yang sama agar sejajar (satu layer)
         //
@@ -389,40 +381,13 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
 
         private string ResolveExcelPath(string machineCode)
         {
-            foreach (var key in ExcelPaths.Keys)
+            string excelPath = @"C:\MTC_System\Data\MasterAplikator.xls";
+            if (!System.IO.File.Exists(excelPath))
             {
-                if (!string.IsNullOrEmpty(machineCode) && machineCode.StartsWith(key, StringComparison.OrdinalIgnoreCase))
-                {
-                    string configured = ExcelPaths[key];
-                    if (string.IsNullOrEmpty(configured)) return null;
-                    
-                    string primaryPath = System.IO.Path.IsPathRooted(configured)
-                        ? configured
-                        : System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, configured);
-
-                    // Check primary (.xls or .xlsx fallback)
-                    if (System.IO.File.Exists(primaryPath)) return primaryPath;
-                    if (primaryPath.EndsWith(".xls", StringComparison.OrdinalIgnoreCase))
-                    {
-                        string primaryXlsx = primaryPath + "x";
-                        if (System.IO.File.Exists(primaryXlsx)) return primaryXlsx;
-                    }
-
-                    // Fallback to C:\MTC_System\Data
-                    string fileName = System.IO.Path.GetFileName(configured);
-                    string mtcPath = System.IO.Path.Combine(@"C:\MTC_System\Data", fileName);
-                    
-                    if (System.IO.File.Exists(mtcPath)) return mtcPath;
-                    if (mtcPath.EndsWith(".xls", StringComparison.OrdinalIgnoreCase))
-                    {
-                        string mtcXlsx = mtcPath + "x";
-                        if (System.IO.File.Exists(mtcXlsx)) return mtcXlsx;
-                    }
-
-                    return primaryPath; // Return primary as default even if not exists (to show warning)
-                }
+                string fallback = excelPath + "x";
+                if (System.IO.File.Exists(fallback)) excelPath = fallback;
             }
-            return null;
+            return excelPath;
         }
 
         // ═════════════════════════════════════════════════════════════════
