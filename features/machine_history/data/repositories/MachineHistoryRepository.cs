@@ -342,7 +342,11 @@ namespace mtc_app.features.machine_history.data.repositories
                 var rawData = await connection.QueryAsync(rawDataSql, new { MachId = machineId, TempId = templateId, RoleTarget = roleTarget, Start = startDate });
 
                 // 2. Tentukan Kolom (Berdasarkan Tanggal yang unik dari data yang sudah difilter)
-                var distinctDates = rawData.Select(r => $"{((DateTime)r.PatrolDate).ToString("dd/MM/yyyy")} ({r.Shift})").Distinct().ToList();
+                var rawDataList = rawData.ToList();
+                var distinctDates = rawDataList.Select(r => {
+                    string shiftName = r.Shift == "A" ? "Pagi" : (r.Shift == "B" ? "Malam" : r.Shift);
+                    return $"{((DateTime)r.PatrolDate).ToString("dd/MM/yyyy")} ({shiftName})";
+                }).Distinct().ToList();
 
                 foreach (var dateStr in distinctDates)
                 {
@@ -367,7 +371,10 @@ namespace mtc_app.features.machine_history.data.repositories
                     // 4. Isi cell dengan mencocokkan item ID dan Tanggal
                     foreach (var dateCol in distinctDates)
                     {
-                        var matchingRecords = rawData.Where(r => (int)r.ItemId == itemId && $"{((DateTime)r.PatrolDate).ToString("dd/MM/yyyy")} ({r.Shift})" == dateCol);
+                        var matchingRecords = rawDataList.Where(r => {
+                            string shiftName = r.Shift == "A" ? "Pagi" : (r.Shift == "B" ? "Malam" : r.Shift);
+                            return (int)r.ItemId == itemId && $"{((DateTime)r.PatrolDate).ToString("dd/MM/yyyy")} ({shiftName})" == dateCol;
+                        });
                         
                         if (matchingRecords.Any())
                         {
