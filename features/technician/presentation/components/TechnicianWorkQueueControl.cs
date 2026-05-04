@@ -18,6 +18,8 @@ namespace mtc_app.features.technician.presentation.components
         private List<TicketDto> _allTickets = new List<TicketDto>();
         private bool _isSystemActive = true;
         private bool _isLoading = false;
+        private DateTime _currentStart = DateTime.Now.Date;
+        private DateTime _currentEnd = DateTime.Now.Date.AddDays(1).AddSeconds(-1);
 
         // UI Controls
         private Panel panelHeader;
@@ -306,13 +308,16 @@ namespace mtc_app.features.technician.presentation.components
         // Data Loading & Rendering
         // ========================================================
         // [UPDATE] Mempertahankan fitur Mesin Beroperasi (a/b)
-        public async void LoadData()
+        public async void LoadData(DateTime? start = null, DateTime? end = null)
         {
+            if (start.HasValue) _currentStart = start.Value;
+            if (end.HasValue) _currentEnd = end.Value;
+            
             if (_isLoading) return;
             _isLoading = true;
             try
             {
-                var ticketsRaw = await _repository.GetActiveTicketsAsync();
+                var ticketsRaw = await _repository.GetActiveTicketsAsync(_currentStart, _currentEnd);
                 _allTickets = ticketsRaw.ToList();
                 
                 pnlTicketList.SuspendLayout();

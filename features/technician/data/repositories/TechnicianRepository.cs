@@ -9,7 +9,7 @@ namespace mtc_app.features.technician.data.repositories
 {
     public class TechnicianRepository : ITechnicianRepository
     {
-        public async Task<IEnumerable<TicketDto>> GetActiveTicketsAsync()
+        public async Task<IEnumerable<TicketDto>> GetActiveTicketsAsync(DateTime start, DateTime end)
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
@@ -63,10 +63,10 @@ namespace mtc_app.features.technician.data.repositories
                     LEFT JOIN machine_types m_type ON m.type_id = m_type.type_id
                     LEFT JOIN machine_areas m_area ON m.area_id = m_area.area_id
                     LEFT JOIN users u ON t.technician_id = u.user_id
-                    WHERE t.status_id >= 1
+                    WHERE t.status_id >= 1 AND t.created_at BETWEEN @Start AND @End
                     ORDER BY t.created_at DESC";
                 
-                return await connection.QueryAsync<TicketDto>(sql, commandTimeout: 120);
+                return await connection.QueryAsync<TicketDto>(sql, new { Start = start, End = end }, commandTimeout: 120);
             }
         }
 

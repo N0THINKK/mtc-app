@@ -7,7 +7,7 @@ namespace mtc_app.features.technician.data.repositories
 {
     public interface ITechnicianRepository
     {
-        Task<IEnumerable<TicketDto>> GetActiveTicketsAsync();
+        Task<IEnumerable<TicketDto>> GetActiveTicketsAsync(DateTime start, DateTime end);
         Task<TechnicianStatsDto> GetTechnicianStatisticsAsync(long technicianId);
         Task<TechnicianTicketDetailDto> GetTicketDetailAsync(long ticketId);
         Task<IEnumerable<TechnicianPerformanceDto>> GetLeaderboardAsync(DateTime start, DateTime end);
