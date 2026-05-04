@@ -781,6 +781,7 @@ namespace mtc_app.features.technician.presentation.components
         private void UpdateChart(List<MachineData> data, string mode, int currentHourCount, int maxBreakMinutes)
         {
             _chart.Series.Clear();
+            _chart.Annotations.Clear();
             var area = _chart.ChartAreas[0];
 
             area.AxisY.Minimum = 0;
@@ -1017,6 +1018,19 @@ namespace mtc_app.features.technician.presentation.components
 
                     sEffLabel.Points[p3].MarkerStyle = MarkerStyle.None;
                 }
+
+                double avgEfficiency = data.Count > 0 ? data.Average(x => x.Efficiency) : 0;
+                var avgAnnotation = new TextAnnotation
+                {
+                    Text = $"AVG: {avgEfficiency:F1}%",
+                    Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(64, 64, 64),
+                    X = 85,
+                    Y = 5,
+                    Alignment = ContentAlignment.TopRight
+                };
+                _chart.Annotations.Add(avgAnnotation);
+
                 _chart.Series.Add(sAuto);
                 _chart.Series.Add(sBreak);
                 _chart.Series.Add(sPlanned);
