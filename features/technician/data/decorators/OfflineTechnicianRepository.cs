@@ -30,7 +30,7 @@ namespace mtc_app.features.technician.data.decorators
         /// <summary>
         /// Gets active tickets. Falls back to cached tickets when offline.
         /// </summary>
-        public async Task<IEnumerable<TicketDto>> GetActiveTicketsAsync()
+        public async Task<IEnumerable<TicketDto>> GetActiveTicketsAsync(DateTime start, DateTime end)
         {
             if (!_networkMonitor.IsOnline)
             {
@@ -40,7 +40,7 @@ namespace mtc_app.features.technician.data.decorators
 
             try
             {
-                return await _innerRepository.GetActiveTicketsAsync();
+                return await _innerRepository.GetActiveTicketsAsync(start, end);
             }
             catch (Exception ex) when (IsNetworkException(ex))
             {

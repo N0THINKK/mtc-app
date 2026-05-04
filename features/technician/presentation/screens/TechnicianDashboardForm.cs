@@ -321,7 +321,11 @@ namespace mtc_app.features.technician.presentation.screens
             DateTime start = dtpStart.Value.Date;
             DateTime end = dtpEnd.Value.Date.AddDays(1).AddSeconds(-1); 
 
-            if (tabControl.SelectedIndex == 2) // Data Part
+            if (tabControl.SelectedIndex == 1) // Daftar Tunggu
+            {
+                workQueueControl.LoadData(start, end);
+            }
+            else if (tabControl.SelectedIndex == 2) // Data Part
             {
                 await stockDataControl.LoadDataAsync(start, end);
             }
