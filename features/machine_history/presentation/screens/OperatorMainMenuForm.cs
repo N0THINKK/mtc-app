@@ -362,8 +362,6 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             StopCurrentDowntime();
             var historyForm = new MachineHistoryFormOperator();
-            this.Hide();
-            historyForm.FormClosed += (s, args) => this.Show(); 
             historyForm.Show();
         }
 
@@ -371,8 +369,6 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             StopCurrentDowntime();
             var checkForm = new ChecksheetForm(isTeknisiMode: false);
-            this.Hide();
-            checkForm.FormClosed += (s, args) => this.Show();
             checkForm.Show();
         }
 
@@ -382,8 +378,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             var form = new ApplicatorPatrolForm(
                 mtc_app.shared.infrastructure.ServiceLocator.CreateApplicatorPatrolRepository(),
                 mtc_app.shared.infrastructure.ServiceLocator.CreateMasterDataRepository());
-            this.Hide();
-            form.FormClosed += (s, args) => this.Show();
             form.Show();
         }
 
@@ -393,8 +387,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             var microForm = new mtc_app.features.micrometer_patrol.presentation.screens.MicrometerPatrolForm(
                 mtc_app.shared.infrastructure.ServiceLocator.CreateMicrometerPatrolRepository(),
                 mtc_app.shared.infrastructure.ServiceLocator.CreateMasterDataRepository());
-            this.Hide();
-            microForm.FormClosed += (s, args) => this.Show();
             microForm.Show();
         }
 
@@ -402,8 +394,6 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             StopCurrentDowntime();
             var lkoForm = new OperatorWorksheetForm();
-            this.Hide();
-            lkoForm.FormClosed += (s, args) => this.Show();
             lkoForm.Show();
         }
 
