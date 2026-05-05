@@ -15,5 +15,10 @@ namespace mtc_app.features.operator_worksheet.data.repositories
         /// Ambil semua record LKO hari ini untuk mesin tertentu.
         /// </summary>
         Task<List<LkoRecordDto>> GetTodayRecordsAsync(string noMesin);
+
+        /// <summary>
+        /// Ambil semua record LKO pada tanggal tertentu untuk mesin tertentu.
+        /// </summary>
+        Task<List<LkoRecordDto>> GetRecordsByDateAsync(string noMesin, System.DateTime date);
     }
 }

@@ -316,5 +316,35 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                 Console.WriteLine($"Error updating PrdLog.csv: {ex.Message}");
             }
         }
+
+        public List<string> GetProductSequences()
+        {
+            var result = new List<string>();
+            string filePath = Path.Combine(_baseDir, "Product.csv");
+            if (!File.Exists(filePath)) return result;
+
+            try
+            {
+                using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var sr = new StreamReader(fs))
+                {
+                    string line;
+                    while ((line = sr.ReadLine()) != null)
+                    {
+                        if (string.IsNullOrWhiteSpace(line)) continue;
+                        var parts = line.Split(',');
+                        if (parts.Length > 0 && !string.IsNullOrWhiteSpace(parts[0]))
+                        {
+                            result.Add(parts[0].Trim());
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error reading Product.csv: {ex.Message}");
+            }
+            return result;
+        }
     }
 }

@@ -74,6 +74,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         
         // === Sequen Tersimpan (Kotak Kecil) ===
         private DataGridView _dgvTersimpan;
+        private DataGridView _dgvProduct;
 
         // === Gambar Terminal ===
         private PictureBox _picTerminal;
@@ -291,7 +292,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private void OnCsvFileChanged(object sender, FileSystemEventArgs e)
         {
             string name = e.Name?.ToLower() ?? "";
-            if (name == "prdlog.csv" || name == "prdmst.csv")
+            if (name == "prdlog.csv" || name == "prdmst.csv" || name == "product.csv")
             {
                 // Reset debounce timer (invoke on UI thread)
                 if (this.InvokeRequired)
@@ -1086,6 +1087,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             var record = new mtc_app.features.operator_worksheet.data.dtos.LkoRecordDto
             {
+                // Jika edit dari Tersimpan, carry over Id agar repo UPDATE bukan INSERT
+                Id = rowData.DbRecord?.Id ?? 0,
                 WaktuSimpan = DateTime.Now,
                 NoMesin = GetEffectiveMachineNumber(),
                 IdMesin = _activeMachineId,
@@ -1399,12 +1402,20 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private Panel CreateTersimpanPanel(int width, int height)
         {
             var card = CreateCard(width, height);
+
+            int halfWidth = (width - 40) / 2; // Subtracting padding and gap
+
+            // Label for Tersimpan
             card.Controls.Add(new Label { Text = "SUDAH TERSIMPAN", Font = new Font("Segoe UI", 11F, FontStyle.Bold), ForeColor = Color.FromArgb(34, 197, 94), AutoSize = true, Location = new Point(16, 12) });
 
+            // Label for Product (Belum Dikerjakan)
+            card.Controls.Add(new Label { Text = "ANTREAN BARCODE", Font = new Font("Segoe UI", 11F, FontStyle.Bold), ForeColor = Color.FromArgb(245, 158, 11), AutoSize = true, Location = new Point(16 + halfWidth + 8, 12) });
+
+            // Grid Tersimpan
             _dgvTersimpan = new DataGridView
             {
                 Location = new Point(16, 38),
-                Size = new Size(width - 32, height - 54),
+                Size = new Size(halfWidth, height - 54),
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.None,
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
@@ -1426,8 +1437,33 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", Width = 80 });
 
             _dgvTersimpan.SelectionChanged += DgvTersimpan_SelectionChanged;
-
             card.Controls.Add(_dgvTersimpan);
+
+            // Grid Product
+            _dgvProduct = new DataGridView
+            {
+                Location = new Point(16 + halfWidth + 8, 38),
+                Size = new Size(halfWidth, height - 54),
+                BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.None,
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                GridColor = Color.FromArgb(241, 245, 249),
+                RowHeadersVisible = false,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                ReadOnly = true,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AutoGenerateColumns = false,
+                Font = new Font("Segoe UI", 9.5F),
+                ColumnHeadersHeight = 32,
+                RowTemplate = { Height = 28 },
+                EnableHeadersVisualStyles = false,
+                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(254, 252, 232), ForeColor = Color.FromArgb(180, 83, 9), Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
+                DefaultCellStyle = new DataGridViewCellStyle { SelectionBackColor = Color.FromArgb(254, 243, 199), SelectionForeColor = Color.FromArgb(146, 64, 14), Padding = new Padding(4) }
+            };
+            _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "Sequen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            card.Controls.Add(_dgvProduct);
+
             return card;
         }
 
@@ -1455,6 +1491,12 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
                 // Update UI SECARA INSTAN dengan data lokal yang sudah diparse
                 _dgvSequen.DataSource = _worksheetData;
+
+                var pendingProducts = await Task.Run(() => 
+                {
+                    return _lkoService.GetPendingProductSequences();
+                });
+                _dgvProduct.DataSource = pendingProducts.Select(s => new { Sequen = s }).ToList();
 
                 // Jika sumber data XML (AC95), ganti label kolom "Urutan" → "Waktu"
                 if (_lkoService.IsXmlSource)
@@ -1959,6 +2001,27 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             btnClose.Click += (s, ev) => popup.Close();
             popup.Controls.Add(btnClose);
 
+            // Date Picker for Filtering
+            var dtpFilter = new DateTimePicker
+            {
+                Format = DateTimePickerFormat.Short,
+                Font = new Font("Segoe UI", 10F),
+                Size = new Size(120, 30),
+                Location = new Point(btnClose.Left - 136, 12),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            popup.Controls.Add(dtpFilter);
+            
+            var lblFilter = new Label
+            {
+                Text = "Tanggal:",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                AutoSize = true,
+                Location = new Point(dtpFilter.Left - 66, 15),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            popup.Controls.Add(lblFilter);
+
             // DataGridView
             var dgv = new DataGridView
             {
@@ -2006,97 +2069,112 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             popup.Controls.Add(lblLoading);
             lblLoading.BringToFront();
 
+            // Load Data Function
+            Action<DateTime> loadDataAction = async (targetDate) =>
+            {
+                lblLoading.Visible = true;
+                lblLoading.Text = "⏳ Memuat data...";
+                lblLoading.ForeColor = Color.FromArgb(100, 116, 139);
+                dgv.DataSource = null;
+
+                try
+                {
+                    var records = await Task.Run(async () =>
+                    {
+                        var repo = new mtc_app.features.operator_worksheet.data.repositories.LkoRepository();
+                        return await repo.GetRecordsByDateAsync(GetEffectiveMachineNumber(), targetDate);
+                    });
+
+                    lblLoading.Visible = false;
+
+                    if (records == null || records.Count == 0)
+                    {
+                        lblLoading.Text = "Belum ada record tersimpan pada tanggal tersebut.";
+                        lblLoading.Visible = true;
+                        lblTitle.Text = $"📋 Record LKO Tersimpan — {GetEffectiveMachineNumber()} (0 record)";
+                        return;
+                    }
+
+                    // Build DataTable for clean column names
+                    var dt = new System.Data.DataTable();
+                    dt.Columns.Add("No", typeof(int));
+                    dt.Columns.Add("Waktu Simpan", typeof(string));
+                    dt.Columns.Add("Sequen", typeof(string));
+                    dt.Columns.Add("Urutan", typeof(string));
+                    dt.Columns.Add("Shift", typeof(string));
+                    dt.Columns.Add("NIK", typeof(string));
+                    dt.Columns.Add("Kombinasi Wire", typeof(string));
+                    dt.Columns.Add("Terminal A", typeof(string));
+                    dt.Columns.Add("Terminal B", typeof(string));
+                    dt.Columns.Add("Seal A", typeof(string));
+                    dt.Columns.Add("Seal B", typeof(string));
+                    dt.Columns.Add("Qty Master", typeof(string));
+                    dt.Columns.Add("CutL", typeof(string));
+                    dt.Columns.Add("Qty Produk", typeof(int));
+                    dt.Columns.Add("Defect Mesin", typeof(int));
+                    dt.Columns.Add("Defect Operator", typeof(int));
+                    dt.Columns.Add("Kode Defect", typeof(string));
+                    dt.Columns.Add("Lot Id Wire", typeof(string));
+                    dt.Columns.Add("Lot Id Term A", typeof(string));
+                    dt.Columns.Add("Lot Id Term B", typeof(string));
+                    dt.Columns.Add("Issue Kanban", typeof(string));
+                    dt.Columns.Add("Front CH A", typeof(string));
+                    dt.Columns.Add("Front CW A", typeof(string));
+                    dt.Columns.Add("Rear CH A", typeof(string));
+                    dt.Columns.Add("Rear CW A", typeof(string));
+                    dt.Columns.Add("Front CH B", typeof(string));
+                    dt.Columns.Add("Front CW B", typeof(string));
+                    dt.Columns.Add("Rear CH B", typeof(string));
+                    dt.Columns.Add("Rear CW B", typeof(string));
+                    dt.Columns.Add("Waktu Mulai", typeof(string));
+                    dt.Columns.Add("Waktu Selesai", typeof(string));
+
+                    int no = 1;
+                    // Records already sorted DESC from repo, reverse to show oldest first
+                    records.Reverse();
+                    foreach (var r in records)
+                    {
+                        dt.Rows.Add(
+                            no++,
+                            r.WaktuSimpan.ToString("yyyy-MM-dd HH:mm:ss"),
+                            r.Sequen, r.UrutanKanban,
+                            r.ShiftName, r.Nik,
+                            r.KombinasiWire,
+                            r.TerminalA, r.TerminalB,
+                            r.SealA, r.SealB,
+                            r.QtyMaster, r.CutLength,
+                            r.QtyProduct, r.QtyDefectMesin, r.QtyDefectOperator,
+                            r.KodeDefect,
+                            r.LotIdWire, r.LotIdTerminalA, r.LotIdTerminalB,
+                            r.IssueKanban,
+                            r.FrontChA, r.FrontCwA, r.RearChA, r.RearCwA,
+                            r.FrontChB, r.FrontCwB, r.RearChB, r.RearCwB,
+                            r.WaktuMulai, r.WaktuSelesai
+                        );
+                    }
+
+                    dgv.DataSource = dt;
+
+                    // Kolom No kecil saja
+                    if (dgv.Columns.Contains("No"))
+                        dgv.Columns["No"].Width = 40;
+
+                    lblTitle.Text = $"📋 Record LKO Tersimpan — {GetEffectiveMachineNumber()} ({records.Count} record)";
+                }
+                catch (Exception ex)
+                {
+                    lblLoading.Text = $"❌ Gagal memuat data: {ex.Message}";
+                    lblLoading.ForeColor = Color.FromArgb(220, 38, 38);
+                }
+            };
+
+            // Event handler for DatePicker
+            dtpFilter.ValueChanged += (s, ev) => loadDataAction(dtpFilter.Value);
+
             popup.Show(this);
 
-            // Load data from DB
-            try
-            {
-                var records = await Task.Run(async () =>
-                {
-                    var repo = new mtc_app.features.operator_worksheet.data.repositories.LkoRepository();
-                    return await repo.GetTodayRecordsAsync(GetEffectiveMachineNumber());
-                });
-
-                lblLoading.Visible = false;
-
-                if (records == null || records.Count == 0)
-                {
-                    lblLoading.Text = "Belum ada record tersimpan hari ini.";
-                    lblLoading.Visible = true;
-                    return;
-                }
-
-                // Build DataTable for clean column names
-                var dt = new System.Data.DataTable();
-                dt.Columns.Add("No", typeof(int));
-                dt.Columns.Add("Waktu Simpan", typeof(string));
-                dt.Columns.Add("Sequen", typeof(string));
-                dt.Columns.Add("Urutan", typeof(string));
-                dt.Columns.Add("Shift", typeof(string));
-                dt.Columns.Add("NIK", typeof(string));
-                dt.Columns.Add("Kombinasi Wire", typeof(string));
-                dt.Columns.Add("Terminal A", typeof(string));
-                dt.Columns.Add("Terminal B", typeof(string));
-                dt.Columns.Add("Seal A", typeof(string));
-                dt.Columns.Add("Seal B", typeof(string));
-                dt.Columns.Add("Qty Master", typeof(string));
-                dt.Columns.Add("CutL", typeof(string));
-                dt.Columns.Add("Qty Produk", typeof(int));
-                dt.Columns.Add("Defect Mesin", typeof(int));
-                dt.Columns.Add("Defect Operator", typeof(int));
-                dt.Columns.Add("Kode Defect", typeof(string));
-                dt.Columns.Add("Lot Id Wire", typeof(string));
-                dt.Columns.Add("Lot Id Term A", typeof(string));
-                dt.Columns.Add("Lot Id Term B", typeof(string));
-                dt.Columns.Add("Issue Kanban", typeof(string));
-                dt.Columns.Add("Front CH A", typeof(string));
-                dt.Columns.Add("Front CW A", typeof(string));
-                dt.Columns.Add("Rear CH A", typeof(string));
-                dt.Columns.Add("Rear CW A", typeof(string));
-                dt.Columns.Add("Front CH B", typeof(string));
-                dt.Columns.Add("Front CW B", typeof(string));
-                dt.Columns.Add("Rear CH B", typeof(string));
-                dt.Columns.Add("Rear CW B", typeof(string));
-                dt.Columns.Add("Waktu Mulai", typeof(string));
-                dt.Columns.Add("Waktu Selesai", typeof(string));
-
-                int no = 1;
-                // Records already sorted DESC from repo, reverse to show oldest first
-                records.Reverse();
-                foreach (var r in records)
-                {
-                    dt.Rows.Add(
-                        no++,
-                        r.WaktuSimpan.ToString("yyyy-MM-dd HH:mm:ss"),
-                        r.Sequen, r.UrutanKanban,
-                        r.ShiftName, r.Nik,
-                        r.KombinasiWire,
-                        r.TerminalA, r.TerminalB,
-                        r.SealA, r.SealB,
-                        r.QtyMaster, r.CutLength,
-                        r.QtyProduct, r.QtyDefectMesin, r.QtyDefectOperator,
-                        r.KodeDefect,
-                        r.LotIdWire, r.LotIdTerminalA, r.LotIdTerminalB,
-                        r.IssueKanban,
-                        r.FrontChA, r.FrontCwA, r.RearChA, r.RearCwA,
-                        r.FrontChB, r.FrontCwB, r.RearChB, r.RearCwB,
-                        r.WaktuMulai, r.WaktuSelesai
-                    );
-                }
-
-                dgv.DataSource = dt;
-
-                // Kolom No kecil saja
-                if (dgv.Columns.Contains("No"))
-                    dgv.Columns["No"].Width = 40;
-
-                lblTitle.Text = $"📋 Record LKO Tersimpan — {GetEffectiveMachineNumber()} ({records.Count} record)";
-            }
-            catch (Exception ex)
-            {
-                lblLoading.Text = $"❌ Gagal memuat data: {ex.Message}";
-                lblLoading.ForeColor = Color.FromArgb(220, 38, 38);
-            }
+            // Load initial data (Today)
+            loadDataAction(DateTime.Today);
         }
 
 

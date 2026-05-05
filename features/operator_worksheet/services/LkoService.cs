@@ -146,45 +146,20 @@ namespace mtc_app.features.operator_worksheet.services
                 });
             }
 
-            // Juga tambahkan master yang tidak ada di log (belum dikerjakan)
-            foreach (var master in masters)
-            {
-                bool alreadyExists = result.Any(r => r.Master?.Sequen == master.Sequen);
-                if (!alreadyExists)
-                {
-                    JisskDto jForMaster = null;
-                    string mSeqDigits = new string((master.Sequen ?? "").Where(char.IsDigit).ToArray());
-                    if (int.TryParse(mSeqDigits, out int mSeqNum))
-                    {
-                        string mPadded = mSeqNum.ToString("D4");
-                        if (jisskDict.TryGetValue(mPadded, out var jList))
-                        {
-                            if (!jisskUsageCount.ContainsKey(mPadded))
-                                jisskUsageCount[mPadded] = 0;
-
-                            int usageIndex = jisskUsageCount[mPadded];
-                            if (usageIndex < jList.Count)
-                            {
-                                jForMaster = jList[usageIndex];
-                                jisskUsageCount[mPadded]++;
-                            }
-                            else
-                            {
-                                jForMaster = jList.LastOrDefault();
-                            }
-                        }
-                    }
-
-                    result.Add(new LkoAggregatedData
-                    {
-                        Log = new PrdLogDto { Sequen = master.Sequen },
-                        Master = master,
-                        Jissk = jForMaster
-                    });
-                }
-            }
-
             return result;
+        }
+
+        /// <summary>
+        /// Ambil sequence dari Product.csv yang belum ada di PrdLog.csv
+        /// </summary>
+        public List<string> GetPendingProductSequences()
+        {
+            var productSequences = _fileRepository.GetProductSequences();
+            var logs = _fileRepository.GetPrdLogs();
+            
+            var logSequences = new HashSet<string>(logs.Select(l => l.Sequen).Where(s => !string.IsNullOrEmpty(s)));
+            
+            return productSequences.Where(s => !string.IsNullOrWhiteSpace(s) && !logSequences.Contains(s)).ToList();
         }
 
         /// <summary>
