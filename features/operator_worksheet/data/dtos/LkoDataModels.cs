@@ -71,6 +71,7 @@ namespace mtc_app.features.operator_worksheet.data.dtos
 
         // Produksi
         public int QtyProduct { get; set; } = 0;
+        public string No4m { get; set; } = string.Empty;
         public int QtyDefectMesin { get; set; } = 0;
         public int QtyDefectOperator { get; set; } = 0;
         public string KodeDefect { get; set; } = string.Empty;

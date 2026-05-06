@@ -51,6 +51,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                             shift_name = @ShiftName,
                             nik = @Nik,
                             qty_product = @QtyProduct,
+                            no_4m = @No4m,
                             qty_defect_mesin = @QtyDefectMesin,
                             qty_defect_operator = @QtyDefectOperator,
                             kode_defect = @KodeDefect,
@@ -84,6 +85,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                         record.ShiftName,
                         record.Nik,
                         record.QtyProduct,
+                        record.No4m,
                         record.QtyDefectMesin,
                         record.QtyDefectOperator,
                         record.KodeDefect,
@@ -118,7 +120,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                     string insertSql = @"
                         INSERT INTO lko_records 
                             (waktu_simpan, no_mesin, id_mesin, shift_name, nik, sequen, urutan_kanban,
-                             qty_product, qty_defect_mesin, qty_defect_operator, kode_defect,
+                             qty_product, no_4m, qty_defect_mesin, qty_defect_operator, kode_defect,
                              lot_id_wire, lot_id_terminal_a, lot_id_terminal_b, issue_kanban, cut_length,
                              kombinasi_wire, terminal_a, terminal_b, seal_a, seal_b, qty_master,
                              front_ch_a, front_cw_a, rear_ch_a, rear_cw_a,
@@ -126,7 +128,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                              waktu_mulai, waktu_selesai)
                         VALUES 
                             (@WaktuSimpan, @NoMesin, @IdMesin, @ShiftName, @Nik, @Sequen, @UrutanKanban,
-                             @QtyProduct, @QtyDefectMesin, @QtyDefectOperator, @KodeDefect,
+                             @QtyProduct, @No4m, @QtyDefectMesin, @QtyDefectOperator, @KodeDefect,
                              @LotIdWire, @LotIdTerminalA, @LotIdTerminalB, @IssueKanban, @CutLength,
                              @KombinasiWire, @TerminalA, @TerminalB, @SealA, @SealB, @QtyMaster,
                              @FrontChA, @FrontCwA, @RearChA, @RearCwA,
@@ -144,6 +146,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                         record.Sequen,
                         record.UrutanKanban,
                         record.QtyProduct,
+                        record.No4m,
                         record.QtyDefectMesin,
                         record.QtyDefectOperator,
                         record.KodeDefect,
@@ -189,6 +192,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                         sequen AS Sequen,
                         urutan_kanban AS UrutanKanban,
                         qty_product AS QtyProduct,
+                        no_4m AS No4m,
                         qty_defect_mesin AS QtyDefectMesin,
                         qty_defect_operator AS QtyDefectOperator,
                         kode_defect AS KodeDefect,
@@ -238,6 +242,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                         sequen AS Sequen,
                         urutan_kanban AS UrutanKanban,
                         qty_product AS QtyProduct,
+                        no_4m AS No4m,
                         qty_defect_mesin AS QtyDefectMesin,
                         qty_defect_operator AS QtyDefectOperator,
                         kode_defect AS KodeDefect,

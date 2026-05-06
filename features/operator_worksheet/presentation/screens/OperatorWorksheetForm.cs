@@ -54,6 +54,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
         // === Aktivitas fields ===
         private TextBox _txtQtyProduksi;
+        private TextBox _txtNo4m;
         private ComboBox _cboKodeDefect;
         private TextBox _txtDefectMesin;
         private TextBox _txtDefectOperator;
@@ -917,13 +918,20 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(_txtLotIdTerminalB);
             y += 42;
 
-            // QTY Produksi
+            // QTY Produksi & No. 4m side by side
             card.Controls.Add(new Label { Text = "QTY Produksi", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "No. 4m", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16 + halfW + 8, y) });
             y += 20;
-            _txtQtyProduksi = CreateStyledTextBox("Masukkan Qty Produksi", fw);
+
+            _txtQtyProduksi = CreateStyledTextBox("Masukkan Qty Produksi", halfW);
             _txtQtyProduksi.Location = new Point(16, y);
             _txtQtyProduksi.TextChanged += (s, e) => ResetAutoSaveTimer();
             card.Controls.Add(_txtQtyProduksi);
+
+            _txtNo4m = CreateStyledTextBox("No. 4m", halfW);
+            _txtNo4m.Location = new Point(_txtQtyProduksi.Right + 8, y);
+            _txtNo4m.TextChanged += (s, e) => ResetAutoSaveTimer();
+            card.Controls.Add(_txtNo4m);
             y += 42;
 
             // Kode Defect (dropdown diisi user)
@@ -1097,6 +1105,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 Sequen = rowData.DisplaySequen,
                 UrutanKanban = rowData.DisplayUrutanPengerjaan,
                 QtyProduct = qtyProduct,
+                No4m = _txtNo4m.Text.Trim(),
                 QtyDefectMesin = defectMesin,
                 QtyDefectOperator = defectOperator,
                 KodeDefect = kodeDefect,
@@ -1344,6 +1353,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     Sequen = rowData.DisplaySequen,
                     UrutanKanban = rowData.DisplayUrutanPengerjaan,
                     QtyProduct = qtyProduct,
+                    No4m = "",
                     QtyDefectMesin = defectMesin,
                     QtyDefectOperator = 0,
                     KodeDefect = "",
@@ -1642,6 +1652,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Populate Front/Rear from Jissk
             UpdateFrontRearFields(rowData.Jissk);
             _txtQtyProduksi.Text = rowData.DbRecord != null ? rowData.DbRecord.QtyProduct.ToString() : (rowData.Log?.QtyProduk ?? "");
+            _txtNo4m.Text = rowData.DbRecord?.No4m ?? "";
             _txtCutL.Text = rowData.DbRecord != null && !string.IsNullOrEmpty(rowData.DbRecord.CutLength) ? rowData.DbRecord.CutLength : (!string.IsNullOrWhiteSpace(rowData.Master?.CutLength) ? rowData.Master.CutLength : "0");
             _txtLotIdWire.Text = rowData.DbRecord?.LotIdWire ?? "";
             _txtLotIdTerminalA.Text = rowData.DbRecord?.LotIdTerminalA ?? "";
@@ -2111,6 +2122,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     dt.Columns.Add("Qty Master", typeof(string));
                     dt.Columns.Add("CutL", typeof(string));
                     dt.Columns.Add("Qty Produk", typeof(int));
+                    dt.Columns.Add("No. 4m", typeof(string));
                     dt.Columns.Add("Defect Mesin", typeof(int));
                     dt.Columns.Add("Defect Operator", typeof(int));
                     dt.Columns.Add("Kode Defect", typeof(string));
@@ -2143,7 +2155,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                             r.TerminalA, r.TerminalB,
                             r.SealA, r.SealB,
                             r.QtyMaster, r.CutLength,
-                            r.QtyProduct, r.QtyDefectMesin, r.QtyDefectOperator,
+                            r.QtyProduct, r.No4m, r.QtyDefectMesin, r.QtyDefectOperator,
                             r.KodeDefect,
                             r.LotIdWire, r.LotIdTerminalA, r.LotIdTerminalB,
                             r.IssueKanban,
