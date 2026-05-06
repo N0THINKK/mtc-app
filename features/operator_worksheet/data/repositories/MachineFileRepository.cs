@@ -12,9 +12,21 @@ namespace mtc_app.features.operator_worksheet.data.repositories
     {
         private readonly string _baseDir;
 
-        public MachineFileRepository(string baseDir = @"C:\AC90HMI\prg\")
+        public MachineFileRepository(string baseDir = null)
         {
-            _baseDir = baseDir;
+            if (baseDir != null)
+            {
+                _baseDir = baseDir;
+            }
+            else
+            {
+                if (Directory.Exists(@"C:\AC90HMI\prg\"))
+                    _baseDir = @"C:\AC90HMI\prg\";
+                else if (Directory.Exists(@"C:\AC80HMI\"))
+                    _baseDir = @"C:\AC80HMI\";
+                else
+                    _baseDir = @"C:\AC90HMI\prg\";
+            }
         }
 
         /// <summary>
@@ -138,7 +150,8 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                 string[] fallbacks = new[]
                 {
                     @"D:\AC95\Kanban\prdmst.csv",
-                    @"C:\AC95\Kanban\prdmst.csv"
+                    @"C:\AC95\Kanban\prdmst.csv",
+                    @"C:\AC80HMI\prdmst.csv"
                 };
 
                 bool found = false;
@@ -214,7 +227,8 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                 {
                     @"C:\AC90HMI\Jissk.dat",
                     @"D:\AC95\Backup Jissk\jissk.dat",
-                    @"C:\AC95\Backup Jissk\jissk.dat"
+                    @"C:\AC95\Backup Jissk\jissk.dat",
+                    @"C:\AC80HMI\Jissk.dat"
                 };
 
                 bool found = false;
