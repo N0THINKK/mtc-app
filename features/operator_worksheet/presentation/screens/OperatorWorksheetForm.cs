@@ -271,6 +271,10 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private void SetupFileWatcher()
         {
             string watchDir = @"C:\AC90HMI\prg";
+            if (!Directory.Exists(watchDir))
+            {
+                watchDir = @"C:\AC80HMI";
+            }
             if (!Directory.Exists(watchDir)) return;
 
             // Debounce timer: tunggu 500ms setelah perubahan terakhir sebelum reload
