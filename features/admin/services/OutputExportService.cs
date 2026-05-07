@@ -193,6 +193,7 @@ namespace mtc_app.features.admin.services
                 dataTable.Columns.Add("Sudden Malam Normal (Menit)", typeof(long));
                 dataTable.Columns.Add("Sudden Malam OT (Menit)", typeof(long));
                 dataTable.Columns.Add("Efisiensi (%)", typeof(string));
+                dataTable.Columns.Add("Output mesin / ((jam kerja normal+OT) -(waktu mesin tidak run) )", typeof(string));
 
                 foreach (var row in results)
                 {
@@ -251,6 +252,8 @@ namespace mtc_app.features.admin.services
 
                     double pembagiEfisiensi = totalRun + totalNyala + totalPlanned + totalSudden - totalBreak;
                     double eff = pembagiEfisiensi > 0 ? ((double)totalRun / pembagiEfisiensi) * 100 : 0;
+                    
+                    double outputRate = totalRun > 0 ? (double)totalOut / totalRun : 0;
 
                     dataTable.Rows.Add(
                         row.TanggalProduksi,
@@ -262,7 +265,8 @@ namespace mtc_app.features.admin.services
                         breakPagiN, breakPagiOT, breakMalamN, breakMalamOT,
                         planPN, planPOT, planMN, planMOT,
                         sudPN, sudPOT, sudMN, sudMOT,
-                        eff.ToString("F1") + " %"
+                        eff.ToString("F1") + " %",
+                        outputRate.ToString("F2")
                     );
                 }
 
@@ -354,6 +358,151 @@ namespace mtc_app.features.admin.services
                 ds.Tables.Add(dtDetails);
 
                 return ds;
+            }
+        }
+
+        public static async Task<DataTable> FetchPatroliCuttingAsync(DateTime startDate, DateTime endDate, string area)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        DATE_FORMAT(l.patrol_date, '%d %M %Y') AS 'Tanggal',
+                        s.shift_name AS 'Shift',
+                        CONCAT(IFNULL(mt.type_name, ''), '.', IFNULL(ma.area_name, ''), '-', LPAD(m.machine_number, 2, '0')) AS 'Nama Mesin',
+                        COALESCE(u.full_name, l.user_nik) AS 'Operator',
+                        ci.item_name AS 'Pertanyaan',
+                        d.status AS 'Status',
+                        d.action_note AS 'Catatan'
+                    FROM patrol_logs l
+                    LEFT JOIN patrol_log_details d ON l.log_id = d.log_id
+                    LEFT JOIN machines m ON l.machine_id = m.machine_id
+                    LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                    LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
+                    LEFT JOIN users u ON u.nik = l.user_nik OR u.username = l.user_nik
+                    LEFT JOIN shifts s ON s.shift_name = l.shift
+                    LEFT JOIN checksheet_items ci ON ci.item_id = d.item_id
+                    WHERE l.patrol_date >= @StartDate AND l.patrol_date < @EndDatePlusOne";
+
+                if (area != "Semua Area") {
+                    sql += " AND ma.area_name = @Area";
+                }
+
+                sql += " ORDER BY l.patrol_date DESC, mt.type_name ASC, CAST(m.machine_number AS UNSIGNED) ASC, ci.item_id ASC";
+
+                var reader = await connection.ExecuteReaderAsync(sql, new { StartDate = startDate.Date, EndDatePlusOne = endDate.Date.AddDays(1), Area = area }, commandTimeout: 300);
+                var dataTable = new DataTable("Patroli Mesin Cutting");
+                dataTable.Load(reader);
+                return dataTable;
+            }
+        }
+
+        public static async Task<DataTable> FetchPatroliMikrometerAsync(DateTime startDate, DateTime endDate, string area)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        DATE_FORMAT(mp.patrol_date, '%d %M %Y') AS 'Tanggal',
+                        s.shift_name AS 'Shift',
+                        CONCAT(IFNULL(mt.type_name, ''), '.', IFNULL(ma.area_name, ''), '-', LPAD(m.machine_number, 2, '0')) AS 'Nama Mesin',
+                        COALESCE(u.full_name, u.username) AS 'Operator',
+                        mp.point_1 AS 'Point 1',
+                        mp.point_2 AS 'Point 2',
+                        mp.point_3 AS 'Point 3',
+                        mp.point_4 AS 'Point 4',
+                        mp.point_5 AS 'Point 5',
+                        mp.notes AS 'Catatan'
+                    FROM micrometer_patrols mp
+                    LEFT JOIN shifts s ON mp.shift_id = s.shift_id
+                    LEFT JOIN machines m ON mp.machine_id = m.machine_id
+                    LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                    LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
+                    LEFT JOIN users u ON mp.user_id = u.user_id
+                    WHERE mp.patrol_date >= @StartDate AND mp.patrol_date < @EndDatePlusOne";
+
+                if (area != "Semua Area") {
+                    sql += " AND ma.area_name = @Area";
+                }
+
+                sql += " ORDER BY mp.patrol_date DESC, mt.type_name ASC, CAST(m.machine_number AS UNSIGNED) ASC";
+
+                var reader = await connection.ExecuteReaderAsync(sql, new { StartDate = startDate.Date, EndDatePlusOne = endDate.Date.AddDays(1), Area = area }, commandTimeout: 300);
+                var dataTable = new DataTable("Patroli Mikrometer");
+                dataTable.Load(reader);
+                return dataTable;
+            }
+        }
+
+        public static async Task<DataTable> FetchPatroliAplikatorAsync(DateTime startDate, DateTime endDate, string area)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        DATE_FORMAT(l.patrol_date, '%d %M %Y') AS 'Tanggal',
+                        s.shift_name AS 'Shift',
+                        CONCAT(IFNULL(mt.type_name, ''), '.', IFNULL(ma.area_name, ''), '-', LPAD(m.machine_number, 2, '0')) AS 'Nama Mesin',
+                        l.side AS 'Side',
+                        COALESCE(u.full_name, u.nik, l.operator_nik) AS 'Operator',
+                        d.applicator_code AS 'Kode Aplikator',
+                        d.judgment AS 'Status',
+                        d.ng_items AS 'Detail NG',
+                        l.notes AS 'Catatan'
+                    FROM applicator_patrol_logs l
+                    LEFT JOIN applicator_patrol_details d ON l.log_id = d.log_id
+                    LEFT JOIN shifts s ON l.shift_id = s.shift_id
+                    LEFT JOIN machines m ON l.machine_id = m.machine_id
+                    LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                    LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
+                    LEFT JOIN users u ON l.user_id = u.user_id OR l.operator_nik = u.nik OR l.operator_nik = u.username
+                    WHERE l.patrol_date >= @StartDate AND l.patrol_date < @EndDatePlusOne";
+
+                if (area != "Semua Area") {
+                    sql += " AND ma.area_name = @Area";
+                }
+
+                sql += " ORDER BY l.patrol_date DESC, mt.type_name ASC, CAST(m.machine_number AS UNSIGNED) ASC";
+
+                var reader = await connection.ExecuteReaderAsync(sql, new { StartDate = startDate.Date, EndDatePlusOne = endDate.Date.AddDays(1), Area = area }, commandTimeout: 300);
+                var dataTable = new DataTable("Patroli Aplikator");
+                dataTable.Load(reader);
+                return dataTable;
+            }
+        }
+
+        public static async Task<DataTable> FetchCounterMaterialAsync(DateTime startDate, DateTime endDate, string area)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        DATE_FORMAT(oqc.record_date, '%d %M %Y') AS 'Tanggal',
+                        oqc.shift_name AS 'Shift',
+                        CONCAT(IFNULL(mt.type_name, ''), '.', IFNULL(ma.area_name, ''), '-', LPAD(m.machine_number, 2, '0')) AS 'Nama Mesin',
+                        oqc.operator_name AS 'Operator',
+                        SUM(CASE WHEN oqc.item_name = 'Wire' THEN oqc.total_count ELSE 0 END) AS 'Wire',
+                        SUM(CASE WHEN oqc.item_name = 'Applikator A' THEN oqc.total_count ELSE 0 END) AS 'Applikator A',
+                        SUM(CASE WHEN oqc.item_name = 'Applikator B' THEN oqc.total_count ELSE 0 END) AS 'Applikator B',
+                        SUM(CASE WHEN oqc.item_name = 'Double' THEN oqc.total_count ELSE 0 END) AS 'Double'
+                    FROM operator_quick_counts oqc
+                    LEFT JOIN machines m ON oqc.machine_id = m.machine_id
+                    LEFT JOIN machine_types mt ON m.type_id = mt.type_id
+                    LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
+                    WHERE oqc.record_date >= @StartDate AND oqc.record_date < @EndDatePlusOne";
+
+                if (area != "Semua Area") {
+                    sql += " AND ma.area_name = @Area";
+                }
+
+                sql += @"
+                    GROUP BY oqc.record_date, oqc.shift_name, m.machine_id, oqc.operator_name, mt.type_name, ma.area_name, m.machine_number
+                    ORDER BY oqc.record_date DESC, mt.type_name ASC, CAST(m.machine_number AS UNSIGNED) ASC, oqc.shift_name ASC";
+
+                var reader = await connection.ExecuteReaderAsync(sql, new { StartDate = startDate.Date, EndDatePlusOne = endDate.Date.AddDays(1), Area = area }, commandTimeout: 300);
+                var dataTable = new DataTable("Counter Material");
+                dataTable.Load(reader);
+                return dataTable;
             }
         }
     }

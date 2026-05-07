@@ -21,6 +21,7 @@ namespace mtc_app.features.admin.presentation.views
         private DateTimePicker dateStart, dateEnd;
         private ComboBox cmbArea;
         private CheckBox chkDetailTiket, chkRekapBulanan, chkOutputHarian, chkRincianDowntime;
+        private CheckBox chkPatroliCutting, chkPatroliMikrometer, chkPatroliAplikator, chkCounterMaterial;
         private AppButton btnExport, btnPreview;
         private DataGridView gridPreview;
         private Label lblPreviewStatus;
@@ -66,7 +67,7 @@ namespace mtc_app.features.admin.presentation.views
 
         private async void BtnExport_Click(object sender, EventArgs e)
         {
-            if (!chkDetailTiket.Checked && !chkRekapBulanan.Checked && !chkOutputHarian.Checked && !chkRincianDowntime.Checked)
+            if (!chkDetailTiket.Checked && !chkRekapBulanan.Checked && !chkOutputHarian.Checked && !chkRincianDowntime.Checked && !chkPatroliCutting.Checked && !chkPatroliMikrometer.Checked && !chkPatroliAplikator.Checked && !chkCounterMaterial.Checked)
             {
                 MessageBox.Show("Pilih minimal satu jenis laporan untuk diekspor.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
@@ -91,7 +92,7 @@ namespace mtc_app.features.admin.presentation.views
 
                         using (var workbook = new XLWorkbook())
                         {
-                            int totalSteps = (chkDetailTiket.Checked ? 1 : 0) + (chkRekapBulanan.Checked ? 1 : 0) + ((chkOutputHarian.Checked || chkRincianDowntime.Checked) ? 1 : 0);
+                            int totalSteps = (chkDetailTiket.Checked ? 1 : 0) + (chkRekapBulanan.Checked ? 1 : 0) + ((chkOutputHarian.Checked || chkRincianDowntime.Checked) ? 1 : 0) + (chkPatroliCutting.Checked ? 1 : 0) + (chkPatroliMikrometer.Checked ? 1 : 0) + (chkPatroliAplikator.Checked ? 1 : 0) + (chkCounterMaterial.Checked ? 1 : 0);
                             int currentStep = 1;
 
                             if (chkDetailTiket.Checked)
@@ -153,6 +154,70 @@ namespace mtc_app.features.admin.presentation.views
                                     wsDowntime.Row(1).Style.Fill.BackgroundColor = XLColor.Purple; 
                                     wsDowntime.Row(1).Style.Font.FontColor = XLColor.White;
                                     wsDowntime.Columns().AdjustToContents();
+                                }
+                            }
+
+                            if (chkPatroliCutting.Checked)
+                            {
+                                btnExport.Text = $"Memproses Data... ({currentStep++}/{totalSteps})";
+                                Application.DoEvents();
+                                var dataCutting = await OutputExportService.FetchPatroliCuttingAsync(dateStart.Value, dateEnd.Value, areaName);
+                                if (dataCutting.Columns.Count > 0)
+                                {
+                                    var wsCutting = workbook.Worksheets.Add("Patroli Mesin Cutting");
+                                    wsCutting.Cell("A1").InsertTable(dataCutting);
+                                    wsCutting.Row(1).Style.Font.Bold = true;
+                                    wsCutting.Row(1).Style.Fill.BackgroundColor = XLColor.AirForceBlue; 
+                                    wsCutting.Row(1).Style.Font.FontColor = XLColor.White;
+                                    wsCutting.Columns().AdjustToContents();
+                                }
+                            }
+
+                            if (chkPatroliMikrometer.Checked)
+                            {
+                                btnExport.Text = $"Memproses Data... ({currentStep++}/{totalSteps})";
+                                Application.DoEvents();
+                                var dataMikro = await OutputExportService.FetchPatroliMikrometerAsync(dateStart.Value, dateEnd.Value, areaName);
+                                if (dataMikro.Columns.Count > 0)
+                                {
+                                    var wsMikro = workbook.Worksheets.Add("Patroli Mikrometer");
+                                    wsMikro.Cell("A1").InsertTable(dataMikro);
+                                    wsMikro.Row(1).Style.Font.Bold = true;
+                                    wsMikro.Row(1).Style.Fill.BackgroundColor = XLColor.AirForceBlue; 
+                                    wsMikro.Row(1).Style.Font.FontColor = XLColor.White;
+                                    wsMikro.Columns().AdjustToContents();
+                                }
+                            }
+
+                            if (chkPatroliAplikator.Checked)
+                            {
+                                btnExport.Text = $"Memproses Data... ({currentStep++}/{totalSteps})";
+                                Application.DoEvents();
+                                var dataAplikator = await OutputExportService.FetchPatroliAplikatorAsync(dateStart.Value, dateEnd.Value, areaName);
+                                if (dataAplikator.Columns.Count > 0)
+                                {
+                                    var wsAplikator = workbook.Worksheets.Add("Patroli Aplikator");
+                                    wsAplikator.Cell("A1").InsertTable(dataAplikator);
+                                    wsAplikator.Row(1).Style.Font.Bold = true;
+                                    wsAplikator.Row(1).Style.Fill.BackgroundColor = XLColor.AirForceBlue; 
+                                    wsAplikator.Row(1).Style.Font.FontColor = XLColor.White;
+                                    wsAplikator.Columns().AdjustToContents();
+                                }
+                            }
+
+                            if (chkCounterMaterial.Checked)
+                            {
+                                btnExport.Text = $"Memproses Data... ({currentStep++}/{totalSteps})";
+                                Application.DoEvents();
+                                var dataCounter = await OutputExportService.FetchCounterMaterialAsync(dateStart.Value, dateEnd.Value, areaName);
+                                if (dataCounter.Columns.Count > 0)
+                                {
+                                    var wsCounter = workbook.Worksheets.Add("Counter Material");
+                                    wsCounter.Cell("A1").InsertTable(dataCounter);
+                                    wsCounter.Row(1).Style.Font.Bold = true;
+                                    wsCounter.Row(1).Style.Fill.BackgroundColor = XLColor.AirForceBlue; 
+                                    wsCounter.Row(1).Style.Font.FontColor = XLColor.White;
+                                    wsCounter.Columns().AdjustToContents();
                                 }
                             }
 
@@ -326,16 +391,22 @@ namespace mtc_app.features.admin.presentation.views
             this.chkRekapBulanan = new CheckBox { Text = "Rekap Bulanan Downtime", Font = AppFonts.BodySmall, Location = new Point(20, 275), AutoSize = true, Checked = true };
             this.chkOutputHarian = new CheckBox { Text = "Output Harian Mesin", Font = AppFonts.BodySmall, Location = new Point(20, 305), AutoSize = true, Checked = true };
             this.chkRincianDowntime = new CheckBox { Text = "Rincian Waktu Downtime", Font = AppFonts.BodySmall, Location = new Point(20, 335), AutoSize = true, Checked = true };
+            this.chkPatroliCutting = new CheckBox { Text = "Patroli Mesin Cutting", Font = AppFonts.BodySmall, Location = new Point(20, 365), AutoSize = true, Checked = true };
+            this.chkPatroliMikrometer = new CheckBox { Text = "Patroli Mikrometer", Font = AppFonts.BodySmall, Location = new Point(20, 395), AutoSize = true, Checked = true };
+            this.chkPatroliAplikator = new CheckBox { Text = "Patroli Aplikator", Font = AppFonts.BodySmall, Location = new Point(20, 425), AutoSize = true, Checked = true };
+            this.chkCounterMaterial = new CheckBox { Text = "Counter Material", Font = AppFonts.BodySmall, Location = new Point(20, 455), AutoSize = true, Checked = true };
             
             cardConfig.Controls.Add(chkDetailTiket); cardConfig.Controls.Add(chkRekapBulanan);
             cardConfig.Controls.Add(chkOutputHarian); cardConfig.Controls.Add(chkRincianDowntime);
+            cardConfig.Controls.Add(chkPatroliCutting); cardConfig.Controls.Add(chkPatroliMikrometer);
+            cardConfig.Controls.Add(chkPatroliAplikator); cardConfig.Controls.Add(chkCounterMaterial);
 
             // Tombol Action
-            this.btnPreview = new AppButton { Text = "🔍 Tampilkan Pratinjau (Preview)", Type = AppButton.ButtonType.Secondary, Location = new Point(20, 390), Size = new Size(320, 45) };
+            this.btnPreview = new AppButton { Text = "🔍 Tampilkan Pratinjau (Preview)", Type = AppButton.ButtonType.Secondary, Location = new Point(20, 495), Size = new Size(320, 45) };
             this.btnPreview.Click += BtnPreview_Click;
             cardConfig.Controls.Add(btnPreview);
 
-            this.btnExport = new AppButton { Text = "📥 Generate & Export Excel", Type = AppButton.ButtonType.Primary, Location = new Point(20, 445), Size = new Size(320, 50) };
+            this.btnExport = new AppButton { Text = "📥 Generate & Export Excel", Type = AppButton.ButtonType.Primary, Location = new Point(20, 550), Size = new Size(320, 50) };
             this.btnExport.Click += BtnExport_Click;
             cardConfig.Controls.Add(btnExport);
 
@@ -395,6 +466,7 @@ namespace mtc_app.features.admin.presentation.views
 
             // Z-Order
             cardPreview.BringToFront();
+
 
             this.ResumeLayout(false);
         }
