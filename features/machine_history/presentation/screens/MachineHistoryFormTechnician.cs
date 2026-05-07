@@ -782,9 +782,12 @@ namespace mtc_app.features.machine_history.presentation.screens
                 
                 var dropdownItems = parts
                     .Select(p => $"{(string.IsNullOrEmpty(p.PartCode) ? "N/A" : p.PartCode)} - {p.PartName}")
-                    .ToArray();
+                    .ToList();
+
+                // Tambahan manual template aplikator sesuai request user
+                dropdownItems.Add("Applikator - Nomor_Aplikator");
                     
-                inputSparepart.SetDropdownItems(dropdownItems);
+                inputSparepart.SetDropdownItems(dropdownItems.ToArray());
             }
             catch (Exception ex) 
             {
