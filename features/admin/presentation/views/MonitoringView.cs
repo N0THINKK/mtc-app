@@ -28,6 +28,7 @@ namespace mtc_app.features.admin.presentation.views
         private int _currentPage = 1;
         private int _pageSize = 20;
         private PaginationControl paginationTop;
+        private ComboBox cboAreaFilter;
 
         public MonitoringView(IAdminRepository repository)
         {
@@ -108,6 +109,22 @@ namespace mtc_app.features.admin.presentation.views
             paginationTop = new PaginationControl { Dock = DockStyle.Left, Padding = new Padding(10, 5, 0, 0) };
             paginationTop.PageChanged += (s, page) => { _currentPage = page; RenderGrid(); };
 
+            Panel pnlFilter = new Panel { Dock = DockStyle.Left, Width = 150, Padding = new Padding(10, 5, 0, 0) };
+            cboAreaFilter = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Width = 140,
+                Dock = DockStyle.Top,
+                Font = AppFonts.BodySmall
+            };
+            cboAreaFilter.Items.Add("Semua Area");
+            cboAreaFilter.SelectedIndex = 0;
+            cboAreaFilter.SelectedIndexChanged += (s, e) => {
+                _currentPage = 1;
+                RenderGrid();
+            };
+            pnlFilter.Controls.Add(cboAreaFilter);
+
             lblLastUpdate = new AppLabel
             {
                 Type = AppLabel.LabelType.Caption,
@@ -120,6 +137,7 @@ namespace mtc_app.features.admin.presentation.views
             };
 
             pnlGridHeader.Controls.Add(paginationTop);
+            pnlGridHeader.Controls.Add(pnlFilter);
             pnlGridHeader.Controls.Add(lblGridTitle);
             pnlGridHeader.Controls.Add(lblLastUpdate);
 
@@ -465,6 +483,20 @@ namespace mtc_app.features.admin.presentation.views
 
                 var data = await _repository.GetMonitoringDataAsync();
                 
+                // Load areas into filter if needed
+                if (cboAreaFilter.Items.Count <= 1)
+                {
+                    var areas = await _repository.GetMasterMachineAreasDataAsync();
+                    foreach (var area in areas)
+                    {
+                        var areaDict = area as IDictionary<string, object>;
+                        if (areaDict != null && areaDict.ContainsKey("nama"))
+                        {
+                            cboAreaFilter.Items.Add(areaDict["nama"].ToString());
+                        }
+                    }
+                }
+
                 // Simpan ke memory untuk paginasi
                 _allTickets = data;
                 RenderGrid();
@@ -491,6 +523,22 @@ namespace mtc_app.features.admin.presentation.views
             }
 
             var list = _allTickets.ToList();
+
+            // Terapkan Filter Area
+            if (cboAreaFilter.SelectedIndex > 0)
+            {
+                string selectedArea = cboAreaFilter.SelectedItem.ToString();
+                list = list.Where(t => {
+                    var dict = t as IDictionary<string, object>;
+                    if (dict != null && dict.ContainsKey("Nama Mesin"))
+                    {
+                        string mesin = dict["Nama Mesin"]?.ToString() ?? "";
+                        return mesin.Contains(selectedArea);
+                    }
+                    return false;
+                }).ToList();
+            }
+
             int totalItems = list.Count;
             
             var pagedData = list.Skip((_currentPage - 1) * _pageSize).Take(_pageSize).ToList();

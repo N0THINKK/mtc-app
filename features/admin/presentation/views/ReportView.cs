@@ -21,7 +21,9 @@ namespace mtc_app.features.admin.presentation.views
         private DateTimePicker dateStart, dateEnd;
         private ComboBox cmbArea;
         private CheckBox chkDetailTiket, chkRekapBulanan, chkOutputHarian, chkRincianDowntime;
-        private AppButton btnExport;
+        private AppButton btnExport, btnPreview;
+        private DataGridView gridPreview;
+        private Label lblPreviewStatus;
 
         public ReportView()
         {
@@ -274,107 +276,171 @@ namespace mtc_app.features.admin.presentation.views
         }
 
         // =========================================================
-        // UI COMPONENTS (Tampilan Filter Baru)
+        // UI COMPONENTS (Tampilan Konfigurasi & Preview Baru)
         // =========================================================
         private void InitializeComponent()
         {
             this.SuspendLayout();
-            
-            this.lblTitle = new Label();
-            this.lblDateStart = new Label();
-            this.dateStart = new DateTimePicker();
-            this.lblDateEnd = new Label();
-            this.dateEnd = new DateTimePicker();
-            this.lblArea = new Label();
-            this.cmbArea = new ComboBox();
-            this.chkDetailTiket = new CheckBox();
-            this.chkRekapBulanan = new CheckBox();
-            this.chkOutputHarian = new CheckBox();
-            this.chkRincianDowntime = new CheckBox();
-            this.btnExport = new AppButton();
 
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Font = AppFonts.Header3;
-            this.lblTitle.ForeColor = AppColors.TextPrimary;
-            this.lblTitle.Location = new Point(0, 0);
-            this.lblTitle.Text = "Buat Laporan Tiket (Excel)";
-            
-            this.lblDateStart.AutoSize = true;
-            this.lblDateStart.Font = AppFonts.BodySmall;
-            this.lblDateStart.Location = new Point(0, 50);
-            this.lblDateStart.Text = "Tanggal Mulai:";
-
-            this.dateStart.Location = new Point(0, 75);
-            this.dateStart.Size = new Size(180, 25);
-            this.dateStart.Font = AppFonts.BodySmall;
-            this.dateStart.Format = DateTimePickerFormat.Short;
-
-            this.lblDateEnd.AutoSize = true;
-            this.lblDateEnd.Font = AppFonts.BodySmall;
-            this.lblDateEnd.Location = new Point(200, 50);
-            this.lblDateEnd.Text = "Tanggal Akhir:";
-
-            this.dateEnd.Location = new Point(200, 75);
-            this.dateEnd.Size = new Size(180, 25);
-            this.dateEnd.Font = AppFonts.BodySmall;
-            this.dateEnd.Format = DateTimePickerFormat.Short;
-
-            // Tambahan Dropdown Area
-            this.lblArea.AutoSize = true;
-            this.lblArea.Font = AppFonts.BodySmall;
-            this.lblArea.Location = new Point(400, 50);
-            this.lblArea.Text = "Filter Area:";
-
-            this.cmbArea.Location = new Point(400, 75);
-            this.cmbArea.Size = new Size(180, 25);
-            this.cmbArea.Font = AppFonts.BodySmall;
-            this.cmbArea.DropDownStyle = ComboBoxStyle.DropDownList;
-
-            this.chkDetailTiket.AutoSize = true;
-            this.chkDetailTiket.Font = AppFonts.BodySmall;
-            this.chkDetailTiket.Location = new Point(0, 115);
-            this.chkDetailTiket.Text = "Detail Tiket";
-            this.chkDetailTiket.Checked = true;
-
-            this.chkRekapBulanan.AutoSize = true;
-            this.chkRekapBulanan.Font = AppFonts.BodySmall;
-            this.chkRekapBulanan.Location = new Point(120, 115);
-            this.chkRekapBulanan.Text = "Rekap Bulanan";
-            this.chkRekapBulanan.Checked = true;
-
-            this.chkOutputHarian.AutoSize = true;
-            this.chkOutputHarian.Font = AppFonts.BodySmall;
-            this.chkOutputHarian.Location = new Point(260, 115);
-            this.chkOutputHarian.Text = "Output Harian";
-            this.chkOutputHarian.Checked = true;
-
-            this.chkRincianDowntime.AutoSize = true;
-            this.chkRincianDowntime.Font = AppFonts.BodySmall;
-            this.chkRincianDowntime.Location = new Point(390, 115);
-            this.chkRincianDowntime.Text = "Rincian Downtime";
-            this.chkRincianDowntime.Checked = true;
-
-            this.btnExport.Text = "Generate & Export Laporan Utama";
-            this.btnExport.Location = new Point(0, 150);
-            this.btnExport.Size = new Size(250, 50);
-            this.btnExport.Click += BtnExport_Click;
-
-            this.Controls.Add(this.lblTitle);
-            this.Controls.Add(this.lblDateStart);
-            this.Controls.Add(this.dateStart);
-            this.Controls.Add(this.lblDateEnd);
-            this.Controls.Add(this.dateEnd);
-            this.Controls.Add(this.lblArea);
-            this.Controls.Add(this.cmbArea);
-            this.Controls.Add(this.chkDetailTiket);
-            this.Controls.Add(this.chkRekapBulanan);
-            this.Controls.Add(this.chkOutputHarian);
-            this.Controls.Add(this.chkRincianDowntime);
-            this.Controls.Add(this.btnExport);
-            
             this.Name = "ReportView";
             this.Dock = DockStyle.Fill;
+            this.BackColor = AppColors.Surface;
+            this.Padding = new Padding(24);
+
+            // ==========================================
+            // KIRI: PANEL KONFIGURASI
+            // ==========================================
+            AppCard cardConfig = new AppCard
+            {
+                Dock = DockStyle.Left,
+                Width = 380,
+                ShowShadow = true,
+                CornerRadius = 16,
+                BackColor = AppColors.CardBackground,
+                Padding = new Padding(20)
+            };
+
+            this.lblTitle = new Label { Text = "Export Laporan", Font = AppFonts.Header3, ForeColor = AppColors.TextPrimary, AutoSize = true, Location = new Point(20, 20) };
+            cardConfig.Controls.Add(lblTitle);
+
+            // Rentang Waktu
+            this.lblDateStart = new Label { Text = "Tanggal Mulai", Font = AppFonts.BodySmall, ForeColor = AppColors.TextSecondary, AutoSize = true, Location = new Point(20, 70) };
+            this.dateStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Font = AppFonts.BodySmall, Location = new Point(20, 95), Width = 150 };
+            
+            this.lblDateEnd = new Label { Text = "Tanggal Akhir", Font = AppFonts.BodySmall, ForeColor = AppColors.TextSecondary, AutoSize = true, Location = new Point(190, 70) };
+            this.dateEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Font = AppFonts.BodySmall, Location = new Point(190, 95), Width = 150 };
+
+            cardConfig.Controls.Add(lblDateStart); cardConfig.Controls.Add(dateStart);
+            cardConfig.Controls.Add(lblDateEnd); cardConfig.Controls.Add(dateEnd);
+
+            // Area Filter
+            this.lblArea = new Label { Text = "Filter Area", Font = AppFonts.BodySmall, ForeColor = AppColors.TextSecondary, AutoSize = true, Location = new Point(20, 140) };
+            this.cmbArea = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = AppFonts.BodySmall, Location = new Point(20, 165), Width = 320 };
+            cardConfig.Controls.Add(lblArea); cardConfig.Controls.Add(cmbArea);
+
+            // Pilihan Export
+            Label lblJenis = new Label { Text = "Jenis Laporan yang Diekspor:", Font = new Font(AppFonts.FontFamily, 10F, FontStyle.Bold), ForeColor = AppColors.TextPrimary, AutoSize = true, Location = new Point(20, 215) };
+            cardConfig.Controls.Add(lblJenis);
+
+            this.chkDetailTiket = new CheckBox { Text = "Detail Tiket (Raw Data)", Font = AppFonts.BodySmall, Location = new Point(20, 245), AutoSize = true, Checked = true };
+            this.chkRekapBulanan = new CheckBox { Text = "Rekap Bulanan Downtime", Font = AppFonts.BodySmall, Location = new Point(20, 275), AutoSize = true, Checked = true };
+            this.chkOutputHarian = new CheckBox { Text = "Output Harian Mesin", Font = AppFonts.BodySmall, Location = new Point(20, 305), AutoSize = true, Checked = true };
+            this.chkRincianDowntime = new CheckBox { Text = "Rincian Waktu Downtime", Font = AppFonts.BodySmall, Location = new Point(20, 335), AutoSize = true, Checked = true };
+            
+            cardConfig.Controls.Add(chkDetailTiket); cardConfig.Controls.Add(chkRekapBulanan);
+            cardConfig.Controls.Add(chkOutputHarian); cardConfig.Controls.Add(chkRincianDowntime);
+
+            // Tombol Action
+            this.btnPreview = new AppButton { Text = "🔍 Tampilkan Pratinjau (Preview)", Type = AppButton.ButtonType.Secondary, Location = new Point(20, 390), Size = new Size(320, 45) };
+            this.btnPreview.Click += BtnPreview_Click;
+            cardConfig.Controls.Add(btnPreview);
+
+            this.btnExport = new AppButton { Text = "📥 Generate & Export Excel", Type = AppButton.ButtonType.Primary, Location = new Point(20, 445), Size = new Size(320, 50) };
+            this.btnExport.Click += BtnExport_Click;
+            cardConfig.Controls.Add(btnExport);
+
+            // ==========================================
+            // KANAN: PANEL PREVIEW
+            // ==========================================
+            AppCard cardPreview = new AppCard
+            {
+                Dock = DockStyle.Fill,
+                ShowShadow = true,
+                CornerRadius = 16,
+                BackColor = AppColors.CardBackground,
+                Padding = new Padding(20)
+            };
+
+            Panel pnlPreviewHeader = new Panel { Dock = DockStyle.Top, Height = 40, BackColor = Color.Transparent };
+            Label lblPreviewTitle = new Label { Text = "Pratinjau Data (Detail Tiket - Maks 50 Baris)", Font = new Font(AppFonts.FontFamily, 11F, FontStyle.Bold), ForeColor = AppColors.TextPrimary, AutoSize = true, Dock = DockStyle.Left };
+            this.lblPreviewStatus = new Label { Text = "Belum memuat data", Font = AppFonts.BodySmall, ForeColor = AppColors.TextSecondary, AutoSize = true, Dock = DockStyle.Right, TextAlign = ContentAlignment.MiddleRight };
+            pnlPreviewHeader.Controls.Add(lblPreviewTitle);
+            pnlPreviewHeader.Controls.Add(lblPreviewStatus);
+            cardPreview.Controls.Add(pnlPreviewHeader);
+
+            this.gridPreview = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                BackgroundColor = AppColors.CardBackground,
+                BorderStyle = BorderStyle.None,
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                GridColor = Color.FromArgb(238, 242, 246),
+                EnableHeadersVisualStyles = false,
+                RowHeadersVisible = false,
+                AllowUserToAddRows = false,
+                ReadOnly = true,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells,
+                Margin = new Padding(0, 16, 0, 0)
+            };
+            this.gridPreview.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(248, 250, 252);
+            this.gridPreview.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(100, 116, 139);
+            this.gridPreview.ColumnHeadersDefaultCellStyle.Font = new Font(AppFonts.FontFamily, 9.5F, FontStyle.Bold);
+            this.gridPreview.ColumnHeadersHeight = 40;
+            this.gridPreview.DefaultCellStyle.SelectionBackColor = AppColors.CardBackground;
+            this.gridPreview.DefaultCellStyle.SelectionForeColor = AppColors.TextPrimary;
+            this.gridPreview.DefaultCellStyle.Font = AppFonts.BodySmall;
+            this.gridPreview.DefaultCellStyle.Padding = new Padding(8, 4, 8, 4);
+            this.gridPreview.RowTemplate.Height = 40;
+
+            cardPreview.Controls.Add(gridPreview);
+            gridPreview.BringToFront(); // Ensures grid takes remaining space AFTER header, making column headers visible
+
+            // Container Wrapper untuk spasi antar Card
+            Panel pnlSpacer = new Panel { Dock = DockStyle.Left, Width = 24, BackColor = Color.Transparent };
+
+            this.Controls.Add(cardPreview);
+            this.Controls.Add(pnlSpacer);
+            this.Controls.Add(cardConfig);
+
+            // Z-Order
+            cardPreview.BringToFront();
+
             this.ResumeLayout(false);
+        }
+
+        private async void BtnPreview_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                btnPreview.Enabled = false;
+                btnPreview.Text = "Memuat Pratinjau...";
+                lblPreviewStatus.Text = "Mengambil data...";
+                Application.DoEvents();
+
+                string areaName = cmbArea.SelectedItem?.ToString() ?? "Semua Area";
+                
+                // Fetch top 50 detailed tickets
+                var dataDetail = await FetchDataForReportAsync(dateStart.Value, dateEnd.Value, areaName);
+                
+                if (dataDetail != null && dataDetail.Rows.Count > 0)
+                {
+                    // Limit to 50 for preview
+                    var previewTable = dataDetail.Clone();
+                    for (int i = 0; i < Math.Min(50, dataDetail.Rows.Count); i++)
+                    {
+                        previewTable.ImportRow(dataDetail.Rows[i]);
+                    }
+                    
+                    gridPreview.DataSource = previewTable;
+                    lblPreviewStatus.Text = $"Menampilkan {previewTable.Rows.Count} dari {dataDetail.Rows.Count} total baris";
+                }
+                else
+                {
+                    gridPreview.DataSource = null;
+                    lblPreviewStatus.Text = "Tidak ada data pada rentang ini.";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Gagal memuat pratinjau: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                lblPreviewStatus.Text = "Gagal memuat pratinjau.";
+            }
+            finally
+            {
+                btnPreview.Enabled = true;
+                btnPreview.Text = "🔍 Tampilkan Pratinjau (Preview)";
+            }
         }
     }
 }
