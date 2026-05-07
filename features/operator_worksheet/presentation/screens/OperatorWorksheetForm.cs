@@ -1417,19 +1417,20 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         {
             var card = CreateCard(width, height);
 
-            int halfWidth = (width - 40) / 2; // Subtracting padding and gap
+            int gap = 24;
+            int gridWidth = (width - 32 - gap) / 2; 
 
             // Label for Tersimpan
             card.Controls.Add(new Label { Text = "SUDAH TERSIMPAN", Font = new Font("Segoe UI", 11F, FontStyle.Bold), ForeColor = Color.FromArgb(34, 197, 94), AutoSize = true, Location = new Point(16, 12) });
 
             // Label for Product (Belum Dikerjakan)
-            card.Controls.Add(new Label { Text = "ANTREAN BARCODE", Font = new Font("Segoe UI", 11F, FontStyle.Bold), ForeColor = Color.FromArgb(245, 158, 11), AutoSize = true, Location = new Point(16 + halfWidth + 8, 12) });
+            card.Controls.Add(new Label { Text = "BARCODE", Font = new Font("Segoe UI", 11F, FontStyle.Bold), ForeColor = Color.FromArgb(245, 158, 11), AutoSize = true, Location = new Point(16 + gridWidth + gap, 12) });
 
             // Grid Tersimpan
             _dgvTersimpan = new DataGridView
             {
                 Location = new Point(16, 38),
-                Size = new Size(halfWidth, height - 54),
+                Size = new Size(gridWidth, height - 54),
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.None,
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
@@ -1448,7 +1449,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 DefaultCellStyle = new DataGridViewCellStyle { SelectionBackColor = Color.FromArgb(220, 252, 231), SelectionForeColor = Color.FromArgb(15, 23, 42), Padding = new Padding(4) }
             };
             _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "DisplaySequen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
-            _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", Width = 80 });
+            _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", Width = 65 });
 
             _dgvTersimpan.SelectionChanged += DgvTersimpan_SelectionChanged;
             card.Controls.Add(_dgvTersimpan);
@@ -1456,8 +1457,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Grid Product
             _dgvProduct = new DataGridView
             {
-                Location = new Point(16 + halfWidth + 8, 38),
-                Size = new Size(halfWidth, height - 54),
+                Location = new Point(16 + gridWidth + gap, 38),
+                Size = new Size(gridWidth, height - 54),
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.None,
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
