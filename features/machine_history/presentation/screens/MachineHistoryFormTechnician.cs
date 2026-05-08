@@ -61,6 +61,13 @@ namespace mtc_app.features.machine_history.presentation.screens
         private CheckBox chkTidak4M;
         private AppStarRating ratingOperator;
         private AppInput inputOperatorNote;
+        private List<string> _loadedParts = new List<string>();
+        
+        // Applicator Checkboxes
+        private FlowLayoutPanel pnlApplicatorCheckboxes;
+        private CheckBox chkInsulation;
+        private CheckBox chkAnvil;
+        private CheckBox chkWire;
 
         // [MODIFIKASI] Menambahkan parameter autoStart = false
         public MachineHistoryFormTechnician(long ticketId, bool autoStart = false, int patrolDetailId = 0)
@@ -740,6 +747,28 @@ namespace mtc_app.features.machine_history.presentation.screens
                 AllowCustomText = true 
             };
             mainLayout.Controls.Add(inputSparepart);
+            
+            pnlApplicatorCheckboxes = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Margin = new Padding(0, 5, 0, 10),
+                Visible = false
+            };
+            chkInsulation = new CheckBox { Text = "Insulation", AutoSize = true, Margin = new Padding(0, 0, 15, 0) };
+            chkAnvil = new CheckBox { Text = "Anvil", AutoSize = true, Margin = new Padding(0, 0, 15, 0) };
+            chkWire = new CheckBox { Text = "Wire", AutoSize = true, Margin = new Padding(0, 0, 0, 0) };
+            
+            pnlApplicatorCheckboxes.Controls.AddRange(new Control[] { chkInsulation, chkAnvil, chkWire });
+            mainLayout.Controls.Add(pnlApplicatorCheckboxes);
+
+            inputSparepart.InputValueChanged += (s, e) =>
+            {
+                string val = inputSparepart.InputValue ?? "";
+                pnlApplicatorCheckboxes.Visible = val.StartsWith("Applikator", StringComparison.OrdinalIgnoreCase);
+            };
+
             LoadParts();
 
             var panelRating = new FlowLayoutPanel
@@ -780,14 +809,86 @@ namespace mtc_app.features.machine_history.presentation.screens
                 var repo = mtc_app.shared.infrastructure.ServiceLocator.CreateMasterDataRepository();
                 var parts = await repo.GetPartsAsync();
                 
-                var dropdownItems = parts
+                _loadedParts = parts
                     .Select(p => $"{(string.IsNullOrEmpty(p.PartCode) ? "N/A" : p.PartCode)} - {p.PartName}")
                     .ToList();
-
-                // Tambahan manual template aplikator sesuai request user
-                dropdownItems.Add("Applikator - Nomor_Aplikator");
                     
-                inputSparepart.SetDropdownItems(dropdownItems.ToArray());
+                string machineCodeStr = "";
+                if (_currentTicketId > 0)
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        machineCodeStr = conn.QueryFirstOrDefault<string>(
+                            @"SELECT CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) 
+                              FROM tickets t 
+                              JOIN machines m ON t.machine_id = m.machine_id 
+                              LEFT JOIN machine_types mt ON m.type_id = mt.type_id 
+                              LEFT JOIN machine_areas ma ON m.area_id = ma.area_id 
+                              WHERE t.ticket_id = @Id", 
+                            new { Id = _currentTicketId });
+                    }
+                }
+                else if (_currentTicketId < 0)
+                {
+                    int pendingId = (int)Math.Abs(_currentTicketId);
+                    var request = mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+                    if (request != null)
+                    {
+                        using (var conn = DatabaseHelper.GetConnection())
+                        {
+                            machineCodeStr = conn.QueryFirstOrDefault<string>(
+                                @"SELECT CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) 
+                                  FROM machines m 
+                                  LEFT JOIN machine_types mt ON m.type_id = mt.type_id 
+                                  LEFT JOIN machine_areas ma ON m.area_id = ma.area_id 
+                                  WHERE m.machine_id = @Id", 
+                                new { Id = request.MachineId });
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(machineCodeStr))
+                {
+                    string excelPath = @"C:\MTC_System\Data\MasterAplikator.xls";
+                    if (!System.IO.File.Exists(excelPath))
+                    {
+                        string fallback = excelPath + "x";
+                        if (System.IO.File.Exists(fallback)) excelPath = fallback;
+                    }
+
+                    if (System.IO.File.Exists(excelPath))
+                    {
+                        var (sideA, sideB) = mtc_app.features.applicator_patrol.data.services.ApplicatorExcelReader.ReadApplicators(excelPath, machineCodeStr);
+                        
+                        foreach (var app in sideA.Concat(sideB))
+                        {
+                            string cleanApp = app;
+                            int bracketIdx = cleanApp.IndexOf('(');
+                            if (bracketIdx > 0)
+                            {
+                                cleanApp = cleanApp.Substring(0, bracketIdx).Trim();
+                            }
+                            
+                            string formattedApp = $"Applikator {cleanApp}";
+                            if (!_loadedParts.Contains(formattedApp))
+                            {
+                                _loadedParts.Add(formattedApp);
+                            }
+                        }
+                    }
+                }
+                    
+                if (this.IsHandleCreated && !this.IsDisposed)
+                {
+                    this.Invoke((MethodInvoker)delegate 
+                    {
+                        inputSparepart.SetDropdownItems(_loadedParts.Distinct().ToArray());
+                    });
+                }
+                else
+                {
+                    inputSparepart.SetDropdownItems(_loadedParts.Distinct().ToArray());
+                }
             }
             catch (Exception ex) 
             {
@@ -1189,6 +1290,19 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 MessageBox.Show("Isi detail sparepart.", "Validasi");
                 return;
+            }
+
+            if (pnlApplicatorCheckboxes.Visible)
+            {
+                var selectedOptions = new List<string>();
+                if (chkInsulation.Checked) selectedOptions.Add("Insulation");
+                if (chkAnvil.Checked) selectedOptions.Add("Anvil");
+                if (chkWire.Checked) selectedOptions.Add("Wire");
+
+                if (selectedOptions.Count > 0)
+                {
+                    val += $" ({string.Join(", ", selectedOptions)})";
+                }
             }
 
             if (MessageBox.Show("Lanjutkan request sparepart?", "Konfirmasi", MessageBoxButtons.YesNo) != DialogResult.Yes)
