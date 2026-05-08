@@ -876,6 +876,15 @@ namespace mtc_app.features.technician.presentation.components
                 Color.FromArgb(174, 214, 241)  // Pastel Blue
             };
 
+                var legend = new Legend("LegendTotal")
+                {
+                    Docking = Docking.Top,
+                    Alignment = StringAlignment.Center,
+                    BackColor = Color.Transparent,
+                    Font = new Font("Segoe UI", 9F, FontStyle.Regular)
+                };
+                _chart.Legends.Add(legend);
+
                 for (int i = 0; i < currentHourCount; i++)
                 {
                     var s = new Series($"Jam {i + 1}")
