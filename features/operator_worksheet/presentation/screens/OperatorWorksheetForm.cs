@@ -1226,17 +1226,47 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             btnPilihSemua.Click += (s, ev) =>
             {
                 if (_dgvSequen.Rows.Count == 0) return;
-                // Toggle: jika sudah ada yang dicentang semua, batal semua
-                bool allChecked = true;
+                
+                // Cek apakah semua baris *yang belum tersimpan* sudah tercentang
+                bool allUnsavedChecked = true;
+                bool hasUnsaved = false;
+
                 foreach (DataGridViewRow r in _dgvSequen.Rows)
                 {
-                    if (r.Cells["Pilih"].Value == null || !(bool)r.Cells["Pilih"].Value) { allChecked = false; break; }
+                    var rowData = r.DataBoundItem as LkoService.LkoAggregatedData;
+                    if (rowData != null && rowData.DbRecord == null) // Hanya pedulikan yang belum tersimpan
+                    {
+                        hasUnsaved = true;
+                        if (r.Cells["Pilih"].Value == null || !(bool)r.Cells["Pilih"].Value)
+                        {
+                            allUnsavedChecked = false;
+                            break;
+                        }
+                    }
                 }
+
+                if (!hasUnsaved)
+                {
+                    MessageBox.Show("Semua data sudah tersimpan.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Toggle: jika semua yg belum tersimpan sudah dicentang, batal centang semua. 
+                // Jika belum, centang semua yg belum tersimpan.
                 foreach (DataGridViewRow r in _dgvSequen.Rows)
                 {
-                    r.Cells["Pilih"].Value = !allChecked;
+                    var rowData = r.DataBoundItem as LkoService.LkoAggregatedData;
+                    if (rowData != null && rowData.DbRecord == null)
+                    {
+                        r.Cells["Pilih"].Value = !allUnsavedChecked;
+                    }
+                    else
+                    {
+                        r.Cells["Pilih"].Value = false; // Pastikan yg sudah tersimpan tidak tercentang
+                    }
                 }
-                btnPilihSemua.Text = allChecked ? "Pilih Semua" : "Batal Pilih";
+                
+                btnPilihSemua.Text = allUnsavedChecked ? "Pilih Semua" : "Batal Pilih";
                 _dgvSequen.RefreshEdit();
             };
             card.Controls.Add(btnPilihSemua);
