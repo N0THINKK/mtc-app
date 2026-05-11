@@ -69,9 +69,9 @@ namespace mtc_app.features.operator_worksheet.services
             if (!string.IsNullOrWhiteSpace(noMesin) && noMesin.Contains("-"))
             {
                 string afterDash = noMesin.Substring(noMesin.LastIndexOf('-') + 1);
-                if (int.TryParse(afterDash, out int mId) && mId >= 1 && mId <= 26)
+                if (int.TryParse(afterDash, out int mId) && mId >= 1)
                 {
-                    expectedPrefix = (char)('A' + mId - 1);
+                    expectedPrefix = (char)('A' + ((mId - 1) % 26));
                 }
             }
 
