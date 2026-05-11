@@ -1287,12 +1287,12 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 MultiSelect = false,
                 AutoGenerateColumns = false,
-                Font = new Font("Segoe UI", 9.5F),
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 ColumnHeadersHeight = 32,
                 RowTemplate = { Height = 30 },
                 EnableHeadersVisualStyles = false,
                 ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(248, 250, 252), ForeColor = Color.FromArgb(71, 85, 105), Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
-                DefaultCellStyle = new DataGridViewCellStyle { SelectionBackColor = Color.FromArgb(219, 234, 254), SelectionForeColor = Color.FromArgb(15, 23, 42), Padding = new Padding(4) },
+                DefaultCellStyle = new DataGridViewCellStyle { ForeColor = Color.Black, SelectionBackColor = Color.FromArgb(219, 234, 254), SelectionForeColor = Color.Black, Padding = new Padding(4) },
                 EditMode = DataGridViewEditMode.EditProgrammatically
             };
             // Kolom checkbox — satu-satunya yang bisa diedit
@@ -1471,12 +1471,12 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 ReadOnly = true,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 AutoGenerateColumns = false,
-                Font = new Font("Segoe UI", 9.5F),
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 ColumnHeadersHeight = 32,
                 RowTemplate = { Height = 28 },
                 EnableHeadersVisualStyles = false,
                 ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(248, 250, 252), ForeColor = Color.FromArgb(71, 85, 105), Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
-                DefaultCellStyle = new DataGridViewCellStyle { SelectionBackColor = Color.FromArgb(220, 252, 231), SelectionForeColor = Color.FromArgb(15, 23, 42), Padding = new Padding(4) }
+                DefaultCellStyle = new DataGridViewCellStyle { ForeColor = Color.Black, SelectionBackColor = Color.FromArgb(220, 252, 231), SelectionForeColor = Color.Black, Padding = new Padding(4) }
             };
             _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "DisplaySequen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
             _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", Width = 65 });
@@ -1499,12 +1499,12 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 ReadOnly = true,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 AutoGenerateColumns = false,
-                Font = new Font("Segoe UI", 9.5F),
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 ColumnHeadersHeight = 32,
                 RowTemplate = { Height = 28 },
                 EnableHeadersVisualStyles = false,
                 ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(254, 252, 232), ForeColor = Color.FromArgb(180, 83, 9), Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
-                DefaultCellStyle = new DataGridViewCellStyle { SelectionBackColor = Color.FromArgb(254, 243, 199), SelectionForeColor = Color.FromArgb(146, 64, 14), Padding = new Padding(4) }
+                DefaultCellStyle = new DataGridViewCellStyle { ForeColor = Color.Black, SelectionBackColor = Color.FromArgb(254, 243, 199), SelectionForeColor = Color.Black, Padding = new Padding(4) }
             };
             _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "Sequen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
             card.Controls.Add(_dgvProduct);
@@ -1642,9 +1642,6 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _isPopulatingFields = false;
             
             _autoSaveTimer?.Stop(); // Jangan auto-save sampai ada interaksi user
-            
-            // Auto scroll ke atas agar form input terlihat
-            if (_pnlContent != null) _pnlContent.AutoScrollPosition = new Point(0, 0);
         }
 
         private void DgvTersimpan_SelectionChanged(object sender, EventArgs e)
@@ -1661,9 +1658,6 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _isPopulatingFields = false;
             
             _autoSaveTimer?.Stop(); // Grid tersimpan tidak punya auto-save
-            
-            // Auto scroll ke atas agar form input terlihat
-            if (_pnlContent != null) _pnlContent.AutoScrollPosition = new Point(0, 0);
         }
 
         private void PopulateInputFields(LkoService.LkoAggregatedData rowData)
