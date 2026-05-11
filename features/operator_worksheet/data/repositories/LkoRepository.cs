@@ -30,7 +30,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                         WHERE sequen = @Sequen 
                           AND urutan_kanban = @UrutanKanban
                           AND no_mesin = @NoMesin 
-                          AND DATE(waktu_simpan) = CURDATE()
+                          AND waktu_mulai = @WaktuMulai
                         LIMIT 1";
 
                     existingId = await connection.QueryFirstOrDefaultAsync<int?>(checkSql, new

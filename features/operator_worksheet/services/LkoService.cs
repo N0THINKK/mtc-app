@@ -185,7 +185,8 @@ namespace mtc_app.features.operator_worksheet.services
                         !consumedIds.Contains(r.Id) &&
                         !string.IsNullOrWhiteSpace(r.Sequen) &&
                         r.Sequen == item.DisplaySequen &&
-                        (r.UrutanKanban ?? "") == (item.DisplayUrutanPengerjaan ?? ""));
+                        (r.UrutanKanban ?? "") == (item.DisplayUrutanPengerjaan ?? "") &&
+                        (r.WaktuMulai ?? "") == (item.Log?.WaktuMulaiPengerjaan ?? ""));
 
                     if (dbMatch != null)
                     {
@@ -209,7 +210,8 @@ namespace mtc_app.features.operator_worksheet.services
                     var match = data.FirstOrDefault(d =>
                         d.DbRecord == null &&
                         d.DisplaySequen == offRec.Sequen &&
-                        (d.DisplayUrutanPengerjaan ?? "") == (offRec.UrutanKanban ?? ""));
+                        (d.DisplayUrutanPengerjaan ?? "") == (offRec.UrutanKanban ?? "") &&
+                        (d.Log?.WaktuMulaiPengerjaan ?? "") == (offRec.WaktuMulai ?? ""));
 
                     if (match != null)
                     {
