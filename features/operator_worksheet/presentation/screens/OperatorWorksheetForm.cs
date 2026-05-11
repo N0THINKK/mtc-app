@@ -785,8 +785,6 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             y += 20;
             _txtCutL = CreateStyledTextBox("0", fw);
             _txtCutL.Location = new Point(16, y);
-            _txtCutL.ReadOnly = true;
-            _txtCutL.BackColor = Color.FromArgb(241, 245, 249);
             card.Controls.Add(_txtCutL);
             y += 40;
 
@@ -796,7 +794,6 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(new Label { Text = "Front C/H", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
             _txtFrontChA = CreateStyledTextBox("Masukkan Front C/H", inputWidth);
             _txtFrontChA.Location = new Point(16 + labelWidth + 8, y);
-            _txtFrontChA.ReadOnly = true;
             _txtFrontChA.Text = "0";
             card.Controls.Add(_txtFrontChA);
             y += 36;
@@ -804,16 +801,13 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(new Label { Text = "Rear C/H", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
             _txtRearChA = CreateStyledTextBox("Masukkan Rear C/H", inputWidth);
             _txtRearChA.Location = new Point(16 + labelWidth + 8, y);
-            _txtRearChA.ReadOnly = true;
             _txtRearChA.Text = "0";
-            _txtRearChA.BackColor = Color.FromArgb(241, 245, 249);
             card.Controls.Add(_txtRearChA);
             y += 36;
 
             card.Controls.Add(new Label { Text = "Front C/W", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
             _txtFrontCwA = CreateStyledTextBox("Masukkan Front C/W", inputWidth);
             _txtFrontCwA.Location = new Point(16 + labelWidth + 8, y);
-            _txtFrontCwA.ReadOnly = true;
             _txtFrontCwA.Text = "0";
             card.Controls.Add(_txtFrontCwA);
             y += 36;
@@ -821,9 +815,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(new Label { Text = "Rear C/W", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
             _txtRearCwA = CreateStyledTextBox("Masukkan Rear C/W", inputWidth);
             _txtRearCwA.Location = new Point(16 + labelWidth + 8, y);
-            _txtRearCwA.ReadOnly = true;
             _txtRearCwA.Text = "0";
-            _txtRearCwA.BackColor = Color.FromArgb(241, 245, 249);
             card.Controls.Add(_txtRearCwA);
             y += 44;
 
@@ -1130,14 +1122,16 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 QtyMaster = rowData.Master?.Qty ?? "",
 
                 // Jissk data
-                FrontChA = rowData.Jissk?.FrontChA ?? "0",
-                FrontCwA = rowData.Jissk?.FrontCwA ?? "0",
-                RearChA = rowData.Jissk?.RearChA ?? "0",
-                RearCwA = rowData.Jissk?.RearCwA ?? "0",
-                FrontChB = rowData.Jissk?.FrontChB ?? "0",
-                FrontCwB = rowData.Jissk?.FrontCwB ?? "0",
-                RearChB = rowData.Jissk?.RearChB ?? "0",
-                RearCwB = rowData.Jissk?.RearCwB ?? "0",
+                // Jissk data — ambil dari TextBox (yang mungkin sudah diedit operator)
+                // Sisi aktif menggunakan nilai dari TextBox, sisi tidak aktif dari Jissk DTO
+                FrontChA = _isSisiA ? _txtFrontChA.Text.Trim() : (rowData.Jissk?.FrontChA ?? "0"),
+                FrontCwA = _isSisiA ? _txtFrontCwA.Text.Trim() : (rowData.Jissk?.FrontCwA ?? "0"),
+                RearChA = _isSisiA ? _txtRearChA.Text.Trim() : (rowData.Jissk?.RearChA ?? "0"),
+                RearCwA = _isSisiA ? _txtRearCwA.Text.Trim() : (rowData.Jissk?.RearCwA ?? "0"),
+                FrontChB = !_isSisiA ? _txtFrontChA.Text.Trim() : (rowData.Jissk?.FrontChB ?? "0"),
+                FrontCwB = !_isSisiA ? _txtFrontCwA.Text.Trim() : (rowData.Jissk?.FrontCwB ?? "0"),
+                RearChB = !_isSisiA ? _txtRearChA.Text.Trim() : (rowData.Jissk?.RearChB ?? "0"),
+                RearCwB = !_isSisiA ? _txtRearCwA.Text.Trim() : (rowData.Jissk?.RearCwB ?? "0"),
 
                 // Waktu mesin
                 WaktuMulai = rowData.Log?.WaktuMulaiPengerjaan ?? "",
