@@ -53,6 +53,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private mtc_app.features.operator_worksheet.presentation.components.WireVisualizerPanel _wireVisualizer;
 
         // === Aktivitas fields ===
+        private Label _lblAktivitasTitle;
         private TextBox _txtQtyProduksi;
         private TextBox _txtNo4m;
         private ComboBox _cboKodeDefect;
@@ -758,7 +759,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(_btnSisiB);
             y += 44;
 
-            _lblLotId = new Label { Text = "Lot ID: -", Font = new Font("Segoe UI", 11F, FontStyle.Bold), ForeColor = Color.FromArgb(15, 23, 42), AutoSize = true, Location = new Point(16, y) };
+            _lblLotId = new Label { Text = "Sequen: -", Font = new Font("Segoe UI", 11F, FontStyle.Bold), ForeColor = Color.FromArgb(15, 23, 42), AutoSize = true, Location = new Point(16, y) };
             card.Controls.Add(_lblLotId);
             y += 28;
 
@@ -883,7 +884,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private Panel CreateAktivitasPanel(int width, int height)
         {
             var card = CreateCard(width, height);
-            card.Controls.Add(new Label { Text = "Aktivitas", Font = SectionFont, ForeColor = Color.FromArgb(15, 23, 42), AutoSize = true, Location = new Point(16, 14) });
+            _lblAktivitasTitle = new Label { Text = "Aktivitas", Font = SectionFont, ForeColor = Color.FromArgb(15, 23, 42), AutoSize = true, Location = new Point(16, 14) };
+            card.Controls.Add(_lblAktivitasTitle);
 
             int y = 44;
             int fw = width - 40;
@@ -1662,7 +1664,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
         private void PopulateInputFields(LkoService.LkoAggregatedData rowData)
         {
-            _lblLotId.Text = $"Lot ID: {rowData.DisplaySequen}";
+            _lblLotId.Text = $"Sequen: {rowData.DisplaySequen}";
+            if (_lblAktivitasTitle != null)
+            {
+                _lblAktivitasTitle.Text = $"Aktivitas - Sequen {rowData.DisplaySequen} ({rowData.DisplayUrutanPengerjaan})";
+            }
             // Show Terminal & Seal based on active side
             if (_isSisiA)
             {
