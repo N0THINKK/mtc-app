@@ -151,14 +151,45 @@ namespace mtc_app.features.operator_worksheet.services
 
         /// <summary>
         /// Ambil sequence dari Product.csv yang belum ada di PrdLog.csv
+        /// untuk shift yang sedang berjalan.
+        /// Shift siang: data PrdLog hari ini sebelum jam 19:00
+        /// Shift malam: data PrdLog hari ini mulai jam 19:00
         /// </summary>
         public List<string> GetPendingProductSequences()
         {
             var productSequences = _fileRepository.GetProductSequences();
             var logs = _fileRepository.GetPrdLogs();
-            
-            var logSequences = new HashSet<string>(logs.Select(l => l.Sequen).Where(s => !string.IsNullOrEmpty(s)));
-            
+
+            // Filter PrdLog berdasarkan shift aktif hari ini
+            var now = DateTime.Now;
+            var today = now.Date;
+            bool isNightShift = now.Hour >= 19;
+
+            var filteredLogs = logs.Where(l =>
+            {
+                if (string.IsNullOrWhiteSpace(l.WaktuMulaiPengerjaan)) return false;
+
+                // Format dari PrdLog.csv: "YY/MM/DD HH:mm:ss"
+                if (DateTime.TryParseExact(l.WaktuMulaiPengerjaan,
+                    new[] { "yy/MM/dd HH:mm:ss", "yy/MM/dd H:mm:ss", "yyyy/MM/dd HH:mm:ss" },
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None,
+                    out DateTime logDate))
+                {
+                    // Hanya data pada hari ini
+                    if (logDate.Date != today) return false;
+
+                    // Filter sesuai shift
+                    if (isNightShift)
+                        return logDate.Hour >= 19;
+                    else
+                        return logDate.Hour < 19;
+                }
+                return false;
+            });
+
+            var logSequences = new HashSet<string>(filteredLogs.Select(l => l.Sequen).Where(s => !string.IsNullOrEmpty(s)));
+
             return productSequences.Where(s => !string.IsNullOrWhiteSpace(s) && !logSequences.Contains(s)).ToList();
         }
 
