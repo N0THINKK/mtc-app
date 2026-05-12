@@ -142,6 +142,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // === LANGKAH 1.5: Shift HARDCODE (instan, tanpa query DB) ===
             _shifts = new List<CachedShiftDto>
             {
+                new CachedShiftDto { ShiftId = 0, ShiftName = "" },
                 new CachedShiftDto { ShiftId = 1, ShiftName = "A1" },
                 new CachedShiftDto { ShiftId = 2, ShiftName = "A2" },
                 new CachedShiftDto { ShiftId = 3, ShiftName = "B1" },
@@ -149,8 +150,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 new CachedShiftDto { ShiftId = 5, ShiftName = "NS" }
             };
             TimeSpan nowTime = DateTime.Now.TimeOfDay;
-            // Auto-select: A1 untuk pagi (07:00-19:00), B1 untuk malam (19:00-07:00)
-            _defaultShiftIndex = (nowTime >= new TimeSpan(7, 0, 0) && nowTime < new TimeSpan(19, 0, 0)) ? 0 : 2;
+            // Default ke kosong (index 0) agar operator wajib memilih
+            _defaultShiftIndex = 0;
 
             InitializeUI(); // Form akan langsung muncul
 
@@ -1097,7 +1098,13 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             }
 
             // Ambil shift dari combo
-            string shiftName = _cboShift?.SelectedItem is CachedShiftDto shift ? shift.ShiftName : "-";
+            string shiftName = _cboShift?.SelectedItem is CachedShiftDto shift ? shift.ShiftName : "";
+            
+            if (string.IsNullOrWhiteSpace(shiftName))
+            {
+                if (!isAutoSave) MessageBox.Show("Silakan pilih Shift terlebih dahulu.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
 
             int.TryParse(rowData.Log?.QtyDefect ?? "0", out int defectMesin);
 
@@ -1369,7 +1376,12 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 return;
             }
 
-            string shiftName = _cboShift?.SelectedItem is CachedShiftDto shift ? shift.ShiftName : "-";
+            string shiftName = _cboShift?.SelectedItem is CachedShiftDto shift ? shift.ShiftName : "";
+            if (string.IsNullOrWhiteSpace(shiftName))
+            {
+                MessageBox.Show("Silakan pilih Shift terlebih dahulu.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             int savedCount = 0;
             int skippedCount = 0;
 
