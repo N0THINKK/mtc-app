@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -200,11 +200,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         }
 
         /// <summary>
-        /// Called when No. Urut value changes — reload sequen data for the new machine number.
+        /// Called when No. Urut value changes â€” reload sequen data for the new machine number.
         /// </summary>
         private void OnNoUrutChanged()
         {
-            // Zero-pad: jika 1 digit, tambahkan 0 di depan (misal "1" → "01")
+            // Zero-pad: jika 1 digit, tambahkan 0 di depan (misal "1" â†’ "01")
             string urut = _txtNoUrut.Text.Trim();
             if (urut.Length == 1 && char.IsDigit(urut[0]))
             {
@@ -269,7 +269,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         }
 
         // =====================================================================
-        //  FILE WATCHER — auto-reload saat PrdLog/prdmst berubah
+        //  FILE WATCHER â€” auto-reload saat PrdLog/prdmst berubah
         // =====================================================================
         private void SetupFileWatcher()
         {
@@ -586,7 +586,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             int leftX = 20;
             int labelY = 12;
-            Color labelColor = Color.FromArgb(100, 116, 139);  // slate-500
+            Color labelColor = Color.Black;  // slate-500
             Color valueColor = Color.FromArgb(15, 23, 42);     // slate-900
             Font labelFont = new Font("Segoe UI", 10F);
             Font valueFont = new Font("Segoe UI", 10F, FontStyle.Bold);
@@ -767,8 +767,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             // Terminal & Seal side by side
             int halfFw = (fw - 8) / 2;
-            card.Controls.Add(new Label { Text = "Terminal", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
-            card.Controls.Add(new Label { Text = "Seal", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16 + halfFw + 8, y) });
+            card.Controls.Add(new Label { Text = "Terminal", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Seal", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16 + halfFw + 8, y) });
             y += 20;
 
             _txtTerminal = CreateStyledTextBox("Terminal", halfFw);
@@ -783,7 +783,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             y += 40;
 
             // CutL (read-only dari prdmst, sama untuk Sisi A dan B)
-            card.Controls.Add(new Label { Text = "CutL", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "CutL", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16, y) });
             y += 20;
             _txtCutL = CreateStyledTextBox("0", fw);
             _txtCutL.Location = new Point(16, y);
@@ -793,28 +793,28 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             int labelWidth = 80;
             int inputWidth = fw - labelWidth - 8;
 
-            card.Controls.Add(new Label { Text = "Front C/H", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Front C/H", Font = FieldLabelFont, ForeColor = Color.Black, Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
             _txtFrontChA = CreateStyledTextBox("Masukkan Front C/H", inputWidth);
             _txtFrontChA.Location = new Point(16 + labelWidth + 8, y);
             _txtFrontChA.Text = "0";
             card.Controls.Add(_txtFrontChA);
             y += 36;
 
-            card.Controls.Add(new Label { Text = "Rear C/H", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Rear C/H", Font = FieldLabelFont, ForeColor = Color.Black, Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
             _txtRearChA = CreateStyledTextBox("Masukkan Rear C/H", inputWidth);
             _txtRearChA.Location = new Point(16 + labelWidth + 8, y);
             _txtRearChA.Text = "0";
             card.Controls.Add(_txtRearChA);
             y += 36;
 
-            card.Controls.Add(new Label { Text = "Front C/W", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Front C/W", Font = FieldLabelFont, ForeColor = Color.Black, Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
             _txtFrontCwA = CreateStyledTextBox("Masukkan Front C/W", inputWidth);
             _txtFrontCwA.Location = new Point(16 + labelWidth + 8, y);
             _txtFrontCwA.Text = "0";
             card.Controls.Add(_txtFrontCwA);
             y += 36;
 
-            card.Controls.Add(new Label { Text = "Rear C/W", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Rear C/W", Font = FieldLabelFont, ForeColor = Color.Black, Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
             _txtRearCwA = CreateStyledTextBox("Masukkan Rear C/W", inputWidth);
             _txtRearCwA.Location = new Point(16 + labelWidth + 8, y);
             _txtRearCwA.Text = "0";
@@ -887,8 +887,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             int thirdW = (fw - 16) / 3;
 
             // Lot Id Wire & Issue Kanban side by side
-            card.Controls.Add(new Label { Text = "Lot Id Wire", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
-            card.Controls.Add(new Label { Text = "Issue Kanban", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16 + halfW + 8, y) });
+            card.Controls.Add(new Label { Text = "Lot Id Wire", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Issue Kanban", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16 + halfW + 8, y) });
             y += 20;
 
             _txtLotIdWire = CreateStyledTextBox("Lot Id Wire", halfW);
@@ -903,8 +903,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             y += 42;
 
             // Lot Id Terminal A & Lot Id Terminal B side by side
-            card.Controls.Add(new Label { Text = "Lot Id Terminal A", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
-            card.Controls.Add(new Label { Text = "Lot Id Terminal B", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16 + halfW + 8, y) });
+            card.Controls.Add(new Label { Text = "Lot Id Terminal A", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Lot Id Terminal B", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16 + halfW + 8, y) });
             y += 20;
 
             _txtLotIdTerminalA = CreateStyledTextBox("Lot Id Terminal A", halfW);
@@ -919,8 +919,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             y += 42;
 
             // QTY Produksi & No. 4m side by side
-            card.Controls.Add(new Label { Text = "QTY Produksi", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
-            card.Controls.Add(new Label { Text = "No. 4m", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16 + halfW + 8, y) });
+            card.Controls.Add(new Label { Text = "QTY Produksi", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "No. 4m", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16 + halfW + 8, y) });
             y += 20;
 
             _txtQtyProduksi = CreateStyledTextBox("Masukkan Qty Produksi", halfW);
@@ -935,7 +935,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             y += 42;
 
             // Kode Defect (dropdown diisi user)
-            card.Controls.Add(new Label { Text = "Kode Defect", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Kode Defect", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16, y) });
             y += 20;
             _cboKodeDefect = new ComboBox { Font = FieldValueFont, Size = new Size(fw, 30), Location = new Point(16, y), DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(248, 250, 252) };
             _cboKodeDefect.SelectedIndexChanged += (s, e) => ResetAutoSaveTimer();
@@ -1004,8 +1004,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             y += 42;
 
             // Defect Mesin (ReadOnly) + Defect Operator (Editable) side by side
-            card.Controls.Add(new Label { Text = "Defect Mesin (otomatis)", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16, y) });
-            card.Controls.Add(new Label { Text = "Defect Operator", Font = FieldLabelFont, ForeColor = Color.FromArgb(100, 116, 139), AutoSize = true, Location = new Point(16 + halfW + 8, y) });
+            card.Controls.Add(new Label { Text = "Defect Mesin (otomatis)", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Defect Operator", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16 + halfW + 8, y) });
             y += 20;
 
             _txtDefectMesin = CreateStyledTextBox("0", halfW);
@@ -1039,7 +1039,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             y += 38;
 
             // Button Lihat Record
-            var btnLihatRecord = new Button { Text = "📋 Lihat Record", Font = new Font("Segoe UI", 9F, FontStyle.Regular), Size = new Size(fw, 30), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(59, 130, 246), ForeColor = Color.White, Cursor = Cursors.Hand };
+            var btnLihatRecord = new Button { Text = "ðŸ“‹ Lihat Record", Font = new Font("Segoe UI", 9F, FontStyle.Regular), Size = new Size(fw, 30), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(59, 130, 246), ForeColor = Color.White, Cursor = Cursors.Hand };
             btnLihatRecord.FlatAppearance.BorderSize = 0;
             btnLihatRecord.Click += (s, e) => ShowSavedRecordsPopup();
             card.Controls.Add(btnLihatRecord);
@@ -1139,7 +1139,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 QtyMaster = rowData.Master?.Qty ?? "",
 
                 // Jissk data
-                // Jissk data — ambil dari TextBox (yang mungkin sudah diedit operator)
+                // Jissk data â€” ambil dari TextBox (yang mungkin sudah diedit operator)
                 // Sisi aktif menggunakan nilai dari TextBox, sisi tidak aktif dari Jissk DTO
                 FrontChA = _isSisiA ? _txtFrontChA.Text.Trim() : (rowData.Jissk?.FrontChA ?? "0"),
                 FrontCwA = _isSisiA ? _txtFrontCwA.Text.Trim() : (rowData.Jissk?.FrontCwA ?? "0"),
@@ -1302,15 +1302,15 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 ColumnHeadersHeight = 32,
                 RowTemplate = { Height = 30 },
                 EnableHeadersVisualStyles = false,
-                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(248, 250, 252), ForeColor = Color.FromArgb(71, 85, 105), Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
+                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(248, 250, 252), ForeColor = Color.Black, Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
                 DefaultCellStyle = new DataGridViewCellStyle { ForeColor = Color.Black, SelectionBackColor = Color.FromArgb(219, 234, 254), SelectionForeColor = Color.Black, Padding = new Padding(4) },
                 EditMode = DataGridViewEditMode.EditProgrammatically
             };
-            // Kolom checkbox — satu-satunya yang bisa diedit
+            // Kolom checkbox â€” satu-satunya yang bisa diedit
             var chkCol = new DataGridViewCheckBoxColumn
             {
                 Name = "Pilih",
-                HeaderText = "✓",
+                HeaderText = "âœ“",
                 Width = 35,
                 FalseValue = false,
                 TrueValue = true,
@@ -1322,7 +1322,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _dgvSequen.SelectionChanged += DgvSequen_SelectionChanged;
             _dgvSequen.CellFormatting += DgvSequen_CellFormatting;
 
-            // Range selection: klik checkbox pertama, lalu klik checkbox kedua → semua di antaranya ikut tercentang
+            // Range selection: klik checkbox pertama, lalu klik checkbox kedua â†’ semua di antaranya ikut tercentang
             int _lastCheckedIndex = -1;
             _dgvSequen.CellClick += (s, ev) =>
             {
@@ -1372,7 +1372,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             if (checkedRows.Count == 0)
             {
-                MessageBox.Show("Centang (✓) satu atau lebih sequen terlebih dahulu.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Centang (âœ“) satu atau lebih sequen terlebih dahulu.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -1489,7 +1489,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 ColumnHeadersHeight = 32,
                 RowTemplate = { Height = 28 },
                 EnableHeadersVisualStyles = false,
-                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(248, 250, 252), ForeColor = Color.FromArgb(71, 85, 105), Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
+                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(248, 250, 252), ForeColor = Color.Black, Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
                 DefaultCellStyle = new DataGridViewCellStyle { ForeColor = Color.Black, SelectionBackColor = Color.FromArgb(220, 252, 231), SelectionForeColor = Color.Black, Padding = new Padding(4) }
             };
             _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "Sequen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
@@ -1517,7 +1517,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 ColumnHeadersHeight = 32,
                 RowTemplate = { Height = 28 },
                 EnableHeadersVisualStyles = false,
-                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(254, 252, 232), ForeColor = Color.FromArgb(180, 83, 9), Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
+                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(254, 252, 232), ForeColor = Color.Black, Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
                 DefaultCellStyle = new DataGridViewCellStyle { ForeColor = Color.Black, SelectionBackColor = Color.FromArgb(254, 243, 199), SelectionForeColor = Color.Black, Padding = new Padding(4) }
             };
             _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "Sequen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
@@ -1557,7 +1557,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 });
                 _dgvProduct.DataSource = pendingProducts.Select(s => new { Sequen = s }).ToList();
 
-                // Jika sumber data XML (AC95), ganti label kolom "Urutan" → "Waktu"
+                // Jika sumber data XML (AC95), ganti label kolom "Urutan" â†’ "Waktu"
                 if (_lkoService.IsXmlSource)
                 {
                     if (_dgvSequen.Columns.Contains("Urutan"))
@@ -1884,7 +1884,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 string kombinasi = master.KombinasiWire?.Trim() ?? "";
                 string sisiLabel = _isSisiA ? "A" : "B";
 
-                // Jika indikator HasTerminal bukan "2" → strip only → muat Strip.jpg
+                // Jika indikator HasTerminal bukan "2" â†’ strip only â†’ muat Strip.jpg
                 if (hasTerminal != "2")
                 {
                     string stripFile = "Strip.jpg";
@@ -1895,11 +1895,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                         {
                             _picTerminal.Image = Image.FromStream(fs);
                         }
-                        _lblImageInfo.Text = $"📷 Sisi {sisiLabel}: {stripFile} (Strip Only)";
+                        _lblImageInfo.Text = $"ðŸ“· Sisi {sisiLabel}: {stripFile} (Strip Only)";
                     }
                     else
                     {
-                        _lblImageInfo.Text = $"⚠ Sisi {sisiLabel}: Strip Only — {stripFile} tidak ditemukan";
+                        _lblImageInfo.Text = $"âš  Sisi {sisiLabel}: Strip Only â€” {stripFile} tidak ditemukan";
                     }
                     return;
                 }
@@ -1944,14 +1944,14 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     {
                         _picTerminal.Image = Image.FromStream(fs);
                     }
-                    _lblImageInfo.Text = $"📷 Sisi {sisiLabel}: {usedFileName}";
+                    _lblImageInfo.Text = $"ðŸ“· Sisi {sisiLabel}: {usedFileName}";
                 }
                 else
                 {
                     string tried = fileNameWithSeal != null
                         ? $"{fileNameWithSeal} / {fileNameNoSeal}"
                         : fileNameNoSeal;
-                    _lblImageInfo.Text = $"⚠ Gambar tidak ditemukan: {tried}";
+                    _lblImageInfo.Text = $"âš  Gambar tidak ditemukan: {tried}";
                 }
             }
             catch (Exception ex)
@@ -2007,10 +2007,10 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             };
             canvas.Controls.Add(lblZoom);
 
-            // Tombol close — besar dan mencolok agar mudah ditemukan
+            // Tombol close â€” besar dan mencolok agar mudah ditemukan
             var btnClose = new Button
             {
-                Text = "✕ TUTUP",
+                Text = "âœ• TUTUP",
                 Font = new Font("Segoe UI", 12F, FontStyle.Bold),
                 ForeColor = Color.White,
                 BackColor = Color.FromArgb(220, 38, 38),
@@ -2136,7 +2136,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Title label
             var lblTitle = new Label
             {
-                Text = "📋 Record LKO Tersimpan — " + GetEffectiveMachineNumber(),
+                Text = "ðŸ“‹ Record LKO Tersimpan â€” " + GetEffectiveMachineNumber(),
                 Font = new Font("Segoe UI", 13F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(15, 23, 42),
                 AutoSize = true,
@@ -2147,7 +2147,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Close button
             var btnClose = new Button
             {
-                Text = "✕ Tutup",
+                Text = "âœ• Tutup",
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 ForeColor = Color.White,
                 BackColor = Color.FromArgb(220, 38, 38),
@@ -2220,9 +2220,9 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Loading indicator
             var lblLoading = new Label
             {
-                Text = "⏳ Memuat data...",
+                Text = "â³ Memuat data...",
                 Font = new Font("Segoe UI", 11F, FontStyle.Italic),
-                ForeColor = Color.FromArgb(100, 116, 139),
+                ForeColor = Color.Black,
                 AutoSize = true,
                 Location = new Point(popup.ClientSize.Width / 2 - 60, popup.ClientSize.Height / 2)
             };
@@ -2233,8 +2233,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             Action<DateTime> loadDataAction = async (targetDate) =>
             {
                 lblLoading.Visible = true;
-                lblLoading.Text = "⏳ Memuat data...";
-                lblLoading.ForeColor = Color.FromArgb(100, 116, 139);
+                lblLoading.Text = "â³ Memuat data...";
+                lblLoading.ForeColor = Color.Black;
                 dgv.DataSource = null;
 
                 try
@@ -2251,7 +2251,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     {
                         lblLoading.Text = "Belum ada record tersimpan pada tanggal tersebut.";
                         lblLoading.Visible = true;
-                        lblTitle.Text = $"📋 Record LKO Tersimpan — {GetEffectiveMachineNumber()} (0 record)";
+                        lblTitle.Text = $"ðŸ“‹ Record LKO Tersimpan â€” {GetEffectiveMachineNumber()} (0 record)";
                         return;
                     }
 
@@ -2320,11 +2320,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     if (dgv.Columns.Contains("No"))
                         dgv.Columns["No"].Width = 40;
 
-                    lblTitle.Text = $"📋 Record LKO Tersimpan — {GetEffectiveMachineNumber()} ({records.Count} record)";
+                    lblTitle.Text = $"ðŸ“‹ Record LKO Tersimpan â€” {GetEffectiveMachineNumber()} ({records.Count} record)";
                 }
                 catch (Exception ex)
                 {
-                    lblLoading.Text = $"❌ Gagal memuat data: {ex.Message}";
+                    lblLoading.Text = $"âŒ Gagal memuat data: {ex.Message}";
                     lblLoading.ForeColor = Color.FromArgb(220, 38, 38);
                 }
             };
