@@ -193,7 +193,10 @@ namespace mtc_app.features.admin.services
                 dataTable.Columns.Add("Sudden Malam Normal (Menit)", typeof(long));
                 dataTable.Columns.Add("Sudden Malam OT (Menit)", typeof(long));
                 dataTable.Columns.Add("Efisiensi (%)", typeof(string));
-                dataTable.Columns.Add("Output mesin / ((jam kerja normal+OT) -(waktu mesin tidak run) )", typeof(string));
+                dataTable.Columns.Add("Pagi: Output / ((Jam Kerja Normal + OT) - (Downtime + Excluding Time))", typeof(string));
+                dataTable.Columns.Add("Pagi: Output / ((Jam Kerja Normal + OT) - (Idle - Break))", typeof(string));
+                dataTable.Columns.Add("Malam: Output / ((Jam Kerja Normal + OT) - (Downtime + Excluding Time))", typeof(string));
+                dataTable.Columns.Add("Malam: Output / ((Jam Kerja Normal + OT) - (Idle - Break))", typeof(string));
 
                 foreach (var row in results)
                 {
@@ -239,10 +242,10 @@ namespace mtc_app.features.admin.services
                     long sudMN = row.SuddenMalamNormal ?? 0;
                     long sudMOT = row.SuddenMalamOT ?? 0;
 
-                    long rrPagiN = (long)((double)outPagiN / 9.5);
-                    long rrPagiOT = (long)((double)outPagiOT / 2.5);
-                    long rrMalamN = (long)((double)outMalamN / 9.5);
-                    long rrMalamOT = (long)((double)outMalamOT / 2.5);
+                    long rrPagiN = (long)((double)outPagiN / 8.0);
+                    long rrPagiOT = (long)((double)outPagiOT / 1.75);
+                    long rrMalamN = (long)((double)outMalamN / 8.0);
+                    long rrMalamOT = (long)((double)outMalamOT / 1.75);
 
                     long totalRun = autoPagiN + autoPagiOT + autoMalamN + autoMalamOT;
                     long totalNyala = nyalaPagiN + nyalaPagiOT + nyalaMalamN + nyalaMalamOT;
@@ -253,7 +256,44 @@ namespace mtc_app.features.admin.services
                     double pembagiEfisiensi = totalRun + totalNyala + totalPlanned + totalSudden - totalBreak;
                     double eff = pembagiEfisiensi > 0 ? ((double)totalRun / pembagiEfisiensi) * 100 : 0;
                     
-                    double outputRate = totalRun > 0 ? (double)totalOut / totalRun : 0;
+                    bool isPagiNActive = (outPagiN > 0 || autoPagiN > 0 || monPagiN > 0 || planPN > 0 || sudPN > 0);
+                    bool isPagiOTActive = (outPagiOT > 0 || autoPagiOT > 0 || monPagiOT > 0 || planPOT > 0 || sudPOT > 0);
+                    bool isMalamNActive = (outMalamN > 0 || autoMalamN > 0 || monMalamN > 0 || planMN > 0 || sudMN > 0);
+                    bool isMalamOTActive = (outMalamOT > 0 || autoMalamOT > 0 || monMalamOT > 0 || planMOT > 0 || sudMOT > 0);
+
+                    // --- PAGI ---
+                    long jamKerjaPagi = 0;
+                    if (isPagiNActive) jamKerjaPagi += 480;
+                    if (isPagiOTActive) jamKerjaPagi += 105;
+
+                    long totalOutPagi = outPagiN + outPagiOT;
+                    long plannedPagi = planPN + planPOT;
+                    long suddenPagi = sudPN + sudPOT;
+                    long nyalaPagi = nyalaPagiN + nyalaPagiOT;
+                    long breakPagi = breakPagiN + breakPagiOT;
+
+                    double div1Pagi = jamKerjaPagi - (plannedPagi + suddenPagi);
+                    double rate1Pagi = div1Pagi > 0 ? (double)totalOutPagi / div1Pagi : 0;
+
+                    double div2Pagi = jamKerjaPagi - (nyalaPagi - breakPagi);
+                    double rate2Pagi = div2Pagi > 0 ? (double)totalOutPagi / div2Pagi : 0;
+
+                    // --- MALAM ---
+                    long jamKerjaMalam = 0;
+                    if (isMalamNActive) jamKerjaMalam += 480;
+                    if (isMalamOTActive) jamKerjaMalam += 105;
+
+                    long totalOutMalam = outMalamN + outMalamOT;
+                    long plannedMalam = planMN + planMOT;
+                    long suddenMalam = sudMN + sudMOT;
+                    long nyalaMalam = nyalaMalamN + nyalaMalamOT;
+                    long breakMalam = breakMalamN + breakMalamOT;
+
+                    double div1Malam = jamKerjaMalam - (plannedMalam + suddenMalam);
+                    double rate1Malam = div1Malam > 0 ? (double)totalOutMalam / div1Malam : 0;
+
+                    double div2Malam = jamKerjaMalam - (nyalaMalam - breakMalam);
+                    double rate2Malam = div2Malam > 0 ? (double)totalOutMalam / div2Malam : 0;
 
                     dataTable.Rows.Add(
                         row.TanggalProduksi,
@@ -266,7 +306,10 @@ namespace mtc_app.features.admin.services
                         planPN, planPOT, planMN, planMOT,
                         sudPN, sudPOT, sudMN, sudMOT,
                         eff.ToString("F1") + " %",
-                        outputRate.ToString("F2")
+                        rate1Pagi.ToString("F2"),
+                        rate2Pagi.ToString("F2"),
+                        rate1Malam.ToString("F2"),
+                        rate2Malam.ToString("F2")
                     );
                 }
 
