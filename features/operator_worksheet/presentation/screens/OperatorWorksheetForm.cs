@@ -1664,21 +1664,28 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Cari sequen berawalan "9" paling baru (penanda awal shift)
             // Hitung Gross & OK hanya dari sequen "9xxx" tersebut sampai sequen terbaru
             
-            bool foundShiftStart = false;
-            // Scan dari terlama ke terbaru (dari bawah list ke atas)
-            // agar kita temukan "9xxx" terdekat dengan data terbaru
-            for (int i = _worksheetData.Count - 1; i >= 0; i--)
+            // Cari posisi "9xxx" terbaru (scan dari atas/terbaru)
+            int shiftStartIndex = -1;
+            for (int i = 0; i < _worksheetData.Count; i++)
             {
                 var seq = _worksheetData[i].DisplaySequen ?? "";
                 if (seq.StartsWith("9"))
                 {
-                    foundShiftStart = true;
+                    shiftStartIndex = i;
+                    break; // Ketemu yang terbaru, stop
                 }
-                
-                if (foundShiftStart && _worksheetData[i].DbRecord != null)
+            }
+
+            // Hitung dari index 0 (terbaru) sampai shiftStartIndex (9xxx)
+            if (shiftStartIndex >= 0)
+            {
+                for (int i = 0; i <= shiftStartIndex; i++)
                 {
-                    grossSum += _worksheetData[i].DbRecord.QtyProduct;
-                    defectSum += _worksheetData[i].DbRecord.QtyDefectOperator;
+                    if (_worksheetData[i].DbRecord != null)
+                    {
+                        grossSum += _worksheetData[i].DbRecord.QtyProduct;
+                        defectSum += _worksheetData[i].DbRecord.QtyDefectOperator;
+                    }
                 }
             }
             
