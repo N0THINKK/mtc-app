@@ -9,6 +9,7 @@ using System.Windows.Forms;
 using Dapper;
 using mtc_app.features.operator_worksheet.services;
 using mtc_app.features.operator_worksheet.data.dtos;
+using mtc_app.features.operator_worksheet.data.repositories;
 using mtc_app.shared.data.session;
 using mtc_app.shared.data.dtos;
 using mtc_app.shared.presentation.styles;
@@ -1016,7 +1017,16 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _txtDefectOperator = CreateStyledTextBox("Masukkan jumlah defect", halfW);
             _txtDefectOperator.Location = new Point(_txtDefectMesin.Right + 8, y);
             _txtDefectOperator.Text = "0";
-            _txtDefectOperator.TextChanged += (s, e) => ResetAutoSaveTimer();
+            _txtDefectOperator.TextChanged += (s, e) => 
+            {
+                ResetAutoSaveTimer();
+                // Jika defect operator = 0, reset kode defect ke default (kosong)
+                int.TryParse(_txtDefectOperator.Text.Trim(), out int val);
+                if (val == 0 && _cboKodeDefect != null && _cboKodeDefect.SelectedIndex > 0)
+                {
+                    _cboKodeDefect.SelectedIndex = 0;
+                }
+            };
             card.Controls.Add(_txtDefectOperator);
             y += 48;
 
@@ -1146,10 +1156,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 rowData.DbRecord = record;
                 rowData.IsOffline = !savedOnline;
 
-                // Refresh grid agar langsung muncul
-                var savedData = _worksheetData.Where(x => x.DbRecord != null).ToList();
-                _dgvTersimpan.DataSource = null;
-                _dgvTersimpan.DataSource = savedData;
+                // Refresh grid Tersimpan langsung dari DB
+                await LoadTersimpanFromDbAsync();
                 _dgvSequen.Refresh();
 
                 if (!isAutoSave)
@@ -1426,9 +1434,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             // Refresh UI
             _dgvSequen.Refresh();
-            var savedData = _worksheetData.Where(x => x.DbRecord != null).ToList();
-            _dgvTersimpan.DataSource = null;
-            _dgvTersimpan.DataSource = savedData;
+            await LoadTersimpanFromDbAsync();
             UpdateHeaderQty();
 
             string msg = $"{savedCount} sequen berhasil disimpan.";
@@ -1474,8 +1480,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(248, 250, 252), ForeColor = Color.FromArgb(71, 85, 105), Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
                 DefaultCellStyle = new DataGridViewCellStyle { ForeColor = Color.Black, SelectionBackColor = Color.FromArgb(220, 252, 231), SelectionForeColor = Color.Black, Padding = new Padding(4) }
             };
-            _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "DisplaySequen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
-            _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", Width = 65 });
+            _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "Sequen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "UrutanKanban", Width = 65 });
 
             _dgvTersimpan.SelectionChanged += DgvTersimpan_SelectionChanged;
             card.Controls.Add(_dgvTersimpan);
@@ -1555,39 +1561,81 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                         _dgvTersimpan.Columns["Urutan"].HeaderText = "Urutan";
                 }
                 
-                // Mulai background process untuk sinkronisasi DB (bisa makan waktu kalau koneksi jelek)
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        // Merge dengan data DB (defect operator, kode defect, status)
-                        await _lkoService.MergeDbRecordsAsync(_worksheetData, _machineNumber);
-
-                        // Perbarui UI lagi dari background setelah selesai sync DB
-                        if (!this.IsDisposed)
-                        {
-                            this.BeginInvoke((MethodInvoker)delegate
-                            {
-                                _dgvSequen.Refresh();
-                                
-                                var savedData = _worksheetData.Where(x => x.DbRecord != null).ToList();
-                                _dgvTersimpan.DataSource = null;
-                                _dgvTersimpan.DataSource = savedData;
-                                
-                                UpdateHeaderQty();
-                            });
-                        }
-                    }
-                    catch (Exception syncEx)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"DB Sync error: {syncEx.Message}");
-                    }
-                });
+                // Load "Sudah Tersimpan" langsung dari DB (tidak tergantung merge CSV)
+                await LoadTersimpanFromDbAsync();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"LoadSequenData error: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Load grid "Sudah Tersimpan" langsung dari database (MySQL / offline queue).
+        /// Tidak tergantung pada pencocokan CSV.
+        /// </summary>
+        private async Task LoadTersimpanFromDbAsync()
+        {
+            string effMesin = GetEffectiveMachineNumber();
+            var allRecords = new List<LkoRecordDto>();
+
+            // 1) Coba ambil dari MySQL
+            try
+            {
+                var repo = new mtc_app.features.operator_worksheet.data.repositories.LkoRepository();
+                var dbRecords = await repo.GetTodayRecordsAsync(effMesin);
+                allRecords.AddRange(dbRecords);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoadTersimpan (MySQL) error: {ex.Message}");
+            }
+
+            // 2) Tambahkan offline records yang belum ada di MySQL
+            try
+            {
+                var offlineRecords = LkoOfflineQueue.GetPendingForMachine(effMesin);
+                foreach (var offRec in offlineRecords)
+                {
+                    bool alreadyInDb = allRecords.Any(r =>
+                        r.Sequen == offRec.Sequen &&
+                        (r.UrutanKanban ?? "") == (offRec.UrutanKanban ?? "") &&
+                        (r.WaktuMulai ?? "") == (offRec.WaktuMulai ?? ""));
+                    if (!alreadyInDb) allRecords.Add(offRec);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoadTersimpan (offline) error: {ex.Message}");
+            }
+
+            // 3) Update grid Tersimpan
+            _dgvTersimpan.DataSource = null;
+            _dgvTersimpan.DataSource = allRecords;
+
+            // 4) Juga merge ke _worksheetData untuk warna hijau di grid Sequen
+            if (_worksheetData != null && allRecords.Count > 0)
+            {
+                var consumedIds = new HashSet<int>();
+                foreach (var item in _worksheetData)
+                {
+                    if (string.IsNullOrWhiteSpace(item.DisplaySequen)) continue;
+                    var match = allRecords.FirstOrDefault(r =>
+                        !consumedIds.Contains(r.Id) &&
+                        !string.IsNullOrWhiteSpace(r.Sequen) &&
+                        r.Sequen == item.DisplaySequen &&
+                        (r.UrutanKanban ?? "") == (item.DisplayUrutanPengerjaan ?? "") &&
+                        (r.WaktuMulai ?? "") == (item.Log?.WaktuMulaiPengerjaan ?? ""));
+                    if (match != null)
+                    {
+                        item.DbRecord = match;
+                        consumedIds.Add(match.Id);
+                    }
+                }
+                _dgvSequen.Refresh();
+            }
+
+            UpdateHeaderQty();
         }
 
         private void UpdateHeaderQty()
@@ -1643,15 +1691,40 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private void DgvTersimpan_SelectionChanged(object sender, EventArgs e)
         {
             if (_dgvTersimpan?.CurrentRow == null) return;
-            var rowData = _dgvTersimpan.CurrentRow.DataBoundItem as LkoService.LkoAggregatedData;
-            if (rowData == null) return;
+            var dbRecord = _dgvTersimpan.CurrentRow.DataBoundItem as LkoRecordDto;
+            if (dbRecord == null) return;
 
-            _activeSource = ActiveGrid.Tersimpan;
-            _activeRowData = rowData;
+            // Cari LkoAggregatedData yang cocok di _worksheetData, atau buat wrapper minimal
+            var matchingRow = _worksheetData?.FirstOrDefault(x =>
+                x.DisplaySequen == dbRecord.Sequen &&
+                (x.DisplayUrutanPengerjaan ?? "") == (dbRecord.UrutanKanban ?? ""));
 
-            _isPopulatingFields = true;
-            PopulateInputFields(rowData);
-            _isPopulatingFields = false;
+            if (matchingRow != null)
+            {
+                matchingRow.DbRecord = dbRecord;
+                _activeSource = ActiveGrid.Tersimpan;
+                _activeRowData = matchingRow;
+
+                _isPopulatingFields = true;
+                PopulateInputFields(matchingRow);
+                _isPopulatingFields = false;
+            }
+            else
+            {
+                // Jika tidak ada di CSV (misal data lama), buat wrapper minimal dari DB record
+                var wrapper = new LkoService.LkoAggregatedData
+                {
+                    Log = new PrdLogDto { Sequen = dbRecord.Sequen, UrutanPengerjaan = dbRecord.UrutanKanban, WaktuMulaiPengerjaan = dbRecord.WaktuMulai, WaktuSelesaiPengerjaan = dbRecord.WaktuSelesai, QtyProduk = dbRecord.QtyProduct.ToString(), QtyDefect = dbRecord.QtyDefectMesin.ToString() },
+                    Master = new PrdmstDto { Sequen = dbRecord.Sequen, KombinasiWire = dbRecord.KombinasiWire, TerminalA = dbRecord.TerminalA, TerminalB = dbRecord.TerminalB, SealA = dbRecord.SealA, SealB = dbRecord.SealB, CutLength = dbRecord.CutLength, Qty = dbRecord.QtyMaster },
+                    DbRecord = dbRecord
+                };
+                _activeSource = ActiveGrid.Tersimpan;
+                _activeRowData = wrapper;
+
+                _isPopulatingFields = true;
+                PopulateInputFields(wrapper);
+                _isPopulatingFields = false;
+            }
             
             _autoSaveTimer?.Stop(); // Grid tersimpan tidak punya auto-save
         }
