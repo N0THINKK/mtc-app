@@ -37,7 +37,8 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                     {
                         record.Sequen,
                         record.UrutanKanban,
-                        record.NoMesin
+                        record.NoMesin,
+                        record.WaktuMulai
                     });
                 }
 

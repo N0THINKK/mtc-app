@@ -1636,21 +1636,49 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             }
 
             UpdateHeaderQty();
+
+            // 5) Sync offline records ke MySQL jika ada koneksi
+            try
+            {
+                int synced = await _lkoService.SyncOfflineRecordsAsync();
+                if (synced > 0)
+                {
+                    // Reload grid setelah sync berhasil
+                    System.Diagnostics.Debug.WriteLine($"Synced {synced} offline records to MySQL");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SyncOffline error: {ex.Message}");
+            }
         }
 
         private void UpdateHeaderQty()
         {
             if (_worksheetData == null) return;
             
-            int targetSum = 0;
             int grossSum = 0;
             int defectSum = 0;
 
-            foreach(var item in _worksheetData) {
-                // hanya yang sudah disimpan via tombol Simpan
-                if (item.DbRecord != null) {
-                    grossSum += item.DbRecord.QtyProduct;
-                    defectSum += item.DbRecord.QtyDefectOperator;
+            // _worksheetData sudah di-reverse: index 0 = terbaru, index N = terlama
+            // Cari sequen berawalan "9" paling baru (penanda awal shift)
+            // Hitung Gross & OK hanya dari sequen "9xxx" tersebut sampai sequen terbaru
+            
+            bool foundShiftStart = false;
+            // Scan dari terlama ke terbaru (dari bawah list ke atas)
+            // agar kita temukan "9xxx" terdekat dengan data terbaru
+            for (int i = _worksheetData.Count - 1; i >= 0; i--)
+            {
+                var seq = _worksheetData[i].DisplaySequen ?? "";
+                if (seq.StartsWith("9"))
+                {
+                    foundShiftStart = true;
+                }
+                
+                if (foundShiftStart && _worksheetData[i].DbRecord != null)
+                {
+                    grossSum += _worksheetData[i].DbRecord.QtyProduct;
+                    defectSum += _worksheetData[i].DbRecord.QtyDefectOperator;
                 }
             }
             

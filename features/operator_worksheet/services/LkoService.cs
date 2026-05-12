@@ -276,7 +276,7 @@ namespace mtc_app.features.operator_worksheet.services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"SaveToDatabase (MySQL) failed: {ex.Message}. Saving offline.");
+                System.Diagnostics.Debug.WriteLine($"SaveToDatabase (MySQL) failed: {ex.Message}");
                 LkoOfflineQueue.Enqueue(record);
                 return false; // Saved offline
             }
