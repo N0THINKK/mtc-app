@@ -27,6 +27,7 @@ namespace mtc_app.features.machine_history.presentation.screens
         private DateTime? _offlineStartTime = null; // Tracks activity started while offline
 
         private int _currentTrackedHour = DateTime.Now.Hour;
+        private int _viewedHour = DateTime.Now.Hour;
         private System.Windows.Forms.Timer _hourCheckTimer;
 
         // Quick Counters
@@ -38,6 +39,10 @@ namespace mtc_app.features.machine_history.presentation.screens
             { "Double", 0 }
         };
         private System.Collections.Generic.Dictionary<string, Label> _lblCounts = new System.Collections.Generic.Dictionary<string, Label>();
+
+        private Label _lblJam;
+        private AppButton _btnJamMinus;
+        private AppButton _btnJamPlus;
 
         public OperatorMainMenuForm()
         {
@@ -69,6 +74,8 @@ namespace mtc_app.features.machine_history.presentation.screens
             if (DateTime.Now.Hour != _currentTrackedHour)
             {
                 _currentTrackedHour = DateTime.Now.Hour;
+                _viewedHour = _currentTrackedHour;
+                UpdateJamDisplay();
                 FetchCurrentHourCountsAsync();
             }
         }
@@ -162,7 +169,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             // Restrict maximum form height to ensure it fits small screens, enabling AutoScroll naturally
             var screenHeight = Screen.PrimaryScreen.WorkingArea.Height;
-            int desiredHeight = 770; // Increased to fit new quick counters
+            int desiredHeight = 830; // Increased to fit new quick counters and Jam row
             this.Size = new Size(550, Math.Min(desiredHeight, screenHeight - 60));
             this.StartPosition = FormStartPosition.Manual;
 
@@ -261,6 +268,9 @@ namespace mtc_app.features.machine_history.presentation.screens
             currentY += rowHeight + rowGap;
             
             AddQuickCountRow("Double", btnX, currentY, btnW, rowHeight);
+            currentY += rowHeight + rowGap;
+
+            AddJamRow(btnX, currentY, btnW, rowHeight);
             currentY += rowHeight + (gap * 2); // Extra spacing before MESIN RUN button
 
             btnIdleToggle = new AppButton
@@ -514,6 +524,124 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.Controls.Add(btnPlus);
         }
 
+        private void AddJamRow(int x, int y, int width, int height)
+        {
+            int btnWidth = 60;
+            int innerGap = 8;
+            int lblWidth = width - (btnWidth * 2) - (innerGap * 2);
+
+            _btnJamMinus = new AppButton
+            {
+                Text = "-",
+                Type = AppButton.ButtonType.Secondary,
+                Size = new Size(btnWidth, height),
+                Location = new Point(x, y),
+                Font = new Font("Segoe UI", 20F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+
+            _lblJam = new Label
+            {
+                Text = $"Jam: {GetShiftHourDisplay(_viewedHour)}",
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                ForeColor = AppColors.PrimaryDark,
+                BackColor = AppColors.RowHover,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Size = new Size(lblWidth, height),
+                Location = new Point(x + btnWidth + innerGap, y)
+            };
+
+            _btnJamPlus = new AppButton
+            {
+                Text = "+",
+                Type = AppButton.ButtonType.Primary,
+                Size = new Size(btnWidth, height),
+                Location = new Point(x + btnWidth + innerGap + lblWidth + innerGap, y),
+                Font = new Font("Segoe UI", 18F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+
+            _btnJamMinus.Click += BtnJamMinus_Click;
+            _btnJamPlus.Click += BtnJamPlus_Click;
+
+            this.Controls.Add(_btnJamMinus);
+            this.Controls.Add(_lblJam);
+            this.Controls.Add(_btnJamPlus);
+            
+            UpdateJamDisplay();
+        }
+
+        private void UpdateJamDisplay()
+        {
+            if (_lblJam != null)
+            {
+                _lblJam.Text = $"Jam: {GetShiftHourDisplay(_viewedHour)}";
+            }
+            if (_btnJamPlus != null)
+            {
+                _btnJamPlus.Enabled = (_viewedHour != _currentTrackedHour);
+            }
+            if (_btnJamMinus != null)
+            {
+                _btnJamMinus.Enabled = (GetShiftHourDisplay(_viewedHour) > 1);
+            }
+        }
+
+        private int GetShiftHourDisplay(int realHour)
+        {
+            if (realHour >= 7 && realHour < 19) return realHour - 7 + 1;
+            if (realHour >= 19) return realHour - 19 + 1;
+            return realHour + 6; // 0..6 -> 6..12
+        }
+
+        private DateTime GetDateForHour(int hour)
+        {
+            var now = DateTime.Now;
+            var shiftStart = new TimeSpan(7, 0, 0);
+            var shiftEnd = new TimeSpan(19, 0, 0);
+            bool isCurrentShiftPagi = now.TimeOfDay >= shiftStart && now.TimeOfDay < shiftEnd;
+
+            if (isCurrentShiftPagi)
+            {
+                return now.Date;
+            }
+            else
+            {
+                DateTime shiftStartDate = now.TimeOfDay >= shiftEnd ? now.Date : now.Date.AddDays(-1);
+                if (hour >= 19 && hour <= 23)
+                {
+                    return shiftStartDate;
+                }
+                else
+                {
+                    return shiftStartDate.AddDays(1);
+                }
+            }
+        }
+
+        private void BtnJamMinus_Click(object sender, EventArgs e)
+        {
+            int currentShiftHour = GetShiftHourDisplay(_viewedHour);
+            if (currentShiftHour > 1)
+            {
+                _viewedHour--;
+                if (_viewedHour < 0) _viewedHour = 23;
+                UpdateJamDisplay();
+                FetchCurrentHourCountsAsync();
+            }
+        }
+
+        private void BtnJamPlus_Click(object sender, EventArgs e)
+        {
+            if (_viewedHour != _currentTrackedHour)
+            {
+                _viewedHour++;
+                if (_viewedHour > 23) _viewedHour = 0;
+                UpdateJamDisplay();
+                FetchCurrentHourCountsAsync();
+            }
+        }
+
         private async void FetchCurrentHourCountsAsync()
         {
             // Reset to zero baseline
@@ -524,8 +652,8 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             int mId = GetMachineIdInt();
             string opName = UserSession.CurrentUser?.Username ?? "Unknown";
-            int currentHour = DateTime.Now.Hour;
-            DateTime currentDate = DateTime.Now.Date;
+            int currentHour = _viewedHour;
+            DateTime currentDate = GetDateForHour(_viewedHour);
 
             string cacheKey = $"QuickCount_{mId}_{opName}_{currentDate:yyyyMMdd}_{currentHour}";
 
@@ -667,8 +795,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                     OperatorName = opName,
                     ShiftName = shiftName,
                     ItemName = itemName,
-                    RecordDate = DateTime.Now.Date,
-                    RecordHour = DateTime.Now.Hour
+                    RecordDate = GetDateForHour(_viewedHour),
+                    RecordHour = _viewedHour
                 };
 
                 string actionType = delta > 0 ? "INCREMENT_QUICK_COUNT" : "DECREMENT_QUICK_COUNT";
