@@ -280,8 +280,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             }
             if (!Directory.Exists(watchDir)) return;
 
-            // Debounce timer: tunggu 500ms setelah perubahan terakhir sebelum reload
-            _debounceTimer = new System.Windows.Forms.Timer { Interval = 500 };
+            // Debounce timer: tunggu 10 detik (10000ms) setelah perubahan terakhir sebelum reload
+            _debounceTimer = new System.Windows.Forms.Timer { Interval = 10000 };
             _debounceTimer.Tick += (s, e) =>
             {
                 _debounceTimer.Stop();
@@ -1197,6 +1197,22 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             var card = CreateCard(width, height);
             card.Controls.Add(new Label { Text = "SEQUEN", Font = new Font("Segoe UI", 13F, FontStyle.Bold), ForeColor = Color.FromArgb(15, 23, 42), AutoSize = true, Location = new Point(16, 14) });
 
+            var btnRefresh = new Button {
+                Text = "⟳ Refresh", 
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular), 
+                Size = new Size(80, 26), 
+                Location = new Point(width - 100, 14), 
+                FlatStyle = FlatStyle.Flat, 
+                BackColor = Color.FromArgb(248, 250, 252), 
+                ForeColor = Color.FromArgb(15, 23, 42), 
+                Cursor = Cursors.Hand 
+            };
+            btnRefresh.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
+            btnRefresh.Click += (s, e) => {
+                LoadSequenData();
+            };
+            card.Controls.Add(btnRefresh);
+
             int y = 40;
             int fw = width - 36;
             var txtSearch = CreateStyledTextBox("\uD83D\uDD0D Cari...", fw);
@@ -1532,6 +1548,12 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         {
             try
             {
+                // Simpan state scroll dan seleksi untuk mencegah UI lompat
+                int firstRowSeq = _dgvSequen.RowCount > 0 ? _dgvSequen.FirstDisplayedScrollingRowIndex : -1;
+                int selRowSeq = _dgvSequen.CurrentRow?.Index ?? -1;
+                int firstRowProd = _dgvProduct.RowCount > 0 ? _dgvProduct.FirstDisplayedScrollingRowIndex : -1;
+                int selRowProd = _dgvProduct.CurrentRow?.Index ?? -1;
+
                 // Offload pembacaan dan parsing file ke background thread agar UI tidak freeze
                 var data = await Task.Run(() => 
                 {
@@ -1547,16 +1569,37 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
                 _worksheetData = data;
 
-                // Update UI SECARA INSTAN dengan data lokal yang sudah diparse
-                _dgvSequen.DataSource = _worksheetData;
-
                 var pendingProducts = await Task.Run(() => 
                 {
                     return _lkoService.GetPendingProductSequences();
                 });
+
+                // Load "Sudah Tersimpan" langsung dari DB (tidak tergantung merge CSV)
+                // Ini akan mengisi DbRecord ke dalam _worksheetData SEBELUM DataSource disetel
+                await LoadTersimpanFromDbAsync();
+
+                // Update UI dengan data lokal yang sudah diparse dan di-merge dengan status DB
+                _dgvSequen.DataSource = _worksheetData;
                 _dgvProduct.DataSource = pendingProducts.Select(s => new { Sequen = s }).ToList();
 
-                // Jika sumber data XML (AC95), ganti label kolom "Urutan" â†’ "Waktu"
+                // Kembalikan state scroll dan seleksi
+                if (firstRowSeq >= 0 && firstRowSeq < _dgvSequen.RowCount)
+                    _dgvSequen.FirstDisplayedScrollingRowIndex = firstRowSeq;
+                if (selRowSeq >= 0 && selRowSeq < _dgvSequen.RowCount)
+                {
+                    _dgvSequen.ClearSelection();
+                    _dgvSequen.Rows[selRowSeq].Selected = true;
+                }
+
+                if (firstRowProd >= 0 && firstRowProd < _dgvProduct.RowCount)
+                    _dgvProduct.FirstDisplayedScrollingRowIndex = firstRowProd;
+                if (selRowProd >= 0 && selRowProd < _dgvProduct.RowCount)
+                {
+                    _dgvProduct.ClearSelection();
+                    _dgvProduct.Rows[selRowProd].Selected = true;
+                }
+
+                // Jika sumber data XML (AC95), ganti label kolom "Urutan" → "Waktu"
                 if (_lkoService.IsXmlSource)
                 {
                     if (_dgvSequen.Columns.Contains("Urutan"))
@@ -1571,9 +1614,6 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     if (_dgvTersimpan.Columns.Contains("Urutan"))
                         _dgvTersimpan.Columns["Urutan"].HeaderText = "Urutan";
                 }
-                
-                // Load "Sudah Tersimpan" langsung dari DB (tidak tergantung merge CSV)
-                await LoadTersimpanFromDbAsync();
             }
             catch (Exception ex)
             {
@@ -1621,28 +1661,31 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             }
 
             // 3) Update grid Tersimpan
-            _dgvTersimpan.DataSource = null;
             _dgvTersimpan.DataSource = allRecords;
 
             // 4) Juga merge ke _worksheetData untuk warna hijau di grid Sequen
             if (_worksheetData != null && allRecords.Count > 0)
             {
-                var consumedIds = new HashSet<int>();
-                foreach (var item in _worksheetData)
+                // Pindahkan proses komparasi berat (O(N^2)) ke background thread agar UI tidak nge-lag/muter-muter
+                await Task.Run(() => 
                 {
-                    if (string.IsNullOrWhiteSpace(item.DisplaySequen)) continue;
-                    var match = allRecords.FirstOrDefault(r =>
-                        !consumedIds.Contains(r.Id) &&
-                        !string.IsNullOrWhiteSpace(r.Sequen) &&
-                        r.Sequen == item.DisplaySequen &&
-                        (r.UrutanKanban ?? "") == (item.DisplayUrutanPengerjaan ?? "") &&
-                        (r.WaktuMulai ?? "") == (item.Log?.WaktuMulaiPengerjaan ?? ""));
-                    if (match != null)
+                    var consumedIds = new HashSet<int>();
+                    foreach (var item in _worksheetData)
                     {
-                        item.DbRecord = match;
-                        consumedIds.Add(match.Id);
+                        if (string.IsNullOrWhiteSpace(item.DisplaySequen)) continue;
+                        var match = allRecords.FirstOrDefault(r =>
+                            !consumedIds.Contains(r.Id) &&
+                            !string.IsNullOrWhiteSpace(r.Sequen) &&
+                            r.Sequen == item.DisplaySequen &&
+                            (r.UrutanKanban ?? "") == (item.DisplayUrutanPengerjaan ?? "") &&
+                            (r.WaktuMulai ?? "") == (item.Log?.WaktuMulaiPengerjaan ?? ""));
+                        if (match != null)
+                        {
+                            item.DbRecord = match;
+                            consumedIds.Add(match.Id);
+                        }
                     }
-                }
+                });
                 _dgvSequen.Refresh();
             }
 
