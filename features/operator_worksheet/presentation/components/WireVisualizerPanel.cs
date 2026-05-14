@@ -40,7 +40,7 @@ namespace mtc_app.features.operator_worksheet.presentation.components
             Color stripColor = Color.Orange;
             Color textDark = Color.FromArgb(15, 23, 42);
 
-            int centerY = this.Height / 2 + 10;
+            int centerY = this.Height / 2 - 2;
             int marginX = 20;
             
             // Wire properties
@@ -66,7 +66,7 @@ namespace mtc_app.features.operator_worksheet.presentation.components
             if (!string.IsNullOrEmpty(kombinasi))
             {
                 SizeF size = g.MeasureString(kombinasi, _kombinasiFont);
-                g.DrawString(kombinasi, _kombinasiFont, new SolidBrush(textDark), (this.Width - size.Width) / 2, centerY - 25);
+                g.DrawString(kombinasi, _kombinasiFont, new SolidBrush(textDark), (this.Width - size.Width) / 2, centerY - 22);
             }
 
             // DRAW CUT LENGTH TEXT (DI BAWAH KABEL)
@@ -75,7 +75,7 @@ namespace mtc_app.features.operator_worksheet.presentation.components
             {
                 string textCutL = $"CutL: {cutL}";
                 SizeF sizeCutL = g.MeasureString(textCutL, _labelFont);
-                g.DrawString(textCutL, _labelFont, new SolidBrush(Color.DimGray), (this.Width - sizeCutL.Width) / 2, centerY + 15);
+                g.DrawString(textCutL, _labelFont, new SolidBrush(Color.DimGray), (this.Width - sizeCutL.Width) / 2, centerY + 6);
             }
 
             // --- LEFT SIDE (TERMINAL A) ---
@@ -121,7 +121,7 @@ namespace mtc_app.features.operator_worksheet.presentation.components
 
                 // Draw Terminal Name
                 string tName = string.IsNullOrEmpty(terminalName) ? "-" : terminalName;
-                DrawCenteredText(g, tName, _labelFont, textColor, isLeft ? termEndX + (terminalWidth/2) : termEndX - (terminalWidth/2), centerY - 30);
+                DrawCenteredText(g, tName, _labelFont, textColor, isLeft ? termEndX + (terminalWidth/2) : termEndX - (terminalWidth/2), centerY - 26);
             }
             else // "Y" or default -> Strip Only
             {
@@ -132,13 +132,13 @@ namespace mtc_app.features.operator_worksheet.presentation.components
                     g.DrawLine(p, wireX, centerY, stripEndX, centerY);
                 }
 
-                DrawCenteredText(g, "STRIP ONLY", _labelFont, textColor, isLeft ? stripEndX + (stripLength/2) : stripEndX - (stripLength/2), centerY - 30);
+                DrawCenteredText(g, "STRIP ONLY", _labelFont, textColor, isLeft ? stripEndX + (stripLength/2) : stripEndX - (stripLength/2), centerY - 26);
             }
 
             // Draw Seal (below wire)
             if (!string.IsNullOrEmpty(sealName))
             {
-                DrawCenteredText(g, "Seal: " + sealName, _labelFont, Color.DimGray, isLeft ? wireX - 10 : wireX + 10, centerY + 15);
+                DrawCenteredText(g, "Seal: " + sealName, _labelFont, Color.DimGray, isLeft ? wireX - 10 : wireX + 10, centerY + 6);
             }
         }
 
