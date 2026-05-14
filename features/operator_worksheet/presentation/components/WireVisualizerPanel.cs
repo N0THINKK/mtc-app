@@ -69,6 +69,15 @@ namespace mtc_app.features.operator_worksheet.presentation.components
                 g.DrawString(kombinasi, _kombinasiFont, new SolidBrush(textDark), (this.Width - size.Width) / 2, centerY - 25);
             }
 
+            // DRAW CUT LENGTH TEXT (DI BAWAH KABEL)
+            string cutL = _masterData.CutLength;
+            if (!string.IsNullOrEmpty(cutL))
+            {
+                string textCutL = $"CutL: {cutL}";
+                SizeF sizeCutL = g.MeasureString(textCutL, _labelFont);
+                g.DrawString(textCutL, _labelFont, new SolidBrush(Color.DimGray), (this.Width - sizeCutL.Width) / 2, centerY + 15);
+            }
+
             // --- LEFT SIDE (TERMINAL A) ---
             DrawEnd(g, true, leftX, centerY, termAMode, _masterData.TerminalA, _masterData.SealA, terminalWidth, terminalHeight, stripLength, wireThickness, terminalColor, terminalOutline, stripColor, textDark);
 
