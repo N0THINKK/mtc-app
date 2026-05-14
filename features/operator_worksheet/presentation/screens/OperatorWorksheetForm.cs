@@ -786,6 +786,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(new Label { Text = "CutL", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16, y) });
             y += 20;
             _txtCutL = CreateStyledTextBox("0", fw);
+            _txtCutL.ReadOnly = true;
+            _txtCutL.BackColor = Color.FromArgb(248, 250, 252); // berikan warna abu-abu terang agar terlihat disabled
             _txtCutL.Location = new Point(16, y);
             card.Controls.Add(_txtCutL);
             y += 40;
@@ -1536,6 +1538,13 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 DefaultCellStyle = new DataGridViewCellStyle { ForeColor = Color.Black, SelectionBackColor = Color.FromArgb(254, 243, 199), SelectionForeColor = Color.Black, Padding = new Padding(4) }
             };
             _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "Sequen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "CutL", DataPropertyName = "CutLength", Width = 50 });
+            _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Term A", DataPropertyName = "TerminalA", Width = 65 });
+            _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Term B", DataPropertyName = "TerminalB", Width = 65 });
+            _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Seal A", DataPropertyName = "SealA", Width = 55 });
+            _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Seal B", DataPropertyName = "SealB", Width = 55 });
+            _dgvProduct.SelectionChanged += DgvProduct_SelectionChanged;
+
             card.Controls.Add(_dgvProduct);
 
             return card;
@@ -1580,7 +1589,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
                 // Update UI dengan data lokal yang sudah diparse dan di-merge dengan status DB
                 _dgvSequen.DataSource = _worksheetData;
-                _dgvProduct.DataSource = pendingProducts.Select(s => new { Sequen = s }).ToList();
+                _dgvProduct.DataSource = pendingProducts;
 
                 // Kembalikan state scroll dan seleksi
                 if (firstRowSeq >= 0 && firstRowSeq < _dgvSequen.RowCount)
@@ -1775,6 +1784,28 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _isPopulatingFields = false;
             
             _autoSaveTimer?.Stop(); // Jangan auto-save sampai ada interaksi user
+        }
+
+        private void DgvProduct_SelectionChanged(object sender, EventArgs e)
+        {
+            if (_dgvProduct?.CurrentRow == null) return;
+            var product = _dgvProduct.CurrentRow.DataBoundItem as ProductDto;
+            if (product == null) return;
+
+            // Hanya perbarui ilustrasi kabel tanpa mengubah form isian aktif
+            var masterData = new PrdmstDto
+            {
+                Sequen = product.Sequen,
+                CutLength = product.CutLength,
+                TerminalA = product.TerminalA,
+                TerminalB = product.TerminalB,
+                SealA = product.SealA,
+                SealB = product.SealB,
+                HasTerminalA = string.IsNullOrWhiteSpace(product.TerminalA) || product.TerminalA == "-" ? "Y" : "2",
+                HasTerminalB = string.IsNullOrWhiteSpace(product.TerminalB) || product.TerminalB == "-" ? "Y" : "2",
+            };
+            
+            _wireVisualizer.UpdateData(masterData);
         }
 
         private void DgvTersimpan_SelectionChanged(object sender, EventArgs e)

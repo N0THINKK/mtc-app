@@ -12,6 +12,16 @@ namespace mtc_app.features.operator_worksheet.data.dtos
         public string QtyDefect { get; set; } = string.Empty;
     }
 
+    public class ProductDto
+    {
+        public string Sequen { get; set; } = string.Empty;
+        public string CutLength { get; set; } = string.Empty;
+        public string TerminalA { get; set; } = string.Empty;
+        public string TerminalB { get; set; } = string.Empty;
+        public string SealA { get; set; } = string.Empty;
+        public string SealB { get; set; } = string.Empty;
+    }
+
     public class PrdmstDto
     {
         public string UrutanSequen { get; set; } = string.Empty;

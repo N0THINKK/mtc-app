@@ -155,7 +155,7 @@ namespace mtc_app.features.operator_worksheet.services
         /// Shift siang: data PrdLog hari ini sebelum jam 19:00
         /// Shift malam: data PrdLog hari ini mulai jam 19:00
         /// </summary>
-        public List<string> GetPendingProductSequences()
+        public List<ProductDto> GetPendingProductSequences()
         {
             var productSequences = _fileRepository.GetProductSequences();
             var logs = _fileRepository.GetPrdLogs();
@@ -190,7 +190,7 @@ namespace mtc_app.features.operator_worksheet.services
 
             var logSequences = new HashSet<string>(filteredLogs.Select(l => l.Sequen).Where(s => !string.IsNullOrEmpty(s)));
 
-            return productSequences.Where(s => !string.IsNullOrWhiteSpace(s) && !logSequences.Contains(s)).ToList();
+            return productSequences.Where(p => !string.IsNullOrWhiteSpace(p.Sequen) && !logSequences.Contains(p.Sequen)).ToList();
         }
 
         /// <summary>

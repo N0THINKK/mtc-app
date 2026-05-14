@@ -331,9 +331,9 @@ namespace mtc_app.features.operator_worksheet.data.repositories
             }
         }
 
-        public List<string> GetProductSequences()
+        public List<ProductDto> GetProductSequences()
         {
-            var result = new List<string>();
+            var result = new List<ProductDto>();
             string filePath = Path.Combine(_baseDir, "Product.csv");
             if (!File.Exists(filePath)) return result;
 
@@ -349,7 +349,14 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                         var parts = line.Split(',');
                         if (parts.Length > 0 && !string.IsNullOrWhiteSpace(parts[0]))
                         {
-                            result.Add(parts[0].Trim());
+                            var dto = new ProductDto { Sequen = parts[0].Trim() };
+                            if (parts.Length > 5) dto.CutLength = parts[5].Trim();
+                            if (parts.Length > 11) dto.TerminalA = parts[11].Trim();
+                            if (parts.Length > 12) dto.TerminalB = parts[12].Trim();
+                            if (parts.Length > 15) dto.SealA = parts[15].Trim();
+                            if (parts.Length > 16) dto.SealB = parts[16].Trim();
+                            
+                            result.Add(dto);
                         }
                     }
                 }
