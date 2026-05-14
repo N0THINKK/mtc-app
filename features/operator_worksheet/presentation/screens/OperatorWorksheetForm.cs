@@ -2300,7 +2300,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     // Build DataTable for clean column names
                     var dt = new System.Data.DataTable();
                     dt.Columns.Add("No", typeof(int));
-                    dt.Columns.Add("Waktu Simpan", typeof(string));
+                    dt.Columns.Add("Waktu Mulai", typeof(string));
+                    dt.Columns.Add("Waktu Selesai", typeof(string));
                     dt.Columns.Add("Sequen", typeof(string));
                     dt.Columns.Add("Urutan", typeof(string));
                     dt.Columns.Add("Shift", typeof(string));
@@ -2329,17 +2330,17 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     dt.Columns.Add("Front CW B", typeof(string));
                     dt.Columns.Add("Rear CH B", typeof(string));
                     dt.Columns.Add("Rear CW B", typeof(string));
-                    dt.Columns.Add("Waktu Mulai", typeof(string));
-                    dt.Columns.Add("Waktu Selesai", typeof(string));
+                    dt.Columns.Add("Waktu Simpan", typeof(string));
 
                     int no = 1;
-                    // Records already sorted DESC from repo, reverse to show oldest first
-                    records.Reverse();
-                    foreach (var r in records)
+                    // Urutkan berdasarkan Waktu Pengerjaan (WaktuMulai) dari yang terbaru
+                    var sortedRecords = records.OrderByDescending(r => r.WaktuMulai).ToList();
+                    
+                    foreach (var r in sortedRecords)
                     {
                         dt.Rows.Add(
                             no++,
-                            r.WaktuSimpan.ToString("yyyy-MM-dd HH:mm:ss"),
+                            r.WaktuMulai, r.WaktuSelesai,
                             r.Sequen, r.UrutanKanban,
                             r.ShiftName, r.Nik,
                             r.KombinasiWire,
@@ -2352,7 +2353,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                             r.IssueKanban,
                             r.FrontChA, r.FrontCwA, r.RearChA, r.RearCwA,
                             r.FrontChB, r.FrontCwB, r.RearChB, r.RearCwB,
-                            r.WaktuMulai, r.WaktuSelesai
+                            r.WaktuSimpan.ToString("yyyy-MM-dd HH:mm:ss")
                         );
                     }
 
