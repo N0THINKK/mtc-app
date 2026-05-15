@@ -445,7 +445,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             var lblGambarTitle = new Label
             {
-                Text = "\uD83D\uDCF7  Gambar Terminal",
+                Text = "Gambar Terminal",
                 Font = new Font("Segoe UI", 11F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(30, 41, 59),
                 AutoSize = true,
@@ -1064,7 +1064,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             y += 38;
 
             // Button Lihat Record
-            var btnLihatRecord = new Button { Text = "ðŸ“‹ Lihat Record", Font = new Font("Segoe UI", 9F, FontStyle.Regular), Size = new Size(fw, 30), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(59, 130, 246), ForeColor = Color.White, Cursor = Cursors.Hand };
+            var btnLihatRecord = new Button { Text = "Lihat Record", Font = new Font("Segoe UI", 9F, FontStyle.Regular), Size = new Size(fw, 30), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(59, 130, 246), ForeColor = Color.White, Cursor = Cursors.Hand };
             btnLihatRecord.FlatAppearance.BorderSize = 0;
             btnLihatRecord.Click += (s, e) => ShowSavedRecordsPopup();
             card.Controls.Add(btnLihatRecord);
@@ -1241,7 +1241,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             int y = 40;
             int fw = width - 36;
-            var txtSearch = CreateStyledTextBox("\uD83D\uDD0D Cari...", fw);
+            var txtSearch = CreateStyledTextBox("Cari...", fw);
             txtSearch.Location = new Point(16, y);
             card.Controls.Add(txtSearch);
             y += 38;
@@ -1351,7 +1351,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             var chkCol = new DataGridViewCheckBoxColumn
             {
                 Name = "Pilih",
-                HeaderText = "âœ“",
+                HeaderText = "V",
                 Width = 35,
                 FalseValue = false,
                 TrueValue = true,
@@ -1413,7 +1413,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             if (checkedRows.Count == 0)
             {
-                MessageBox.Show("Centang (âœ“) satu atau lebih sequen terlebih dahulu.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Centang satu atau lebih sequen terlebih dahulu.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -2046,7 +2046,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                         {
                             _picTerminal.Image = Image.FromStream(fs);
                         }
-                        _lblImageInfo.Text = $"ðŸ“· Sisi {sisiLabel}: {stripFile} (Strip Only)";
+                        _lblImageInfo.Text = $"Sisi {sisiLabel}: {stripFile} (Strip Only)";
                     }
                     else
                     {
@@ -2095,7 +2095,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     {
                         _picTerminal.Image = Image.FromStream(fs);
                     }
-                    _lblImageInfo.Text = $"ðŸ“· Sisi {sisiLabel}: {usedFileName}";
+                    _lblImageInfo.Text = $"Sisi {sisiLabel}: {usedFileName}";
                 }
                 else
                 {
@@ -2161,7 +2161,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Tombol close â€” besar dan mencolok agar mudah ditemukan
             var btnClose = new Button
             {
-                Text = "âœ• TUTUP",
+                Text = "X TUTUP",
                 Font = new Font("Segoe UI", 12F, FontStyle.Bold),
                 ForeColor = Color.White,
                 BackColor = Color.FromArgb(220, 38, 38),
@@ -2298,7 +2298,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Close button
             var btnClose = new Button
             {
-                Text = "âœ• Tutup",
+                Text = "X Tutup",
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 ForeColor = Color.White,
                 BackColor = Color.FromArgb(220, 38, 38),
