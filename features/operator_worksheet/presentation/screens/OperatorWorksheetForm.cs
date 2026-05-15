@@ -1563,6 +1563,12 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             };
             _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "Sequen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
             _dgvProduct.SelectionChanged += DgvProduct_SelectionChanged;
+            _dgvProduct.CellClick += (s, ev) =>
+            {
+                if (ev.RowIndex < 0) return;
+                // Force populate even if row is already selected (fixes single-row grid)
+                DgvProduct_SelectionChanged(s, ev);
+            };
 
             card.Controls.Add(_dgvProduct);
 
@@ -1626,6 +1632,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     _dgvProduct.ClearSelection();
                     _dgvProduct.Rows[selRowProd].Selected = true;
                 }
+                else
+                {
+                    // Clear auto-selection agar klik pertama pada single-row grid bisa trigger SelectionChanged
+                    _dgvProduct.ClearSelection();
+                }
 
                 // Jika sumber data XML (AC95), ganti label kolom "Urutan" → "Waktu"
                 if (_lkoService.IsXmlSource)
@@ -1673,6 +1684,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 {
                     _dgvProduct.ClearSelection();
                     _dgvProduct.Rows[selRowProd].Selected = true;
+                }
+                else
+                {
+                    // Clear auto-selection agar klik pertama pada single-row grid bisa trigger SelectionChanged
+                    _dgvProduct.ClearSelection();
                 }
             }
             catch (Exception ex)
