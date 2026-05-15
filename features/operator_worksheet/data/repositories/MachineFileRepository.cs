@@ -349,6 +349,10 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                         var parts = line.Split(',');
                         if (parts.Length > 0 && !string.IsNullOrWhiteSpace(parts[0]))
                         {
+                            // Kolom ke-37 (indeks 36) menentukan status: 0/1 = tampilkan, 2 = sudah masuk prdlog/prdmst
+                            string status = parts.Length > 36 ? parts[36].Trim() : "";
+                            if (status != "0" && status != "1") continue;
+
                             var dto = new ProductDto { Sequen = parts[0].Trim() };
                             if (parts.Length > 5) dto.CutLength = parts[5].Trim();
                             if (parts.Length > 11) dto.TerminalA = parts[11].Trim();
