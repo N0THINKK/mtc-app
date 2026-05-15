@@ -20,6 +20,7 @@ namespace mtc_app.features.operator_worksheet.data.dtos
         public string TerminalB { get; set; } = string.Empty;
         public string SealA { get; set; } = string.Empty;
         public string SealB { get; set; } = string.Empty;
+        public string KombinasiWire { get; set; } = string.Empty;
     }
 
     public class PrdmstDto

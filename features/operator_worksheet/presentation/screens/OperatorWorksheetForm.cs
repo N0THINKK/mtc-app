@@ -1801,6 +1801,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 TerminalB = product.TerminalB,
                 SealA = product.SealA,
                 SealB = product.SealB,
+                KombinasiWire = product.KombinasiWire,
                 HasTerminalA = string.IsNullOrWhiteSpace(product.TerminalA) || product.TerminalA == "-" ? "Y" : "2",
                 HasTerminalB = string.IsNullOrWhiteSpace(product.TerminalB) || product.TerminalB == "-" ? "Y" : "2",
             };
