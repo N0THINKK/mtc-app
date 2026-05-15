@@ -201,11 +201,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         }
 
         /// <summary>
-        /// Called when No. Urut value changes â€” reload sequen data for the new machine number.
+        /// Called when No. Urut value changes - reload sequen data for the new machine number.
         /// </summary>
         private void OnNoUrutChanged()
         {
-            // Zero-pad: jika 1 digit, tambahkan 0 di depan (misal "1" â†’ "01")
+            // Zero-pad: jika 1 digit, tambahkan 0 di depan (misal "1" -> "01")
             string urut = _txtNoUrut.Text.Trim();
             if (urut.Length == 1 && char.IsDigit(urut[0]))
             {
@@ -270,7 +270,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         }
 
         // =====================================================================
-        //  FILE WATCHER â€” auto-reload saat PrdLog/prdmst berubah
+        //  FILE WATCHER - auto-reload saat PrdLog/prdmst berubah
         // =====================================================================
         private void SetupFileWatcher()
         {
@@ -1164,7 +1164,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 QtyMaster = rowData.Master?.Qty ?? "",
 
                 // Jissk data
-                // Jissk data â€” ambil dari TextBox (yang mungkin sudah diedit operator)
+                // Jissk data - ambil dari TextBox (yang mungkin sudah diedit operator)
                 // Sisi aktif menggunakan nilai dari TextBox, sisi tidak aktif dari Jissk DTO
                 FrontChA = _isSisiA ? _txtFrontChA.Text.Trim() : (rowData.Jissk?.FrontChA ?? "0"),
                 FrontCwA = _isSisiA ? _txtFrontCwA.Text.Trim() : (rowData.Jissk?.FrontCwA ?? "0"),
@@ -1224,7 +1224,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             card.Controls.Add(new Label { Text = "SEQUEN", Font = new Font("Segoe UI", 13F, FontStyle.Bold), ForeColor = Color.FromArgb(15, 23, 42), AutoSize = true, Location = new Point(16, 14) });
 
             var btnRefresh = new Button {
-                Text = "⟳ Refresh", 
+                Text = "Refresh", 
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular), 
                 Size = new Size(80, 26), 
                 Location = new Point(width - 100, 14), 
@@ -1249,7 +1249,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Tombol Simpan Terpilih
             var btnSimpanTerpilih = new Button
             {
-                Text = "\u2713 Simpan Terpilih",
+                Text = "Simpan Terpilih",
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 Size = new Size(fw / 2 - 4, 34),
                 Location = new Point(16, y),
@@ -1347,7 +1347,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 DefaultCellStyle = new DataGridViewCellStyle { ForeColor = Color.Black, SelectionBackColor = Color.FromArgb(219, 234, 254), SelectionForeColor = Color.Black, Padding = new Padding(4) },
                 EditMode = DataGridViewEditMode.EditProgrammatically
             };
-            // Kolom checkbox â€” satu-satunya yang bisa diedit
+            // Kolom checkbox - satu-satunya yang bisa diedit
             var chkCol = new DataGridViewCheckBoxColumn
             {
                 Name = "Pilih",
@@ -1363,7 +1363,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             _dgvSequen.SelectionChanged += DgvSequen_SelectionChanged;
             _dgvSequen.CellFormatting += DgvSequen_CellFormatting;
 
-            // Range selection: klik checkbox pertama, lalu klik checkbox kedua â†’ semua di antaranya ikut tercentang
+            // Range selection: klik checkbox pertama, lalu klik checkbox kedua -> semua di antaranya ikut tercentang
             int _lastCheckedIndex = -1;
             _dgvSequen.CellClick += (s, ev) =>
             {
@@ -1638,7 +1638,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     _dgvProduct.ClearSelection();
                 }
 
-                // Jika sumber data XML (AC95), ganti label kolom "Urutan" → "Waktu"
+                // Jika sumber data XML (AC95), ganti label kolom "Urutan" -> "Waktu"
                 if (_lkoService.IsXmlSource)
                 {
                     if (_dgvSequen.Columns.Contains("Urutan"))
@@ -2035,7 +2035,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 string kombinasi = master.KombinasiWire?.Trim() ?? "";
                 string sisiLabel = _isSisiA ? "A" : "B";
 
-                // Jika indikator HasTerminal bukan "2" â†’ strip only â†’ muat Strip.jpg
+                // Jika indikator HasTerminal bukan "2" -> strip only -> muat Strip.jpg
                 if (hasTerminal != "2")
                 {
                     string stripFile = "Strip.jpg";
@@ -2050,7 +2050,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     }
                     else
                     {
-                        _lblImageInfo.Text = $"âš  Sisi {sisiLabel}: Strip Only â€” {stripFile} tidak ditemukan";
+                        _lblImageInfo.Text = $"Sisi {sisiLabel}: Strip Only - {stripFile} tidak ditemukan";
                     }
                     return;
                 }
@@ -2102,7 +2102,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     string tried = fileNameWithSeal != null
                         ? $"{fileNameWithSeal} / {fileNameNoSeal}"
                         : fileNameNoSeal;
-                    _lblImageInfo.Text = $"âš  Gambar tidak ditemukan: {tried}";
+                    _lblImageInfo.Text = $"Gambar tidak ditemukan: {tried}";
                 }
             }
             catch (Exception ex)
@@ -2158,7 +2158,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             };
             canvas.Controls.Add(lblZoom);
 
-            // Tombol close â€” besar dan mencolok agar mudah ditemukan
+            // Tombol close - besar dan mencolok agar mudah ditemukan
             var btnClose = new Button
             {
                 Text = "X TUTUP",
@@ -2287,7 +2287,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Title label
             var lblTitle = new Label
             {
-                Text = "ðŸ“‹ Record LKO Tersimpan â€” " + GetEffectiveMachineNumber(),
+                Text = "Record LKO Tersimpan - " + GetEffectiveMachineNumber(),
                 Font = new Font("Segoe UI", 13F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(15, 23, 42),
                 AutoSize = true,
@@ -2371,7 +2371,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             // Loading indicator
             var lblLoading = new Label
             {
-                Text = "â³ Memuat data...",
+                Text = "Memuat data...",
                 Font = new Font("Segoe UI", 11F, FontStyle.Italic),
                 ForeColor = Color.Black,
                 AutoSize = true,
@@ -2384,7 +2384,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             Action<DateTime> loadDataAction = async (targetDate) =>
             {
                 lblLoading.Visible = true;
-                lblLoading.Text = "â³ Memuat data...";
+                lblLoading.Text = "Memuat data...";
                 lblLoading.ForeColor = Color.Black;
                 dgv.DataSource = null;
 
@@ -2402,7 +2402,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     {
                         lblLoading.Text = "Belum ada record tersimpan pada tanggal tersebut.";
                         lblLoading.Visible = true;
-                        lblTitle.Text = $"ðŸ“‹ Record LKO Tersimpan â€” {GetEffectiveMachineNumber()} (0 record)";
+                        lblTitle.Text = $"Record LKO Tersimpan - {GetEffectiveMachineNumber()} (0 record)";
                         return;
                     }
 
@@ -2472,11 +2472,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     if (dgv.Columns.Contains("No"))
                         dgv.Columns["No"].Width = 40;
 
-                    lblTitle.Text = $"ðŸ“‹ Record LKO Tersimpan â€” {GetEffectiveMachineNumber()} ({records.Count} record)";
+                    lblTitle.Text = $"Record LKO Tersimpan - {GetEffectiveMachineNumber()} ({records.Count} record)";
                 }
                 catch (Exception ex)
                 {
-                    lblLoading.Text = $"âŒ Gagal memuat data: {ex.Message}";
+                    lblLoading.Text = $"Gagal memuat data: {ex.Message}";
                     lblLoading.ForeColor = Color.FromArgb(220, 38, 38);
                 }
             };
