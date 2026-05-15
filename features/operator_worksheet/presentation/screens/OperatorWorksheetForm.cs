@@ -85,7 +85,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
         // === File watcher for auto-reload ===
         private FileSystemWatcher _csvWatcher;
-        private System.Windows.Forms.Timer _debounceTimer;
+        private System.Windows.Forms.Timer _debounceTimerSequen;
+        private System.Windows.Forms.Timer _debounceTimerProduct;
 
         // === Loaded data ===
         private List<LkoService.LkoAggregatedData> _worksheetData = new List<LkoService.LkoAggregatedData>();
@@ -280,12 +281,20 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             }
             if (!Directory.Exists(watchDir)) return;
 
-            // Debounce timer: tunggu 10 detik (10000ms) setelah perubahan terakhir sebelum reload
-            _debounceTimer = new System.Windows.Forms.Timer { Interval = 10000 };
-            _debounceTimer.Tick += (s, e) =>
+            // Debounce timer untuk PrdLog/PrdMst: tunggu 10 detik sebelum reload grid Sequen
+            _debounceTimerSequen = new System.Windows.Forms.Timer { Interval = 10000 };
+            _debounceTimerSequen.Tick += (s, e) =>
             {
-                _debounceTimer.Stop();
+                _debounceTimerSequen.Stop();
                 LoadSequenData();
+            };
+
+            // Debounce timer untuk Product.csv: tunggu 3 detik sebelum reload grid Barcode saja
+            _debounceTimerProduct = new System.Windows.Forms.Timer { Interval = 3000 };
+            _debounceTimerProduct.Tick += (s, e) =>
+            {
+                _debounceTimerProduct.Stop();
+                LoadProductData();
             };
 
             _csvWatcher = new FileSystemWatcher(watchDir)
@@ -300,13 +309,19 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private void OnCsvFileChanged(object sender, FileSystemEventArgs e)
         {
             string name = e.Name?.ToLower() ?? "";
-            if (name == "prdlog.csv" || name == "prdmst.csv" || name == "product.csv")
+            if (name == "prdlog.csv" || name == "prdmst.csv")
             {
-                // Reset debounce timer (invoke on UI thread)
                 if (this.InvokeRequired)
-                    this.BeginInvoke(new Action(() => { _debounceTimer.Stop(); _debounceTimer.Start(); }));
+                    this.BeginInvoke(new Action(() => { _debounceTimerSequen.Stop(); _debounceTimerSequen.Start(); }));
                 else
-                    { _debounceTimer.Stop(); _debounceTimer.Start(); }
+                    { _debounceTimerSequen.Stop(); _debounceTimerSequen.Start(); }
+            }
+            else if (name == "product.csv")
+            {
+                if (this.InvokeRequired)
+                    this.BeginInvoke(new Action(() => { _debounceTimerProduct.Stop(); _debounceTimerProduct.Start(); }));
+                else
+                    { _debounceTimerProduct.Stop(); _debounceTimerProduct.Start(); }
             }
         }
 
@@ -1627,6 +1642,38 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"LoadSequenData error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Lightweight refresh: hanya membaca Product.csv dan update grid BARCODE saja.
+        /// Dipanggil ketika Product.csv berubah tanpa perlu reload Sequen/Tersimpan.
+        /// </summary>
+        private async void LoadProductData()
+        {
+            try
+            {
+                int firstRowProd = _dgvProduct.RowCount > 0 ? _dgvProduct.FirstDisplayedScrollingRowIndex : -1;
+                int selRowProd = _dgvProduct.CurrentRow?.Index ?? -1;
+
+                var pendingProducts = await Task.Run(() =>
+                {
+                    return _lkoService.GetPendingProductSequences();
+                });
+
+                _dgvProduct.DataSource = pendingProducts;
+
+                if (firstRowProd >= 0 && firstRowProd < _dgvProduct.RowCount)
+                    _dgvProduct.FirstDisplayedScrollingRowIndex = firstRowProd;
+                if (selRowProd >= 0 && selRowProd < _dgvProduct.RowCount)
+                {
+                    _dgvProduct.ClearSelection();
+                    _dgvProduct.Rows[selRowProd].Selected = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoadProductData error: {ex.Message}");
             }
         }
 
