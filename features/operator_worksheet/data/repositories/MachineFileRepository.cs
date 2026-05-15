@@ -355,7 +355,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                             if (parts.Length > 12) dto.TerminalB = parts[12].Trim();
                             if (parts.Length > 15) dto.SealA = parts[15].Trim();
                             if (parts.Length > 16) dto.SealB = parts[16].Trim();
-                            if (parts.Length > 43) dto.KombinasiWire = parts[43].Trim();
+                            if (parts.Length > 42) dto.KombinasiWire = parts[42].Trim();
                             
                             result.Add(dto);
                         }
