@@ -372,11 +372,11 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                             if (status != "0" && status != "1") continue;
 
                             var dto = new ProductDto { Sequen = parts[0].Trim() };
-                            if (parts.Length > 5) dto.CutLength = parts[5].Trim();
-                            if (parts.Length > 11) dto.TerminalA = parts[11].Trim();
-                            if (parts.Length > 12) dto.TerminalB = parts[12].Trim();
-                            if (parts.Length > 15) dto.SealA = parts[15].Trim();
-                            if (parts.Length > 16) dto.SealB = parts[16].Trim();
+                            if (parts.Length > 4) dto.CutLength = parts[4].Trim();
+                            if (parts.Length > 10) dto.TerminalA = parts[10].Trim();
+                            if (parts.Length > 11) dto.TerminalB = parts[11].Trim();
+                            if (parts.Length > 14) dto.SealA = parts[14].Trim();
+                            if (parts.Length > 15) dto.SealB = parts[15].Trim();
                             if (parts.Length > 42) dto.KombinasiWire = parts[42].Trim();
                             
                             result.Add(dto);
