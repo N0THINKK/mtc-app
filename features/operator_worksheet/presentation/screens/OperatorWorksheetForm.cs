@@ -1057,7 +1057,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             y += 48;
 
             // Button Simpan
-            var btnSave = new Button { Text = "\u2713 Simpan", Font = new Font("Segoe UI", 9.5F, FontStyle.Bold), Size = new Size(fw, 34), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(16, 185, 129), ForeColor = Color.White, Cursor = Cursors.Hand };
+            var btnSave = new Button { Text = "Simpan", Font = new Font("Segoe UI", 9.5F, FontStyle.Bold), Size = new Size(fw, 34), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(16, 185, 129), ForeColor = Color.White, Cursor = Cursors.Hand };
             btnSave.FlatAppearance.BorderSize = 0;
             btnSave.Click += BtnSimpanAktivitas_Click;
             card.Controls.Add(btnSave);
