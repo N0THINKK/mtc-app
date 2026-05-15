@@ -1562,11 +1562,6 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 DefaultCellStyle = new DataGridViewCellStyle { ForeColor = Color.Black, SelectionBackColor = Color.FromArgb(254, 243, 199), SelectionForeColor = Color.Black, Padding = new Padding(4) }
             };
             _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "Sequen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
-            _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "CutL", DataPropertyName = "CutLength", Width = 50 });
-            _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Term A", DataPropertyName = "TerminalA", Width = 65 });
-            _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Term B", DataPropertyName = "TerminalB", Width = 65 });
-            _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Seal A", DataPropertyName = "SealA", Width = 55 });
-            _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Seal B", DataPropertyName = "SealB", Width = 55 });
             _dgvProduct.SelectionChanged += DgvProduct_SelectionChanged;
 
             card.Controls.Add(_dgvProduct);
@@ -1848,21 +1843,31 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             var product = _dgvProduct.CurrentRow.DataBoundItem as ProductDto;
             if (product == null) return;
 
-            // Hanya perbarui ilustrasi kabel tanpa mengubah form isian aktif
-            var masterData = new PrdmstDto
+            // Buat wrapper LkoAggregatedData minimal dari ProductDto agar bisa digunakan oleh PopulateInputFields
+            var wrapper = new LkoService.LkoAggregatedData
             {
-                Sequen = product.Sequen,
-                CutLength = product.CutLength,
-                TerminalA = product.TerminalA,
-                TerminalB = product.TerminalB,
-                SealA = product.SealA,
-                SealB = product.SealB,
-                KombinasiWire = product.KombinasiWire,
-                HasTerminalA = string.IsNullOrWhiteSpace(product.TerminalA) || product.TerminalA == "-" ? "Y" : "2",
-                HasTerminalB = string.IsNullOrWhiteSpace(product.TerminalB) || product.TerminalB == "-" ? "Y" : "2",
+                Log = new PrdLogDto { Sequen = product.Sequen },
+                Master = new PrdmstDto
+                {
+                    Sequen = product.Sequen,
+                    CutLength = product.CutLength,
+                    TerminalA = product.TerminalA,
+                    TerminalB = product.TerminalB,
+                    SealA = product.SealA,
+                    SealB = product.SealB,
+                    KombinasiWire = product.KombinasiWire,
+                    HasTerminalA = string.IsNullOrWhiteSpace(product.TerminalA) || product.TerminalA == "-" ? "Y" : "2",
+                    HasTerminalB = string.IsNullOrWhiteSpace(product.TerminalB) || product.TerminalB == "-" ? "Y" : "2",
+                }
             };
             
-            _wireVisualizer.UpdateData(masterData);
+            // Jadikan wrapper ini sebagai data aktif (agar jika user klik Simpan, datanya terikat, meski sebenarnya Product blm siap simpan)
+            _activeSource = ActiveGrid.Sequen; 
+            _activeRowData = wrapper;
+
+            _isPopulatingFields = true;
+            PopulateInputFields(wrapper); // Ini juga akan otomatis mengupdate _wireVisualizer
+            _isPopulatingFields = false;
         }
 
         private void DgvTersimpan_SelectionChanged(object sender, EventArgs e)
