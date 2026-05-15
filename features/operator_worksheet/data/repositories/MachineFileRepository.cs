@@ -335,6 +335,24 @@ namespace mtc_app.features.operator_worksheet.data.repositories
         {
             var result = new List<ProductDto>();
             string filePath = Path.Combine(_baseDir, "Product.csv");
+            
+            if (!File.Exists(filePath))
+            {
+                // Coba path lain per tipe mesin
+                string[] searchPaths = new[]
+                {
+                    Path.Combine(_baseDir, "product.csv"),              // AC80 (huruf kecil)
+                    @"C:\AC95\Product\Product.csv",                     // AC95
+                    @"C:\AC80HMI\product.csv",                          // AC80
+                    @"C:\AC80HMI\Product.csv"                           // AC80 (huruf besar)
+                };
+                
+                foreach (var sp in searchPaths)
+                {
+                    if (File.Exists(sp)) { filePath = sp; break; }
+                }
+            }
+            
             if (!File.Exists(filePath)) return result;
 
             try

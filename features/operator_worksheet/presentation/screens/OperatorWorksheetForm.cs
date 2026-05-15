@@ -84,7 +84,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private Label _lblImageInfo;
 
         // === File watcher for auto-reload ===
-        private FileSystemWatcher _csvWatcher;
+        private List<FileSystemWatcher> _fileWatchers = new List<FileSystemWatcher>();
         private System.Windows.Forms.Timer _debounceTimerSequen;
         private System.Windows.Forms.Timer _debounceTimerProduct;
 
@@ -274,13 +274,6 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         // =====================================================================
         private void SetupFileWatcher()
         {
-            string watchDir = @"C:\AC90HMI\prg";
-            if (!Directory.Exists(watchDir))
-            {
-                watchDir = @"C:\AC80HMI";
-            }
-            if (!Directory.Exists(watchDir)) return;
-
             // Debounce timer untuk PrdLog/PrdMst: tunggu 10 detik sebelum reload grid Sequen
             _debounceTimerSequen = new System.Windows.Forms.Timer { Interval = 10000 };
             _debounceTimerSequen.Tick += (s, e) =>
@@ -297,19 +290,35 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 LoadProductData();
             };
 
-            _csvWatcher = new FileSystemWatcher(watchDir)
+            // Daftar folder yang perlu dipantau
+            string[] watchDirs = new[]
             {
-                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
-                EnableRaisingEvents = true
+                @"C:\AC90HMI\prg",                          // AC90: PrdLog.csv, prdmst.csv, Product.csv
+                @"C:\AC80HMI",                               // AC80: PrdLog.csv, prdmst.csv, product.csv
+                @"D:\AC95\prg\HMI\RelationalData",           // AC95: ProductionLog.xml
+                @"C:\AC95\prg\HMI\RelationalData",           // AC95: ProductionLog.xml (alt)
+                @"C:\AC95\Product"                            // AC95: Product.csv
             };
-            _csvWatcher.Filter = "*.csv";
-            _csvWatcher.Changed += OnCsvFileChanged;
+
+            foreach (var dir in watchDirs)
+            {
+                if (!Directory.Exists(dir)) continue;
+
+                var watcher = new FileSystemWatcher(dir)
+                {
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
+                    EnableRaisingEvents = true
+                };
+                watcher.Filter = "*.*"; // csv dan xml
+                watcher.Changed += OnCsvFileChanged;
+                _fileWatchers.Add(watcher);
+            }
         }
 
         private void OnCsvFileChanged(object sender, FileSystemEventArgs e)
         {
             string name = e.Name?.ToLower() ?? "";
-            if (name == "prdlog.csv" || name == "prdmst.csv")
+            if (name == "prdlog.csv" || name == "prdmst.csv" || name == "productionlog.xml")
             {
                 if (this.InvokeRequired)
                     this.BeginInvoke(new Action(() => { _debounceTimerSequen.Stop(); _debounceTimerSequen.Start(); }));

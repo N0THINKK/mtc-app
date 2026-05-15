@@ -10,8 +10,8 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             {
                 components.Dispose();
             }
-            // Dispose file watcher
-            try { _csvWatcher?.Dispose(); } catch { }
+            // Dispose file watchers
+            foreach (var w in _fileWatchers) try { w?.Dispose(); } catch { }
             try { _debounceTimerSequen?.Dispose(); } catch { }
             try { _debounceTimerProduct?.Dispose(); } catch { }
             base.Dispose(disposing);
