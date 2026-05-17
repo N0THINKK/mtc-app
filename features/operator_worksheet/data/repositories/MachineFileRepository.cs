@@ -342,7 +342,8 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                 string[] searchPaths = new[]
                 {
                     Path.Combine(_baseDir, "product.csv"),              // AC80 (huruf kecil)
-                    @"C:\AC95\Product\Product.csv",                     // AC95
+                    @"D:\AC95\Product\Product.csv",                     // AC95 (drive D)
+                    @"C:\AC95\Product\Product.csv",                     // AC95 (drive C fallback)
                     @"C:\AC80HMI\product.csv",                          // AC80
                     @"C:\AC80HMI\Product.csv"                           // AC80 (huruf besar)
                 };

@@ -21,7 +21,6 @@ namespace mtc_app.features.group_leader.presentation.screens
         private List<GroupLeaderTicketDto> _allTickets = new List<GroupLeaderTicketDto>();
         private bool _isSystemActive = true;
         private bool _isLoading = false;
-        private Timer timerRefresh;
 
         // Composition Root: Default constructor uses ServiceLocator for offline support
         public GroupLeaderDashboardForm() : this(ServiceLocator.CreateGroupLeaderRepository())
@@ -34,16 +33,10 @@ namespace mtc_app.features.group_leader.presentation.screens
             InitializeComponent();
             SetupEventHandlers();
 
-            // Setup Timer
-            this.timerRefresh = new Timer(this.components);
-            this.timerRefresh.Interval = 15000; // 15 seconds
-            this.timerRefresh.Tick += async (s, e) => await LoadDataAsync();
-
             if (!this.DesignMode)
             {
-                // Trigger initial load
+                // Load data when form is first shown
                 this.Shown += async (s, e) => await LoadDataAsync();
-                timerRefresh.Start();
             }
         }
 
@@ -73,7 +66,6 @@ namespace mtc_app.features.group_leader.presentation.screens
             {
                 if (this.IsDisposed) return;
 
-                timerRefresh.Stop(); // Stop refreshing if error persists
                 UpdateStatusIndicator(false);
                 MessageBox.Show($"Gagal memuat data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -237,11 +229,9 @@ namespace mtc_app.features.group_leader.presentation.screens
             picStatusIndicator.Invalidate();
         }
 
-        protected override void OnFormClosing(FormClosingEventArgs e)
+        private async void BtnRefresh_Click(object sender, EventArgs e)
         {
-            timerRefresh?.Stop();
-            timerRefresh?.Dispose();
-            base.OnFormClosing(e);
+            await LoadDataAsync();
         }
 
         private void SetupEventHandlers()

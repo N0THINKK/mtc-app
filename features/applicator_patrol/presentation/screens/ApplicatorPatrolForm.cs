@@ -95,7 +95,6 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = AppColors.Background;
             this.FormBorderStyle = FormBorderStyle.Sizable;
-            this.WindowState = FormWindowState.Maximized;
 
             BuildTopBar();
             BuildHeaderInputs();

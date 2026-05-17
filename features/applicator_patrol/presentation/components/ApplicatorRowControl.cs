@@ -88,17 +88,15 @@ namespace mtc_app.features.applicator_patrol.presentation.components
                 Height = 28,
                 Font = new Font(AppFonts.FontFamily, 10.5f, FontStyle.Regular),
                 ForeColor = AppColors.TextPrimary,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+                TextAlign = ContentAlignment.MiddleLeft
             };
 
             _pnlRadioGroup = new Panel
             {
-                Location = new Point(260, 3),
-                Width = 200,
+                Location = new Point(274, 3),
+                Width = 290,
                 Height = 34,
-                BackColor = AppColors.Background,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
+                BackColor = AppColors.Background
             };
 
             _rbOk = new RadioButton
@@ -113,7 +111,7 @@ namespace mtc_app.features.applicator_patrol.presentation.components
             _rbNg = new RadioButton
             {
                 Text = "NG",
-                Location = new Point(70, 7),
+                Location = new Point(90, 7),
                 AutoSize = true,
                 Font = new Font(AppFonts.FontFamily, 10.5f, FontStyle.Bold),
                 ForeColor = AppColors.Danger
@@ -121,7 +119,7 @@ namespace mtc_app.features.applicator_patrol.presentation.components
             _rbNa = new RadioButton
             {
                 Text = "N/A",
-                Location = new Point(136, 7),
+                Location = new Point(176, 7),
                 AutoSize = true,
                 Font = new Font(AppFonts.FontFamily, 10.5f, FontStyle.Regular),
                 ForeColor = AppColors.TextSecondary
@@ -134,14 +132,13 @@ namespace mtc_app.features.applicator_patrol.presentation.components
             // Label kecil untuk menampilkan item NG, contoh "▶ 1,3"
             _lblNgItems = new Label
             {
-                Location = new Point(470, 6),
-                Width = 140,
+                Location = new Point(570, 6),
+                Width = 160,
                 Height = 28,
                 Font = new Font(AppFonts.FontFamily, 8.5f, FontStyle.Italic),
                 ForeColor = Color.FromArgb(200, 30, 30),
                 TextAlign = ContentAlignment.MiddleLeft,
-                Visible = false,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
+                Visible = false
             };
 
             this.Controls.AddRange(new Control[] { _chkActive, _lblApplicatorCode, _pnlRadioGroup, _lblNgItems });
