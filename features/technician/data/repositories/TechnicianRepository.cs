@@ -64,6 +64,7 @@ namespace mtc_app.features.technician.data.repositories
                     LEFT JOIN machine_areas m_area ON m.area_id = m_area.area_id
                     LEFT JOIN users u ON t.technician_id = u.user_id
                     WHERE t.status_id >= 1 AND t.created_at BETWEEN @Start AND @End
+                      AND m_type.type_name != 'Layar'
                     ORDER BY t.created_at DESC";
                 
                 return await connection.QueryAsync<TicketDto>(sql, new { Start = start, End = end }, commandTimeout: 120);
@@ -184,8 +185,11 @@ namespace mtc_app.features.technician.data.repositories
                     FROM ticket_technician_sessions tts
                     JOIN tickets t ON tts.ticket_id = t.ticket_id
                     JOIN users u ON tts.technician_id = u.user_id
+                    JOIN machines m ON t.machine_id = m.machine_id
+                    JOIN machine_types mt ON m.type_id = mt.type_id
                     WHERE t.status_id IN (3, 4) 
                       AND t.created_at BETWEEN @Start AND @End
+                      AND mt.type_name != 'Layar'
                 ) AS T
                 GROUP BY T.user_id, T.TechnicianName
                 HAVING COUNT(T.ticket_id) > 0";
@@ -222,7 +226,8 @@ namespace mtc_app.features.technician.data.repositories
                 JOIN machine_areas ma ON m.area_id = ma.area_id
                 JOIN tickets t ON m.machine_id = t.machine_id
                 WHERE t.status_id IN (3, 4) 
-                  AND t.created_at BETWEEN @Start AND @End";
+                  AND t.created_at BETWEEN @Start AND @End
+                  AND mt.type_name != 'Layar'";
 
             if (!string.IsNullOrEmpty(area) && area != "All")
             {
@@ -249,11 +254,16 @@ namespace mtc_app.features.technician.data.repositories
             {
                 string sql = @"
                     SELECT 
-                        (SELECT COUNT(DISTINCT machine_id) 
-                         FROM machine_process_logs 
-                         WHERE created_at >= NOW() - INTERVAL 10 MINUTE) as Running,
+                        (SELECT COUNT(DISTINCT mpl.machine_id) 
+                         FROM machine_process_logs mpl
+                         JOIN machines m2 ON mpl.machine_id = m2.machine_id
+                         JOIN machine_types mt2 ON m2.type_id = mt2.type_id
+                         WHERE mpl.created_at >= NOW() - INTERVAL 10 MINUTE
+                           AND mt2.type_name != 'Layar') as Running,
                          
-                        (SELECT COUNT(*) FROM machines) as Total
+                        (SELECT COUNT(*) FROM machines m3
+                         JOIN machine_types mt3 ON m3.type_id = mt3.type_id
+                         WHERE mt3.type_name != 'Layar') as Total
                 ";
                 return await connection.QueryFirstOrDefaultAsync<(int, int)>(sql, commandTimeout: 60);
             }

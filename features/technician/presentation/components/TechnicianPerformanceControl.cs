@@ -362,15 +362,13 @@ namespace mtc_app.features.technician.presentation.components
                         g.DrawString($"#{i + 1}", font, brush, centerX, chartBottom + 8, centerFormat);
                     }
 
-                    // 4. Draw Name (Below Rank)
-                    string name = item.TechnicianName ?? "Unknown";
-                    int maxNameChars = Math.Max(5, barWidth / 7); // Approx char width
-                    if (name.Length > maxNameChars) name = name.Substring(0, maxNameChars - 2) + "..";
+                    // 4. Draw Initials (Below Rank)
+                    string initials = GetInitials(item.TechnicianName);
                     
-                    using (var font = new Font("Segoe UI", 9F))
+                    using (var font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold))
                     using (var brush = new SolidBrush(AppColors.TextPrimary))
                     {
-                        g.DrawString(name, font, brush, centerX, chartBottom + 28, centerFormat);
+                        g.DrawString(initials, font, brush, centerX, chartBottom + 28, centerFormat);
                     }
                 }
             }
@@ -404,6 +402,13 @@ namespace mtc_app.features.technician.presentation.components
                 "stars" => $"{value:F0} ⭐",
                 _ => $"{value:F0}"
             };
+        }
+
+        private string GetInitials(string fullName)
+        {
+            if (string.IsNullOrWhiteSpace(fullName)) return "?";
+            var words = fullName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            return string.Concat(words.Select(w => char.ToUpper(w[0])));
         }
 
         private Color GetBarColor(int rank)

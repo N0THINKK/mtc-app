@@ -502,6 +502,7 @@ namespace mtc_app.features.technician.presentation.components
                         LEFT JOIN machine_types t ON m.type_id = t.type_id
                         LEFT JOIN machine_areas a ON m.area_id = a.area_id
                         WHERE (@Area = 'Semua Area' OR a.area_name = @Area)
+                          AND COALESCE(t.type_name, '') != 'Layar'
                         ORDER BY m.machine_id";
 
                     var machineRows = await conn.QueryAsync(sqlMachines, new { Area = selectedArea });
@@ -737,7 +738,8 @@ namespace mtc_app.features.technician.presentation.components
 
                 string selectedMetric = _comboMetric.SelectedItem?.ToString();
                 string selectedSort = _comboSort.SelectedItem?.ToString();
-                var machineList = machines.Values.ToList();
+                // Sembunyikan mesin yang target-nya 0 atau kosong (belum dikonfigurasi)
+                var machineList = machines.Values.Where(m => m.TargetPerHour > 0).ToList();
 
                 if (selectedSort == "Nomor Mesin")
                 {
