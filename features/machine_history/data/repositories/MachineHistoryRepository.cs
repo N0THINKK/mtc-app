@@ -47,13 +47,16 @@ namespace mtc_app.features.machine_history.data.repositories
                          WHERE tp.ticket_id = t.ticket_id
                         ) AS ActionDetails,
 
-                        (SELECT GROUP_CONCAT(
-                            CONCAT(COALESCE(p.part_name, pr.part_name_manual), ' x', pr.qty)
-                            SEPARATOR ', '
-                         )
-                         FROM part_requests pr
-                         LEFT JOIN parts p ON pr.part_id = p.part_id
-                         WHERE pr.ticket_id = t.ticket_id
+                        CONCAT_WS(', ',
+                            (SELECT GROUP_CONCAT(
+                                CONCAT(COALESCE(p.part_name, pr.part_name_manual), ' x', pr.qty)
+                                SEPARATOR ', '
+                             )
+                             FROM part_requests pr
+                             LEFT JOIN parts p ON pr.part_id = p.part_id
+                             WHERE pr.ticket_id = t.ticket_id
+                            ),
+                            IF(t.counter_stroke > 0, CONCAT('Counter: ', t.counter_stroke), NULL)
                         ) AS SparepartUsed,
 
                         (SELECT CONCAT(
