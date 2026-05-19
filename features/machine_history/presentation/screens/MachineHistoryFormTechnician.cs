@@ -11,7 +11,9 @@ using mtc_app.features.machine_history.presentation.components;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 using mtc_app.shared.infrastructure;
+using mtc_app.features.machine_history.presentation.components;
 using mtc_app.features.machine_history.data.dtos;
+using mtc_app.features.machine_history.data.repositories;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
@@ -41,6 +43,10 @@ namespace mtc_app.features.machine_history.presentation.screens
         private List<long> _activeSessionIds = new List<long>();
         private List<int> _activeTechnicianIds = new List<int>();
         private Dictionary<long, int> _sessionElapsedMap = new Dictionary<long, int>();
+
+        // History Tab
+        private TabControl _tabControl;
+        private MachineHistoryListControl _historyListControl;
 
         // UI Controls
         private Label _lblPreviousTechnicians; 
@@ -84,6 +90,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             LoadOfflineTicketState();
             LoadActiveSessions(); 
             UpdateUIState();
+            SetupHistoryTab();
             
             this.StartPosition = FormStartPosition.CenterScreen;
             this.WindowState = FormWindowState.Maximized;
@@ -800,6 +807,70 @@ namespace mtc_app.features.machine_history.presentation.screens
             
             var spacer = new Panel { Height = 30, Width = 10, BackColor = Color.Transparent };
             mainLayout.Controls.Add(spacer);
+        }
+
+        private void SetupHistoryTab()
+        {
+            // Ambil machine_id dari tiket saat ini untuk filter riwayat
+            _tabControl = new TabControl
+            {
+                Dock = DockStyle.Fill,
+                Font = AppFonts.Body,
+                Padding = new Point(10, 5)
+            };
+
+            // Tab 1: Form Perbaikan (pindahkan mainLayout ke sini)
+            var tabRepair = new TabPage("Perbaikan") { BackColor = AppColors.Background };
+            this.Controls.Remove(mainLayout);
+            mainLayout.Dock = DockStyle.Fill;
+            tabRepair.Controls.Add(mainLayout);
+
+            // Tab 2: Riwayat Mesin
+            var tabHistory = new TabPage("Riwayat") { BackColor = AppColors.CardBackground };
+            _historyListControl = new MachineHistoryListControl { Dock = DockStyle.Fill };
+            tabHistory.Controls.Add(_historyListControl);
+
+            _tabControl.TabPages.Add(tabRepair);
+            _tabControl.TabPages.Add(tabHistory);
+
+            _tabControl.SelectedIndexChanged += async (s, e) =>
+            {
+                if (_tabControl.SelectedIndex == 1)
+                {
+                    await LoadHistoryDataAsync();
+                }
+            };
+
+            this.Controls.Add(_tabControl);
+            _tabControl.BringToFront();
+        }
+
+        private async Task LoadHistoryDataAsync()
+        {
+            try
+            {
+                int? machineId = null;
+                if (_currentTicketId > 0)
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        conn.Open();
+                        machineId = await conn.QueryFirstOrDefaultAsync<int?>(
+                            "SELECT machine_id FROM tickets WHERE ticket_id = @Id",
+                            new { Id = _currentTicketId });
+                    }
+                }
+
+                var repo = new MachineHistoryRepository();
+                var start = DateTime.Now.AddDays(-30);
+                var end = DateTime.Now.AddDays(1);
+                var data = await repo.GetHistoryAsync(start, end, null, null, machineId);
+                _historyListControl.SetData(data);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[FormTechnician] Error loading history: {ex.Message}");
+            }
         }
 
         private async void LoadParts()

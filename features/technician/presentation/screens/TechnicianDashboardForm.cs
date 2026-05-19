@@ -10,6 +10,8 @@ using mtc_app.shared.presentation.components;
 using mtc_app.shared.data.session;
 using mtc_app.shared.presentation.styles;
 using mtc_app.shared.infrastructure;
+using mtc_app.features.machine_history.presentation.components;
+using mtc_app.features.machine_history.data.repositories;
 
 namespace mtc_app.features.technician.presentation.screens
 {
@@ -27,6 +29,7 @@ namespace mtc_app.features.technician.presentation.screens
         private StockDataControl stockDataControl;
         private TechnicianPatrolControl patrolControl;
         private TechnicianApplicatorPatrolControl applicatorPatrolControl;
+        private MachineHistoryListControl historyListControl;
         
         // Auto Switch Feature
         private Timer timerTabSwitch;
@@ -348,6 +351,10 @@ namespace mtc_app.features.technician.presentation.screens
                     await applicatorPatrolControl.LoadDataAsync(start, end);
                 }
             }
+            else if (tabControl.SelectedIndex == 7) // Riwayat Mesin
+            {
+                await LoadHistoryTabAsync(start, end);
+            }
         }
 
         // ========================================================
@@ -404,6 +411,12 @@ namespace mtc_app.features.technician.presentation.screens
             tabControl.TabPages.Add(tabPatroli);
             tabControl.TabPages.Add(tabApplicator);
 
+            // Tab 8: Riwayat Mesin
+            var tabHistory = new TabPage("Riwayat") { BackColor = AppColors.CardBackground };
+            historyListControl = new MachineHistoryListControl { Dock = DockStyle.Fill };
+            tabHistory.Controls.Add(historyListControl);    
+            tabControl.TabPages.Add(tabHistory);
+
             // Load data when tab changes
             tabControl.SelectedIndexChanged += (s, e) =>
             {
@@ -438,6 +451,20 @@ namespace mtc_app.features.technician.presentation.screens
             // timerLogger?.Dispose();
             
             base.OnFormClosing(e);
+        }
+
+        private async Task LoadHistoryTabAsync(DateTime start, DateTime end)
+        {
+            try
+            {
+                var repo = new MachineHistoryRepository();
+                var data = await repo.GetHistoryAsync(start, end);
+                historyListControl.SetData(data);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Dashboard] Error loading history: {ex.Message}");
+            }
         }
     }
 }

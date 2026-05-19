@@ -26,16 +26,35 @@ namespace mtc_app.features.machine_history.data.repositories
                         IFNULL(tech.full_name, '-') AS TechnicianName,
                         IFNULL(op.full_name, '-') AS OperatorName,
                         
-                        (SELECT CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
-                            IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown'))
+                        (SELECT GROUP_CONCAT(
+                            CONCAT(
+                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                                IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown'))
+                            ) SEPARATOR ' | '
                          )
                          FROM ticket_problems tp
                          LEFT JOIN problem_types pt ON tp.problem_type_id = pt.type_id
                          LEFT JOIN failures f ON tp.failure_id = f.failure_id
                          WHERE tp.ticket_id = t.ticket_id
-                         LIMIT 1
                         ) AS Issue,
+
+                        (SELECT GROUP_CONCAT(
+                            IFNULL(act.action_name, IFNULL(tp.action_details_manual, '-'))
+                            SEPARATOR ' | '
+                         )
+                         FROM ticket_problems tp
+                         LEFT JOIN actions act ON tp.action_id = act.action_id
+                         WHERE tp.ticket_id = t.ticket_id
+                        ) AS ActionDetails,
+
+                        (SELECT GROUP_CONCAT(
+                            CONCAT(COALESCE(p.part_name, pr.part_name_manual), ' x', pr.qty)
+                            SEPARATOR ', '
+                         )
+                         FROM part_requests pr
+                         LEFT JOIN parts p ON pr.part_id = p.part_id
+                         WHERE pr.ticket_id = t.ticket_id
+                        ) AS SparepartUsed,
 
                         (SELECT CONCAT(
                             IFNULL(act.action_name, IFNULL(tp.action_details_manual, '-')),
