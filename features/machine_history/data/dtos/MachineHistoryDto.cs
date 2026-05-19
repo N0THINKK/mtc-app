@@ -13,6 +13,7 @@ namespace mtc_app.features.machine_history.data.dtos
         public string Issue { get; set; } // Combined failure details
         public string ActionDetails { get; set; } // Tindakan yang dilakukan
         public string SparepartUsed { get; set; } // Part yang diganti
+
         public string Resolution { get; set; } // Combined action details (legacy)
         public DateTime CreatedAt { get; set; }
         public DateTime? StartedAt { get; set; } // Added
