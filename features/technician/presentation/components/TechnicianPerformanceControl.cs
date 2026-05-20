@@ -288,7 +288,7 @@ namespace mtc_app.features.technician.presentation.components
 
             // Layout Parameters for Vertical Chart
             int padding = 20;
-            int bottomLabelHeight = 110; // Increased space for vertical names at bottom (up to 5 letters)
+            int bottomLabelHeight = 90; // Balanced space for vertical names at bottom
             int topValueHeight = 40;    
 
             int chartBottom = chartPanel.Height - padding - bottomLabelHeight;
@@ -363,7 +363,7 @@ namespace mtc_app.features.technician.presentation.components
                     }
 
                     // 4. Draw Initials (Below Rank, Vertical)
-                    string initials = GetInitials(item.TechnicianName);
+                    string initials = !string.IsNullOrWhiteSpace(item.Nik) ? item.Nik : GetInitials(item.TechnicianName);
                     
                     using (var font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold))
                     using (var brush = new SolidBrush(AppColors.TextPrimary))

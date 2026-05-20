@@ -173,6 +173,7 @@ namespace mtc_app.features.technician.data.repositories
             const string sql = @"
                 SELECT 
                     T.TechnicianName,
+                    T.Nik,
                     COUNT(T.ticket_id) AS TotalRepairs,
                     COALESCE(AVG(NULLIF(T.gl_rating_score, 0)), 0) AS AverageRating,
                     COALESCE(SUM(T.gl_rating_score), 0) AS TotalStars
@@ -180,6 +181,7 @@ namespace mtc_app.features.technician.data.repositories
                     SELECT DISTINCT 
                         u.user_id, 
                         u.full_name AS TechnicianName, 
+                        u.nik AS Nik,
                         t.ticket_id, 
                         t.gl_rating_score
                     FROM ticket_technician_sessions tts
@@ -191,7 +193,7 @@ namespace mtc_app.features.technician.data.repositories
                       AND t.created_at BETWEEN @Start AND @End
                       AND mt.type_name != 'Layar'
                 ) AS T
-                GROUP BY T.user_id, T.TechnicianName
+                GROUP BY T.user_id, T.TechnicianName, T.Nik
                 HAVING COUNT(T.ticket_id) > 0";
 
             using (var connection = DatabaseHelper.GetConnection())
