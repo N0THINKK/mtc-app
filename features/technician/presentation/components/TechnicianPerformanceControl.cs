@@ -288,7 +288,7 @@ namespace mtc_app.features.technician.presentation.components
 
             // Layout Parameters for Vertical Chart
             int padding = 20;
-            int bottomLabelHeight = 80; // Increased space for vertical names at bottom
+            int bottomLabelHeight = 110; // Increased space for vertical names at bottom (up to 5 letters)
             int topValueHeight = 40;    
 
             int chartBottom = chartPanel.Height - padding - bottomLabelHeight;
