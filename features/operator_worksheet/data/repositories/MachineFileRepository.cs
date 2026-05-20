@@ -259,14 +259,41 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                     {
                         if (string.IsNullOrWhiteSpace(line)) continue;
 
-                        // Ambil kolom kedua (sequence number) dari whitespace-separated tokens
-                        var tokens = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-                        if (tokens.Length < 2) continue;
+                        // Ambil sequence number.
+                        // File Jissk.dat menggunakan fixed-width format.
+                        // Karakter index 7 s.d 11 adalah sequence number (panjang 5).
+                        // Contoh AC90: "**2399 80030" -> "80030"
+                        // Contoh AC95: "10  49 7 247" -> "7 247" -> "7247", "10  49 79000" -> "79000"
+                        string rawSeq = "";
+                        if (line.Length >= 12)
+                        {
+                            // Area sequence ada di index 7 dengan panjang 5.
+                            // Contoh AC90: "80030" -> split last: "80030"
+                            // Contoh AC95: "7 247" -> split last: "247"
+                            // Contoh AC95: "79000" -> split last: "79000"
+                            string seqArea = line.Substring(7, 5);
+                            var areaTokens = seqArea.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                            if (areaTokens.Length > 0)
+                            {
+                                rawSeq = areaTokens.Last();
+                            }
+                        }
+                        
+                        if (string.IsNullOrEmpty(rawSeq))
+                        {
+                            // Fallback jika baris terlalu pendek atau seqArea kosong
+                            var tokens = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                            if (tokens.Length < 2) continue;
+                            rawSeq = tokens[1].Trim();
+                        }
 
-                        string rawSeq = tokens[1].Trim();
-
-                        // Ambil 4 digit terakhir
-                        string seq4 = rawSeq.Length >= 4 ? rawSeq.Substring(rawSeq.Length - 4) : rawSeq;
+                        // Ambil 4 digit terakhir dan pastikan terformat 4 digit (contoh: "247" menjadi "0247")
+                        string seq4 = rawSeq;
+                        if (seq4.Length > 4) 
+                        {
+                            seq4 = seq4.Substring(seq4.Length - 4);
+                        }
+                        seq4 = seq4.PadLeft(4, '0');
 
                         // Cari semua angka desimal X.XXX di baris ini
                         var matches = decimalPattern.Matches(line);
