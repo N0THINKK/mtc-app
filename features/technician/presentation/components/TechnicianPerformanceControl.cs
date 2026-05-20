@@ -362,13 +362,20 @@ namespace mtc_app.features.technician.presentation.components
                         g.DrawString($"#{i + 1}", font, brush, centerX, chartBottom + 8, centerFormat);
                     }
 
-                    // 4. Draw Initials (Below Rank)
+                    // 4. Draw Initials (Below Rank, Vertical)
                     string initials = GetInitials(item.TechnicianName);
                     
-                    using (var font = new Font("Segoe UI", 10F, FontStyle.Italic | FontStyle.Bold))
+                    using (var font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold))
                     using (var brush = new SolidBrush(AppColors.TextPrimary))
                     {
-                        g.DrawString(initials, font, brush, centerX, chartBottom + 28, centerFormat);
+                        var state = g.Save();
+                        g.TranslateTransform(centerX, chartBottom + 35);
+                        g.RotateTransform(-90);
+                        using (var verticalFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                        {
+                            g.DrawString(initials, font, brush, 0, 0, verticalFormat);
+                        }
+                        g.Restore(state);
                     }
                 }
             }
