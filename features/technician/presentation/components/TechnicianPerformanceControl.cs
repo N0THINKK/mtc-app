@@ -365,7 +365,7 @@ namespace mtc_app.features.technician.presentation.components
                     // 4. Draw Initials (Below Rank)
                     string initials = GetInitials(item.TechnicianName);
                     
-                    using (var font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold))
+                    using (var font = new Font("Segoe UI", 10F, FontStyle.Italic | FontStyle.Bold))
                     using (var brush = new SolidBrush(AppColors.TextPrimary))
                     {
                         g.DrawString(initials, font, brush, centerX, chartBottom + 28, centerFormat);
