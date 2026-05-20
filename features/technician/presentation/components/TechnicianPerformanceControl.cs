@@ -288,9 +288,9 @@ namespace mtc_app.features.technician.presentation.components
 
             // Layout Parameters for Vertical Chart
             int padding = 20;
-            int bottomLabelHeight = 60; // Space for Rank and Name at bottom
-            int topValueHeight = 40;    // DIPERBESAR UNTUK FONT BESAR
-            
+            int bottomLabelHeight = 80; // Increased space for vertical names at bottom
+            int topValueHeight = 40;    
+
             int chartBottom = chartPanel.Height - padding - bottomLabelHeight;
             int chartHeight = chartBottom - (padding + topValueHeight);
 
@@ -369,9 +369,9 @@ namespace mtc_app.features.technician.presentation.components
                     using (var brush = new SolidBrush(AppColors.TextPrimary))
                     {
                         var state = g.Save();
-                        g.TranslateTransform(centerX, chartBottom + 35);
+                        g.TranslateTransform(centerX, chartBottom + 28);
                         g.RotateTransform(-90);
-                        using (var verticalFormat = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                        using (var verticalFormat = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Center })
                         {
                             g.DrawString(initials, font, brush, 0, 0, verticalFormat);
                         }
