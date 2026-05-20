@@ -100,7 +100,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
         private string _machineNumber = "-";
         private int? _activeMachineId = null;
         private List<CachedShiftDto> _shifts = new List<CachedShiftDto>();
-        private int _defaultShiftIndex = 0;
+        private static int _defaultShiftIndex = 0;
         private string _nikOperator = "-";
         private int _qtyDone = 0;
         private int _qtyTarget = 0;
@@ -151,8 +151,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 new CachedShiftDto { ShiftId = 5, ShiftName = "NS" }
             };
             TimeSpan nowTime = DateTime.Now.TimeOfDay;
-            // Default ke kosong (index 0) agar operator wajib memilih
-            _defaultShiftIndex = 0;
+            // Gunakan shift yang sudah tersimpan sebelumnya (berkat field static)
 
             InitializeUI(); // Form akan langsung muncul
 
@@ -675,6 +674,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             {
                 _cboShift.DataSource = _shifts;
                 try { if (_defaultShiftIndex >= 0 && _defaultShiftIndex < _cboShift.Items.Count) _cboShift.SelectedIndex = _defaultShiftIndex; } catch { }
+                _cboShift.SelectedIndexChanged += (s, ev) => { _defaultShiftIndex = _cboShift.SelectedIndex; };
             }
             pnl.Controls.Add(_cboShift);
 
