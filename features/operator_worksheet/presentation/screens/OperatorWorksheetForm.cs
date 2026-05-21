@@ -1847,11 +1847,12 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             var rowData = _dgvSequen.CurrentRow.DataBoundItem as LkoService.LkoAggregatedData;
             if (rowData == null) return;
 
+            bool isSameRow = _activeRowData?.DisplaySequen == rowData.DisplaySequen;
             _activeSource = ActiveGrid.Sequen;
             _activeRowData = rowData;
 
             _isPopulatingFields = true;
-            PopulateInputFields(rowData);
+            PopulateInputFields(rowData, isSameRow);
             _isPopulatingFields = false;
             
             _autoSaveTimer?.Stop(); // Jangan auto-save sampai ada interaksi user
@@ -1882,11 +1883,11 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             };
             
             // Jadikan wrapper ini sebagai data aktif (agar jika user klik Simpan, datanya terikat, meski sebenarnya Product blm siap simpan)
-            _activeSource = ActiveGrid.Sequen; 
+            bool isSameRow = _activeRowData?.DisplaySequen == wrapper.DisplaySequen;
+            _activeSource = ActiveGrid.Sequen;
             _activeRowData = wrapper;
-
             _isPopulatingFields = true;
-            PopulateInputFields(wrapper); // Ini juga akan otomatis mengupdate _wireVisualizer
+            PopulateInputFields(wrapper, isSameRow); 
             _isPopulatingFields = false;
         }
 
@@ -1904,11 +1905,12 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
             if (matchingRow != null)
             {
                 matchingRow.DbRecord = dbRecord;
+                bool isSameRow = _activeRowData?.DisplaySequen == matchingRow.DisplaySequen;
                 _activeSource = ActiveGrid.Tersimpan;
                 _activeRowData = matchingRow;
 
                 _isPopulatingFields = true;
-                PopulateInputFields(matchingRow);
+                PopulateInputFields(matchingRow, isSameRow);
                 _isPopulatingFields = false;
             }
             else
@@ -1920,18 +1922,19 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     Master = new PrdmstDto { Sequen = dbRecord.Sequen, KombinasiWire = dbRecord.KombinasiWire, TerminalA = dbRecord.TerminalA, TerminalB = dbRecord.TerminalB, SealA = dbRecord.SealA, SealB = dbRecord.SealB, CutLength = dbRecord.CutLength, Qty = dbRecord.QtyMaster },
                     DbRecord = dbRecord
                 };
+                bool isSameRow = _activeRowData?.DisplaySequen == wrapper.DisplaySequen;
                 _activeSource = ActiveGrid.Tersimpan;
                 _activeRowData = wrapper;
 
                 _isPopulatingFields = true;
-                PopulateInputFields(wrapper);
+                PopulateInputFields(wrapper, isSameRow);
                 _isPopulatingFields = false;
             }
             
             _autoSaveTimer?.Stop(); // Grid tersimpan tidak punya auto-save
         }
 
-        private void PopulateInputFields(LkoService.LkoAggregatedData rowData)
+        private void PopulateInputFields(LkoService.LkoAggregatedData rowData, bool skipUserEditableFields = false)
         {
             _lblLotId.Text = $"Sequen: {rowData.DisplaySequen}";
             if (_lblAktivitasTitle != null)
@@ -1949,32 +1952,36 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 _txtTerminal.Text = rowData.Master?.TerminalB ?? "";
                 _txtSeal.Text = rowData.Master?.SealB ?? "";
             }
-            _txtFrontChA.Text = "0";
-            _txtRearChA.Text = "0";
-            _txtFrontCwA.Text = "0";
-            _txtRearCwA.Text = "0";
-            // Populate Front/Rear from Jissk
-            UpdateFrontRearFields(rowData.Jissk);
-            _txtQtyProduksi.Text = rowData.DbRecord != null ? rowData.DbRecord.QtyProduct.ToString() : (rowData.Log?.QtyProduk ?? "");
-            _txtNo4m.Text = rowData.DbRecord?.No4m ?? "";
-            _txtCutL.Text = rowData.DbRecord != null && !string.IsNullOrEmpty(rowData.DbRecord.CutLength) ? rowData.DbRecord.CutLength : (!string.IsNullOrWhiteSpace(rowData.Master?.CutLength) ? rowData.Master.CutLength : "0");
-            _txtLotIdWire.Text = rowData.DbRecord?.LotIdWire ?? "";
-            _txtLotIdTerminalA.Text = rowData.DbRecord?.LotIdTerminalA ?? "";
-            _txtLotIdTerminalB.Text = rowData.DbRecord?.LotIdTerminalB ?? "";
-            _txtIssueKanban.Text = rowData.DbRecord?.IssueKanban ?? "";
-            _txtDefectMesin.Text = rowData.Log?.QtyDefect ?? "0";
+            if (!skipUserEditableFields)
+            {
+                _txtFrontChA.Text = "0";
+                _txtRearChA.Text = "0";
+                _txtFrontCwA.Text = "0";
+                _txtRearCwA.Text = "0";
+                // Populate Front/Rear from Jissk
+                UpdateFrontRearFields(rowData.Jissk);
+                _txtNo4m.Text = rowData.DbRecord?.No4m ?? "";
+                _txtCutL.Text = rowData.DbRecord != null && !string.IsNullOrEmpty(rowData.DbRecord.CutLength) ? rowData.DbRecord.CutLength : (!string.IsNullOrWhiteSpace(rowData.Master?.CutLength) ? rowData.Master.CutLength : "0");
+                _txtLotIdWire.Text = rowData.DbRecord?.LotIdWire ?? "";
+                _txtLotIdTerminalA.Text = rowData.DbRecord?.LotIdTerminalA ?? "";
+                _txtLotIdTerminalB.Text = rowData.DbRecord?.LotIdTerminalB ?? "";
+                _txtIssueKanban.Text = rowData.DbRecord?.IssueKanban ?? "";
 
-            // Load dari DB record jika ada
-            _txtDefectOperator.Text = rowData.DbRecord?.QtyDefectOperator.ToString() ?? "0";
-            if (rowData.DbRecord != null && !string.IsNullOrEmpty(rowData.DbRecord.KodeDefect))
-            {
-                int idx = _cboKodeDefect.Items.IndexOf(rowData.DbRecord.KodeDefect);
-                _cboKodeDefect.SelectedIndex = idx >= 0 ? idx : 0;
+                // Load dari DB record jika ada
+                _txtDefectOperator.Text = rowData.DbRecord?.QtyDefectOperator.ToString() ?? "0";
+                if (rowData.DbRecord != null && !string.IsNullOrEmpty(rowData.DbRecord.KodeDefect))
+                {
+                    int idx = _cboKodeDefect.Items.IndexOf(rowData.DbRecord.KodeDefect);
+                    _cboKodeDefect.SelectedIndex = idx >= 0 ? idx : 0;
+                }
+                else
+                {
+                    _cboKodeDefect.SelectedIndex = 0;
+                }
             }
-            else
-            {
-                _cboKodeDefect.SelectedIndex = 0;
-            }
+
+            _txtQtyProduksi.Text = rowData.DbRecord != null ? rowData.DbRecord.QtyProduct.ToString() : (rowData.Log?.QtyProduk ?? "");
+            _txtDefectMesin.Text = rowData.Log?.QtyDefect ?? "0";
 
             if (rowData.Master != null)
             {
