@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Drawing;
 using System.Windows.Forms;
 using mtc_app.shared.data.session;
@@ -378,6 +379,13 @@ namespace mtc_app.features.machine_history.presentation.screens
         private void BtnChecksheet_Click(object sender, EventArgs e)
         {
             StopCurrentDowntime();
+            var existing = System.Windows.Forms.Application.OpenForms.OfType<ChecksheetForm>().FirstOrDefault();
+            if (existing != null)
+            {
+                if (existing.WindowState == FormWindowState.Minimized) existing.WindowState = FormWindowState.Normal;
+                existing.BringToFront();
+                return;
+            }
             var checkForm = new ChecksheetForm(isTeknisiMode: false);
             checkForm.Show();
         }
@@ -385,6 +393,13 @@ namespace mtc_app.features.machine_history.presentation.screens
         private void BtnApplicatorPatrol_Click(object sender, EventArgs e)
         {
             StopCurrentDowntime();
+            var existing = System.Windows.Forms.Application.OpenForms.OfType<ApplicatorPatrolForm>().FirstOrDefault();
+            if (existing != null)
+            {
+                if (existing.WindowState == FormWindowState.Minimized) existing.WindowState = FormWindowState.Normal;
+                existing.BringToFront();
+                return;
+            }
             var form = new ApplicatorPatrolForm(
                 mtc_app.shared.infrastructure.ServiceLocator.CreateApplicatorPatrolRepository(),
                 mtc_app.shared.infrastructure.ServiceLocator.CreateMasterDataRepository());
@@ -394,6 +409,13 @@ namespace mtc_app.features.machine_history.presentation.screens
         private void BtnMicrometer_Click(object sender, EventArgs e)
         {
             StopCurrentDowntime();
+            var existing = System.Windows.Forms.Application.OpenForms.OfType<mtc_app.features.micrometer_patrol.presentation.screens.MicrometerPatrolForm>().FirstOrDefault();
+            if (existing != null)
+            {
+                if (existing.WindowState == FormWindowState.Minimized) existing.WindowState = FormWindowState.Normal;
+                existing.BringToFront();
+                return;
+            }
             var microForm = new mtc_app.features.micrometer_patrol.presentation.screens.MicrometerPatrolForm(
                 mtc_app.shared.infrastructure.ServiceLocator.CreateMicrometerPatrolRepository(),
                 mtc_app.shared.infrastructure.ServiceLocator.CreateMasterDataRepository());
@@ -403,6 +425,13 @@ namespace mtc_app.features.machine_history.presentation.screens
         private void BtnLko_Click(object sender, EventArgs e)
         {
             StopCurrentDowntime();
+            var existing = System.Windows.Forms.Application.OpenForms.OfType<OperatorWorksheetForm>().FirstOrDefault();
+            if (existing != null)
+            {
+                if (existing.WindowState == FormWindowState.Minimized) existing.WindowState = FormWindowState.Normal;
+                existing.BringToFront();
+                return;
+            }
             var lkoForm = new OperatorWorksheetForm();
             lkoForm.Show();
         }
