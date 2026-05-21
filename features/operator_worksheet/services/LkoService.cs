@@ -232,6 +232,8 @@ namespace mtc_app.features.operator_worksheet.services
             }
         }
 
+        public static string LastError { get; private set; } = "";
+
         /// <summary>
         /// Simpan record: coba MySQL dulu, jika gagal simpan ke antrian offline.
         /// Returns true if saved online, false if saved offline.
@@ -240,11 +242,13 @@ namespace mtc_app.features.operator_worksheet.services
         {
             try
             {
+                LastError = "";
                 await _dbRepository.SaveLkoRecordAsync(record);
                 return true; // Saved to MySQL
             }
             catch (Exception ex)
             {
+                LastError = ex.Message;
                 System.Diagnostics.Debug.WriteLine($"SaveToDatabase (MySQL) failed: {ex.Message}");
                 LkoOfflineQueue.Enqueue(record);
                 return false; // Saved offline

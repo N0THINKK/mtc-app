@@ -1198,11 +1198,12 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                     string aksi = _activeSource == ActiveGrid.Tersimpan ? "diperbarui" : "disimpan";
                     if (savedOnline)
                     {
-                        MessageBox.Show($"Data berhasil {aksi}.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        ToastNotification.ShowSuccess($"Data berhasil {aksi}.");
                     }
                     else
                     {
-                        MessageBox.Show($"Server tidak tersedia. Data {aksi} secara offline dan akan di-sync otomatis saat koneksi kembali.", "Tersimpan Offline", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        string errMsg = mtc_app.features.operator_worksheet.services.LkoService.LastError;
+                        ToastNotification.ShowWarning($"Gagal {aksi} ke server: {errMsg}. Disimpan offline.");
                     }
                 }
                 
@@ -1493,7 +1494,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
 
             string msg = $"{savedCount} sequen berhasil disimpan.";
             if (skippedCount > 0) msg += $"\n{skippedCount} sequen dilewati (sudah tersimpan).";
-            MessageBox.Show(msg, "Simpan Terpilih", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            ToastNotification.ShowSuccess(msg);
         }
 
         // =====================================================================
