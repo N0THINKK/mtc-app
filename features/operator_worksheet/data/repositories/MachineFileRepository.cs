@@ -151,7 +151,9 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                 {
                     @"D:\AC95\Kanban\prdmst.csv",
                     @"C:\AC95\Kanban\prdmst.csv",
-                    @"C:\AC80HMI\prdmst.csv"
+                    @"C:\AC80HMI\prdmst.csv",
+                    @"C:\AC90HMI\prg\prdmst.csv",
+                    @"C:\AC90 Master Paper\prdmst.csv"
                 };
 
                 bool found = false;
@@ -389,6 +391,7 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                 using (var sr = new StreamReader(fs))
                 {
                     string line;
+                    var seenSequences = new HashSet<string>();
                     while ((line = sr.ReadLine()) != null)
                     {
                         if (string.IsNullOrWhiteSpace(line)) continue;
@@ -400,6 +403,9 @@ namespace mtc_app.features.operator_worksheet.data.repositories
                             if (status != "0" && status != "1") continue;
 
                             var dto = new ProductDto { Sequen = parts[0].Trim() };
+                            if (seenSequences.Contains(dto.Sequen)) continue;
+                            seenSequences.Add(dto.Sequen);
+
                             if (parts.Length > 4) dto.CutLength = parts[4].Trim();
                             if (parts.Length > 10) dto.TerminalA = parts[10].Trim();
                             if (parts.Length > 11) dto.TerminalB = parts[11].Trim();
