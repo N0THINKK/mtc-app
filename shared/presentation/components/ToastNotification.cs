@@ -16,6 +16,7 @@ namespace mtc_app.shared.presentation.components
         private readonly Timer _animationTimer;
         private readonly int _targetX;
         private readonly int _targetY;
+        private readonly int _startY;
         private int _currentStep;
         private const int ANIMATION_STEPS = 10;
 
@@ -31,11 +32,18 @@ namespace mtc_app.shared.presentation.components
             Size = new Size(320, 70);
             BackColor = GetBackgroundColor(type);
 
-            // Position off-screen initially (will animate in)
-            var screen = Screen.PrimaryScreen.WorkingArea;
+            // Find current screen
+            Screen currentScreen = Screen.PrimaryScreen;
+            if (Application.OpenForms.Count > 0)
+                currentScreen = Screen.FromControl(Application.OpenForms[0]);
+            else if (Form.ActiveForm != null)
+                currentScreen = Screen.FromControl(Form.ActiveForm);
+
+            var screen = currentScreen.WorkingArea;
             _targetX = screen.Right - Width - 20;
             _targetY = screen.Bottom - Height - 20;
-            Location = new Point(_targetX, screen.Bottom); // Start below screen
+            _startY = screen.Bottom;
+            Location = new Point(_targetX, _startY); // Start below screen
 
             // Add rounded corners
             Region = CreateRoundedRegion(Width, Height, 8);
@@ -95,8 +103,7 @@ namespace mtc_app.shared.presentation.components
             double progress = (double)_currentStep / ANIMATION_STEPS;
             double eased = 1 - Math.Pow(1 - progress, 3); // Ease out cubic
             
-            int startY = Screen.PrimaryScreen.WorkingArea.Bottom;
-            int currentY = startY - (int)((startY - _targetY) * eased);
+            int currentY = _startY - (int)((_startY - _targetY) * eased);
             Location = new Point(_targetX, currentY);
         }
 
@@ -208,12 +215,16 @@ namespace mtc_app.shared.presentation.components
                 if (mainForm.InvokeRequired)
                 {
                     mainForm.BeginInvoke(new Action(() => ShowToast(message, type, durationMs)));
-                }
-                else
-                {
-                    ShowToast(message, type, durationMs);
+                    return;
                 }
             }
+            else if (Form.ActiveForm != null && Form.ActiveForm.InvokeRequired)
+            {
+                Form.ActiveForm.BeginInvoke(new Action(() => ShowToast(message, type, durationMs)));
+                return;
+            }
+            
+            ShowToast(message, type, durationMs);
         }
 
         private static void ShowToast(string message, ToastType type, int durationMs)
