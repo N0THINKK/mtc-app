@@ -22,8 +22,9 @@ namespace mtc_app.features.machine_history.data.repositories
                         t.ticket_id AS TicketId,
                         t.ticket_uuid AS TicketUuid,
                         t.ticket_display_code AS TicketCode,
+                        t.applicator_code AS ApplicatorCode,
                         IFNULL(CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number), 'Unknown') AS MachineName,
-                        IFNULL(tech.full_name, '-') AS TechnicianName,
+                        IFNULL(tech.nik, '-') AS TechnicianName,
                         IFNULL(op.full_name, '-') AS OperatorName,
                         
                         (SELECT GROUP_CONCAT(
@@ -303,8 +304,9 @@ namespace mtc_app.features.machine_history.data.repositories
                         t.ticket_id AS TicketId,
                         t.ticket_uuid AS TicketUuid,
                         t.ticket_display_code AS TicketCode,
+                        t.applicator_code AS ApplicatorCode,
                         IFNULL(CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number), 'Unknown') AS MachineName,
-                        IFNULL(tech.full_name, '-') AS TechnicianName,
+                        IFNULL(tech.nik, '-') AS TechnicianName,
                         IFNULL(op.full_name, '-') AS OperatorName,
                         
                         (SELECT CONCAT(
