@@ -8,6 +8,7 @@ namespace mtc_app.features.machine_history.data.dtos
         public Guid TicketUuid { get; set; } // Added for Offline Matching
         public string TicketCode { get; set; }
         public string MachineName { get; set; }
+        public string ApplicatorCode { get; set; }
         public string TechnicianName { get; set; }
         public string OperatorName { get; set; }
         public string Issue { get; set; } // Combined failure details
