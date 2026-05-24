@@ -20,12 +20,16 @@ namespace mtc_app.features.admin.presentation.views
         private Label lblTitle, lblDateStart, lblDateEnd, lblArea;
         private DateTimePicker dateStart, dateEnd;
         private ComboBox cmbArea;
-        private AppButton btnExport;
-        private AppButton btnExportOutput;
+        private CheckBox chkDetailTiket, chkRekapBulanan, chkOutputHarian, chkRincianDowntime;
+        private CheckBox chkPatroliCutting, chkPatroliMikrometer, chkPatroliAplikator, chkCounterMaterial;
+        private AppButton btnExport, btnPreview;
+        private DataGridView gridPreview;
+        private Label lblPreviewStatus;
 
         public ReportView()
         {
             InitializeComponent();
+            dateStart.Value = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
             LoadAreasFromDatabase(); // Ambil Area langsung dari DB saat form dibuka
         }
 
@@ -39,7 +43,7 @@ namespace mtc_app.features.admin.presentation.views
                 using (var connection = DatabaseHelper.GetConnection())
                 {
                     // Ambil semua nama area dari tabel machine_areas
-                    var areas = connection.Query<string>("SELECT area_name FROM machine_areas ORDER BY area_name ASC").ToList();
+                    var areas = connection.Query<string>("SELECT area_name FROM machine_areas WHERE area_name != 'Lain2' ORDER BY area_name ASC").ToList();
                     
                     cmbArea.Items.Clear();
                     cmbArea.Items.Add("Semua Area"); // Pilihan Default
@@ -63,6 +67,12 @@ namespace mtc_app.features.admin.presentation.views
 
         private async void BtnExport_Click(object sender, EventArgs e)
         {
+            if (!chkDetailTiket.Checked && !chkRekapBulanan.Checked && !chkOutputHarian.Checked && !chkRincianDowntime.Checked && !chkPatroliCutting.Checked && !chkPatroliMikrometer.Checked && !chkPatroliAplikator.Checked && !chkCounterMaterial.Checked)
+            {
+                MessageBox.Show("Pilih minimal satu jenis laporan untuk diekspor.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             using (var saveFileDialog = new SaveFileDialog())
             {
                 string areaName = cmbArea.SelectedItem?.ToString() ?? "Semua Area";
@@ -80,68 +90,147 @@ namespace mtc_app.features.admin.presentation.views
                         btnExport.Text = "Memproses Data...";
                         Application.DoEvents(); // Agar UI tidak lag
 
-                        // Melempar parameter 'areaName' ke dalam fungsi fetch data
-                        var dataDetailTask = FetchDataForReportAsync(dateStart.Value, dateEnd.Value, areaName);
-                        var dataRekapBulananTask = FetchMonthlyDowntimeSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
-                        var dataOutputHarianTask = OutputExportService.FetchDailyOutputSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
-
-                        await Task.WhenAll(dataDetailTask, dataRekapBulananTask, dataOutputHarianTask);
-
-                        var dataDetail = dataDetailTask.Result;
-                        var dataRekapBulanan = dataRekapBulananTask.Result;
-                        var dataOutputHarian = dataOutputHarianTask.Result;
-
                         using (var workbook = new XLWorkbook())
                         {
-                            // =========================================================
-                            // SHEET 1: DETAIL TIKET
-                            // =========================================================
-                            var wsDetail = workbook.Worksheets.Add("Detail Tiket");
-                            wsDetail.Cell("A1").InsertTable(dataDetail);
-                            
-                            wsDetail.Rows().Style.Alignment.WrapText = true; 
-                            wsDetail.Row(1).Style.Alignment.WrapText = false; 
-                            wsDetail.Rows().Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                            int totalSteps = (chkDetailTiket.Checked ? 1 : 0) + (chkRekapBulanan.Checked ? 1 : 0) + ((chkOutputHarian.Checked || chkRincianDowntime.Checked) ? 1 : 0) + (chkPatroliCutting.Checked ? 1 : 0) + (chkPatroliMikrometer.Checked ? 1 : 0) + (chkPatroliAplikator.Checked ? 1 : 0) + (chkCounterMaterial.Checked ? 1 : 0);
+                            int currentStep = 1;
 
-                            wsDetail.Row(1).Style.Font.Bold = true;
-                            wsDetail.Row(1).Style.Fill.BackgroundColor = XLColor.FromColor(AppColors.Primary);
-                            wsDetail.Row(1).Style.Font.FontColor = XLColor.White;
-                            wsDetail.Columns().AdjustToContents();
+                            if (chkDetailTiket.Checked)
+                            {
+                                btnExport.Text = $"Memproses Data... ({currentStep++}/{totalSteps})";
+                                Application.DoEvents();
+                                var dataDetail = await FetchDataForReportAsync(dateStart.Value, dateEnd.Value, areaName);
+                                if (dataDetail.Columns.Count > 0)
+                                {
+                                    var wsDetail = workbook.Worksheets.Add("Detail Tiket");
+                                    wsDetail.Cell("A1").InsertTable(dataDetail);
+                                    wsDetail.Rows().Style.Alignment.WrapText = true; 
+                                    wsDetail.Row(1).Style.Alignment.WrapText = false; 
+                                    wsDetail.Rows().Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+                                    wsDetail.Row(1).Style.Font.Bold = true;
+                                    wsDetail.Row(1).Style.Fill.BackgroundColor = XLColor.FromColor(AppColors.Primary);
+                                    wsDetail.Row(1).Style.Font.FontColor = XLColor.White;
+                                    wsDetail.Columns().AdjustToContents();
+                                }
+                            }
 
-                            // =========================================================
-                            // SHEET 2: REKAP DOWNTIME BULANAN 
-                            // =========================================================
-                            var wsBulanan = workbook.Worksheets.Add("Rekap Downtime (Bulan)");
-                            wsBulanan.Cell("A1").InsertTable(dataRekapBulanan);
-                            wsBulanan.Row(1).Style.Font.Bold = true;
-                            wsBulanan.Row(1).Style.Fill.BackgroundColor = XLColor.Firebrick; 
-                            wsBulanan.Row(1).Style.Font.FontColor = XLColor.White;
-                            wsBulanan.Columns().AdjustToContents();
+                            if (chkRekapBulanan.Checked)
+                            {
+                                btnExport.Text = $"Memproses Data... ({currentStep++}/{totalSteps})";
+                                Application.DoEvents();
+                                var dataRekapBulanan = await FetchMonthlyDowntimeSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
+                                if (dataRekapBulanan.Columns.Count > 0)
+                                {
+                                    var wsBulanan = workbook.Worksheets.Add("Rekap Downtime (Bulan)");
+                                    wsBulanan.Cell("A1").InsertTable(dataRekapBulanan);
+                                    wsBulanan.Row(1).Style.Font.Bold = true;
+                                    wsBulanan.Row(1).Style.Fill.BackgroundColor = XLColor.Firebrick; 
+                                    wsBulanan.Row(1).Style.Font.FontColor = XLColor.White;
+                                    wsBulanan.Columns().AdjustToContents();
+                                }
+                            }
 
-                            // =========================================================
-                            // SHEET 3: REKAP OUTPUT HARIAN & EFISIENSI
-                            // =========================================================
-                            var wsHarian = workbook.Worksheets.Add("Output Harian");
-                            wsHarian.Cell("A1").InsertTable(dataOutputHarian.Tables[0]);
-                            wsHarian.Row(1).Style.Font.Bold = true;
-                            wsHarian.Row(1).Style.Fill.BackgroundColor = XLColor.SeaGreen; 
-                            wsHarian.Row(1).Style.Font.FontColor = XLColor.White;
-                            wsHarian.Columns().AdjustToContents();
+                            if (chkOutputHarian.Checked || chkRincianDowntime.Checked)
+                            {
+                                btnExport.Text = $"Memproses Data... ({currentStep++}/{totalSteps})";
+                                Application.DoEvents();
+                                var dataOutputHarian = await OutputExportService.FetchDailyOutputSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
 
-                            // =========================================================
-                            // SHEET 4: RINCIAN DOWNTIME OPERATOR
-                            // =========================================================
-                            var wsDowntime = workbook.Worksheets.Add("Rincian Downtime Operator");
-                            wsDowntime.Cell("A1").InsertTable(dataOutputHarian.Tables[1]);
-                            wsDowntime.Row(1).Style.Font.Bold = true;
-                            wsDowntime.Row(1).Style.Fill.BackgroundColor = XLColor.Purple; 
-                            wsDowntime.Row(1).Style.Font.FontColor = XLColor.White;
-                            wsDowntime.Columns().AdjustToContents();
+                                if (chkOutputHarian.Checked && dataOutputHarian.Tables.Count > 0 && dataOutputHarian.Tables[0].Columns.Count > 0)
+                                {
+                                    var wsHarian = workbook.Worksheets.Add("Output Harian");
+                                    wsHarian.Cell("A1").InsertTable(dataOutputHarian.Tables[0]);
+                                    wsHarian.Row(1).Style.Font.Bold = true;
+                                    wsHarian.Row(1).Style.Fill.BackgroundColor = XLColor.SeaGreen; 
+                                    wsHarian.Row(1).Style.Font.FontColor = XLColor.White;
+                                    wsHarian.Columns().AdjustToContents();
+                                }
 
-                            workbook.SaveAs(saveFileDialog.FileName);
+                                if (chkRincianDowntime.Checked && dataOutputHarian.Tables.Count > 1 && dataOutputHarian.Tables[1].Columns.Count > 0)
+                                {
+                                    var wsDowntime = workbook.Worksheets.Add("Rincian Downtime Operator");
+                                    wsDowntime.Cell("A1").InsertTable(dataOutputHarian.Tables[1]);
+                                    wsDowntime.Row(1).Style.Font.Bold = true;
+                                    wsDowntime.Row(1).Style.Fill.BackgroundColor = XLColor.Purple; 
+                                    wsDowntime.Row(1).Style.Font.FontColor = XLColor.White;
+                                    wsDowntime.Columns().AdjustToContents();
+                                }
+                            }
+
+                            if (chkPatroliCutting.Checked)
+                            {
+                                btnExport.Text = $"Memproses Data... ({currentStep++}/{totalSteps})";
+                                Application.DoEvents();
+                                var dataCutting = await OutputExportService.FetchPatroliCuttingAsync(dateStart.Value, dateEnd.Value, areaName);
+                                if (dataCutting.Columns.Count > 0)
+                                {
+                                    var wsCutting = workbook.Worksheets.Add("Patroli Mesin Cutting");
+                                    wsCutting.Cell("A1").InsertTable(dataCutting);
+                                    wsCutting.Row(1).Style.Font.Bold = true;
+                                    wsCutting.Row(1).Style.Fill.BackgroundColor = XLColor.AirForceBlue; 
+                                    wsCutting.Row(1).Style.Font.FontColor = XLColor.White;
+                                    wsCutting.Columns().AdjustToContents();
+                                }
+                            }
+
+                            if (chkPatroliMikrometer.Checked)
+                            {
+                                btnExport.Text = $"Memproses Data... ({currentStep++}/{totalSteps})";
+                                Application.DoEvents();
+                                var dataMikro = await OutputExportService.FetchPatroliMikrometerAsync(dateStart.Value, dateEnd.Value, areaName);
+                                if (dataMikro.Columns.Count > 0)
+                                {
+                                    var wsMikro = workbook.Worksheets.Add("Patroli Mikrometer");
+                                    wsMikro.Cell("A1").InsertTable(dataMikro);
+                                    wsMikro.Row(1).Style.Font.Bold = true;
+                                    wsMikro.Row(1).Style.Fill.BackgroundColor = XLColor.AirForceBlue; 
+                                    wsMikro.Row(1).Style.Font.FontColor = XLColor.White;
+                                    wsMikro.Columns().AdjustToContents();
+                                }
+                            }
+
+                            if (chkPatroliAplikator.Checked)
+                            {
+                                btnExport.Text = $"Memproses Data... ({currentStep++}/{totalSteps})";
+                                Application.DoEvents();
+                                var dataAplikator = await OutputExportService.FetchPatroliAplikatorAsync(dateStart.Value, dateEnd.Value, areaName);
+                                if (dataAplikator.Columns.Count > 0)
+                                {
+                                    var wsAplikator = workbook.Worksheets.Add("Patroli Aplikator");
+                                    wsAplikator.Cell("A1").InsertTable(dataAplikator);
+                                    wsAplikator.Row(1).Style.Font.Bold = true;
+                                    wsAplikator.Row(1).Style.Fill.BackgroundColor = XLColor.AirForceBlue; 
+                                    wsAplikator.Row(1).Style.Font.FontColor = XLColor.White;
+                                    wsAplikator.Columns().AdjustToContents();
+                                }
+                            }
+
+                            if (chkCounterMaterial.Checked)
+                            {
+                                btnExport.Text = $"Memproses Data... ({currentStep++}/{totalSteps})";
+                                Application.DoEvents();
+                                var dataCounter = await OutputExportService.FetchCounterMaterialAsync(dateStart.Value, dateEnd.Value, areaName);
+                                if (dataCounter.Columns.Count > 0)
+                                {
+                                    var wsCounter = workbook.Worksheets.Add("Counter Material");
+                                    wsCounter.Cell("A1").InsertTable(dataCounter);
+                                    wsCounter.Row(1).Style.Font.Bold = true;
+                                    wsCounter.Row(1).Style.Fill.BackgroundColor = XLColor.AirForceBlue; 
+                                    wsCounter.Row(1).Style.Font.FontColor = XLColor.White;
+                                    wsCounter.Columns().AdjustToContents();
+                                }
+                            }
+
+                            if (workbook.Worksheets.Count > 0)
+                            {
+                                workbook.SaveAs(saveFileDialog.FileName);
+                                MessageBox.Show("Laporan berhasil diekspor!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
+                            else
+                            {
+                                MessageBox.Show("Tidak ada data untuk diekspor pada rentang tanggal tersebut.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
                         }
-
-                        MessageBox.Show($"Laporan berhasil diekspor!\n\nFile Excel ini berisi 4 Sheet:\n1. Detail Tiket\n2. Rekap Downtime Bulanan\n3. Output Mesin Harian\n4. Rincian Downtime", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
                     {
@@ -150,51 +239,9 @@ namespace mtc_app.features.admin.presentation.views
                     finally
                     {
                         btnExport.Enabled = true;
-                        btnExport.Text = "Generate & Export Excel";
+                        btnExport.Text = "Generate & Export Laporan Utama";
                     }
                 }
-            }
-        }
-        private async void BtnExportOutput_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                btnExportOutput.Enabled = false;
-                btnExportOutput.Text = "Memproses...";
-                Application.DoEvents();
-
-                string areaName = cmbArea.SelectedItem?.ToString() ?? "Semua Area";
-                string safeArea = areaName == "Semua Area" ? "SemuaArea" : areaName;
-
-                string directoryPath = @"D:\export output";
-                if (!Directory.Exists(directoryPath))
-                {
-                    Directory.CreateDirectory(directoryPath);
-                }
-
-                string fileName = $"Export_Output_Manual_{safeArea}_{dateStart.Value:yyyy-MM-dd}_hingga_{dateEnd.Value:yyyy-MM-dd}.xlsx";
-                string filePath = Path.Combine(directoryPath, fileName);
-
-                var dataOutputHarian = await OutputExportService.FetchDailyOutputSummaryAsync(dateStart.Value, dateEnd.Value, areaName);
-
-                if (dataOutputHarian.Tables.Count > 0 && dataOutputHarian.Tables[0].Rows.Count > 0)
-                {
-                    OutputExportService.ExportDataSetToExcel(dataOutputHarian, filePath);
-                    MessageBox.Show($"File Output berhasil diekspor ke:\n{filePath}", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                else
-                {
-                    MessageBox.Show("Tidak ada data output pada rentang tanggal tersebut.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Terjadi kesalahan saat mengekspor: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                btnExportOutput.Enabled = true;
-                btnExportOutput.Text = "Export Output Harian";
             }
         }
         
@@ -205,22 +252,40 @@ namespace mtc_app.features.admin.presentation.views
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                string sql = @"
-                    SELECT v.* FROM view_admin_report v
-                    JOIN tickets t ON v.`ID Tiket` = t.ticket_id
-                    LEFT JOIN machines m ON t.machine_id = m.machine_id
-                    LEFT JOIN machine_types mt ON m.type_id = mt.type_id
-                    LEFT JOIN machine_areas ma ON m.area_id = ma.area_id
+                // Step 1: Get filtered ticket IDs using indexed columns only
+                string idSql = @"
+                    SELECT t.ticket_id 
+                    FROM tickets t
+                    JOIN machines m ON t.machine_id = m.machine_id
+                    JOIN machine_areas ma ON m.area_id = ma.area_id
+                    JOIN machine_types mt ON m.type_id = mt.type_id
                     WHERE t.created_at BETWEEN @StartDate AND @EndDate";
 
                 if (area != "Semua Area") {
-                    sql += " AND ma.area_name = @Area";
+                    idSql += " AND ma.area_name = @Area";
                 }
 
                 // URUTAN KHUSUS: Tipe -> Area -> Angka (Casting String ke Integer) -> Waktu Terbaru
-                sql += " ORDER BY mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC, t.created_at DESC";
+                idSql += " ORDER BY mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC, t.created_at DESC";
+
+                var ticketIds = (await connection.QueryAsync<long>(idSql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 300)).AsList();
+
+                if (ticketIds.Count == 0)
+                {
+                    var emptyReader = await connection.ExecuteReaderAsync("SELECT * FROM view_admin_report WHERE 1=0");
+                    var dataTableEmpty = new DataTable();
+                    dataTableEmpty.Load(emptyReader);
+                    if (dataTableEmpty.Columns.Contains("Status Terkini"))
+                    {
+                        dataTableEmpty.Columns.Remove("Status Terkini");
+                    }
+                    return dataTableEmpty;
+                }
+
+                // Step 2: Fetch view data only for matching IDs (avoids double-join)
+                string viewSql = $"SELECT * FROM view_admin_report WHERE `ID Tiket` IN @Ids ORDER BY FIELD(`ID Tiket`, {string.Join(",", ticketIds)})";
                 
-                var reader = await connection.ExecuteReaderAsync(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 120);
+                var reader = await connection.ExecuteReaderAsync(viewSql, new { Ids = ticketIds }, commandTimeout: 300);
                 var dataTable = new DataTable();
                 dataTable.Load(reader);
 
@@ -260,7 +325,7 @@ namespace mtc_app.features.admin.presentation.views
                     GROUP BY DATE_FORMAT(t.created_at, '%M %Y'), YEAR(t.created_at), MONTH(t.created_at), m.machine_id, mt.type_name, ma.area_name, m.machine_number
                     ORDER BY YEAR(t.created_at) DESC, MONTH(t.created_at) DESC, mt.type_name ASC, ma.area_name ASC, CAST(m.machine_number AS UNSIGNED) ASC";
                 
-                var reader = await connection.ExecuteReaderAsync(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 120);
+                var reader = await connection.ExecuteReaderAsync(sql, new { StartDate = startDate.Date, EndDate = endDate.Date.AddDays(1).AddSeconds(-1), Area = area }, commandTimeout: 300);
                 var dataTable = new DataTable();
                 dataTable.Load(reader);
                 return dataTable;
@@ -276,83 +341,178 @@ namespace mtc_app.features.admin.presentation.views
         }
 
         // =========================================================
-        // UI COMPONENTS (Tampilan Filter Baru)
+        // UI COMPONENTS (Tampilan Konfigurasi & Preview Baru)
         // =========================================================
         private void InitializeComponent()
         {
             this.SuspendLayout();
-            
-            this.lblTitle = new Label();
-            this.lblDateStart = new Label();
-            this.dateStart = new DateTimePicker();
-            this.lblDateEnd = new Label();
-            this.dateEnd = new DateTimePicker();
-            this.lblArea = new Label();
-            this.cmbArea = new ComboBox();
-            this.btnExport = new AppButton();
-            this.btnExportOutput = new AppButton();
 
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Font = AppFonts.Header3;
-            this.lblTitle.ForeColor = AppColors.TextPrimary;
-            this.lblTitle.Location = new Point(0, 0);
-            this.lblTitle.Text = "Buat Laporan Tiket (Excel)";
-            
-            this.lblDateStart.AutoSize = true;
-            this.lblDateStart.Font = AppFonts.BodySmall;
-            this.lblDateStart.Location = new Point(0, 50);
-            this.lblDateStart.Text = "Tanggal Mulai:";
-
-            this.dateStart.Location = new Point(0, 75);
-            this.dateStart.Size = new Size(180, 25);
-            this.dateStart.Font = AppFonts.BodySmall;
-            this.dateStart.Format = DateTimePickerFormat.Short;
-
-            this.lblDateEnd.AutoSize = true;
-            this.lblDateEnd.Font = AppFonts.BodySmall;
-            this.lblDateEnd.Location = new Point(200, 50);
-            this.lblDateEnd.Text = "Tanggal Akhir:";
-
-            this.dateEnd.Location = new Point(200, 75);
-            this.dateEnd.Size = new Size(180, 25);
-            this.dateEnd.Font = AppFonts.BodySmall;
-            this.dateEnd.Format = DateTimePickerFormat.Short;
-
-            // Tambahan Dropdown Area
-            this.lblArea.AutoSize = true;
-            this.lblArea.Font = AppFonts.BodySmall;
-            this.lblArea.Location = new Point(400, 50);
-            this.lblArea.Text = "Filter Area:";
-
-            this.cmbArea.Location = new Point(400, 75);
-            this.cmbArea.Size = new Size(180, 25);
-            this.cmbArea.Font = AppFonts.BodySmall;
-            this.cmbArea.DropDownStyle = ComboBoxStyle.DropDownList;
-
-            this.btnExport.Text = "Generate & Export Laporan Utama";
-            this.btnExport.Location = new Point(0, 120);
-            this.btnExport.Size = new Size(250, 50);
-            this.btnExport.Click += BtnExport_Click;
-
-            this.btnExportOutput.Text = "Export Output Harian";
-            this.btnExportOutput.Type = AppButton.ButtonType.Secondary;
-            this.btnExportOutput.Location = new Point(260, 120);
-            this.btnExportOutput.Size = new Size(200, 50);
-            this.btnExportOutput.Click += BtnExportOutput_Click;
-
-            this.Controls.Add(this.lblTitle);
-            this.Controls.Add(this.lblDateStart);
-            this.Controls.Add(this.dateStart);
-            this.Controls.Add(this.lblDateEnd);
-            this.Controls.Add(this.dateEnd);
-            this.Controls.Add(this.lblArea);
-            this.Controls.Add(this.cmbArea);
-            this.Controls.Add(this.btnExport);
-            this.Controls.Add(this.btnExportOutput);
-            
             this.Name = "ReportView";
             this.Dock = DockStyle.Fill;
+            this.BackColor = AppColors.Surface;
+            this.Padding = new Padding(24);
+
+            // ==========================================
+            // KIRI: PANEL KONFIGURASI
+            // ==========================================
+            AppCard cardConfig = new AppCard
+            {
+                Dock = DockStyle.Left,
+                Width = 380,
+                ShowShadow = true,
+                CornerRadius = 16,
+                BackColor = AppColors.CardBackground,
+                Padding = new Padding(20)
+            };
+
+            this.lblTitle = new Label { Text = "Export Laporan", Font = AppFonts.Header3, ForeColor = AppColors.TextPrimary, AutoSize = true, Location = new Point(20, 20) };
+            cardConfig.Controls.Add(lblTitle);
+
+            // Rentang Waktu
+            this.lblDateStart = new Label { Text = "Tanggal Mulai", Font = AppFonts.BodySmall, ForeColor = AppColors.TextSecondary, AutoSize = true, Location = new Point(20, 70) };
+            this.dateStart = new DateTimePicker { Format = DateTimePickerFormat.Short, Font = AppFonts.BodySmall, Location = new Point(20, 95), Width = 150 };
+            
+            this.lblDateEnd = new Label { Text = "Tanggal Akhir", Font = AppFonts.BodySmall, ForeColor = AppColors.TextSecondary, AutoSize = true, Location = new Point(190, 70) };
+            this.dateEnd = new DateTimePicker { Format = DateTimePickerFormat.Short, Font = AppFonts.BodySmall, Location = new Point(190, 95), Width = 150 };
+
+            cardConfig.Controls.Add(lblDateStart); cardConfig.Controls.Add(dateStart);
+            cardConfig.Controls.Add(lblDateEnd); cardConfig.Controls.Add(dateEnd);
+
+            // Area Filter
+            this.lblArea = new Label { Text = "Filter Area", Font = AppFonts.BodySmall, ForeColor = AppColors.TextSecondary, AutoSize = true, Location = new Point(20, 140) };
+            this.cmbArea = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = AppFonts.BodySmall, Location = new Point(20, 165), Width = 320 };
+            cardConfig.Controls.Add(lblArea); cardConfig.Controls.Add(cmbArea);
+
+            // Pilihan Export
+            Label lblJenis = new Label { Text = "Jenis Laporan yang Diekspor:", Font = new Font(AppFonts.FontFamily, 10F, FontStyle.Bold), ForeColor = AppColors.TextPrimary, AutoSize = true, Location = new Point(20, 215) };
+            cardConfig.Controls.Add(lblJenis);
+
+            this.chkDetailTiket = new CheckBox { Text = "Detail Tiket (Raw Data)", Font = AppFonts.BodySmall, Location = new Point(20, 245), AutoSize = true, Checked = true };
+            this.chkRekapBulanan = new CheckBox { Text = "Rekap Bulanan Downtime", Font = AppFonts.BodySmall, Location = new Point(20, 275), AutoSize = true, Checked = true };
+            this.chkOutputHarian = new CheckBox { Text = "Output Harian Mesin", Font = AppFonts.BodySmall, Location = new Point(20, 305), AutoSize = true, Checked = true };
+            this.chkRincianDowntime = new CheckBox { Text = "Rincian Waktu Downtime", Font = AppFonts.BodySmall, Location = new Point(20, 335), AutoSize = true, Checked = true };
+            this.chkPatroliCutting = new CheckBox { Text = "Patroli Mesin Cutting", Font = AppFonts.BodySmall, Location = new Point(20, 365), AutoSize = true, Checked = true };
+            this.chkPatroliMikrometer = new CheckBox { Text = "Patroli Mikrometer", Font = AppFonts.BodySmall, Location = new Point(20, 395), AutoSize = true, Checked = true };
+            this.chkPatroliAplikator = new CheckBox { Text = "Patroli Aplikator", Font = AppFonts.BodySmall, Location = new Point(20, 425), AutoSize = true, Checked = true };
+            this.chkCounterMaterial = new CheckBox { Text = "Counter Material", Font = AppFonts.BodySmall, Location = new Point(20, 455), AutoSize = true, Checked = true };
+            
+            cardConfig.Controls.Add(chkDetailTiket); cardConfig.Controls.Add(chkRekapBulanan);
+            cardConfig.Controls.Add(chkOutputHarian); cardConfig.Controls.Add(chkRincianDowntime);
+            cardConfig.Controls.Add(chkPatroliCutting); cardConfig.Controls.Add(chkPatroliMikrometer);
+            cardConfig.Controls.Add(chkPatroliAplikator); cardConfig.Controls.Add(chkCounterMaterial);
+
+            // Tombol Action
+            this.btnPreview = new AppButton { Text = "🔍 Tampilkan Pratinjau (Preview)", Type = AppButton.ButtonType.Secondary, Location = new Point(20, 495), Size = new Size(320, 45) };
+            this.btnPreview.Click += BtnPreview_Click;
+            cardConfig.Controls.Add(btnPreview);
+
+            this.btnExport = new AppButton { Text = "📥 Generate & Export Excel", Type = AppButton.ButtonType.Primary, Location = new Point(20, 550), Size = new Size(320, 50) };
+            this.btnExport.Click += BtnExport_Click;
+            cardConfig.Controls.Add(btnExport);
+
+            // ==========================================
+            // KANAN: PANEL PREVIEW
+            // ==========================================
+            AppCard cardPreview = new AppCard
+            {
+                Dock = DockStyle.Fill,
+                ShowShadow = true,
+                CornerRadius = 16,
+                BackColor = AppColors.CardBackground,
+                Padding = new Padding(20)
+            };
+
+            Panel pnlPreviewHeader = new Panel { Dock = DockStyle.Top, Height = 40, BackColor = Color.Transparent };
+            Label lblPreviewTitle = new Label { Text = "Pratinjau Data (Detail Tiket - Maks 50 Baris)", Font = new Font(AppFonts.FontFamily, 11F, FontStyle.Bold), ForeColor = AppColors.TextPrimary, AutoSize = true, Dock = DockStyle.Left };
+            this.lblPreviewStatus = new Label { Text = "Belum memuat data", Font = AppFonts.BodySmall, ForeColor = AppColors.TextSecondary, AutoSize = true, Dock = DockStyle.Right, TextAlign = ContentAlignment.MiddleRight };
+            pnlPreviewHeader.Controls.Add(lblPreviewTitle);
+            pnlPreviewHeader.Controls.Add(lblPreviewStatus);
+            cardPreview.Controls.Add(pnlPreviewHeader);
+
+            this.gridPreview = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                BackgroundColor = AppColors.CardBackground,
+                BorderStyle = BorderStyle.None,
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                GridColor = Color.FromArgb(238, 242, 246),
+                EnableHeadersVisualStyles = false,
+                RowHeadersVisible = false,
+                AllowUserToAddRows = false,
+                ReadOnly = true,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells,
+                Margin = new Padding(0, 16, 0, 0)
+            };
+            this.gridPreview.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(248, 250, 252);
+            this.gridPreview.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(100, 116, 139);
+            this.gridPreview.ColumnHeadersDefaultCellStyle.Font = new Font(AppFonts.FontFamily, 9.5F, FontStyle.Bold);
+            this.gridPreview.ColumnHeadersHeight = 40;
+            this.gridPreview.DefaultCellStyle.SelectionBackColor = AppColors.CardBackground;
+            this.gridPreview.DefaultCellStyle.SelectionForeColor = AppColors.TextPrimary;
+            this.gridPreview.DefaultCellStyle.Font = AppFonts.BodySmall;
+            this.gridPreview.DefaultCellStyle.Padding = new Padding(8, 4, 8, 4);
+            this.gridPreview.RowTemplate.Height = 40;
+
+            cardPreview.Controls.Add(gridPreview);
+            gridPreview.BringToFront(); // Ensures grid takes remaining space AFTER header, making column headers visible
+
+            // Container Wrapper untuk spasi antar Card
+            Panel pnlSpacer = new Panel { Dock = DockStyle.Left, Width = 24, BackColor = Color.Transparent };
+
+            this.Controls.Add(cardPreview);
+            this.Controls.Add(pnlSpacer);
+            this.Controls.Add(cardConfig);
+
+            // Z-Order
+            cardPreview.BringToFront();
+
+
             this.ResumeLayout(false);
+        }
+
+        private async void BtnPreview_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                btnPreview.Enabled = false;
+                btnPreview.Text = "Memuat Pratinjau...";
+                lblPreviewStatus.Text = "Mengambil data...";
+                Application.DoEvents();
+
+                string areaName = cmbArea.SelectedItem?.ToString() ?? "Semua Area";
+                
+                // Fetch top 50 detailed tickets
+                var dataDetail = await FetchDataForReportAsync(dateStart.Value, dateEnd.Value, areaName);
+                
+                if (dataDetail != null && dataDetail.Rows.Count > 0)
+                {
+                    // Limit to 50 for preview
+                    var previewTable = dataDetail.Clone();
+                    for (int i = 0; i < Math.Min(50, dataDetail.Rows.Count); i++)
+                    {
+                        previewTable.ImportRow(dataDetail.Rows[i]);
+                    }
+                    
+                    gridPreview.DataSource = previewTable;
+                    lblPreviewStatus.Text = $"Menampilkan {previewTable.Rows.Count} dari {dataDetail.Rows.Count} total baris";
+                }
+                else
+                {
+                    gridPreview.DataSource = null;
+                    lblPreviewStatus.Text = "Tidak ada data pada rentang ini.";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Gagal memuat pratinjau: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                lblPreviewStatus.Text = "Gagal memuat pratinjau.";
+            }
+            finally
+            {
+                btnPreview.Enabled = true;
+                btnPreview.Text = "🔍 Tampilkan Pratinjau (Preview)";
+            }
         }
     }
 }

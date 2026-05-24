@@ -26,6 +26,7 @@ namespace mtc_app.features.technician.presentation.screens
             this.ClientSize = new System.Drawing.Size(1200, 700);
             this.Name = "TechnicianDashboardForm";
             this.Text = "Dashboard Teknisi";
+            this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.ResumeLayout(false);
         }
     }

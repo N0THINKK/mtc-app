@@ -17,6 +17,7 @@ namespace mtc_app.features.technician.presentation.components
         private string _currentFilter = "NG"; // "NG", "Selesai", "Semua"
         private string _currentSort = "DESC"; // "DESC", "ASC"
         private string _currentRoleFilter = "Semua"; // "Semua", "Teknisi", "Operator"
+        private string _currentItemFilter = "Semua"; // "Semua" or specific item name
         
         private StatCard cardPending;
         private StatCard cardResolved;
@@ -24,6 +25,7 @@ namespace mtc_app.features.technician.presentation.components
         private AppButton btnFilterResolved;
         private AppButton btnFilterAll;
         private ComboBox cbRoleFilter;
+        private ComboBox cbItemFilter;
         private AppButton btnSortDesc;
         private AppButton btnSortAsc;
         private AppButton btnRefresh;
@@ -89,7 +91,7 @@ namespace mtc_app.features.technician.presentation.components
             pnlFilters = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 90,
+                Height = 140,
                 BackColor = AppColors.CardBackground
             };
             
@@ -186,8 +188,45 @@ namespace mtc_app.features.technician.presentation.components
             flowRight.Controls.Add(cbRoleFilter);
             flowRight.Controls.Add(lblRoleFilter);
 
+            // ==========================================
+            // SECOND ROW: Item Filter
+            // ==========================================
+            FlowLayoutPanel flowSecondRow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 50,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Padding = new Padding(20, 8, 20, 0)
+            };
+
+            Label lblItemFilter = new Label
+            {
+                Text = "Item NG:",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(73, 80, 87),
+                Margin = new Padding(0, 10, 10, 0)
+            };
+
+            cbItemFilter = new ComboBox
+            {
+                Width = 350,
+                Margin = new Padding(0, 10, 10, 0),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 11F, FontStyle.Regular),
+                ForeColor = AppColors.TextPrimary,
+            };
+            cbItemFilter.Items.Add("Semua");
+            cbItemFilter.SelectedIndex = 0;
+            cbItemFilter.SelectedIndexChanged += CbItemFilter_SelectedIndexChanged;
+
+            flowSecondRow.Controls.Add(lblItemFilter);
+            flowSecondRow.Controls.Add(cbItemFilter);
+
             pnlFilters.Controls.Add(flowLeft);
             pnlFilters.Controls.Add(flowRight);
+            pnlFilters.Controls.Add(flowSecondRow);
 
             // ==========================================
             // BOTTOM ACTIONS PANEL
@@ -338,6 +377,12 @@ namespace mtc_app.features.technician.presentation.components
             btnSortAsc.Invalidate();
         }
 
+        private void CbItemFilter_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            _currentItemFilter = cbItemFilter.SelectedItem?.ToString() ?? "Semua";
+            _ = LoadDataAsync(_startDate, _endDate);
+        }
+
         private void GridPatrols_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
@@ -390,12 +435,27 @@ namespace mtc_app.features.technician.presentation.components
             {
                 // Parallel fetch
                 var statsTask = _repository.GetPatrolNgStatsAsync(start, end);
-                var listTask = _repository.GetPatrolNgListAsync(_currentFilter, _currentSort, start, end, _currentRoleFilter);
+                var listTask = _repository.GetPatrolNgListAsync(_currentFilter, _currentSort, start, end, _currentRoleFilter, _currentItemFilter);
+                var itemNamesTask = _repository.GetPatrolNgItemNamesAsync(start, end);
 
-                await Task.WhenAll(statsTask, listTask);
+                await Task.WhenAll(statsTask, listTask, itemNamesTask);
 
                 var stats = statsTask.Result;
                 var list = listTask.Result.ToList();
+                var itemNames = itemNamesTask.Result.ToList();
+
+                // Update Item Filter ComboBox (preserve selection)
+                string previousSelection = _currentItemFilter;
+                cbItemFilter.SelectedIndexChanged -= CbItemFilter_SelectedIndexChanged;
+                cbItemFilter.Items.Clear();
+                cbItemFilter.Items.Add("Semua");
+                foreach (var itemName in itemNames)
+                {
+                    cbItemFilter.Items.Add(itemName);
+                }
+                int idx = cbItemFilter.Items.IndexOf(previousSelection);
+                cbItemFilter.SelectedIndex = idx >= 0 ? idx : 0;
+                cbItemFilter.SelectedIndexChanged += CbItemFilter_SelectedIndexChanged;
 
                 // Update Stats
                 cardPending.Value = (stats?.PendingCount ?? 0).ToString();
@@ -452,25 +512,15 @@ namespace mtc_app.features.technician.presentation.components
 
                 if (confirm == DialogResult.Yes)
                 {
-                    // Tampilkan Form Penilaian Operator terlebih dahulu
-                    // Dto bisa memiliki TicketId null jika operator mensubmit NG tanpa memicu Auto-Ticket
-                    long ticketIdForRating = dto.TicketId ?? 0;
-                    
-                    using (var ratingForm = new mtc_app.features.rating.presentation.screens.RatingTechnicianForm(ticketIdForRating, dto))
+                    bool success = await _repository.MarkPatrolNgAsResolvedAsync(dto.DetailId);
+                    if (success)
                     {
-                        if (ratingForm.ShowDialog() == DialogResult.OK)
-                        {
-                            bool success = await _repository.MarkPatrolNgAsResolvedAsync(dto.DetailId);
-                            if (success)
-                            {
-                                MessageBox.Show("Berhasil ditandai selesai.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                await LoadDataAsync(_startDate, _endDate);
-                            }
-                            else
-                            {
-                                MessageBox.Show("Gagal memperbarui status. Silakan coba lagi.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            }
-                        }
+                        MessageBox.Show("Berhasil ditandai selesai.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        await LoadDataAsync(_startDate, _endDate);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Gagal memperbarui status. Silakan coba lagi.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }

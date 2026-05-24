@@ -9,7 +9,7 @@ namespace mtc_app.features.technician.data.repositories
 {
     public class TechnicianRepository : ITechnicianRepository
     {
-        public async Task<IEnumerable<TicketDto>> GetActiveTicketsAsync()
+        public async Task<IEnumerable<TicketDto>> GetActiveTicketsAsync(DateTime start, DateTime end)
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
@@ -63,10 +63,11 @@ namespace mtc_app.features.technician.data.repositories
                     LEFT JOIN machine_types m_type ON m.type_id = m_type.type_id
                     LEFT JOIN machine_areas m_area ON m.area_id = m_area.area_id
                     LEFT JOIN users u ON t.technician_id = u.user_id
-                    WHERE t.status_id >= 1
+                    WHERE t.status_id >= 1 AND t.created_at BETWEEN @Start AND @End
+                      AND m_type.type_name != 'Layar'
                     ORDER BY t.created_at DESC";
                 
-                return await connection.QueryAsync<TicketDto>(sql, commandTimeout: 120);
+                return await connection.QueryAsync<TicketDto>(sql, new { Start = start, End = end }, commandTimeout: 120);
             }
         }
 
@@ -172,6 +173,7 @@ namespace mtc_app.features.technician.data.repositories
             const string sql = @"
                 SELECT 
                     T.TechnicianName,
+                    T.Nik,
                     COUNT(T.ticket_id) AS TotalRepairs,
                     COALESCE(AVG(NULLIF(T.gl_rating_score, 0)), 0) AS AverageRating,
                     COALESCE(SUM(T.gl_rating_score), 0) AS TotalStars
@@ -179,15 +181,19 @@ namespace mtc_app.features.technician.data.repositories
                     SELECT DISTINCT 
                         u.user_id, 
                         u.full_name AS TechnicianName, 
+                        u.nik AS Nik,
                         t.ticket_id, 
                         t.gl_rating_score
                     FROM ticket_technician_sessions tts
                     JOIN tickets t ON tts.ticket_id = t.ticket_id
                     JOIN users u ON tts.technician_id = u.user_id
+                    JOIN machines m ON t.machine_id = m.machine_id
+                    JOIN machine_types mt ON m.type_id = mt.type_id
                     WHERE t.status_id IN (3, 4) 
                       AND t.created_at BETWEEN @Start AND @End
+                      AND mt.type_name != 'Layar'
                 ) AS T
-                GROUP BY T.user_id, T.TechnicianName
+                GROUP BY T.user_id, T.TechnicianName, T.Nik
                 HAVING COUNT(T.ticket_id) > 0";
 
             using (var connection = DatabaseHelper.GetConnection())
@@ -222,7 +228,8 @@ namespace mtc_app.features.technician.data.repositories
                 JOIN machine_areas ma ON m.area_id = ma.area_id
                 JOIN tickets t ON m.machine_id = t.machine_id
                 WHERE t.status_id IN (3, 4) 
-                  AND t.created_at BETWEEN @Start AND @End";
+                  AND t.created_at BETWEEN @Start AND @End
+                  AND mt.type_name != 'Layar'";
 
             if (!string.IsNullOrEmpty(area) && area != "All")
             {
@@ -249,11 +256,16 @@ namespace mtc_app.features.technician.data.repositories
             {
                 string sql = @"
                     SELECT 
-                        (SELECT COUNT(DISTINCT machine_id) 
-                         FROM machine_process_logs 
-                         WHERE created_at >= NOW() - INTERVAL 10 MINUTE) as Running,
+                        (SELECT COUNT(DISTINCT mpl.machine_id) 
+                         FROM machine_process_logs mpl
+                         JOIN machines m2 ON mpl.machine_id = m2.machine_id
+                         JOIN machine_types mt2 ON m2.type_id = mt2.type_id
+                         WHERE mpl.created_at >= NOW() - INTERVAL 10 MINUTE
+                           AND mt2.type_name != 'Layar') as Running,
                          
-                        (SELECT COUNT(*) FROM machines) as Total
+                        (SELECT COUNT(*) FROM machines m3
+                         JOIN machine_types mt3 ON m3.type_id = mt3.type_id
+                         WHERE mt3.type_name != 'Layar') as Total
                 ";
                 return await connection.QueryFirstOrDefaultAsync<(int, int)>(sql, commandTimeout: 60);
             }
@@ -263,7 +275,7 @@ namespace mtc_app.features.technician.data.repositories
         // PATROLI CHECKSHEET (NG LIST)
         // ====================================================================================
 
-        public async Task<IEnumerable<PatrolNgDto>> GetPatrolNgListAsync(string filterStatus, string sortOrder, DateTime start, DateTime end, string roleFilter = "Semua")
+        public async Task<IEnumerable<PatrolNgDto>> GetPatrolNgListAsync(string filterStatus, string sortOrder, DateTime start, DateTime end, string roleFilter = "Semua", string itemFilter = "Semua")
         {
             using (var conn = DatabaseHelper.GetConnection())
             {
@@ -310,12 +322,35 @@ namespace mtc_app.features.technician.data.repositories
                     sql += " AND (i.role_target = 'Operator' OR l.user_nik REGEXP '^[0-9]') ";
                 }
 
+                // Terapkan filter Item NG
+                if (!string.IsNullOrEmpty(itemFilter) && itemFilter != "Semua")
+                {
+                    sql += " AND i.item_name = @ItemFilter ";
+                }
+
                 if (sortOrder == "ASC")
                     sql += " ORDER BY l.patrol_date ASC;";
                 else
                     sql += " ORDER BY l.patrol_date DESC;";
 
-                return await conn.QueryAsync<PatrolNgDto>(sql, new { Start = start, End = end });
+                return await conn.QueryAsync<PatrolNgDto>(sql, new { Start = start, End = end, ItemFilter = itemFilter });
+            }
+        }
+
+        public async Task<IEnumerable<string>> GetPatrolNgItemNamesAsync(DateTime start, DateTime end)
+        {
+            using (var conn = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT DISTINCT i.item_name
+                    FROM patrol_log_details d
+                    JOIN patrol_logs l ON d.log_id = l.log_id
+                    JOIN checksheet_items i ON d.item_id = i.item_id
+                    WHERE l.patrol_date BETWEEN @Start AND @End
+                      AND d.status IN ('NOT_OK', 'NG', 'PERBAIKAN_OK')
+                    ORDER BY i.item_name ASC;";
+
+                return await conn.QueryAsync<string>(sql, new { Start = start, End = end });
             }
         }
 

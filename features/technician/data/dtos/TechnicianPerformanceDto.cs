@@ -8,6 +8,7 @@ namespace mtc_app.features.technician.data.dtos
     {
         public long TechnicianId { get; set; }
         public string TechnicianName { get; set; }
+        public string Nik { get; set; }
         public int TotalRepairs { get; set; }
         public double AverageRating { get; set; }
         public int TotalStars { get; set; }

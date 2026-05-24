@@ -21,6 +21,7 @@ namespace mtc_app.features.admin.presentation.screens
         private MasterDataView _masterDataView;
         private ReportView _reportView;
         private BackupView _backupView;
+        private NgPatrolAdminView _ngPatrolAdminView;
 
         private UserControl _currentActiveView;
 
@@ -59,6 +60,7 @@ namespace mtc_app.features.admin.presentation.screens
             _masterDataView = new MasterDataView(_repository); 
             _reportView = new ReportView();
             _backupView = new BackupView();
+            _ngPatrolAdminView = new NgPatrolAdminView(_repository);
         }
 
         private void SetupUI()
@@ -88,6 +90,7 @@ namespace mtc_app.features.admin.presentation.screens
             {
                 { "👤 Data User", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("User"); } },
                 { "⚙️ Data Mesin", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Mesin"); } },
+                { "🗺️ Area Mesin", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Area Mesin"); } },
                 { "🔧 Data Sparepart", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Sparepart"); } },
                 { "⚠️ Data Problem", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Problem"); } },
                 { "📋 Data Checksheet", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Checksheet"); } },
@@ -95,6 +98,7 @@ namespace mtc_app.features.admin.presentation.screens
                 { "⏱️ Data Waktu Break", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Waktu Break"); } }
             });
 
+            AddMenuButton("🚨 Data NG Cutting", flowMenu, _ngPatrolAdminView, () => _ngPatrolAdminView.LoadData());
             AddMenuButton("🖨️ Laporan / Export", flowMenu, _reportView);
             AddMenuButton("💾 Backup Database", flowMenu, _backupView);
             

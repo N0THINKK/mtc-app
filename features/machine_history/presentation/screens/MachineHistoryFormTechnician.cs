@@ -11,13 +11,15 @@ using mtc_app.features.machine_history.presentation.components;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 using mtc_app.shared.infrastructure;
+using mtc_app.features.machine_history.presentation.components;
 using mtc_app.features.machine_history.data.dtos;
+using mtc_app.features.machine_history.data.repositories;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
     public partial class MachineHistoryFormTechnician : AppBaseForm
     {
-        private readonly long _currentTicketId;
+        private long _currentTicketId;
         private bool _isVerified = false;
         private bool _allowClose = false; 
         
@@ -42,6 +44,10 @@ namespace mtc_app.features.machine_history.presentation.screens
         private List<int> _activeTechnicianIds = new List<int>();
         private Dictionary<long, int> _sessionElapsedMap = new Dictionary<long, int>();
 
+        // History Tab
+        private TabControl _tabControl;
+        private MachineHistoryListControl _historyListControl;
+
         // UI Controls
         private Label _lblPreviousTechnicians; 
         private AppInput inputNIK;
@@ -61,6 +67,13 @@ namespace mtc_app.features.machine_history.presentation.screens
         private CheckBox chkTidak4M;
         private AppStarRating ratingOperator;
         private AppInput inputOperatorNote;
+        private List<string> _loadedParts = new List<string>();
+        
+        // Applicator Checkboxes
+        private FlowLayoutPanel pnlApplicatorCheckboxes;
+        private CheckBox chkInsulation;
+        private CheckBox chkAnvil;
+        private CheckBox chkWire;
 
         // [MODIFIKASI] Menambahkan parameter autoStart = false
         public MachineHistoryFormTechnician(long ticketId, bool autoStart = false, int patrolDetailId = 0)
@@ -77,6 +90,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             LoadOfflineTicketState();
             LoadActiveSessions(); 
             UpdateUIState();
+            SetupHistoryTab();
             
             this.StartPosition = FormStartPosition.CenterScreen;
             this.WindowState = FormWindowState.Maximized;
@@ -116,6 +130,44 @@ namespace mtc_app.features.machine_history.presentation.screens
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// If the ticket was created offline (negative ID) and has since been synced,
+        /// resolves the real ticket_id from the database and updates _currentTicketId.
+        /// </summary>
+        private bool TryResolveSyncedTicketId()
+        {
+            if (_currentTicketId >= 0) return false; // Not an offline ticket, nothing to resolve
+
+            int pendingId = (int)Math.Abs(_currentTicketId);
+            var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+            if (request != null) return false; // Still pending, not synced yet
+
+            // Pending ticket was synced and deleted. Try to find the real ticket_id.
+            try
+            {
+                if (!ServiceLocator.NetworkMonitor.CheckNow()) return false;
+
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Open();
+                    var realId = conn.QueryFirstOrDefault<long?>(
+                        "SELECT ticket_id FROM tickets WHERE status_id IN (1, 2, 3) ORDER BY created_at DESC LIMIT 1");
+
+                    if (realId.HasValue && realId.Value > 0)
+                    {
+                        _currentTicketId = realId.Value;
+                        System.Diagnostics.Debug.WriteLine($"[FormTechnician] Resolved synced ticket: {_currentTicketId}");
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FormTechnician] Failed to resolve synced ticket: {ex.Message}");
+            }
+            return false;
         }
 
         private void LoadTicketStatus()
@@ -265,6 +317,9 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             if (_currentTicketId <= 0) return; 
             
+            // Fix offline freeze: skip saving timer directly to DB if offline
+            if (!ServiceLocator.NetworkMonitor.IsOnline) return; 
+            
             try
             {
                 using (var conn = DatabaseHelper.GetConnection())
@@ -287,7 +342,10 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void CreateSession(int technicianId)
         {
-            if (_currentTicketId <= 0) return; 
+            if (_currentTicketId <= 0) 
+            {
+                throw new Exception("ID Tiket tidak valid (0).");
+            }
             
             if (_activeTechnicianIds.Contains(technicianId))
             {
@@ -316,6 +374,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error creating session: {ex.Message}");
+                throw new Exception($"Gagal membuat sesi teknisi: {ex.Message}"); // Rethrow
             }
         }
 
@@ -474,8 +533,10 @@ namespace mtc_app.features.machine_history.presentation.screens
                             (long)p.problem_id, 
                             (string)p.ProblemType, 
                             (string)p.ProblemDetail, 
-                            _isVerified
+                            _isVerified,
+                            _problemControls.Count
                         );
+                        control.RemoveRequested += (s, ev) => RemoveProblemItem(control);
                         _problemControls.Add(control);
                         pnlProblems.Controls.Add(control);
                     }
@@ -512,7 +573,8 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void BtnAddProblem_Click(object sender, EventArgs e)
         {
-            var control = new TechnicianProblemItemControl(0, "", "", _isVerified); 
+            var control = new TechnicianProblemItemControl(0, "", "", _isVerified, _problemControls.Count); 
+            control.RemoveRequested += (s, ev) => RemoveProblemItem(control);
             _problemControls.Add(control);
             pnlProblems.Controls.Add(control);
             
@@ -523,6 +585,24 @@ namespace mtc_app.features.machine_history.presentation.screens
                  int contentWidth = mainLayout.ClientSize.Width - 80;
                  if (contentWidth < 300) contentWidth = 300;
                  control.Width = contentWidth;
+            }
+        }
+
+        private void RemoveProblemItem(TechnicianProblemItemControl control)
+        {
+            if (_problemControls.Count <= 1)
+            {
+                AutoClosingMessageBox.Show("Minimal harus ada satu problem.", "Info", 1500);
+                return;
+            }
+            
+            _problemControls.Remove(control);
+            pnlProblems.Controls.Remove(control);
+            control.Dispose();
+            
+            for (int i = 0; i < _problemControls.Count; i++)
+            {
+                _problemControls[i].UpdateIndex(i, _isVerified);
             }
         }
 
@@ -674,6 +754,28 @@ namespace mtc_app.features.machine_history.presentation.screens
                 AllowCustomText = true 
             };
             mainLayout.Controls.Add(inputSparepart);
+            
+            pnlApplicatorCheckboxes = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Margin = new Padding(0, 5, 0, 10),
+                Visible = false
+            };
+            chkInsulation = new CheckBox { Text = "Insulation", AutoSize = true, Margin = new Padding(0, 0, 15, 0) };
+            chkAnvil = new CheckBox { Text = "Anvil", AutoSize = true, Margin = new Padding(0, 0, 15, 0) };
+            chkWire = new CheckBox { Text = "Wire", AutoSize = true, Margin = new Padding(0, 0, 0, 0) };
+            
+            pnlApplicatorCheckboxes.Controls.AddRange(new Control[] { chkInsulation, chkAnvil, chkWire });
+            mainLayout.Controls.Add(pnlApplicatorCheckboxes);
+
+            inputSparepart.InputValueChanged += (s, e) =>
+            {
+                string val = inputSparepart.InputValue ?? "";
+                pnlApplicatorCheckboxes.Visible = val.StartsWith("Applikator", StringComparison.OrdinalIgnoreCase);
+            };
+
             LoadParts();
 
             var panelRating = new FlowLayoutPanel
@@ -707,6 +809,70 @@ namespace mtc_app.features.machine_history.presentation.screens
             mainLayout.Controls.Add(spacer);
         }
 
+        private void SetupHistoryTab()
+        {
+            // Ambil machine_id dari tiket saat ini untuk filter riwayat
+            _tabControl = new TabControl
+            {
+                Dock = DockStyle.Fill,
+                Font = AppFonts.Body,
+                Padding = new Point(10, 5)
+            };
+
+            // Tab 1: Form Perbaikan (pindahkan mainLayout ke sini)
+            var tabRepair = new TabPage("Perbaikan") { BackColor = AppColors.Background };
+            this.Controls.Remove(mainLayout);
+            mainLayout.Dock = DockStyle.Fill;
+            tabRepair.Controls.Add(mainLayout);
+
+            // Tab 2: Riwayat Mesin
+            var tabHistory = new TabPage("Riwayat") { BackColor = AppColors.CardBackground };
+            _historyListControl = new MachineHistoryListControl { Dock = DockStyle.Fill };
+            tabHistory.Controls.Add(_historyListControl);
+
+            _tabControl.TabPages.Add(tabRepair);
+            _tabControl.TabPages.Add(tabHistory);
+
+            _tabControl.SelectedIndexChanged += async (s, e) =>
+            {
+                if (_tabControl.SelectedIndex == 1)
+                {
+                    await LoadHistoryDataAsync();
+                }
+            };
+
+            this.Controls.Add(_tabControl);
+            _tabControl.BringToFront();
+        }
+
+        private async Task LoadHistoryDataAsync()
+        {
+            try
+            {
+                int? machineId = null;
+                if (_currentTicketId > 0)
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        conn.Open();
+                        machineId = await conn.QueryFirstOrDefaultAsync<int?>(
+                            "SELECT machine_id FROM tickets WHERE ticket_id = @Id",
+                            new { Id = _currentTicketId });
+                    }
+                }
+
+                var repo = new MachineHistoryRepository();
+                var start = DateTime.Now.AddDays(-30);
+                var end = DateTime.Now.AddDays(1);
+                var data = await repo.GetHistoryAsync(start, end, null, null, machineId);
+                _historyListControl.SetData(data);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[FormTechnician] Error loading history: {ex.Message}");
+            }
+        }
+
         private async void LoadParts()
         {
             try
@@ -714,11 +880,86 @@ namespace mtc_app.features.machine_history.presentation.screens
                 var repo = mtc_app.shared.infrastructure.ServiceLocator.CreateMasterDataRepository();
                 var parts = await repo.GetPartsAsync();
                 
-                var dropdownItems = parts
+                _loadedParts = parts
                     .Select(p => $"{(string.IsNullOrEmpty(p.PartCode) ? "N/A" : p.PartCode)} - {p.PartName}")
-                    .ToArray();
+                    .ToList();
                     
-                inputSparepart.SetDropdownItems(dropdownItems);
+                string machineCodeStr = "";
+                if (_currentTicketId > 0)
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        machineCodeStr = conn.QueryFirstOrDefault<string>(
+                            @"SELECT CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) 
+                              FROM tickets t 
+                              JOIN machines m ON t.machine_id = m.machine_id 
+                              LEFT JOIN machine_types mt ON m.type_id = mt.type_id 
+                              LEFT JOIN machine_areas ma ON m.area_id = ma.area_id 
+                              WHERE t.ticket_id = @Id", 
+                            new { Id = _currentTicketId });
+                    }
+                }
+                else if (_currentTicketId < 0)
+                {
+                    int pendingId = (int)Math.Abs(_currentTicketId);
+                    var request = mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+                    if (request != null)
+                    {
+                        using (var conn = DatabaseHelper.GetConnection())
+                        {
+                            machineCodeStr = conn.QueryFirstOrDefault<string>(
+                                @"SELECT CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) 
+                                  FROM machines m 
+                                  LEFT JOIN machine_types mt ON m.type_id = mt.type_id 
+                                  LEFT JOIN machine_areas ma ON m.area_id = ma.area_id 
+                                  WHERE m.machine_id = @Id", 
+                                new { Id = request.MachineId });
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(machineCodeStr))
+                {
+                    string excelPath = @"C:\MTC_System\Data\MasterAplikator.xls";
+                    if (!System.IO.File.Exists(excelPath))
+                    {
+                        string fallback = excelPath + "x";
+                        if (System.IO.File.Exists(fallback)) excelPath = fallback;
+                    }
+
+                    if (System.IO.File.Exists(excelPath))
+                    {
+                        var (sideA, sideB) = mtc_app.features.applicator_patrol.data.services.ApplicatorExcelReader.ReadApplicators(excelPath, machineCodeStr);
+                        
+                        foreach (var app in sideA.Concat(sideB))
+                        {
+                            string cleanApp = app;
+                            int bracketIdx = cleanApp.IndexOf('(');
+                            if (bracketIdx > 0)
+                            {
+                                cleanApp = cleanApp.Substring(0, bracketIdx).Trim();
+                            }
+                            
+                            string formattedApp = $"Applikator {cleanApp}";
+                            if (!_loadedParts.Contains(formattedApp))
+                            {
+                                _loadedParts.Add(formattedApp);
+                            }
+                        }
+                    }
+                }
+                    
+                if (this.IsHandleCreated && !this.IsDisposed)
+                {
+                    this.Invoke((MethodInvoker)delegate 
+                    {
+                        inputSparepart.SetDropdownItems(_loadedParts.Distinct().ToArray());
+                    });
+                }
+                else
+                {
+                    inputSparepart.SetDropdownItems(_loadedParts.Distinct().ToArray());
+                }
             }
             catch (Exception ex) 
             {
@@ -865,6 +1106,9 @@ namespace mtc_app.features.machine_history.presentation.screens
                 return;
             }
 
+            // If offline ticket was synced, resolve real ID before proceeding
+            TryResolveSyncedTicketId();
+
             if (_currentTicketId < 0)
             {
                 var user = ServiceLocator.OfflineRepo.GetUserByNik(nik);
@@ -907,6 +1151,33 @@ namespace mtc_app.features.machine_history.presentation.screens
 
             try
             {
+                bool isOnline = ServiceLocator.NetworkMonitor.CheckNow();
+                if (!isOnline)
+                {
+                    var user = ServiceLocator.OfflineRepo.GetUserByNik(nik);
+                    if (user != null && user.RoleId == 2)
+                    {
+                        var payload = new { TicketId = _currentTicketId, TechnicianId = user.UserId }; // Fixed from user.Id to user.UserId
+                        // Let's rely on SyncManager finding it via NIK!
+                        var nikPayload = new { TicketId = _currentTicketId, TechnicianNik = nik };
+                        ServiceLocator.OfflineRepo.AddToQueue("VERIFY_TECHNICIAN", "tickets", nikPayload);
+                        
+                        _isVerified = true;
+                        _ticketStatus = 2;
+                        _isMachineRunning = 0; 
+                        
+                        AutoClosingMessageBox.Show($"Verifikasi Berhasil (Offline mode)!\nSelamat bekerja, {user.FullName}.", "Sukses", 2000);
+                        UpdateUIState();
+                        UpdateMachineStateIndicator();
+                        return;
+                    }
+                    else
+                    {
+                        MessageBox.Show("Inisial tidak ditemukan di database offline atau bukan teknisi.", "Akses Ditolak");
+                        return;
+                    }
+                }
+
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
@@ -927,7 +1198,10 @@ namespace mtc_app.features.machine_history.presentation.screens
                         SaveTimerToDatabase(); 
                         CreateSession((int)tech.user_id); 
                         
-                        AddTechnicianChip(tech.nik, tech.full_name, (int)tech.user_id, _activeSessionIds.Last());
+                        if (_activeSessionIds.Count > 0)
+                        {
+                            AddTechnicianChip(tech.nik, tech.full_name, (int)tech.user_id, _activeSessionIds.Last());
+                        }
 
                         AutoClosingMessageBox.Show($"Verifikasi Berhasil!\nSelamat bekerja, {tech.full_name}.", "Sukses", 2000);
                         LoadPreviousSessions(); 
@@ -942,7 +1216,24 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error: {ex.Message}");
+                // Fallback to offline queue if online SQL fails (e.g. timeout)
+                System.Diagnostics.Debug.WriteLine($"[FormTechnician] Verify failed online, falling back to offline: {ex.Message}");
+                var user = ServiceLocator.OfflineRepo.GetUserByNik(nik);
+                if (user != null && user.RoleId == 2)
+                {
+                    var nikPayload = new { TicketId = _currentTicketId, TechnicianNik = nik };
+                    ServiceLocator.OfflineRepo.AddToQueue("VERIFY_TECHNICIAN", "tickets", nikPayload);
+                    _isVerified = true;
+                    _ticketStatus = 2;
+                    _isMachineRunning = 0;
+                    AutoClosingMessageBox.Show($"Verifikasi Berhasil (Offline fallback)!\nSelamat bekerja, {user.FullName}.", "Sukses", 2000);
+                    UpdateUIState();
+                    UpdateMachineStateIndicator();
+                }
+                else
+                {
+                    MessageBox.Show($"Error: {ex.Message}");
+                }
             }
         }
 
@@ -976,7 +1267,10 @@ namespace mtc_app.features.machine_history.presentation.screens
                         }
 
                         CreateSession((int)tech.user_id);
-                        AddTechnicianChip(tech.nik, tech.full_name, (int)tech.user_id, _activeSessionIds.Last());
+                        if (_activeSessionIds.Count > 0)
+                        {
+                            AddTechnicianChip(tech.nik, tech.full_name, (int)tech.user_id, _activeSessionIds.Last());
+                        }
 
                         AutoClosingMessageBox.Show($"Teknisi {tech.full_name} berhasil ditambahkan.", "Sukses", 2000);
                         LoadPreviousSessions(); 
@@ -1067,6 +1361,19 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 MessageBox.Show("Isi detail sparepart.", "Validasi");
                 return;
+            }
+
+            if (pnlApplicatorCheckboxes.Visible)
+            {
+                var selectedOptions = new List<string>();
+                if (chkInsulation.Checked) selectedOptions.Add("Insulation");
+                if (chkAnvil.Checked) selectedOptions.Add("Anvil");
+                if (chkWire.Checked) selectedOptions.Add("Wire");
+
+                if (selectedOptions.Count > 0)
+                {
+                    val += $" ({string.Join(", ", selectedOptions)})";
+                }
             }
 
             if (MessageBox.Show("Lanjutkan request sparepart?", "Konfirmasi", MessageBoxButtons.YesNo) != DialogResult.Yes)
@@ -1190,20 +1497,33 @@ namespace mtc_app.features.machine_history.presentation.screens
             _timer.Stop();
             SaveTimerToDatabase(); 
 
+            // If offline ticket was synced, resolve real ID before proceeding
+            TryResolveSyncedTicketId();
+
             if (_currentTicketId > 0)
             {
-                try 
+                bool isOnline = ServiceLocator.NetworkMonitor.CheckNow();
+                if (!isOnline)
                 {
-                    using (var conn = DatabaseHelper.GetConnection()) 
+                    ServiceLocator.OfflineRepo.AddToQueue("INSPECTION_START", "tickets", new { TicketId = _currentTicketId });
+                }
+                else
+                {
+                    try 
                     {
-                        conn.Execute(
-                            "UPDATE tickets SET status_id = 3, inspection_started_at = NOW() WHERE ticket_id = @Id", 
-                            new { Id = _currentTicketId });
+                        using (var conn = DatabaseHelper.GetConnection()) 
+                        {
+                            conn.Execute(
+                                "UPDATE tickets SET status_id = 3, inspection_started_at = NOW() WHERE ticket_id = @Id", 
+                                new { Id = _currentTicketId });
+                        }
+                    } 
+                    catch (Exception ex) 
+                    {
+                        // Fallback to offline queue if online SQL fails
+                        System.Diagnostics.Debug.WriteLine($"[FormTechnician] Inspection start failed online, falling back: {ex.Message}");
+                        ServiceLocator.OfflineRepo.AddToQueue("INSPECTION_START", "tickets", new { TicketId = _currentTicketId });
                     }
-                } 
-                catch (Exception ex) 
-                {
-                    MessageBox.Show("Gagal update status inspeksi: " + ex.Message);
                 }
             }
             
@@ -1308,167 +1628,242 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void ProcessFinalSaveAndRun()
         {
+            // If offline ticket was synced by CacheWarmer, resolve real ID
+            TryResolveSyncedTicketId();
+
+            // ═══════════════════════════════════════════════════════════════
+            // PATH 1: PURE OFFLINE (pending ticket still in SQLite)
+            // ═══════════════════════════════════════════════════════════════
             if (_currentTicketId < 0)
             {
+                int pendingId = (int)Math.Abs(_currentTicketId);
+                var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+
+                if (request == null)
+                {
+                    MessageBox.Show("Tiket sudah tersinkronisasi ke server. Mohon refresh list tiket untuk melanjutkannya.", "Info");
+                    return;
+                }
+
                 try
                 {
-                    int pendingId = (int)Math.Abs(_currentTicketId);
-                    var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
-                    
-                    if (request != null)
+                    request.StatusId = 3;
+                    request.FinishedAt = DateTime.Now;
+                    request.InspectionStartedAt = DateTime.Now.AddSeconds(-_inspectionSeconds);
+                    request.CounterStroke = int.TryParse(inputCounter.InputValue, out int cnt) ? cnt : 0;
+                    request.Is4M = chk4M.Checked;
+                    request.TechRatingScore = ratingOperator.Rating;
+                    request.TechRatingNote = inputOperatorNote.InputValue;
+                    request.ArrivalElapsedSeconds = _arrivalSeconds;
+                    request.RepairElapsedSeconds = _repairSeconds;
+                    request.InspectionElapsedSeconds = _inspectionSeconds;
+
+                    for (int i = 0; i < _problemControls.Count && i < request.Problems.Count; i++)
                     {
-                        request.StatusId = 3; 
-                        request.FinishedAt = DateTime.Now;
-                        request.CounterStroke = int.TryParse(inputCounter.InputValue, out int cnt) ? cnt : 0;
-                        request.Is4M = chk4M.Checked;
-                        request.TechRatingScore = ratingOperator.Rating;
-                        request.TechRatingNote = inputOperatorNote.InputValue;
-                        
-                        for (int i = 0; i < _problemControls.Count && i < request.Problems.Count; i++)
-                        {
-                            request.Problems[i].CauseName = _problemControls[i].InputCause.InputValue;
-                            request.Problems[i].ActionName = _problemControls[i].InputAction.InputValue;
-                            request.Problems[i].ProblemTypeName = _problemControls[i].InputProblemType.InputValue;
-                            request.Problems[i].FailureName = _problemControls[i].InputProblemDetail.InputValue;
-                        }
-                        
-                        ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
-                        
-                        _timer.Stop();
-                        TimeSpan repairDuration = TimeSpan.FromSeconds(_repairSeconds);
-                        
-                        AutoClosingMessageBox.Show(
-                            $"Perbaikan Selesai (Offline)!\nDurasi: {repairDuration:hh\\:mm\\:ss}\n\nData akan disinkronkan saat online.",
-                            "Sukses", 2000);
-                        
-                        var runForm = new MachineRunForm(_currentTicketId);
-                        
-                        if (runForm.ShowDialog() == DialogResult.OK)
-                        {
-                            this.DialogResult = DialogResult.OK;
-                            this.Close();
-                        }
-                        else
-                        {
-                            _ticketStatus = 2; 
-                            _timer.Start();
-                        }
+                        request.Problems[i].CauseName = _problemControls[i].InputCause.InputValue;
+                        request.Problems[i].ActionName = _problemControls[i].InputAction.InputValue;
+                        request.Problems[i].ProblemTypeName = _problemControls[i].InputProblemType.InputValue;
+                        request.Problems[i].FailureName = _problemControls[i].InputProblemDetail.InputValue;
                     }
-                    else
-                    {
-                        MessageBox.Show("Data tiket tidak ditemukan.", "Error");
-                    }
+
+                    ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
+
+                    _timer.Stop();
+                    TimeSpan repairDuration = TimeSpan.FromSeconds(_repairSeconds);
+                    AutoClosingMessageBox.Show(
+                        $"Perbaikan Selesai (Offline)!\nDurasi: {repairDuration:hh\\:mm\\:ss}\n\nData akan disinkronkan saat online.",
+                        "Sukses", 2000);
+
+                    OpenMachineRunAndClose();
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show($"Error menyimpan offline: {ex.Message}", "Error");
                 }
-                return;
+                return; // CRITICAL: prevent fall-through to online path
             }
 
-            try
+            // ═══════════════════════════════════════════════════════════════
+            // PATH 2: ONLINE (ticket exists in DB with positive ID)
+            // ═══════════════════════════════════════════════════════════════
+            if (_currentTicketId > 0)
             {
-                using (var conn = DatabaseHelper.GetConnection())
+                bool isOnline = ServiceLocator.NetworkMonitor.CheckNow();
+                if (!isOnline)
                 {
-                    conn.Open();
-                    using (var trans = conn.BeginTransaction())
+                    try
                     {
-                        try
-                        {
-                            string sql = @"
-                                UPDATE tickets 
-                                SET status_id = 3, 
-                                    technician_finished_at = NOW(), 
-                                    counter_stroke = @Cnt, 
-                                    is_4m = @Is4M, 
-                                    tech_rating_score = @Sc, 
-                                    tech_rating_note = @Nt
-                                WHERE ticket_id = @Id";
-                            
-                            conn.Execute(sql, new 
-                            { 
-                                Cnt = int.TryParse(inputCounter.InputValue, out int c) ? c : 0, 
-                                Is4M = chk4M.Checked ? 1 : 0, 
-                                Sc = ratingOperator.Rating, 
-                                Nt = inputOperatorNote.InputValue,
-                                Id = _currentTicketId 
-                            }, trans);
+                        QueueFinishTicketOffline();
+                        _timer.Stop();
+                        TimeSpan repairDuration = TimeSpan.FromSeconds(_repairSeconds);
+                        AutoClosingMessageBox.Show($"Perbaikan Selesai (Offline antrian)!\nDurasi: {repairDuration:hh\\:mm\\:ss}", "Sukses", 2000);
+                        OpenMachineRunAndClose();
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error queuing offline finish: {ex.Message}");
+                    }
+                    return; // CRITICAL: prevent fall-through
+                }
 
-                            string detailSql = @"
-                                UPDATE ticket_problems SET 
-                                    problem_type_id = @TId, problem_type_remarks = @TRem,
-                                    failure_id = @FId, failure_remarks = @FRem,
-                                    root_cause_id = @CId, root_cause_remarks = @CRem, 
-                                    action_id = @AId, action_details_manual = @ARem 
-                                WHERE problem_id = @PId";
-                            
-                            foreach (var prob in _problemControls)
-                            {
-                                int? tId = GetOrCreateMasterData(conn, trans, "problem_types", "type_id", "type_name", prob.InputProblemType.InputValue);
-                                int? fId = GetOrCreateMasterData(conn, trans, "failures", "failure_id", "failure_name", prob.InputProblemDetail.InputValue);
-                                int? cId = GetOrCreateMasterData(conn, trans, "failure_causes", "cause_id", "cause_name", prob.InputCause.InputValue);
-                                int? aId = GetOrCreateMasterData(conn, trans, "actions", "action_id", "action_name", prob.InputAction.InputValue);
-                                
-                                conn.Execute(detailSql, new 
-                                {
-                                    TId = tId, TRem = (string)null, 
-                                    FId = fId, FRem = (string)null,
-                                    CId = cId, CRem = (string)null,
-                                    AId = aId, ARem = (string)null,
-                                    PId = prob.ProblemId
-                                }, trans);
-                            }
-                            
-                            // [BARU] Auto-Resolve Patroli NG items for this machine
-                            // [MODIFIKASI] Auto-Resolve HANYA item NG yang sedang diperbaiki
-                            if (_patrolDetailId > 0)
-                            {
-                                string resolveNgSql = @"
-                                    UPDATE patrol_log_details 
-                                    SET status = 'PERBAIKAN_OK'
-                                    WHERE detail_id = @DetailId AND status IN ('NOT_OK', 'NG')";
-                                      
-                                conn.Execute(resolveNgSql, new { DetailId = _patrolDetailId }, trans);
-                            }
-                            
-                            trans.Commit();
-                            _timer.Stop();
-                            SaveTimerToDatabase(); 
-                            EndSessionAsCompleted(); 
-                            
-                            TimeSpan repairDuration = TimeSpan.FromSeconds(_repairSeconds);
-                            
-                            AutoClosingMessageBox.Show(
-                                $"Perbaikan Selesai!\nDurasi: {repairDuration:hh\\:mm\\:ss}", 
-                                "Sukses", 2000);
-                            
-                            var runForm = new MachineRunForm(_currentTicketId);
-                            
-                            if (runForm.ShowDialog() == DialogResult.OK)
-                            {
-                                this.DialogResult = DialogResult.OK;
-                                _allowClose = true; 
-                                this.Close();
-                            }
-                            else
-                            {
-                                _ticketStatus = 2; 
-                                _timer.Start();
-                            }
-                        }
-                        catch
+                // Direct online save
+                try
+                {
+                    using (var conn = DatabaseHelper.GetConnection())
+                    {
+                        conn.Open();
+                        using (var trans = conn.BeginTransaction())
                         {
-                            trans.Rollback();
-                            throw;
+                            try
+                            {
+                                string sql = @"
+                                    UPDATE tickets 
+                                    SET status_id = 3, 
+                                        technician_finished_at = NOW(), 
+                                        counter_stroke = @Cnt, 
+                                        is_4m = @Is4M, 
+                                        tech_rating_score = @Sc, 
+                                        tech_rating_note = @Nt
+                                    WHERE ticket_id = @Id";
+
+                                conn.Execute(sql, new
+                                {
+                                    Cnt = int.TryParse(inputCounter.InputValue, out int c) ? c : 0,
+                                    Is4M = chk4M.Checked ? 1 : 0,
+                                    Sc = ratingOperator.Rating,
+                                    Nt = inputOperatorNote.InputValue,
+                                    Id = _currentTicketId
+                                }, trans);
+
+                                string detailSql = @"
+                                    UPDATE ticket_problems SET 
+                                        problem_type_id = @TId, problem_type_remarks = @TRem,
+                                        failure_id = @FId, failure_remarks = @FRem,
+                                        root_cause_id = @CId, root_cause_remarks = @CRem, 
+                                        action_id = @AId, action_details_manual = @ARem 
+                                    WHERE problem_id = @PId";
+
+                                foreach (var prob in _problemControls)
+                                {
+                                    int? tId = GetOrCreateMasterData(conn, trans, "problem_types", "type_id", "type_name", prob.InputProblemType.InputValue);
+                                    int? fId = GetOrCreateMasterData(conn, trans, "failures", "failure_id", "failure_name", prob.InputProblemDetail.InputValue);
+                                    int? cId = GetOrCreateMasterData(conn, trans, "failure_causes", "cause_id", "cause_name", prob.InputCause.InputValue);
+                                    int? aId = GetOrCreateMasterData(conn, trans, "actions", "action_id", "action_name", prob.InputAction.InputValue);
+
+                                    conn.Execute(detailSql, new
+                                    {
+                                        TId = tId, TRem = (string)null,
+                                        FId = fId, FRem = (string)null,
+                                        CId = cId, CRem = (string)null,
+                                        AId = aId, ARem = (string)null,
+                                        PId = prob.ProblemId
+                                    }, trans);
+                                }
+
+                                // Auto-Resolve NG Cutting items
+                                if (_patrolDetailId > 0)
+                                {
+                                    int itemIdToResolve = conn.QueryFirstOrDefault<int>("SELECT item_id FROM patrol_log_details WHERE detail_id = @DetailId", new { DetailId = _patrolDetailId }, trans);
+                                    if (itemIdToResolve > 0)
+                                    {
+                                        int ticketMachineId = conn.QueryFirstOrDefault<int>("SELECT machine_id FROM tickets WHERE ticket_id = @TicketId", new { TicketId = _currentTicketId }, trans);
+                                        string resolveNgSql = @"
+                                            UPDATE patrol_log_details d
+                                            JOIN patrol_logs l ON d.log_id = l.log_id
+                                            SET d.status = 'PERBAIKAN_OK'
+                                            WHERE l.machine_id = @MachineId AND d.item_id = @ItemId AND d.status IN ('NOT_OK', 'NG', 'NG_CARRYOVER')";
+                                        conn.Execute(resolveNgSql, new { MachineId = ticketMachineId, ItemId = itemIdToResolve }, trans);
+                                    }
+                                }
+
+                                trans.Commit();
+                                _timer.Stop();
+                                SaveTimerToDatabase();
+                                EndSessionAsCompleted();
+
+                                TimeSpan repairDuration = TimeSpan.FromSeconds(_repairSeconds);
+                                AutoClosingMessageBox.Show(
+                                    $"Perbaikan Selesai!\nDurasi: {repairDuration:hh\\:mm\\:ss}",
+                                    "Sukses", 2000);
+
+                                OpenMachineRunAndClose();
+                            }
+                            catch
+                            {
+                                trans.Rollback();
+                                throw;
+                            }
                         }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error: {ex.Message}");
+                catch (Exception ex)
+                {
+                    // Fallback to offline queue if online SQL fails
+                    System.Diagnostics.Debug.WriteLine($"[FormTechnician] Final save failed online, falling back: {ex.Message}");
+                    try
+                    {
+                        QueueFinishTicketOffline();
+                        _timer.Stop();
+                        TimeSpan repairDuration = TimeSpan.FromSeconds(_repairSeconds);
+                        AutoClosingMessageBox.Show($"Perbaikan Selesai (Offline fallback)!\nDurasi: {repairDuration:hh\\:mm\\:ss}", "Sukses", 2000);
+                        OpenMachineRunAndClose();
+                    }
+                    catch (Exception fallbackEx)
+                    {
+                        MessageBox.Show($"Error: {fallbackEx.Message}");
+                    }
+                }
             }
         }
+
+        /// <summary>
+        /// Opens MachineRunForm and closes this form if the run completes successfully.
+        /// </summary>
+        private void OpenMachineRunAndClose()
+        {
+            var runForm = new MachineRunForm(_currentTicketId);
+            if (runForm.ShowDialog() == DialogResult.OK)
+            {
+                this.DialogResult = DialogResult.OK;
+                _allowClose = true;
+                this.Close();
+            }
+            else
+            {
+                _ticketStatus = 2;
+                _timer.Start();
+            }
+        }
+
+        /// <summary>
+        /// Queues the FINISH_TICKET action for offline sync.
+        /// </summary>
+        private void QueueFinishTicketOffline()
+        {
+            var problemsPayload = _problemControls.Select(p => new {
+                ProblemId = p.ProblemId,
+                ProblemTypeName = p.InputProblemType.InputValue,
+                FailureName = p.InputProblemDetail.InputValue,
+                CauseName = p.InputCause.InputValue,
+                ActionName = p.InputAction.InputValue
+            }).ToList();
+
+            var payload = new {
+                TicketId = _currentTicketId,
+                CounterStroke = int.TryParse(inputCounter.InputValue, out int cnt) ? cnt : 0,
+                Is4M = chk4M.Checked ? 1 : 0,
+                TechRatingScore = ratingOperator.Rating,
+                TechRatingNote = inputOperatorNote.InputValue,
+                PatrolDetailId = _patrolDetailId,
+                ArrivalElapsedSeconds = _arrivalSeconds,
+                RepairElapsedSeconds = _repairSeconds,
+                InspectionElapsedSeconds = _inspectionSeconds,
+                Problems = problemsPayload
+            };
+
+            ServiceLocator.OfflineRepo.AddToQueue("FINISH_TICKET", "tickets", payload);
+        }
+
 
         private void PanelFooter_Paint(object sender, PaintEventArgs e)
         {

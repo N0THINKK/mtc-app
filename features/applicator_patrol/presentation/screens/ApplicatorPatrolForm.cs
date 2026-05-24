@@ -19,14 +19,6 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
 {
     public class ApplicatorPatrolForm : Form
     {
-        // ── Konfigurasi path CSV per tipe mesin (path ABSOLUT di PC mesin) ───
-        private static readonly Dictionary<string, string> CsvPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "AC90", @"C:\AC90HMI\prg\prdmst.csv" },
-            { "AC81", @"" },   // TODO: isi path setelah diketahui
-            { "AC95", @"" },   // TODO: isi path setelah diketahui
-        };
-
         // ── Layout constants ─────────────────────────────────────────────
         //  Semua zona berbagi Y yang sama agar sejajar (satu layer)
         //
@@ -36,7 +28,7 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
         //  ROW_BODY    (y=198) : Tabel items (kiri) = List aplikator (kanan)
         //  ROW_FOOTER  (y=618) : Keterangan
         //
-        private const int FORM_W = 1070;
+        private const int FORM_W = 1000;
         private const int FORM_H = 660;
 
         // Kolom
@@ -44,9 +36,9 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
         private const int COL1_W = 280;
         private const int GAP = 8;
         private const int COL2_X = 300;      // list aplikator
-        private const int COL2_W = 620;
-        private const int COL3_X = 930;      // action buttons
-        private const int COL3_W = 120;
+        private const int COL2_W = 560;
+        private const int COL3_X = 870;      // action buttons
+        private const int COL3_W = 110;
 
         // Baris  (shared Y agar sejajar, jarak cukup agar tidak menumpuk)
         private const int ROW_HEADER = 50;
@@ -70,7 +62,6 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
         private string _currentSide = "A";
         private List<string> _sideAApplicators = new List<string>();
         private List<string> _sideBApplicators = new List<string>();
-        private CsvFileWatcherService _fileWatcher;
         private Dictionary<string, string> _judgmentsA = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private Dictionary<string, string> _judgmentsB = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         // Menyimpan ng_items per aplikator (nomor item yg NG, e.g. "1,3")
@@ -103,8 +94,7 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
             this.MinimumSize = this.Size;
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = AppColors.Background;
-            this.FormBorderStyle = FormBorderStyle.FixedSingle;
-            this.MaximizeBox = false;
+            this.FormBorderStyle = FormBorderStyle.Sizable;
 
             BuildTopBar();
             BuildHeaderInputs();
@@ -115,7 +105,7 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
             BuildActionButtons();
             BuildFooter();
 
-            this.FormClosing += (s, e) => { _clockTimer?.Stop(); _fileWatcher?.Dispose(); };
+            this.FormClosing += (s, e) => { _clockTimer?.Stop(); };
         }
 
         // ─── Top bar: clock + title + keluar ─────────────────────────────
@@ -140,20 +130,22 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
                 Font = new Font(AppFonts.FontFamily, 17, FontStyle.Bold),
                 ForeColor = AppColors.TextPrimary,
                 AutoSize = false, TextAlign = ContentAlignment.MiddleCenter,
-                Bounds = new Rectangle(200, 4, 640, 36)
+                Bounds = new Rectangle(200, 4, 640, 36),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
             this.Controls.Add(lblTitle);
 
             btnKeluar = new AppButton
             {
                 Text = "Keluar", Type = AppButton.ButtonType.Secondary,
-                Bounds = new Rectangle(FORM_W - 105, 6, 90, 30)
+                Bounds = new Rectangle(FORM_W - 105, 6, 90, 30),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
             btnKeluar.Click += (s, e) => this.Close();
             this.Controls.Add(btnKeluar);
 
             // Divider
-            this.Controls.Add(new Panel { Bounds = new Rectangle(0, 42, FORM_W, 1), BackColor = AppColors.Border });
+            this.Controls.Add(new Panel { Bounds = new Rectangle(0, 42, FORM_W, 1), BackColor = AppColors.Border, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right });
         }
 
         // ─── Header inputs: Tanggal | Shift | NIK | No.Mesin ────────────
@@ -162,7 +154,7 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
             txtTanggal = new AppInput { LabelText = "Tanggal",   InputType = AppInput.InputTypeEnum.Text, Enabled = false, Bounds = new Rectangle(COL1_X, ROW_HEADER, 150, 75) };
             cmbShift   = new AppInput { LabelText = "Shift",     InputType = AppInput.InputTypeEnum.Dropdown, AllowCustomText = false, Bounds = new Rectangle(170, ROW_HEADER, 115, 75) };
             cmbNik     = new AppInput { LabelText = "NIK",       InputType = AppInput.InputTypeEnum.Dropdown, AllowCustomText = true,  Bounds = new Rectangle(295, ROW_HEADER, 145, 75) };
-            cmbMesin   = new AppInput { LabelText = "No. Mesin", InputType = AppInput.InputTypeEnum.Text,     Enabled = false,          Bounds = new Rectangle(450, ROW_HEADER, 210, 75) };
+            cmbMesin   = new AppInput { LabelText = "No. Mesin", InputType = AppInput.InputTypeEnum.Text,     Enabled = false,          Bounds = new Rectangle(450, ROW_HEADER, 210, 75), Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
             this.Controls.AddRange(new Control[] { txtTanggal, cmbShift, cmbNik, cmbMesin });
         }
 
@@ -179,8 +171,8 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
             };
             this.Controls.Add(lblSide);
 
-            btnSideA = new AppButton { Text = "Sisi A", Type = AppButton.ButtonType.Primary,   Bounds = new Rectangle(COL2_X + COL2_W - 230, ROW_SUB, 110, 32) };
-            btnSideB = new AppButton { Text = "Sisi B", Type = AppButton.ButtonType.Secondary, Bounds = new Rectangle(COL2_X + COL2_W - 115, ROW_SUB, 110, 32) };
+            btnSideA = new AppButton { Text = "Sisi A", Type = AppButton.ButtonType.Primary,   Bounds = new Rectangle(COL2_X + COL2_W - 230, ROW_SUB, 110, 32), Anchor = AnchorStyles.Top | AnchorStyles.Right };
+            btnSideB = new AppButton { Text = "Sisi B", Type = AppButton.ButtonType.Secondary, Bounds = new Rectangle(COL2_X + COL2_W - 115, ROW_SUB, 110, 32), Anchor = AnchorStyles.Top | AnchorStyles.Right };
             btnSideA.Click += (s, e) => SwitchSide("A");
             btnSideB.Click += (s, e) => SwitchSide("B");
             this.Controls.Add(btnSideA);
@@ -203,9 +195,9 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
             this.Controls.Add(hdrLeft);
 
             // Header kuning list kanan
-            var hdrRight = new Panel { Bounds = new Rectangle(COL2_X, ROW_COLHDR, COL2_W, 28), BackColor = Color.FromArgb(255, 210, 30) };
-            hdrRight.Controls.Add(new Label { Text = "No. Aplikator",    Bounds = new Rectangle(32, 0, 240, 28),  Font = new Font(AppFonts.FontFamily, 10f, FontStyle.Bold), ForeColor = AppColors.TextPrimary, TextAlign = ContentAlignment.MiddleLeft });
-            hdrRight.Controls.Add(new Label { Text = "Kondisi Aplikator", Bounds = new Rectangle(278, 0, 300, 28), Font = new Font(AppFonts.FontFamily, 10f, FontStyle.Bold), ForeColor = AppColors.TextPrimary, TextAlign = ContentAlignment.MiddleLeft });
+            var hdrRight = new Panel { Bounds = new Rectangle(COL2_X, ROW_COLHDR, COL2_W, 28), BackColor = Color.FromArgb(255, 210, 30), Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
+            hdrRight.Controls.Add(new Label { Text = "No. Aplikator",    Bounds = new Rectangle(32, 0, 220, 28),  Font = new Font(AppFonts.FontFamily, 10f, FontStyle.Bold), ForeColor = AppColors.TextPrimary, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right });
+            hdrRight.Controls.Add(new Label { Text = "Kondisi Aplikator", Bounds = new Rectangle(260, 0, 200, 28), Font = new Font(AppFonts.FontFamily, 10f, FontStyle.Bold), ForeColor = AppColors.TextPrimary, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Top | AnchorStyles.Right });
             this.Controls.Add(hdrRight);
         }
 
@@ -217,7 +209,8 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
                 Bounds = new Rectangle(COL1_X, ROW_BODY, COL1_W, BODY_H),
                 BackColor = AppColors.Background,
                 BorderStyle = BorderStyle.FixedSingle,
-                AutoScroll = true
+                AutoScroll = true,
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left
             };
             this.Controls.Add(pnl);
 
@@ -261,7 +254,8 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
                 Bounds = new Rectangle(COL2_X, ROW_BODY, COL2_W, BODY_H),
                 BackColor = AppColors.Background,
                 AutoScroll = true,
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.FixedSingle,
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
             };
             this.Controls.Add(pnlApplicatorList);
         }
@@ -271,7 +265,7 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
         {
             int bW = COL3_W, bH = 36;
 
-            btnPrev = new AppButton { Text = "◀ PREV", Type = AppButton.ButtonType.Secondary, Bounds = new Rectangle(COL3_X, ROW_BODY + 60, bW, bH), Visible = false };
+            btnPrev = new AppButton { Text = "◀ PREV", Type = AppButton.ButtonType.Secondary, Bounds = new Rectangle(COL3_X, ROW_BODY + 60, bW, bH), Visible = false, Anchor = AnchorStyles.Top | AnchorStyles.Right };
             btnPrev.Click += (s, e) => GoPage(_currentPage - 1);
             this.Controls.Add(btnPrev);
 
@@ -279,19 +273,19 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
             {
                 Bounds = new Rectangle(COL3_X, ROW_BODY + 100, bW, 22),
                 Font = new Font(AppFonts.FontFamily, 9f), ForeColor = AppColors.TextSecondary,
-                TextAlign = ContentAlignment.MiddleCenter, Visible = false
+                TextAlign = ContentAlignment.MiddleCenter, Visible = false, Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
             this.Controls.Add(lblPageInfo);
 
-            btnNext = new AppButton { Text = "NEXT ▶", Type = AppButton.ButtonType.Secondary, Bounds = new Rectangle(COL3_X, ROW_BODY + 124, bW, bH), Visible = false };
+            btnNext = new AppButton { Text = "NEXT ▶", Type = AppButton.ButtonType.Secondary, Bounds = new Rectangle(COL3_X, ROW_BODY + 124, bW, bH), Visible = false, Anchor = AnchorStyles.Top | AnchorStyles.Right };
             btnNext.Click += (s, e) => GoPage(_currentPage + 1);
             this.Controls.Add(btnNext);
 
-            btnRecord = new AppButton { Text = "Record", Type = AppButton.ButtonType.Primary, Bounds = new Rectangle(COL3_X, ROW_BODY + 220, bW, bH) };
+            btnRecord = new AppButton { Text = "Record", Type = AppButton.ButtonType.Primary, Bounds = new Rectangle(COL3_X, ROW_BODY + 220, bW, bH), Anchor = AnchorStyles.Bottom | AnchorStyles.Right };
             btnRecord.Click += BtnRecord_Click;
             this.Controls.Add(btnRecord);
 
-            btnSimpan = new AppButton { Text = "Simpan", Type = AppButton.ButtonType.Primary, Bounds = new Rectangle(COL3_X, ROW_BODY + BODY_H - bH, bW, bH) };
+            btnSimpan = new AppButton { Text = "Simpan", Type = AppButton.ButtonType.Primary, Bounds = new Rectangle(COL3_X, ROW_BODY + BODY_H - bH, bW, bH), Anchor = AnchorStyles.Bottom | AnchorStyles.Right };
             btnSimpan.Click += BtnSimpan_Click;
             this.Controls.Add(btnSimpan);
         }
@@ -361,10 +355,9 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
 
         private void LoadApplicatorsForMachine(string machineCode)
         {
-            _fileWatcher?.Dispose();
-            string csvPath = ResolveCsvPath(machineCode);
+            string excelPath = ResolveExcelPath(machineCode);
 
-            if (string.IsNullOrEmpty(csvPath))
+            if (string.IsNullOrEmpty(excelPath))
             {
                 _sideAApplicators = new List<string>();
                 _sideBApplicators = new List<string>();
@@ -372,10 +365,10 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
                 return;
             }
 
-            if (!System.IO.File.Exists(csvPath))
+            if (!System.IO.File.Exists(excelPath))
             {
                 MessageBox.Show(
-                    $"File prdmst.csv tidak ditemukan:\n{csvPath}\n\nPastikan path sudah benar.",
+                    $"File Excel tidak ditemukan:\n{excelPath}\n\nPastikan path MasterAplikator sudah benar.",
                     "File Tidak Ditemukan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 _sideAApplicators = new List<string>();
                 _sideBApplicators = new List<string>();
@@ -383,39 +376,21 @@ namespace mtc_app.features.applicator_patrol.presentation.screens
                 return;
             }
 
-            _fileWatcher = new CsvFileWatcherService(csvPath);
-            var (sideA, sideB) = _fileWatcher.ReadInitial();
+            var (sideA, sideB) = ApplicatorExcelReader.ReadApplicators(excelPath, machineCode);
             _sideAApplicators = sideA;
             _sideBApplicators = sideB;
             RebuildApplicatorRows();
-
-            _fileWatcher.OnApplicatorsChanged += (newA, newB) =>
-            {
-                if (!this.IsDisposed)
-                    this.BeginInvoke(new Action(() =>
-                    {
-                        _sideAApplicators = newA;
-                        _sideBApplicators = newB;
-                        RebuildApplicatorRows();
-                    }));
-            };
-            _fileWatcher.Start();
         }
 
-        private string ResolveCsvPath(string machineCode)
+        private string ResolveExcelPath(string machineCode)
         {
-            foreach (var key in CsvPaths.Keys)
+            string excelPath = @"C:\MTC_System\Data\MasterAplikator.xls";
+            if (!System.IO.File.Exists(excelPath))
             {
-                if (!string.IsNullOrEmpty(machineCode) && machineCode.StartsWith(key, StringComparison.OrdinalIgnoreCase))
-                {
-                    string configured = CsvPaths[key];
-                    if (string.IsNullOrEmpty(configured)) return null;
-                    return System.IO.Path.IsPathRooted(configured)
-                        ? configured
-                        : System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, configured);
-                }
+                string fallback = excelPath + "x";
+                if (System.IO.File.Exists(fallback)) excelPath = fallback;
             }
-            return null;
+            return excelPath;
         }
 
         // ═════════════════════════════════════════════════════════════════

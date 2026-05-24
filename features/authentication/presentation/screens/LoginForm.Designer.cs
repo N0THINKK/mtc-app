@@ -61,7 +61,7 @@ namespace mtc_app.features.authentication.presentation.screens
             this.lblTitle.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.lblTitle.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
             this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Text = "MANIS LOGIN";
+            this.lblTitle.Text = "LOGIN MANIS";
             this.lblTitle.Type = mtc_app.shared.presentation.components.AppLabel.LabelType.Header1;
             this.lblTitle.TabIndex = 0;
 

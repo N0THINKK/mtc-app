@@ -24,14 +24,6 @@ namespace mtc_app.features.machine_history.presentation.screens
         private readonly IMachineHistoryRepository _repository;
         private readonly IMasterDataRepository _masterDataRepository;
         
-        // CSV paths for prdmst (same as applicator patrol)
-        private static readonly Dictionary<string, string> CsvPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "AC90", @"C:\AC90HMI\prg\prdmst.csv" },
-            { "AC81", @"" },
-            { "AC95", @"" },
-        };
-        
         // Header Inputs
         private AppInput inputOperatorNik; // [BARU] Input untuk NIK Operator
         private AppInput inputShift;
@@ -78,15 +70,15 @@ namespace mtc_app.features.machine_history.presentation.screens
             await Task.Delay(50); 
 
             LoadAreas();
-            LoadApplicatorsFromCsv();
+            LoadApplicatorsFromExcel();
             await CheckForPendingTicketAsync();
         }
 
         // Main Responsive Layout Containers
         private TableLayoutPanel _rootLayout;
         private TableLayoutPanel _tab1Layout;
-        private TableLayoutPanel _formLayout; 
-        private TableLayoutPanel _problemsLayout; 
+        private FlowLayoutPanel _formLayout; 
+        private Panel _problemsLayout; 
 
         private void InitializeCustomTabs()
         {
@@ -131,14 +123,35 @@ namespace mtc_app.features.machine_history.presentation.screens
             _tab1Layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); 
             _tab1Layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));    
 
-            _formLayout = new TableLayoutPanel
+            _formLayout = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 1,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
                 AutoScroll = true,
                 Padding = new Padding(0, 0, 20, 0) 
             };
-            _formLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            _formLayout.Resize += (s, e) => 
+            {
+                int newWidth = _formLayout.ClientSize.Width - 20;
+                if (newWidth < 100) return; // Prevent collapse
+
+                foreach (Control c in _formLayout.Controls)
+                {
+                    if (c == _problemsLayout)
+                    {
+                        c.Width = newWidth;
+                        foreach (Control pc in _problemsLayout.Controls)
+                        {
+                            pc.Width = newWidth;
+                        }
+                    }
+                    else
+                    {
+                        c.Width = newWidth;
+                    }
+                }
+            };
             _tab1Layout.Controls.Add(_formLayout, 0, 0);
 
             panelFooter.Parent = null; 
@@ -233,10 +246,9 @@ namespace mtc_app.features.machine_history.presentation.screens
         {
             void AddToForm(Control c, int bottomMargin = 10)
             {
-                 c.Dock = DockStyle.Top; 
+                 c.Width = _formLayout.ClientSize.Width > 0 ? _formLayout.ClientSize.Width - 20 : 500;
                  c.Margin = new Padding(0, 0, 0, bottomMargin);
-                 _formLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-                 _formLayout.Controls.Add(c, 0, _formLayout.RowCount++);
+                 _formLayout.Controls.Add(c);
             }
 
             // 1. NIK Operator [BARU]
@@ -270,20 +282,18 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
             AddToForm(lblProblems);
 
-            // 5. Problems Container
-            _problemsLayout = new TableLayoutPanel
+            // 5. Problems Container — auto-sizing FlowLayoutPanel
+            _problemsLayout = new FlowLayoutPanel
             {
-                Dock = DockStyle.Top,
                 AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink, 
-                GrowStyle = TableLayoutPanelGrowStyle.AddRows,
-                ColumnCount = 1,
-                Padding = new Padding(0)
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                Padding = new Padding(0),
+                Margin = new Padding(0)
             };
-            _problemsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             
-            _formLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            _formLayout.Controls.Add(_problemsLayout, 0, _formLayout.RowCount++);
+            AddToForm(_problemsLayout, 0);
 
             // 6. Add Problem Button
             btnAddProblem = new AppButton
@@ -313,19 +323,18 @@ namespace mtc_app.features.machine_history.presentation.screens
             AddProblemInput();
         }
 
+        private const int ProblemRowHeight = 250;
+
         private void AddProblemInput()
         {
             var problemControl = new ProblemInputControl(_problemControls.Count);
             problemControl.RemoveRequested += (s, e) => RemoveProblemInput(problemControl);
-            problemControl.Dock = DockStyle.Top;
+            problemControl.Margin = new Padding(0, 0, 0, 0); 
             
             _problemControls.Add(problemControl);
             
-            _problemsLayout.SuspendLayout();
-            _problemsLayout.RowCount = _problemControls.Count;
-            _problemsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 230));
-            _problemsLayout.Controls.Add(problemControl, 0, _problemControls.Count - 1);
-            _problemsLayout.ResumeLayout(true);
+            problemControl.Width = _formLayout.ClientSize.Width > 20 ? _formLayout.ClientSize.Width - 20 : 500;
+            _problemsLayout.Controls.Add(problemControl);
         }
 
         private void RemoveProblemInput(ProblemInputControl control)
@@ -337,27 +346,14 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
             
             _problemControls.Remove(control);
+            _problemsLayout.Controls.Remove(control);
+            control.Dispose();
             
-            // Rebuild the entire TableLayoutPanel to avoid ghost rows
-            _problemsLayout.SuspendLayout();
-            _problemsLayout.Controls.Clear();
-            _problemsLayout.RowStyles.Clear();
-            _problemsLayout.RowCount = _problemControls.Count;
-            
+            // Re-position remaining controls
             for (int i = 0; i < _problemControls.Count; i++)
             {
                 _problemControls[i].UpdateIndex(i);
-                _problemsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 230));
-                _problemsLayout.Controls.Add(_problemControls[i], 0, i);
             }
-            _problemsLayout.ResumeLayout(true);
-            
-            control.Dispose();
-            
-            // Explicitly set height to match content and reset scroll
-            _problemsLayout.Height = _problemControls.Count * 230;
-            _formLayout.AutoScrollPosition = new Point(0, 0);
-            _formLayout.PerformLayout();
         }
 
         private void HandleKeyDown(object sender, KeyEventArgs e)
@@ -392,7 +388,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             catch { /* Ignore */ }
         }
 
-        private void LoadApplicatorsFromCsv()
+        private void LoadApplicatorsFromExcel()
         {
             try
             {
@@ -405,23 +401,18 @@ namespace mtc_app.features.machine_history.presentation.screens
                     if (machine != null) machineCode = machine.Code ?? "";
                 }
 
-                // Find matching CSV path
-                string csvPath = null;
-                foreach (var key in CsvPaths.Keys)
+                // Hardcode Excel path based on request
+                string excelPath = @"C:\MTC_System\Data\MasterAplikator.xls";
+                if (!File.Exists(excelPath))
                 {
-                    if (!string.IsNullOrEmpty(machineCode) && machineCode.StartsWith(key, StringComparison.OrdinalIgnoreCase))
-                    {
-                        string configured = CsvPaths[key];
-                        if (!string.IsNullOrEmpty(configured))
-                            csvPath = Path.IsPathRooted(configured) ? configured : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, configured);
-                        break;
-                    }
+                    string fallback = excelPath + "x";
+                    if (File.Exists(fallback)) excelPath = fallback;
                 }
 
-                if (string.IsNullOrEmpty(csvPath) || !File.Exists(csvPath)) return;
+                if (!File.Exists(excelPath)) return;
 
-                // Read applicators from prdmst.csv
-                var (sideA, sideB) = ApplicatorCsvReader.ReadApplicators(csvPath);
+                // Read applicators from MasterAplikator.xls
+                var (sideA, sideB) = ApplicatorExcelReader.ReadApplicators(excelPath, machineCode);
                 var allApplicators = sideA.Union(sideB).OrderBy(x => x).ToArray();
 
                 if (allApplicators.Length > 0)
@@ -441,7 +432,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 using (var conn = DatabaseHelper.GetConnection())
                 {
-                    var areas = await conn.QueryAsync<string>("SELECT area_name FROM machine_areas ORDER BY area_name");
+                    var areas = await conn.QueryAsync<string>("SELECT area_name FROM machine_areas WHERE area_name != 'Lain2' ORDER BY area_name");
                     foreach (var area in areas)
                     {
                         if (!_cmbArea.Items.Contains(area)) 

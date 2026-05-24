@@ -22,20 +22,42 @@ namespace mtc_app.features.machine_history.data.repositories
                         t.ticket_id AS TicketId,
                         t.ticket_uuid AS TicketUuid,
                         t.ticket_display_code AS TicketCode,
+                        t.applicator_code AS ApplicatorCode,
                         IFNULL(CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number), 'Unknown') AS MachineName,
-                        IFNULL(tech.full_name, '-') AS TechnicianName,
+                        IFNULL(tech.nik, '-') AS TechnicianName,
                         IFNULL(op.full_name, '-') AS OperatorName,
                         
-                        (SELECT CONCAT(
-                            IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
-                            IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown'))
+                        (SELECT GROUP_CONCAT(
+                            CONCAT(
+                                IF(pt.type_name IS NOT NULL, CONCAT('[', pt.type_name, '] '), ''), 
+                                IFNULL(f.failure_name, IFNULL(tp.failure_remarks, 'Unknown'))
+                            ) SEPARATOR ' | '
                          )
                          FROM ticket_problems tp
                          LEFT JOIN problem_types pt ON tp.problem_type_id = pt.type_id
                          LEFT JOIN failures f ON tp.failure_id = f.failure_id
                          WHERE tp.ticket_id = t.ticket_id
-                         LIMIT 1
                         ) AS Issue,
+
+                        (SELECT GROUP_CONCAT(
+                            IFNULL(act.action_name, IFNULL(tp.action_details_manual, '-'))
+                            SEPARATOR ' | '
+                         )
+                         FROM ticket_problems tp
+                         LEFT JOIN actions act ON tp.action_id = act.action_id
+                         WHERE tp.ticket_id = t.ticket_id
+                        ) AS ActionDetails,
+
+                        (SELECT GROUP_CONCAT(
+                            CONCAT(COALESCE(p.part_name, pr.part_name_manual), ' x', pr.qty)
+                            SEPARATOR ', '
+                         )
+                         FROM part_requests pr
+                         LEFT JOIN parts p ON pr.part_id = p.part_id
+                         WHERE pr.ticket_id = t.ticket_id
+                        ) AS SparepartUsed,
+
+                        t.counter_stroke AS CounterStroke,
 
                         (SELECT CONCAT(
                             IFNULL(act.action_name, IFNULL(tp.action_details_manual, '-')),
@@ -133,13 +155,15 @@ namespace mtc_app.features.machine_history.data.repositories
                         string insertTicketSql = @"
                             INSERT INTO tickets (
                                 ticket_uuid, ticket_display_code, machine_id, shift_id, operator_id, applicator_code, 
-                                status_id, is_machine_running, technician_id, started_at, technician_finished_at, production_resumed_at,
-                                counter_stroke, is_4m, tech_rating_score, tech_rating_note, created_at
+                                status_id, is_machine_running, technician_id, started_at, inspection_started_at, technician_finished_at, production_resumed_at,
+                                counter_stroke, is_4m, tech_rating_score, tech_rating_note, gl_rating_score, gl_rating_note, 
+                                arrival_elapsed_seconds, repair_elapsed_seconds, inspection_elapsed_seconds, run_elapsed_seconds, created_at
                             )
                             VALUES (
                                 @Uuid, @Code, @MachineId, @ShiftId, @OpId, @AppCode, 
-                                @StatusId, @IsRunning, @TechId, @Started, @Finished, @Resumed,
-                                @Counter, @Is4M, @Rating, @RatingNote, NOW()
+                                @StatusId, @IsRunning, @TechId, @Started, @Inspection, @Finished, @Resumed,
+                                @Counter, @Is4M, @TechRating, @TechNote, @GlRating, @GlNote, 
+                                @Arrival, @Repair, @Inspect, @RunElapsed, NOW()
                             );
                             SELECT LAST_INSERT_ID();";
 
@@ -154,12 +178,19 @@ namespace mtc_app.features.machine_history.data.repositories
                             IsRunning = request.IsMachineRunning,
                             TechId = techId,
                             Started = request.StartedAt,
+                            Inspection = request.InspectionStartedAt,
                             Finished = request.FinishedAt,
                             Resumed = request.ProductionResumedAt,
                             Counter = request.CounterStroke,
                             Is4M = request.Is4M ? 1 : 0,
-                            Rating = request.TechRatingScore,
-                            RatingNote = request.TechRatingNote
+                            TechRating = request.TechRatingScore,
+                            TechNote = request.TechRatingNote,
+                            GlRating = request.GlRatingScore,
+                            GlNote = request.GlRatingNote,
+                            Arrival = request.ArrivalElapsedSeconds,
+                            Repair = request.RepairElapsedSeconds,
+                            Inspect = request.InspectionElapsedSeconds,
+                            RunElapsed = request.RunElapsedSeconds
                         }, trans);
 
                         // 2. Insert Session Log (Jika ada teknisi)
@@ -273,8 +304,9 @@ namespace mtc_app.features.machine_history.data.repositories
                         t.ticket_id AS TicketId,
                         t.ticket_uuid AS TicketUuid,
                         t.ticket_display_code AS TicketCode,
+                        t.applicator_code AS ApplicatorCode,
                         IFNULL(CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number), 'Unknown') AS MachineName,
-                        IFNULL(tech.full_name, '-') AS TechnicianName,
+                        IFNULL(tech.nik, '-') AS TechnicianName,
                         IFNULL(op.full_name, '-') AS OperatorName,
                         
                         (SELECT CONCAT(
@@ -321,6 +353,7 @@ namespace mtc_app.features.machine_history.data.repositories
                 string rawDataSql = @"
                     SELECT 
                         DATE(l.patrol_date) AS PatrolDate,
+                        l.shift AS Shift,
                         d.item_id AS ItemId,
                         d.status AS Status
                     FROM patrol_logs l
@@ -332,7 +365,11 @@ namespace mtc_app.features.machine_history.data.repositories
                 var rawData = await connection.QueryAsync(rawDataSql, new { MachId = machineId, TempId = templateId, RoleTarget = roleTarget, Start = startDate });
 
                 // 2. Tentukan Kolom (Berdasarkan Tanggal yang unik dari data yang sudah difilter)
-                var distinctDates = rawData.Select(r => ((DateTime)r.PatrolDate).ToString("dd/MM/yyyy")).Distinct().ToList();
+                var rawDataList = rawData.ToList();
+                var distinctDates = rawDataList.Select(r => {
+                    string shiftName = r.Shift == "A" ? "Pagi" : (r.Shift == "B" ? "Malam" : r.Shift);
+                    return $"{((DateTime)r.PatrolDate).ToString("dd/MM/yyyy")} ({shiftName})";
+                }).Distinct().ToList();
 
                 foreach (var dateStr in distinctDates)
                 {
@@ -357,7 +394,10 @@ namespace mtc_app.features.machine_history.data.repositories
                     // 4. Isi cell dengan mencocokkan item ID dan Tanggal
                     foreach (var dateCol in distinctDates)
                     {
-                        var matchingRecords = rawData.Where(r => (int)r.ItemId == itemId && ((DateTime)r.PatrolDate).ToString("dd/MM/yyyy") == dateCol);
+                        var matchingRecords = rawDataList.Where(r => {
+                            string shiftName = r.Shift == "A" ? "Pagi" : (r.Shift == "B" ? "Malam" : r.Shift);
+                            return (int)r.ItemId == itemId && $"{((DateTime)r.PatrolDate).ToString("dd/MM/yyyy")} ({shiftName})" == dateCol;
+                        });
                         
                         if (matchingRecords.Any())
                         {
@@ -365,11 +405,11 @@ namespace mtc_app.features.machine_history.data.repositories
                             var lastRecord = matchingRecords.Last();
                             string status = lastRecord.Status?.ToString() ?? "";
 
-                            if (status == "OK" || status == "PERBAIKAN_OK")
+                            if (status == "OK")
                             {
                                 row[dateCol] = "OK";
                             }
-                            else if (status == "NG" || status == "NOT_OK")
+                            else if (status == "NG" || status == "NOT_OK" || status == "PERBAIKAN_OK" || status == "NG_CARRYOVER")
                             {
                                 row[dateCol] = "NG";
                             }
@@ -408,7 +448,7 @@ namespace mtc_app.features.machine_history.data.repositories
                     FROM patrol_logs l
                     JOIN patrol_log_details d ON l.log_id = d.log_id
                     WHERE l.machine_id = @MachineId 
-                      AND d.status IN ('NOT_OK', 'NG')
+                      AND d.status IN ('NOT_OK', 'NG', 'NG_CARRYOVER')
                       -- Kita hanya ambil yang benar-benar belum selesai (is_ticket_created tidak menuntaskan masalah secara langsung tanpa tiket ditutup, tapi di sini kita cukup cek status detailnya)
                 ";
                 var result = await connection.QueryAsync<int>(sql, new { MachineId = machineId });

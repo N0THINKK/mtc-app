@@ -61,7 +61,11 @@ namespace mtc_app.features.machine_history.presentation.components
             _grid.Columns.Add(colDate);
 
             _grid.Columns.Add(CreateColumn("MachineName", "Mesin", 120));
-            _grid.Columns.Add(CreateColumn("Issue", "Problem", 200));
+            _grid.Columns.Add(CreateColumn("ApplicatorCode", "No Aplikator", 100));
+            _grid.Columns.Add(CreateColumn("Issue", "Problem", 180));
+            _grid.Columns.Add(CreateColumn("ActionDetails", "Tindakan", 150));
+            _grid.Columns.Add(CreateColumn("SparepartUsed", "Part Diganti", 130));
+            _grid.Columns.Add(CreateColumn("CounterStroke", "Counter", 80));
             _grid.Columns.Add(CreateColumn("TechnicianName", "Teknisi", 100));
             _grid.Columns.Add(CreateColumn("ReportedTime", "Mulai Lapor", 80));
             _grid.Columns.Add(CreateColumn("FinishedTime", "Selesai", 80));

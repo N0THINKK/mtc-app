@@ -25,6 +25,12 @@ namespace mtc_app.features.admin.presentation.views
         // Tambahan untuk Fitur Search
         private TextBox txtSearch;
         private IEnumerable<dynamic> _originalData; 
+        private IEnumerable<dynamic> _currentData; 
+        private int _currentPage = 1;
+        private int _pageSize = 20; // Reverted back to 20 as requested
+        
+        // Paginasi Controls
+        private PaginationControl paginationTop;
 
         // Komponen untuk Tab Problem
         private FlowLayoutPanel pnlProblemTabs;
@@ -49,7 +55,11 @@ namespace mtc_app.features.admin.presentation.views
             Panel pnlHeader = new Panel { Dock = DockStyle.Top, Height = 60, BackColor = Color.Transparent, Padding = new Padding(0, 0, 0, 15) };
 
             // Judul di pojok kiri
-            lblTitle = new AppLabel { Text = "Master Data", Font = AppFonts.Header2, ForeColor = AppColors.TextPrimary, AutoSize = true, Dock = DockStyle.Left };
+            lblTitle = new AppLabel { Text = "Master Data", Font = AppFonts.Header2, ForeColor = AppColors.TextPrimary, AutoSize = true, Dock = DockStyle.Left, Padding=new Padding(0,0,10,0) };
+            
+            // Pagination di sebelah judul
+            paginationTop = new PaginationControl { Dock = DockStyle.Left };
+            paginationTop.PageChanged += (s, page) => { _currentPage = page; RenderGrid(); };
 
             // Tombol Tambah (Akan menempel di pojok kanan)
             btnAdd = new AppButton
@@ -116,7 +126,8 @@ namespace mtc_app.features.admin.presentation.views
             pnlHeader.Controls.Add(btnAdd);     // 1. Paling Kanan
             pnlHeader.Controls.Add(pnlSpacer);  // 2. Jarak kosong
             pnlHeader.Controls.Add(pnlSearch);  // 3. Search Bar
-            pnlHeader.Controls.Add(lblTitle);   // 4. Paling Kiri
+            pnlHeader.Controls.Add(paginationTop); // 4. Sebelah judul
+            pnlHeader.Controls.Add(lblTitle);   // 5. Paling Kiri
 
             // ==========================================
             // 2. PROBLEM TABS SECTION 
@@ -166,11 +177,11 @@ namespace mtc_app.features.admin.presentation.views
             gridData.DefaultCellStyle.Font = AppFonts.BodySmall;
             gridData.DefaultCellStyle.Padding = new Padding(16, 12, 16, 12);
             gridData.RowTemplate.Height = 56;
-            
+
             gridData.DataBindingComplete += (s, e) => gridData.ClearSelection();
             gridData.CellPainting += GridData_CellPainting;
             gridData.CellContentClick += GridData_CellContentClick;
-
+            
             cardGridContainer.Controls.Add(gridData);
             
             this.Controls.Add(cardGridContainer);
@@ -193,7 +204,9 @@ namespace mtc_app.features.admin.presentation.views
             // Jika kosong, kembalikan ke data full
             if (string.IsNullOrWhiteSpace(keyword) || keyword == "pencarian...")
             {
-                gridData.DataSource = _originalData.ToList();
+                _currentData = _originalData;
+                _currentPage = 1;
+                RenderGrid();
                 return;
             }
 
@@ -215,7 +228,31 @@ namespace mtc_app.features.admin.presentation.views
             }).ToList();
 
             // Tampilkan hasil saringan ke grid
-            gridData.DataSource = filteredList;
+            _currentData = filteredList;
+            _currentPage = 1;
+            RenderGrid();
+        }
+
+        private void RenderGrid()
+        {
+            if (_currentData == null)
+            {
+                gridData.DataSource = null;
+                paginationTop.Visible = false;
+                return;
+            }
+
+            var list = _currentData.ToList();
+            int totalItems = list.Count;
+
+            var pagedData = list.Skip((_currentPage - 1) * _pageSize).Take(_pageSize).ToList();
+            gridData.DataSource = pagedData;
+
+            paginationTop.Visible = totalItems > 0;
+            if (totalItems > 0)
+            {
+                paginationTop.Setup(totalItems, _pageSize, _currentPage);
+            }
         }
 
         private void ResetSearchBox()
@@ -307,6 +344,10 @@ namespace mtc_app.features.admin.presentation.views
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "KODE MESIN", DataPropertyName = "kode", FillWeight = 80 });
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "KONDISI", DataPropertyName = "kondisi", FillWeight = 80 });
                     break;
+                case "Area Mesin":
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ID", DataPropertyName = "id", FillWeight = 50 });
+                    gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "NAMA AREA", DataPropertyName = "nama", FillWeight = 250 });
+                    break;
                 case "Sparepart":
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "KODE PART", DataPropertyName = "kode", FillWeight = 80 });
                     gridData.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "NAMA SPAREPART", DataPropertyName = "nama", FillWeight = 180 });
@@ -330,10 +371,13 @@ namespace mtc_app.features.admin.presentation.views
                 this.Cursor = Cursors.WaitCursor;
                 if (category == "User") _originalData = await _repository.GetMasterUsersAsync();
                 else if (category == "Mesin") _originalData = await _repository.GetMasterMachinesAsync();
+                else if (category == "Area Mesin") _originalData = await _repository.GetMasterMachineAreasDataAsync();
                 else if (category == "Sparepart") _originalData = await _repository.GetMasterSparepartsAsync();
                 else if (category == "Target") _originalData = await _repository.GetOutputTargetsAsync();
                 
-                gridData.DataSource = _originalData?.ToList();
+                _currentData = _originalData;
+                _currentPage = 1;
+                RenderGrid();
             }
             catch (Exception ex) { MessageBox.Show($"Gagal memuat {category}:\n" + ex.Message, "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             finally { this.Cursor = Cursors.Default; }
@@ -396,7 +440,9 @@ namespace mtc_app.features.admin.presentation.views
                 else if (subCategory == "Checksheet Teknisi") _originalData = await _repository.GetMasterChecksheetsAsync("Teknisi"); 
                 else if (_currentCategory == "Waktu Break") _originalData = await _repository.GetShiftBreaksAsync(subCategory);
 
-                gridData.DataSource = _originalData?.ToList();
+                _currentData = _originalData;
+                _currentPage = 1;
+                RenderGrid();
             }
             catch (Exception ex) { MessageBox.Show($"Gagal memuat {subCategory}:\n" + ex.Message, "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             finally { this.Cursor = Cursors.Default; }
@@ -485,19 +531,33 @@ namespace mtc_app.features.admin.presentation.views
                         var dataDict = rowData as IDictionary<string, object>;
                         int idToDelete = Convert.ToInt32(dataDict["id"]);
 
-                        bool success;
-                        if (_currentCategory == "Target")
-                            success = await _repository.DeleteOutputTargetAsync(idToDelete);
-                        else
-                            success = await _repository.DeleteMasterDataAsync(_currentCategory, _currentProblemSubCategory, idToDelete);
+                        try
+                        {
+                            bool success;
+                            if (_currentCategory == "Target")
+                                success = await _repository.DeleteOutputTargetAsync(idToDelete);
+                            else
+                                success = await _repository.DeleteMasterDataAsync(_currentCategory, _currentProblemSubCategory, idToDelete);
 
-                        if (success) {
-                            if (_currentCategory == "Problem" || _currentCategory == "Checksheet") 
-                                LoadSubCategory(_currentProblemSubCategory);
-                            else 
-                                LoadCategory(_currentCategory);
-                        } else {
-                            MessageBox.Show("Gagal menghapus data. Data mungkin sedang dipakai di tabel lain.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            if (success) {
+                                if (_currentCategory == "Problem" || _currentCategory == "Checksheet") 
+                                    LoadSubCategory(_currentProblemSubCategory);
+                                else 
+                                    LoadCategory(_currentCategory);
+                            } else {
+                                MessageBox.Show("Gagal menghapus data. Data mungkin sedang dipakai di tabel lain.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            if (ex.Message.Contains("foreign key") || ex.Message.Contains("REFERENCE"))
+                            {
+                                MessageBox.Show("Tidak dapat menghapus data ini karena masih digunakan (terikat) dengan data lain di sistem (misal: ada mesin yang menggunakan area ini).", "Gagal Menghapus", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            }
+                            else
+                            {
+                                MessageBox.Show($"Terjadi kesalahan saat menghapus data:\n{ex.Message}", "Error Sistem", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
                         }
                     }
                 }

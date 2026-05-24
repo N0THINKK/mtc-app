@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
@@ -21,6 +22,13 @@ namespace mtc_app.features.admin.presentation.views
         private MetricCard cardOpen;
         private MetricCard cardValidate;
         private AppLabel lblLastUpdate;
+
+        // Paginasi Controls
+        private IEnumerable<dynamic> _allTickets;
+        private int _currentPage = 1;
+        private int _pageSize = 20;
+        private PaginationControl paginationTop;
+        private ComboBox cboAreaFilter;
 
         public MonitoringView(IAdminRepository repository)
         {
@@ -94,8 +102,28 @@ namespace mtc_app.features.admin.presentation.views
                 Font = AppFonts.Header3,
                 ForeColor = AppColors.TextPrimary,
                 AutoSize = true,
-                Location = new Point(0, 5)
+                Dock = DockStyle.Left,
+                Padding = new Padding(0, 5, 10, 0)
             };
+
+            paginationTop = new PaginationControl { Dock = DockStyle.Left, Padding = new Padding(10, 5, 0, 0) };
+            paginationTop.PageChanged += (s, page) => { _currentPage = page; RenderGrid(); };
+
+            Panel pnlFilter = new Panel { Dock = DockStyle.Left, Width = 150, Padding = new Padding(10, 5, 0, 0) };
+            cboAreaFilter = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Width = 140,
+                Dock = DockStyle.Top,
+                Font = AppFonts.BodySmall
+            };
+            cboAreaFilter.Items.Add("Semua Area");
+            cboAreaFilter.SelectedIndex = 0;
+            cboAreaFilter.SelectedIndexChanged += (s, e) => {
+                _currentPage = 1;
+                RenderGrid();
+            };
+            pnlFilter.Controls.Add(cboAreaFilter);
 
             lblLastUpdate = new AppLabel
             {
@@ -108,6 +136,8 @@ namespace mtc_app.features.admin.presentation.views
                 Padding = new Padding(0, 10, 0, 0)
             };
 
+            pnlGridHeader.Controls.Add(paginationTop);
+            pnlGridHeader.Controls.Add(pnlFilter);
             pnlGridHeader.Controls.Add(lblGridTitle);
             pnlGridHeader.Controls.Add(lblLastUpdate);
 
@@ -155,9 +185,19 @@ namespace mtc_app.features.admin.presentation.views
                 HeaderText = "AKSI",
                 Text = "Lihat",
                 UseColumnTextForButtonValue = true,
-                FillWeight = 70
+                FillWeight = 50
             };
             gridTickets.Columns.Add(btnCol);
+
+            var btnDelCol = new DataGridViewButtonColumn
+            {
+                Name = "Delete",
+                HeaderText = "HAPUS",
+                Text = "Hapus",
+                UseColumnTextForButtonValue = true,
+                FillWeight = 50
+            };
+            gridTickets.Columns.Add(btnDelCol);
 
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "No Tiket", DataPropertyName = "ID Tiket", Visible = false });
             gridTickets.Columns.Add(new DataGridViewTextBoxColumn { Name = "Operator", DataPropertyName = "Nama Operator", Visible = false });
@@ -228,26 +268,28 @@ namespace mtc_app.features.admin.presentation.views
 
             string colName = gridTickets.Columns[e.ColumnIndex].Name;
 
-            if (colName == "Detail")
+            if (colName == "Detail" || colName == "Delete")
             {
                 e.PaintBackground(e.CellBounds, true);
 
                 int btnHeight = 36;
-                int btnWidth = 70;
+                int btnWidth = 60;
                 int btnY = e.CellBounds.Y + (e.CellBounds.Height - btnHeight) / 2;
                 int btnX = e.CellBounds.X + (e.CellBounds.Width - btnWidth) / 2; 
 
                 Rectangle btnRect = new Rectangle(btnX, btnY, btnWidth, btnHeight);
+                Color btnColor = colName == "Delete" ? AppColors.Danger : AppColors.Primary;
+                string btnText = colName == "Delete" ? "Hapus" : "Lihat";
 
                 using (System.Drawing.Drawing2D.GraphicsPath path = GraphicsUtils.GetRoundedRectangle(btnRect, 8))
                 {
-                    using (Pen pen = new Pen(AppColors.Primary, 1.5f))
+                    using (Pen pen = new Pen(btnColor, 1.5f))
                     {
                         e.Graphics.DrawPath(pen, path);
                     }
                 }
 
-                TextRenderer.DrawText(e.Graphics, "Lihat", new Font(AppFonts.BodySmall, FontStyle.Bold), btnRect, AppColors.Primary, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                TextRenderer.DrawText(e.Graphics, btnText, new Font(AppFonts.BodySmall, FontStyle.Bold), btnRect, btnColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
 
                 e.Handled = true;
             }
@@ -335,31 +377,65 @@ namespace mtc_app.features.admin.presentation.views
             }
         }
 
-        private void GridTickets_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        private async void GridTickets_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex >= 0 && gridTickets.Columns[e.ColumnIndex].Name == "Detail")
+            if (e.RowIndex >= 0)
             {
                 var row = gridTickets.Rows[e.RowIndex];
-                
-                string waitPart = row.Cells["Waktu Tunggu Part"].Value?.ToString() ?? "-";
-                string waitOp = row.Cells["Waktu Tunggu Operator"].Value?.ToString() ?? "-";
+                string colName = gridTickets.Columns[e.ColumnIndex].Name;
 
-                string detailMsg = 
-                    $"No Tiket: {row.Cells["No Tiket"].Value}\n" +
-                    $"Status: {row.Cells["Status"].Value}\n\n" +
-                    $"Mesin: {row.Cells["Mesin"].Value}\n" +
-                    $"Problem: {row.Cells["Problem"].Value}\n" +
-                    $"Teknisi: {row.Cells["Teknisi"].Value}\n" +
-                    $"Operator: {row.Cells["Operator"].Value}\n\n" +
-                    $"Waktu Lapor: {row.Cells["Waktu Lapor"].Value}\n" +
-                    $"-----------------------------------\n" +
-                    $"DURASI RESPON: {row.Cells["Durasi Respon"].Value}\n" +
-                    $"DURASI PERBAIKAN: {row.Cells["Durasi Perbaikan"].Value}\n" +
-                    $"WAKTU TUNGGU PART: {waitPart}\n" +
-                    $"WAKTU TUNGGU OPERATOR: {waitOp}\n" +
-                    $"TOTAL DOWNTIME: {row.Cells["Total Downtime"].Value}";
+                if (colName == "Detail")
+                {
+                    string waitPart = row.Cells["Waktu Tunggu Part"].Value?.ToString() ?? "-";
+                    string waitOp = row.Cells["Waktu Tunggu Operator"].Value?.ToString() ?? "-";
 
-                MessageBox.Show(detailMsg, "Detail Tiket", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    string detailMsg = 
+                        $"No Tiket: {row.Cells["No Tiket"].Value}\n" +
+                        $"Status: {row.Cells["Status"].Value}\n\n" +
+                        $"Mesin: {row.Cells["Mesin"].Value}\n" +
+                        $"Problem: {row.Cells["Problem"].Value}\n" +
+                        $"Teknisi: {row.Cells["Teknisi"].Value}\n" +
+                        $"Operator: {row.Cells["Operator"].Value}\n\n" +
+                        $"Waktu Lapor: {row.Cells["Waktu Lapor"].Value}\n" +
+                        $"-----------------------------------\n" +
+                        $"DURASI RESPON: {row.Cells["Durasi Respon"].Value}\n" +
+                        $"DURASI PERBAIKAN: {row.Cells["Durasi Perbaikan"].Value}\n" +
+                        $"WAKTU TUNGGU PART: {waitPart}\n" +
+                        $"WAKTU TUNGGU OPERATOR: {waitOp}\n" +
+                        $"TOTAL DOWNTIME: {row.Cells["Total Downtime"].Value}";
+
+                    MessageBox.Show(detailMsg, "Detail Tiket", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else if (colName == "Delete")
+                {
+                    long ticketId = Convert.ToInt64(row.Cells["No Tiket"].Value);
+                    var confirm = MessageBox.Show(
+                        $"Apakah Anda yakin ingin MENGHAPUS tiket mesin ini secara permanen?\n\nMesin: {row.Cells["Mesin"].Value}\nProblem: {row.Cells["Problem"].Value}\n\nTindakan ini tidak dapat dibatalkan.",
+                        "Konfirmasi Hapus Tiket",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning);
+
+                    if (confirm == DialogResult.Yes)
+                    {
+                        try
+                        {
+                            bool success = await _repository.DeleteTicketAsync(ticketId);
+                            if (success)
+                            {
+                                MessageBox.Show("Data tiket berhasil dihapus.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                await LoadDataAsync();
+                            }
+                            else
+                            {
+                                MessageBox.Show("Gagal menghapus data. Data mungkin sudah tidak ada.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show("Terjadi kesalahan saat menghapus data: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                }
             }
         }
 
@@ -406,7 +482,24 @@ namespace mtc_app.features.admin.presentation.views
                 }
 
                 var data = await _repository.GetMonitoringDataAsync();
-                gridTickets.DataSource = data;
+                
+                // Load areas into filter if needed
+                if (cboAreaFilter.Items.Count <= 1)
+                {
+                    var areas = await _repository.GetMasterMachineAreasDataAsync();
+                    foreach (var area in areas)
+                    {
+                        var areaDict = area as IDictionary<string, object>;
+                        if (areaDict != null && areaDict.ContainsKey("nama"))
+                        {
+                            cboAreaFilter.Items.Add(areaDict["nama"].ToString());
+                        }
+                    }
+                }
+
+                // Simpan ke memory untuk paginasi
+                _allTickets = data;
+                RenderGrid();
                 
                 lblLastUpdate.Text = $"Terakhir diupdate: {DateTime.Now:HH:mm:ss}";
             }
@@ -417,6 +510,44 @@ namespace mtc_app.features.admin.presentation.views
             finally
             {
                 this.Cursor = Cursors.Default;
+            }
+        }
+
+        private void RenderGrid()
+        {
+            if (_allTickets == null)
+            {
+                gridTickets.DataSource = null;
+                paginationTop.Visible = false;
+                return;
+            }
+
+            var list = _allTickets.ToList();
+
+            // Terapkan Filter Area
+            if (cboAreaFilter.SelectedIndex > 0)
+            {
+                string selectedArea = cboAreaFilter.SelectedItem.ToString();
+                list = list.Where(t => {
+                    var dict = t as IDictionary<string, object>;
+                    if (dict != null && dict.ContainsKey("Nama Mesin"))
+                    {
+                        string mesin = dict["Nama Mesin"]?.ToString() ?? "";
+                        return mesin.Contains(selectedArea);
+                    }
+                    return false;
+                }).ToList();
+            }
+
+            int totalItems = list.Count;
+            
+            var pagedData = list.Skip((_currentPage - 1) * _pageSize).Take(_pageSize).ToList();
+            gridTickets.DataSource = pagedData;
+
+            paginationTop.Visible = totalItems > 0;
+            if (totalItems > 0)
+            {
+                paginationTop.Setup(totalItems, _pageSize, _currentPage);
             }
         }
     }

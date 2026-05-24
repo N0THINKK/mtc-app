@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using mtc_app.features.technician.data.dtos;
 using mtc_app.features.technician.data.repositories;
@@ -13,11 +14,19 @@ namespace mtc_app.features.technician.presentation.components
 {
     public class TechnicianWorkQueueControl : UserControl
     {
+        // Win32 API untuk menghentikan/melanjutkan painting sepenuhnya
+        [DllImport("user32.dll")]
+        private static extern int SendMessage(IntPtr hWnd, int wMsg, bool wParam, int lParam);
+        private const int WM_SETREDRAW = 0x000B;
+
         private readonly ITechnicianRepository _repository;
         private readonly Timer _timerRefresh;
         private List<TicketDto> _allTickets = new List<TicketDto>();
+        private string _lastDataFingerprint = "";
         private bool _isSystemActive = true;
         private bool _isLoading = false;
+        private DateTime _currentStart = DateTime.Now.Date;
+        private DateTime _currentEnd = DateTime.Now.Date.AddDays(1).AddSeconds(-1);
 
         // UI Controls
         private Panel panelHeader;
@@ -43,7 +52,7 @@ namespace mtc_app.features.technician.presentation.components
             _repository = repository;
             
             _timerRefresh = new Timer();
-            _timerRefresh.Interval = 30000;
+            _timerRefresh.Interval = 60000; // 1 menit
             _timerRefresh.Tick += (s, e) => LoadData();
 
             InitializeComponent();
@@ -71,6 +80,7 @@ namespace mtc_app.features.technician.presentation.components
         {
             this.Dock = DockStyle.Fill;
             this.BackColor = AppColors.Surface;
+            this.SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
 
             panelHeader = BuildHeaderPanel();
             panelStatusBar = BuildStatusBar();
@@ -228,8 +238,6 @@ namespace mtc_app.features.technician.presentation.components
                 ForeColor = AppColors.TextSecondary,
                 Margin = new Padding(0, 19, 0, 0)
             };
-            btnClearFilters.FlatAppearance.BorderColor = AppColors.Separator;
-
             flowFilters.Controls.AddRange(new Control[] { lblFilterStatus, cmbFilterStatus, lblSortBy, cmbSortBy, btnClearFilters });
             filters.Controls.Add(flowFilters);
 
@@ -238,7 +246,7 @@ namespace mtc_app.features.technician.presentation.components
 
         private Panel BuildTicketListPanel()
         {
-            var ticketList = new Panel
+            var ticketList = new DoubleBufferedPanel
             {
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
@@ -305,21 +313,36 @@ namespace mtc_app.features.technician.presentation.components
         // ========================================================
         // Data Loading & Rendering
         // ========================================================
-        // [UPDATE] Mempertahankan fitur Mesin Beroperasi (a/b)
-        public async void LoadData()
+
+        /// <summary>
+        /// Membuat fingerprint dari data tiket untuk deteksi perubahan.
+        /// Jika fingerprint sama, tidak perlu re-render UI.
+        /// </summary>
+        private string BuildDataFingerprint(List<TicketDto> tickets)
         {
+            if (tickets == null || tickets.Count == 0) return "EMPTY";
+            // Gabungkan field-field yang relevan untuk mendeteksi perubahan
+            var parts = tickets.Select(t =>
+                $"{t.TicketId}|{t.StatusId}|{t.IsMachineRunning}|{t.ArrivalSeconds}|{t.RepairSeconds}|{t.InspectionSeconds}|{t.TechnicianName}");
+            return string.Join(";", parts);
+        }
+
+        // [UPDATE] Mempertahankan fitur Mesin Beroperasi (a/b)
+        public async void LoadData(DateTime? start = null, DateTime? end = null)
+        {
+            if (start.HasValue) _currentStart = start.Value;
+            if (end.HasValue) _currentEnd = end.Value;
+            
             if (_isLoading) return;
             _isLoading = true;
             try
             {
-                var ticketsRaw = await _repository.GetActiveTicketsAsync();
-                _allTickets = ticketsRaw.ToList();
+                var ticketsRaw = await _repository.GetActiveTicketsAsync(_currentStart, _currentEnd);
+                var newTickets = ticketsRaw.ToList();
                 
-                pnlTicketList.SuspendLayout();
-                
-                int openCount = _allTickets.Count(t => t.StatusId == 1);
-                int processCount = _allTickets.Count(t => t.StatusId == 2);
-                int doneCount = _allTickets.Count(t => t.StatusId == 3);
+                int openCount = newTickets.Count(t => t.StatusId == 1);
+                int processCount = newTickets.Count(t => t.StatusId == 2);
+                int doneCount = newTickets.Count(t => t.StatusId == 3);
                 
                 // Ambil indikator Run/Total Mesin 10 menit
                 var machineStats = await _repository.GetMachineRunStatsAsync();
@@ -327,9 +350,19 @@ namespace mtc_app.features.technician.presentation.components
                 statsControl.UpdateStats(openCount, processCount, doneCount, machineStats.Running, machineStats.Total);
                 lblLastUpdate.Text = $"Terakhir diperbarui: {DateTime.Now:HH:mm:ss}";
                 
-                RenderTickets();
+                // Cek apakah data berubah, skip re-render jika sama
+                var newFingerprint = BuildDataFingerprint(newTickets);
+                if (newFingerprint == _lastDataFingerprint)
+                {
+                    // Data tidak berubah, hanya update timestamp
+                    UpdateStatusIndicator(true);
+                    return;
+                }
+
+                _allTickets = newTickets;
+                _lastDataFingerprint = newFingerprint;
                 
-                pnlTicketList.ResumeLayout();
+                RenderTickets();
                 UpdateStatusIndicator(true);
             }
             catch (Exception ex)
@@ -346,63 +379,72 @@ namespace mtc_app.features.technician.presentation.components
 
         private void RenderTickets()
         {
-            pnlTicketList.SuspendLayout();
+            // Matikan painting Windows sepenuhnya untuk mencegah layar blank putih
+            SendMessage(pnlTicketList.Handle, WM_SETREDRAW, false, 0);
             
-            foreach (Control ctrl in pnlTicketList.Controls)
+            try
             {
-                if (ctrl != panelEmptyState) 
+                pnlTicketList.SuspendLayout();
+                
+                // Hapus kartu lama
+                var toDispose = pnlTicketList.Controls.Cast<Control>()
+                    .Where(c => c != panelEmptyState).ToList();
+                pnlTicketList.Controls.Clear();
+                foreach (var ctrl in toDispose) ctrl.Dispose();
+
+                var filtered = _allTickets.AsEnumerable();
+
+                int statusIndex = cmbFilterStatus.SelectedIndex;
+                if (statusIndex == 1) filtered = filtered.Where(t => t.StatusId == 1);       // Belum Ditangani
+                else if (statusIndex == 2) filtered = filtered.Where(t => t.StatusId == 2);  // Sedang Diperbaiki
+                else if (statusIndex == 3) filtered = filtered.Where(t => t.StatusId == 3);  // Inspeksi
+                else if (statusIndex == 4) filtered = filtered.Where(t => t.StatusId == 4);  // Selesai
+                else if (statusIndex == 5) filtered = filtered.Where(t => t.IsMachineRunning == 0); // Mesin Error (Run=0)
+
+                int sortIndex = cmbSortBy.SelectedIndex;
+                List<TicketDto> sortedList;
+
+                // [UPDATE PENTING] Custom OrderBy untuk Urgensi
+                if (sortIndex == 0)
                 {
-                    ctrl.Dispose();
+                    sortedList = filtered.OrderByDescending(t => t.StatusId).ThenByDescending(t => t.CreatedAt).ToList();
                 }
-            }
-            pnlTicketList.Controls.Clear();
-
-            var filtered = _allTickets.AsEnumerable();
-
-            int statusIndex = cmbFilterStatus.SelectedIndex;
-            if (statusIndex == 1) filtered = filtered.Where(t => t.StatusId == 1);       // Belum Ditangani
-            else if (statusIndex == 2) filtered = filtered.Where(t => t.StatusId == 2);  // Sedang Diperbaiki
-            else if (statusIndex == 3) filtered = filtered.Where(t => t.StatusId == 4);  // Inspeksi [BARU] maps to DB Status 4
-            else if (statusIndex == 4) filtered = filtered.Where(t => t.StatusId == 3);  // Selesai maps to DB Status 3
-            else if (statusIndex == 5) filtered = filtered.Where(t => t.IsMachineRunning == 0); // Mesin Error (Run=0)
-
-            int sortIndex = cmbSortBy.SelectedIndex;
-            List<TicketDto> sortedList;
-
-            // [UPDATE PENTING] Custom OrderBy untuk Urgensi
-            if (sortIndex == 0)
-            {
-                // Urutan dipaksa menjadi: Open (1) -> Sedang Diperbaiki (2) -> Inspeksi (4) -> Selesai (3)
-                sortedList = filtered.OrderByDescending(t => t.StatusId).ThenByDescending(t => t.CreatedAt).ToList();
-            }
-            else if (sortIndex == 1)
-            {
-                sortedList = filtered.OrderBy(t => t.CreatedAt).ToList();
-            }
-            else
-            {
-                sortedList = filtered.OrderByDescending(t => t.CreatedAt).ToList();
-            }
-
-            if (sortedList.Count == 0)
-            {
-                panelEmptyState.Visible = true;
-                CenterEmptyState();
-                pnlTicketList.Controls.Add(panelEmptyState);
-            }
-            else
-            {
-                panelEmptyState.Visible = false;
-                foreach (var ticket in sortedList)
+                else if (sortIndex == 1)
                 {
-                    var card = new TechnicianTicketCardControl();
-                    card.UpdateDisplay(ticket);
-                    card.OnCardClick += Card_OnCardClick;
-                    pnlTicketList.Controls.Add(card);
+                    sortedList = filtered.OrderBy(t => t.CreatedAt).ToList();
                 }
-            }
+                else
+                {
+                    sortedList = filtered.OrderByDescending(t => t.CreatedAt).ToList();
+                }
 
-            pnlTicketList.ResumeLayout();
+                if (sortedList.Count == 0)
+                {
+                    panelEmptyState.Visible = true;
+                    CenterEmptyState();
+                    pnlTicketList.Controls.Add(panelEmptyState);
+                }
+                else
+                {
+                    panelEmptyState.Visible = false;
+                    foreach (var ticket in sortedList)
+                    {
+                        var card = new TechnicianTicketCardControl();
+                        card.UpdateDisplay(ticket);
+                        card.OnCardClick += Card_OnCardClick;
+                        pnlTicketList.Controls.Add(card);
+                    }
+                }
+
+                pnlTicketList.ResumeLayout(true);
+            }
+            finally
+            {
+                // Nyalakan kembali painting dan refresh sekali saja
+                SendMessage(pnlTicketList.Handle, WM_SETREDRAW, true, 0);
+                pnlTicketList.Invalidate(true);
+                pnlTicketList.Update();
+            }
         }
 
         private void Card_OnCardClick(object sender, long ticketId)
@@ -472,6 +514,22 @@ namespace mtc_app.features.technician.presentation.components
                 _timerRefresh?.Dispose();
             }
             base.Dispose(disposing);
+        }
+    }
+
+    /// <summary>
+    /// Panel dengan double-buffering untuk mengurangi flicker saat scroll/repaint.
+    /// </summary>
+    internal class DoubleBufferedPanel : Panel
+    {
+        public DoubleBufferedPanel()
+        {
+            this.SetStyle(
+                ControlStyles.OptimizedDoubleBuffer |
+                ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.UserPaint,
+                true);
+            this.UpdateStyles();
         }
     }
 }

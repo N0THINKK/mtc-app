@@ -246,22 +246,15 @@ namespace mtc_app.features.technician.presentation.components
             }
             // ═════════════════════════════════════════════════════════════
 
-            if (ticket.StatusId == 3) // Selesai
+            if (ticket.StatusId == 4) // Selesai
             {
                  if (ticket.FinishedAt.HasValue)
                  {
-                     if (ticket.FinishedAt.Value.Date == DateTime.Now.Date)
-                     {
-                         this.lblTime.Text = FormatDuration(activeDuration);
-                     }
-                     else
-                     {
-                         this.lblTime.Text = $"{FormatFinishedTime(ticket.FinishedAt.Value)} {FormatDuration(activeDuration)}";
-                     }
+                     this.lblTime.Text = $"{FormatFinishedTime(ticket.FinishedAt.Value)} {FormatDuration(activeDuration)}";
                  }
                  else
                  {
-                     this.lblTime.Text = FormatTime(ticket.CreatedAt);
+                     this.lblTime.Text = $"{FormatTime(ticket.CreatedAt)} {FormatDuration(activeDuration)}";
                  }
 
                  _baseBackColor = AppColors.CardBackground;
@@ -311,17 +304,17 @@ namespace mtc_app.features.technician.presentation.components
                     badgeTextColor = Color.FromArgb(161, 98, 7); 
                     badgeText = "Sedang Diperbaiki";
                     break;
-                case 3: // Done
-                    stripColor = Color.FromArgb(34, 197, 94);
-                    badgeBgColor = Color.FromArgb(240, 253, 244);
-                    badgeTextColor = Color.FromArgb(21, 128, 61);
-                    badgeText = "Selesai";
-                    break;
-                case 4: // Inspeksi (Menunggu Verifikasi)
+                case 3: // Inspeksi
                     stripColor = Color.FromArgb(168, 85, 247);    // Ungu
                     badgeBgColor = Color.FromArgb(250, 245, 255); // Ungu Muda
                     badgeTextColor = Color.FromArgb(126, 34, 206); // Ungu Gelap
                     badgeText = "Inspeksi";
+                    break;
+                case 4: // Done 
+                    stripColor = Color.FromArgb(34, 197, 94);
+                    badgeBgColor = Color.FromArgb(240, 253, 244);
+                    badgeTextColor = Color.FromArgb(21, 128, 61);
+                    badgeText = "Selesai";
                     break;
                 default:
                     stripColor = AppColors.Primary;

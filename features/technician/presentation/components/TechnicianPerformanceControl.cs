@@ -288,9 +288,9 @@ namespace mtc_app.features.technician.presentation.components
 
             // Layout Parameters for Vertical Chart
             int padding = 20;
-            int bottomLabelHeight = 60; // Space for Rank and Name at bottom
-            int topValueHeight = 40;    // DIPERBESAR UNTUK FONT BESAR
-            
+            int bottomLabelHeight = 70; // Adjusted space for vertical names at bottom
+            int topValueHeight = 40;    
+
             int chartBottom = chartPanel.Height - padding - bottomLabelHeight;
             int chartHeight = chartBottom - (padding + topValueHeight);
 
@@ -362,15 +362,20 @@ namespace mtc_app.features.technician.presentation.components
                         g.DrawString($"#{i + 1}", font, brush, centerX, chartBottom + 8, centerFormat);
                     }
 
-                    // 4. Draw Name (Below Rank)
-                    string name = item.TechnicianName ?? "Unknown";
-                    int maxNameChars = Math.Max(5, barWidth / 7); // Approx char width
-                    if (name.Length > maxNameChars) name = name.Substring(0, maxNameChars - 2) + "..";
+                    // 4. Draw Initials (Below Rank, Vertical)
+                    string initials = !string.IsNullOrWhiteSpace(item.Nik) ? item.Nik : GetInitials(item.TechnicianName);
                     
-                    using (var font = new Font("Segoe UI", 9F))
+                    using (var font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold))
                     using (var brush = new SolidBrush(AppColors.TextPrimary))
                     {
-                        g.DrawString(name, font, brush, centerX, chartBottom + 28, centerFormat);
+                        var state = g.Save();
+                        g.TranslateTransform(centerX, chartBottom + 28);
+                        g.RotateTransform(-90);
+                        using (var verticalFormat = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Center })
+                        {
+                            g.DrawString(initials, font, brush, 0, 0, verticalFormat);
+                        }
+                        g.Restore(state);
                     }
                 }
             }
@@ -404,6 +409,13 @@ namespace mtc_app.features.technician.presentation.components
                 "stars" => $"{value:F0} ⭐",
                 _ => $"{value:F0}"
             };
+        }
+
+        private string GetInitials(string fullName)
+        {
+            if (string.IsNullOrWhiteSpace(fullName)) return "?";
+            var words = fullName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            return string.Concat(words.Select(w => char.ToUpper(w[0])));
         }
 
         private Color GetBarColor(int rank)

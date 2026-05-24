@@ -66,3 +66,4 @@ db_update_micrometer.sql
 *.sl3
 mtc_app.db
 mtc_app.sqlite
+scratch_*.ps1

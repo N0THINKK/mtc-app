@@ -311,7 +311,7 @@ namespace mtc_app.features.authentication.presentation.screens
                 {
                     using (var conn = DatabaseHelper.GetConnection())
                     {
-                        var user = conn.QueryFirstOrDefault<UserDto>(
+                        var user = await conn.QueryFirstOrDefaultAsync<UserDto>(
                             "SELECT user_id as UserId, full_name as FullName FROM users WHERE username = @Username OR nik = @Username LIMIT 1",
                             new { Username = identity }
                         );
@@ -325,7 +325,7 @@ namespace mtc_app.features.authentication.presentation.screens
                         {
                             // AUTO CREATE NEW OPERATOR
                             string insertSql = "INSERT INTO users (full_name, nik, username, role_id, password) VALUES (@Nik, @Nik, @Nik, 1, '123456'); SELECT LAST_INSERT_ID();";
-                            fetchedUserId = conn.ExecuteScalar<long>(insertSql, new { Nik = identity });
+                            fetchedUserId = await conn.ExecuteScalarAsync<long>(insertSql, new { Nik = identity });
                             fetchedFullName = identity;
                         }
                     }
@@ -357,7 +357,8 @@ namespace mtc_app.features.authentication.presentation.screens
                 case "Teknisi" when string.IsNullOrEmpty(identity):
                     return new TechnicianDashboardForm();
                 case "Teknisi":
-                    return new mtc_app.features.technician.presentation.screens.TechnicianMainMenuForm();
+                    // Sementara langsung masuk ke patroli harian (mesin/cutting)
+                    return new mtc_app.features.machine_history.presentation.screens.ChecksheetForm(isTeknisiMode: true);
                 case "Operator":
                     return new OperatorMainMenuForm();
                 case "Stock":

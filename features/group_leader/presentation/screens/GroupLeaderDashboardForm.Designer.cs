@@ -31,6 +31,7 @@ namespace mtc_app.features.group_leader.presentation.screens
         private Label lblEmptyTitle;
         private Label lblEmptyMessage;
         private PictureBox picEmptyIcon;
+        private Button btnRefresh;
 
         protected override void Dispose(bool disposing)
         {
@@ -62,6 +63,7 @@ namespace mtc_app.features.group_leader.presentation.screens
             this.lblEmptyTitle = new System.Windows.Forms.Label();
             this.lblEmptyMessage = new System.Windows.Forms.Label();
             this.picEmptyIcon = new System.Windows.Forms.PictureBox();
+            this.btnRefresh = new System.Windows.Forms.Button();
 
             this.panelHeader.SuspendLayout();
             this.panelStatusBar.SuspendLayout();
@@ -149,7 +151,21 @@ namespace mtc_app.features.group_leader.presentation.screens
                 WrapContents = false,
                 Padding = new System.Windows.Forms.Padding(20, 10, 20, 0)
             };
-            flowStatus.Controls.AddRange(new System.Windows.Forms.Control[] { this.picStatusIndicator, this.lblSystemStatus, this.lblLastUpdate });
+            // 
+            // btnRefresh
+            // 
+            this.btnRefresh.Text = "Refresh";
+            this.btnRefresh.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnRefresh.ForeColor = System.Drawing.Color.White;
+            this.btnRefresh.BackColor = AppColors.Primary;
+            this.btnRefresh.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnRefresh.FlatAppearance.BorderSize = 0;
+            this.btnRefresh.Size = new System.Drawing.Size(100, 28);
+            this.btnRefresh.Margin = new System.Windows.Forms.Padding(15, 4, 0, 0);
+            this.btnRefresh.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnRefresh.Click += new System.EventHandler(this.BtnRefresh_Click);
+
+            flowStatus.Controls.AddRange(new System.Windows.Forms.Control[] { this.picStatusIndicator, this.lblSystemStatus, this.lblLastUpdate, this.btnRefresh });
             this.panelStatusBar.Controls.Add(flowStatus);
 
             // 

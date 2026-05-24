@@ -8,10 +8,14 @@ namespace mtc_app.features.machine_history.data.dtos
         public Guid TicketUuid { get; set; } // Added for Offline Matching
         public string TicketCode { get; set; }
         public string MachineName { get; set; }
+        public string ApplicatorCode { get; set; }
         public string TechnicianName { get; set; }
         public string OperatorName { get; set; }
         public string Issue { get; set; } // Combined failure details
-        public string Resolution { get; set; } // Combined action details
+        public string ActionDetails { get; set; } // Tindakan yang dilakukan
+        public string SparepartUsed { get; set; } // Part yang diganti
+
+        public string Resolution { get; set; } // Combined action details (legacy)
         public DateTime CreatedAt { get; set; }
         public DateTime? StartedAt { get; set; } // Added
         public DateTime? FinishedAt { get; set; }

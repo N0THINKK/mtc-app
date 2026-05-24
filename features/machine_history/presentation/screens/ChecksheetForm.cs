@@ -21,11 +21,13 @@ namespace mtc_app.features.machine_history.presentation.screens
         private Button btnLihatNg; // [BARU] Deklarasi di tingkat class agar bisa diakses event Resize
         private AppButton btnHistory; // Tombol riwayat checksheet
         private Label lblMachineInfo;
+        private ComboBox cmbShift;
 
         private readonly bool _isTeknisiMode;
         private int _currentMachineId;
         private int _currentTemplateId;
         private List<ChecksheetItemControl> _itemControls = new List<ChecksheetItemControl>();
+        private List<int> _pendingNgItemIds = new List<int>();
 
         public ChecksheetForm(bool isTeknisiMode = false)
         {
@@ -45,7 +47,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             this.FormBorderStyle = FormBorderStyle.Sizable;
 
             // --- HEADER ---
-            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = 100, BackColor = AppColors.CardBackground };
+            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = 100, BackColor = AppColors.CardBackground, Width = this.Width };
             Label lblTitle = new Label { Text = this.Text, Font = new Font("Segoe UI", 16F, FontStyle.Bold), ForeColor = AppColors.TextPrimary, AutoSize = true, Location = new Point(20, 15) };
             lblMachineInfo = new Label { Text = "Loading...", Font = new Font("Segoe UI", 11F), ForeColor = AppColors.TextSecondary, AutoSize = true, Location = new Point(20, 45) };
 
@@ -83,9 +85,22 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Location = new Point(20, 70)
             };
 
+            Label lblShift = new Label { Text = "Shift:", Font = new Font("Segoe UI", 11F), ForeColor = AppColors.TextPrimary, AutoSize = true, Location = new Point(650, 45), Anchor = AnchorStyles.Top | AnchorStyles.Right };
+            cmbShift = new ComboBox { 
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 11F),
+                Location = new Point(700, 42),
+                Width = 150,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            cmbShift.Items.AddRange(new object[] { "A1", "A2", "B1", "B2", "NS" });
+            cmbShift.SelectedIndex = 0;
+
             pnlHeader.Controls.Add(lblTitle);
             pnlHeader.Controls.Add(lblMachineInfo);
             pnlHeader.Controls.Add(lblPelaksanaInfo);
+            pnlHeader.Controls.Add(lblShift);
+            pnlHeader.Controls.Add(cmbShift);
 
             // --- AREA PERTANYAAN (SCROLLABLE) ---
             pnlQuestions = new FlowLayoutPanel
@@ -249,12 +264,12 @@ namespace mtc_app.features.machine_history.presentation.screens
                     }
 
                     // 3.5 Ambil ID item yang saat ini masih berstatus NOT OK / pending
-                    var pendingNgItemIds = conn.Query<int>(@"
+                    _pendingNgItemIds = conn.Query<int>(@"
                         SELECT DISTINCT d.item_id
                         FROM patrol_logs l
                         JOIN patrol_log_details d ON l.log_id = d.log_id
                         WHERE l.machine_id = @Id 
-                          AND d.status IN ('NOT_OK', 'NG')
+                          AND d.status IN ('NOT_OK', 'NG', 'NG_CARRYOVER')
                     ", new { Id = _currentMachineId }).ToList();
 
                     // 4. Gambar Pertanyaannya ke Layar secara dinamis
@@ -269,7 +284,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                         };
 
                         // Kunci jika item masih NG
-                        if (pendingNgItemIds.Contains(currentItemId))
+                        if (_pendingNgItemIds.Contains(currentItemId))
                         {
                             rowControl.SetAsPendingNg();
                         }
@@ -323,9 +338,10 @@ namespace mtc_app.features.machine_history.presentation.screens
                 using (var conn = DatabaseHelper.GetConnection())
                 {
                     // 1. Catat Header Patroli
-                    // Kolom user_nik di database bersifat string, sehingga aman diisi NIK angka maupun Inisial huruf.
-                    string insertLogSql = "INSERT INTO patrol_logs (machine_id, user_nik, shift) VALUES (@MachId, @Nik, 'A'); SELECT LAST_INSERT_ID();";
-                    int logId = conn.QuerySingle<int>(insertLogSql, new { MachId = _currentMachineId, Nik = userNik });
+                    try { conn.Execute("ALTER TABLE patrol_logs MODIFY shift VARCHAR(10);"); } catch { }
+                    string currentShift = cmbShift.SelectedItem.ToString();
+                    string insertLogSql = "INSERT INTO patrol_logs (machine_id, user_nik, shift) VALUES (@MachId, @Nik, @Shift); SELECT LAST_INSERT_ID();";
+                    int logId = conn.QuerySingle<int>(insertLogSql, new { MachId = _currentMachineId, Nik = userNik, Shift = currentShift });
 
                     // 7. Simpan Detail Pemeriksaan
                     foreach (var item in _itemControls)
@@ -333,32 +349,12 @@ namespace mtc_app.features.machine_history.presentation.screens
                         string status = item.ValueString;
                         bool createTicket = false;
 
-                        // // AUTO-TICKETING LOGIC: 
-                        // if (!item.IsOk && item.NeedsTechnician)
-                        // {
-                        //     createTicket = true;
-                        //     try
-                        //     {
-                        //         var historyRepo = new MachineHistoryRepository();
-
-                        //         await historyRepo.CreateTicketAsync(new CreateTicketRequest
-                        //         {
-                        //             MachineId = _currentMachineId,
-                        //             OperatorNik = userNik,
-                        //             ShiftName = "A", // Shift Default
-                        //             ApplicatorCode = "-",
-                        //             Problems = new List<TicketProblemRequest>
-                        //             {
-                        //                 new TicketProblemRequest
-                        //                 {
-                        //                     ProblemTypeName = "Lain-lain",
-                        //                     FailureName = $"[CHECKSHEET] {item.ItemName} NG"
-                        //                 }
-                        //             }
-                        //         });
-                        //     }
-                        //     catch { /* Abaikan error tiket otomatis agar proses simpan patroli utama tetap sukses */ }
-                        // }
+                        // [MODIFIKASI] Cegah terjadinya duplikat data NG di antrean Teknisi
+                        bool isPending = _pendingNgItemIds.Contains(item.ItemId);
+                        if (isPending && (status == "NG" || status == "NOT_OK"))
+                        {
+                            status = "PERBAIKAN_OK";
+                        }
 
                         conn.Execute(
                             @"INSERT INTO patrol_log_details (log_id, item_id, status, action_note, is_ticket_created) 
@@ -432,7 +428,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                 }
                 else
                 {
-                    radOk = new RadioButton { Text = "OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.SeaGreen, AutoSize = true, Location = new Point(30, 65), Cursor = Cursors.Hand };
+                    radOk = new RadioButton { Text = "OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.SeaGreen, AutoSize = true, Location = new Point(30, 65), Cursor = Cursors.Hand, Checked = true };
                     radNotOk = new RadioButton { Text = "NOT OK", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.Crimson, AutoSize = true, Location = new Point(100, 65), Cursor = Cursors.Hand };
                     radNa = new RadioButton { Text = "N/A", Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.DimGray, AutoSize = true, Location = new Point(210, 65), Cursor = Cursors.Hand };
 

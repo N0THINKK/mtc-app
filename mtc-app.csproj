@@ -11,6 +11,7 @@
     <AssemblyName>Manis</AssemblyName>
     <AssemblyTitle>Manis</AssemblyTitle>
     <Product>Manis</Product>
+    <ApplicationIcon>assets\manis.ico</ApplicationIcon>
     
     <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode> 
     
@@ -29,10 +30,13 @@
     <PackageReference Include="ClosedXML" Version="0.102.1" />
     <PackageReference Include="Dapper" Version="2.1.35" />
     <PackageReference Include="Dapper.SqlBuilder" Version="2.0.78" />
+    <PackageReference Include="ExcelDataReader" Version="3.6.0" />
+    <PackageReference Include="ExcelDataReader.DataSet" Version="3.6.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
     <PackageReference Include="MySqlConnector" Version="2.3.5" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.Data.SQLite" Version="1.0.118" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="6.0.0" />
     
     <PackageReference Include="System.Windows.Forms.DataVisualization" Version="1.0.0-prerelease.20110.1" />
     
@@ -44,6 +48,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="assets\manis.ico" LogicalName="AppIcon.ico" />
   </ItemGroup>
 
   <ItemGroup>

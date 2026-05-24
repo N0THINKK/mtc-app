@@ -176,8 +176,9 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void SaveRating()
         {
-            // Jika tiket tidak ada (contoh: bypass dari Dashboard Patroli NG), 
-            // rating sekadar formalitas UI, tidak dicatat di DB.
+            // Jika tiket tidak ada (contoh: bypass dari Dashboard NG Cutting), 
+            // simpan status secara independen bila diperlukan, 
+            // atau cukup lewati dan kembalikan OK.
             if (_ticketId == 0)
             {
                 this.DialogResult = DialogResult.OK;
@@ -186,6 +187,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
 
             // Offline Mode
+            TryResolveSyncedTicketId();
             if (_ticketId < 0)
             {
                 try
@@ -196,6 +198,7 @@ namespace mtc_app.features.machine_history.presentation.screens
                     {
                         // Use GlRatingScore for operator/GL rating
                         request.GlRatingScore = ratingControl.Rating; 
+                        request.GlRatingNote = _inputNote.InputValue;
                         
                         mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.UpdatePendingTicket(pendingId, request);
                     }
@@ -205,27 +208,63 @@ namespace mtc_app.features.machine_history.presentation.screens
                     MessageBox.Show($"Error saving offline: {ex.Message}");
                 }
             }
-            // Online Mode
+            // Online Mode (or Queue if offline)
             else
             {
-                try
+                bool isOnline = mtc_app.shared.infrastructure.ServiceLocator.NetworkMonitor.CheckNow();
+                if (!isOnline)
                 {
-                    using (var conn = DatabaseHelper.GetConnection())
-                    {
-                        conn.Open();
-                        string sql = "UPDATE tickets SET gl_rating_score = @Score, gl_rating_note = @Note WHERE ticket_id = @Id";
-                        conn.Execute(sql, new { Id = _ticketId, Score = ratingControl.Rating, Note = _inputNote.InputValue });
-                    }
+                    mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.AddToQueue("RATING_GL", "tickets", new { TicketId = _ticketId, Score = ratingControl.Rating, Note = _inputNote.InputValue });
                 }
-                catch (Exception ex)
+                else
                 {
-                     MessageBox.Show($"Error saving rating: {ex.Message}");
-                     return;
+                    try
+                    {
+                        using (var conn = DatabaseHelper.GetConnection())
+                        {
+                            conn.Open();
+                            string sql = "UPDATE tickets SET gl_rating_score = @Score, gl_rating_note = @Note WHERE ticket_id = @Id";
+                            conn.Execute(sql, new { Id = _ticketId, Score = ratingControl.Rating, Note = _inputNote.InputValue });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                         MessageBox.Show($"Error saving rating: {ex.Message}");
+                         return;
+                    }
                 }
             }
 
             this.DialogResult = DialogResult.OK;
             this.Close();
+        }
+
+        /// <summary>
+        /// If the ticket was created offline and has since been synced, resolve the real ticket_id.
+        /// </summary>
+        private void TryResolveSyncedTicketId()
+        {
+            if (_ticketId >= 0) return;
+
+            int pendingId = (int)Math.Abs(_ticketId);
+            var request = mtc_app.shared.infrastructure.ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
+            if (request != null) return; // Still pending
+
+            try
+            {
+                if (!mtc_app.shared.infrastructure.ServiceLocator.NetworkMonitor.CheckNow()) return;
+                using (var conn = DatabaseHelper.GetConnection())
+                {
+                    conn.Open();
+                    var realId = conn.QueryFirstOrDefault<long?>(
+                        "SELECT ticket_id FROM tickets WHERE status_id IN (1, 2, 3) ORDER BY created_at DESC LIMIT 1");
+                    if (realId.HasValue && realId.Value > 0)
+                    {
+                        _ticketId = realId.Value;
+                    }
+                }
+            }
+            catch { }
         }
     }
 }

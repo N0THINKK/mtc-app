@@ -46,9 +46,12 @@ namespace mtc_app.features.admin.data.repositories
         {
             DateTime startOfMonth = new DateTime(year, month, 1);
             DateTime endOfMonth = startOfMonth.AddMonths(1).AddSeconds(-1);
-            var connection = DatabaseHelper.GetConnection(); 
             
-            string sql = @"
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                int? lain2Id = connection.QueryFirstOrDefault<int?>("SELECT area_id FROM machine_areas WHERE area_name = 'Lain2'");
+                
+                string sql = @"
                 SELECT 
                     l.created_at AS Tanggal, CONCAT(mt.type_name, '.', ma.area_name, '-', m.machine_number) AS NamaMesin, ma.area_name AS Area,
                     CASE WHEN HOUR(l.created_at) >= 7 AND HOUR(l.created_at) < 15 THEN 'Shift 1' WHEN HOUR(l.created_at) >= 15 AND HOUR(l.created_at) < 23 THEN 'Shift 2' ELSE 'Shift 3' END AS Shift,
@@ -56,9 +59,11 @@ namespace mtc_app.features.admin.data.repositories
                 FROM machine_process_logs l JOIN machines m ON l.machine_id = m.machine_id JOIN machine_areas ma ON m.area_id = ma.area_id JOIN machine_types mt ON m.type_id = mt.type_id
                 WHERE l.created_at BETWEEN @Start AND @End";
 
+            if (lain2Id.HasValue) sql += " AND m.area_id != @Lain2Id";
             if (!string.IsNullOrEmpty(areaName) && areaName != "Semua Area") sql += " AND ma.area_name = @AreaName";
             sql += " ORDER BY l.created_at ASC";
-            return connection.Query<dynamic>(sql, new { Start = startOfMonth, End = endOfMonth, AreaName = areaName }, buffered: false, commandTimeout: 300);
+            return connection.Query<dynamic>(sql, new { Start = startOfMonth, End = endOfMonth, AreaName = areaName, Lain2Id = lain2Id }, buffered: false, commandTimeout: 300);
+            }
         }
 
         // ==========================================
@@ -105,6 +110,21 @@ namespace mtc_app.features.admin.data.repositories
                     LEFT JOIN machine_statuses ms ON m.current_status_id = ms.status_id
                     WHERE m.is_deleted = 0
                     ORDER BY mt.type_name ASC, ma.area_name ASC, m.machine_number ASC";
+                return await connection.QueryAsync(sql);
+            }
+        }
+
+        public async Task<IEnumerable<dynamic>> GetMasterMachineAreasDataAsync()
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                string sql = @"
+                    SELECT 
+                        area_id as id,
+                        area_name as nama 
+                    FROM machine_areas
+                    WHERE area_name != 'Lain2'
+                    ORDER BY area_name ASC";
                 return await connection.QueryAsync(sql);
             }
         }
@@ -195,7 +215,7 @@ namespace mtc_app.features.admin.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
-                return await connection.QueryAsync<string>("SELECT area_name FROM machine_areas ORDER BY area_name ASC");
+                return await connection.QueryAsync<string>("SELECT area_name FROM machine_areas WHERE area_name != 'Lain2' ORDER BY area_name ASC");
             }
         }
 
@@ -290,6 +310,16 @@ namespace mtc_app.features.admin.data.repositories
                         return await connection.ExecuteAsync(sql, new { kode = data["kode"], typeId = typeId, areaId = areaId }) > 0;
                     }
                 }
+                else if (category == "Area Mesin")
+                {
+                    if (isEdit) {
+                        string sql = "UPDATE machine_areas SET area_name=@nama WHERE area_id=@id";
+                        return await connection.ExecuteAsync(sql, new { nama = data["nama"], id = data["id"] }) > 0;
+                    } else {
+                        string sql = "INSERT INTO machine_areas (area_name) VALUES (@nama)";
+                        return await connection.ExecuteAsync(sql, new { nama = data["nama"] }) > 0;
+                    }
+                }
                 else if (category == "Sparepart")
                 {
                     if (isEdit) {
@@ -329,6 +359,10 @@ namespace mtc_app.features.admin.data.repositories
                 else if (category == "Mesin")
                 {
                     return await connection.ExecuteAsync("UPDATE machines SET is_deleted = 1 WHERE machine_id=@id", new { id }) > 0;
+                }
+                else if (category == "Area Mesin")
+                {
+                    return await connection.ExecuteAsync("DELETE FROM machine_areas WHERE area_id=@id", new { id }) > 0;
                 }
                 else if (category == "Sparepart")
                 {
@@ -377,12 +411,13 @@ namespace mtc_app.features.admin.data.repositories
                         ot.target_id AS id,
                         mt.type_name AS tipe_mesin,
                         ma.area_name AS area,
-                        ot.machine_number AS no_mesin,
+                        m.machine_number AS no_mesin,
                         ot.target_per_hour AS target_per_jam
                     FROM machine_output_targets ot
-                    JOIN machine_types mt ON ot.type_id = mt.type_id
-                    JOIN machine_areas ma ON ot.area_id = ma.area_id
-                    ORDER BY mt.type_name, ma.area_name";
+                    JOIN machines m ON ot.machine_id = m.machine_id
+                    JOIN machine_types mt ON m.type_id = mt.type_id
+                    JOIN machine_areas ma ON m.area_id = ma.area_id
+                    ORDER BY mt.type_name, ma.area_name, m.machine_number";
                 return await connection.QueryAsync(sql);
             }
         }
@@ -391,21 +426,31 @@ namespace mtc_app.features.admin.data.repositories
         {
             using (var connection = DatabaseHelper.GetConnection())
             {
+                int? machineId = await connection.QueryFirstOrDefaultAsync<int?>(
+                    "SELECT machine_id FROM machines WHERE type_id = @typeId AND area_id = @areaId AND machine_number = @machineNumber AND is_deleted = 0",
+                    new { typeId, areaId, machineNumber }
+                );
+
+                if (!machineId.HasValue)
+                {
+                    throw new Exception("Mesin dengan Tipe, Area, dan Nomor tersebut tidak ditemukan di Master Mesin. Harap daftarkan atau periksa kembali data mesin.");
+                }
+
                 if (targetId.HasValue && targetId.Value > 0)
                 {
                     string sql = @"
                         UPDATE machine_output_targets 
-                        SET type_id = @typeId, area_id = @areaId, machine_number = @machineNumber, target_per_hour = @target
+                        SET machine_id = @machineId, target_per_hour = @target
                         WHERE target_id = @targetId";
-                    return await connection.ExecuteAsync(sql, new { targetId = targetId.Value, typeId, areaId, machineNumber, target = targetPerHour }) > 0;
+                    return await connection.ExecuteAsync(sql, new { targetId = targetId.Value, machineId = machineId.Value, target = targetPerHour }) > 0;
                 }
                 else
                 {
                     string sql = @"
-                        INSERT INTO machine_output_targets (type_id, area_id, machine_number, target_per_hour)
-                        VALUES (@typeId, @areaId, @machineNumber, @target)
+                        INSERT INTO machine_output_targets (machine_id, target_per_hour)
+                        VALUES (@machineId, @target)
                         ON DUPLICATE KEY UPDATE target_per_hour = @target";
-                    return await connection.ExecuteAsync(sql, new { typeId, areaId, machineNumber, target = targetPerHour }) > 0;
+                    return await connection.ExecuteAsync(sql, new { machineId = machineId.Value, target = targetPerHour }) > 0;
                 }
             }
         }
@@ -463,6 +508,33 @@ namespace mtc_app.features.admin.data.repositories
             using (var connection = DatabaseHelper.GetConnection())
             {
                 return await connection.ExecuteAsync("DELETE FROM shift_breaks WHERE id = @id", new { id = breakId }) > 0;
+            }
+        }
+
+        // ==========================================
+        // PATROL NG & TICKETS MANAGEMENT
+        // ==========================================
+        public async Task<bool> DeleteTicketAsync(long ticketId)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                // Eksekusi hapus di tabel-tabel anak terlebih dahulu untuk mencegah issue foreign key, lalu hapus tiket utamanya.
+                string sql = @"
+                    DELETE FROM ticket_problems WHERE ticket_id = @TicketId;
+                    DELETE FROM ticket_technician_sessions WHERE ticket_id = @TicketId;
+                    DELETE FROM part_requests WHERE ticket_id = @TicketId;
+                    DELETE FROM tickets WHERE ticket_id = @TicketId;
+                ";
+                return await connection.ExecuteAsync(sql, new { TicketId = ticketId }) > 0;
+            }
+        }
+
+        public async Task<bool> DeletePatrolNgAsync(int detailId)
+        {
+            using (var connection = DatabaseHelper.GetConnection())
+            {
+                string sql = "DELETE FROM patrol_log_details WHERE detail_id = @DetailId";
+                return await connection.ExecuteAsync(sql, new { DetailId = detailId }) > 0;
             }
         }
     }
