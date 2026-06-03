@@ -4,23 +4,80 @@ using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using mtc_app.features.micrometer_patrol.data.repositories;
+using mtc_app.features.micrometer_patrol.presentation.controllers;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.micrometer_patrol.presentation.screens
 {
-    public class MicrometerPatrolHistoryForm : AppBaseForm
+    public class MicrometerPatrolHistoryForm : AppBaseForm, IMicrometerPatrolHistoryView
     {
-        private readonly IMicrometerPatrolRepository _repository;
+        private readonly MicrometerPatrolHistoryController _controller;
         private DataGridView _dgvHistory;
         private Label _lblStatus;
 
         public MicrometerPatrolHistoryForm(IMicrometerPatrolRepository repository)
         {
-            _repository = repository;
+            _controller = new MicrometerPatrolHistoryController(this, repository);
             InitializeUI();
-            this.Load += async (s, e) => await LoadHistoryDataAsync();
+            this.Load += async (s, e) => await _controller.LoadHistoryDataAsync();
         }
+
+        // ==========================================
+        // IMicrometerPatrolHistoryView Implementation
+        // ==========================================
+
+        public void ShowLoading()
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(ShowLoading)); return; }
+            _dgvHistory.Visible = false;
+            _lblStatus.Visible = true;
+            _lblStatus.Text = "Memuat data...";
+            _lblStatus.ForeColor = AppColors.TextSecondary;
+        }
+
+        public void HideLoading()
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(HideLoading)); return; }
+            _lblStatus.Visible = false;
+        }
+
+        public void SetStatusMessage(string message, bool isError = false)
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(() => SetStatusMessage(message, isError))); return; }
+            _lblStatus.Text = message;
+            _lblStatus.ForeColor = isError ? AppColors.Danger : AppColors.TextSecondary;
+            _lblStatus.Visible = true;
+            _dgvHistory.Visible = false;
+        }
+
+        public void DisplayData(DataTable data)
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(() => DisplayData(data))); return; }
+            
+            _dgvHistory.DataSource = data;
+            
+            _dgvHistory.Columns[0].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells;
+            _dgvHistory.Columns[0].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            _dgvHistory.Columns[0].Frozen = true;
+
+            for (int i = 1; i < _dgvHistory.Columns.Count; i++)
+            {
+                _dgvHistory.Columns[i].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                _dgvHistory.Columns[i].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                _dgvHistory.Columns[i].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells; 
+            }
+
+            _dgvHistory.CellFormatting -= DgvHistory_CellFormatting;
+            _dgvHistory.CellFormatting += DgvHistory_CellFormatting;
+
+            _dgvHistory.Visible = true;
+            _lblStatus.Visible = false;
+        }
+
+        // ==========================================
+        // UI Code
+        // ==========================================
 
         private void InitializeUI()
         {
@@ -125,100 +182,6 @@ namespace mtc_app.features.micrometer_patrol.presentation.screens
             pnlBottom.SendToBack();
             _lblStatus.SendToBack();
             pnlContent.BringToFront();
-        }
-
-        private async Task LoadHistoryDataAsync()
-        {
-            try
-            {
-                _dgvHistory.Visible = false;
-                _lblStatus.Visible = true;
-
-                var data = await _repository.GetTodayPatrolsAsync(DateTime.Now);
-                var listData = new System.Collections.Generic.List<mtc_app.features.micrometer_patrol.data.dtos.MicrometerPatrolDto>(data);
-
-                if (listData.Count == 0)
-                {
-                    _lblStatus.Text = "Belum ada riwayat hari ini.";
-                }
-                else
-                {
-                    DataTable pivotTable = new DataTable();
-                    pivotTable.Columns.Add("Checksheet Item", typeof(string));
-
-                    foreach (var record in listData)
-                    {
-                        string colName = $"{record.PatrolDate.ToString("dd/MM/yyyy")} ({record.ShiftName})";
-                        if (!pivotTable.Columns.Contains(colName))
-                        {
-                            pivotTable.Columns.Add(colName, typeof(string));
-                        }
-                    }
-
-                    string[] points = new string[] 
-                    {
-                        "1. Ada Nomer Registrasi dan tidak Expired",
-                        "2. Angka terbaca dengan jelas",
-                        "3. Zero setting OK",
-                        "4. Kondisi Thimble, Anvil dan Spindle OK",
-                        "5. Baut Pengunci tidak longgar/Dol"
-                    };
-
-                    for (int i = 0; i < 5; i++)
-                    {
-                        var row = pivotTable.NewRow();
-                        row[0] = points[i];
-
-                        foreach (var record in listData)
-                        {
-                            string colName = $"{record.PatrolDate.ToString("dd/MM/yyyy")} ({record.ShiftName})";
-                            string val = "";
-                            if (i == 0) val = record.Point1;
-                            if (i == 1) val = record.Point2;
-                            if (i == 2) val = record.Point3;
-                            if (i == 3) val = record.Point4;
-                            if (i == 4) val = record.Point5;
-
-                            row[colName] = val;
-                        }
-                        pivotTable.Rows.Add(row);
-                    }
-
-                    var noteRow = pivotTable.NewRow();
-                    noteRow[0] = "Keterangan";
-                    foreach (var record in listData)
-                    {
-                        string colName = $"{record.PatrolDate.ToString("dd/MM/yyyy")} ({record.ShiftName})";
-                        noteRow[colName] = record.Notes;
-                    }
-                    pivotTable.Rows.Add(noteRow);
-
-                    _dgvHistory.DataSource = pivotTable;
-                    
-                    _dgvHistory.Columns[0].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells;
-                    _dgvHistory.Columns[0].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
-                    _dgvHistory.Columns[0].Frozen = true;
-
-                    for (int i = 1; i < _dgvHistory.Columns.Count; i++)
-                    {
-                        _dgvHistory.Columns[i].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                        _dgvHistory.Columns[i].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                        _dgvHistory.Columns[i].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells; 
-                    }
-
-                    _dgvHistory.CellFormatting -= DgvHistory_CellFormatting;
-                    _dgvHistory.CellFormatting += DgvHistory_CellFormatting;
-
-                    _dgvHistory.Visible = true;
-                    _lblStatus.Visible = false;
-                }
-            }
-            catch (Exception ex)
-            {
-                _lblStatus.Text = "Gagal memuat history: " + ex.Message;
-                _lblStatus.ForeColor = AppColors.Danger;
-                _dgvHistory.Visible = false;
-            }
         }
 
         private void DgvHistory_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
