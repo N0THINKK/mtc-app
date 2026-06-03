@@ -1,36 +1,77 @@
 using System;
 using System.Data;
 using System.Drawing;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using mtc_app.features.machine_history.data.repositories;
+using mtc_app.features.machine_history.presentation.controllers;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
-    public class ChecksheetHistoryForm : AppBaseForm
+    public class ChecksheetHistoryForm : AppBaseForm, IChecksheetHistoryView
     {
-        private readonly IMachineHistoryRepository _repository;
-        private readonly int _machineId;
-        private readonly int _templateId;
-        private readonly string _roleTarget;
-
+        private readonly ChecksheetHistoryController _controller;
         private DataGridView _dgvHistory;
         private Label _lblStatus;
         private Panel _pnlContent;
 
         public ChecksheetHistoryForm(int machineId, int templateId, string roleTarget)
         {
-            _repository = new MachineHistoryRepository();
-            _machineId = machineId;
-            _templateId = templateId;
-            _roleTarget = roleTarget;
+            var repository = new MachineHistoryRepository();
+            _controller = new ChecksheetHistoryController(this, repository, machineId, templateId, roleTarget);
 
             InitializeForm();
             InitializeUI();
             
-            this.Load += async (s, e) => await LoadHistoryDataAsync();
+            this.Load += async (s, e) => await _controller.LoadHistoryDataAsync();
+        }
+
+        public void ShowLoading()
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(ShowLoading)); return; }
+            _dgvHistory.Visible = false;
+            _lblStatus.Text = "Memuat data riwayat rincian...";
+            _lblStatus.ForeColor = AppColors.TextSecondary;
+            _lblStatus.Visible = true;
+        }
+
+        public void HideLoading()
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(HideLoading)); return; }
+            _lblStatus.Visible = false;
+        }
+
+        public void SetStatusMessage(string message, bool isError = false)
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(() => SetStatusMessage(message, isError))); return; }
+            _lblStatus.Text = message;
+            _lblStatus.ForeColor = isError ? AppColors.Danger : AppColors.TextSecondary;
+            _lblStatus.Visible = true;
+            _dgvHistory.Visible = false;
+        }
+
+        public void DisplayData(DataTable data)
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(() => DisplayData(data))); return; }
+            
+            _dgvHistory.DataSource = data;
+            
+            _dgvHistory.Columns[0].HeaderText = "Checksheet Item";
+            _dgvHistory.Columns[0].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells;
+            _dgvHistory.Columns[0].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            _dgvHistory.Columns[0].Frozen = true;
+
+            for (int i = 1; i < _dgvHistory.Columns.Count; i++)
+            {
+                _dgvHistory.Columns[i].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                _dgvHistory.Columns[i].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                _dgvHistory.Columns[i].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells; 
+            }
+
+            _dgvHistory.AllowUserToResizeColumns = true;
+            _dgvHistory.Visible = true;
+            _lblStatus.Visible = false;
         }
 
         private void InitializeForm()
@@ -45,35 +86,22 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void InitializeUI()
         {
-            // Header Panel
-            var pnlHeader = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 80,
-                BackColor = this.BackColor
-            };
-
+            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = 80, BackColor = this.BackColor };
             var lblTitle = new Label
             {
                 Text = "Riwayat Patroli Checksheet (30 Hari Terakhir)",
                 Font = AppFonts.Header2,
                 ForeColor = AppColors.TextPrimary,
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.BottomLeft, // Posisi teks di bawah agar ada margin
-                Padding = new Padding(20, 0, 0, 20) // Padding kiri 20, bawah 20
+                TextAlign = ContentAlignment.BottomLeft,
+                Padding = new Padding(20, 0, 0, 20)
             };
             pnlHeader.Controls.Add(lblTitle);
             this.Controls.Add(pnlHeader);
 
-            // Container for Grid
-            _pnlContent = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(20, 0, 20, 20)
-            };
+            _pnlContent = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 20) };
             this.Controls.Add(_pnlContent);
 
-            // DataGridView
             _dgvHistory = new DataGridView
             {
                 Dock = DockStyle.Fill,
@@ -81,8 +109,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                 BackgroundColor = AppColors.CardBackground,
                 BorderStyle = BorderStyle.None,
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
-                ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single, // Beri border bawah agar jelas batasnya
-                ColumnHeadersVisible = true, // Pastikan eksplisit visible
+                ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single,
+                ColumnHeadersVisible = true,
                 EnableHeadersVisualStyles = false,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
@@ -91,22 +119,21 @@ namespace mtc_app.features.machine_history.presentation.screens
                 RowHeadersVisible = false,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 MultiSelect = false,
-                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize, // Kembali ke AutoSize responsif
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize,
                 ScrollBars = ScrollBars.Both, 
                 RowTemplate = { Height = 45 } 
             };
 
-            // Grid Styling
             _dgvHistory.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
-                BackColor = AppColors.Surface, // Ubah ke abu-abu muda (Surface) agar tidak menyatu dengan background putih
+                BackColor = AppColors.Surface,
                 ForeColor = AppColors.TextPrimary,
-                Font = AppFonts.Body, // Gunakan Body font agar fit
-                Padding = new Padding(5), // Padding normal
+                Font = AppFonts.Body,
+                Padding = new Padding(5),
                 SelectionBackColor = AppColors.Surface,
                 SelectionForeColor = AppColors.TextPrimary,
                 Alignment = DataGridViewContentAlignment.MiddleCenter,
-                WrapMode = DataGridViewTriState.True // Memastikan tidak ter-clip jika overflow
+                WrapMode = DataGridViewTriState.True
             };
 
             _dgvHistory.DefaultCellStyle = new DataGridViewCellStyle
@@ -114,18 +141,16 @@ namespace mtc_app.features.machine_history.presentation.screens
                 BackColor = Color.White,
                 ForeColor = AppColors.TextSecondary,
                 Font = AppFonts.Body,
-                Padding = new Padding(15, 10, 15, 10), // Padding dinaikkan
+                Padding = new Padding(15, 10, 15, 10),
                 SelectionBackColor = AppColors.PrimaryLight,
                 SelectionForeColor = AppColors.PrimaryDark,
                 Alignment = DataGridViewContentAlignment.MiddleLeft
             };
 
-            // Event handler for coloring OK/NG
             _dgvHistory.CellFormatting += DgvHistory_CellFormatting;
 
             _pnlContent.Controls.Add(_dgvHistory);
 
-            // Status Label
             _lblStatus = new Label
             {
                 Text = "Memuat data riwayat...",
@@ -136,16 +161,8 @@ namespace mtc_app.features.machine_history.presentation.screens
                 TextAlign = ContentAlignment.MiddleCenter
             };
             this.Controls.Add(_lblStatus);
-            // =========================================================
-            // [BARU] PANEL BAWAH & TOMBOL TUTUP DI KIRI BAWAH
-            // =========================================================
-            var pnlBottom = new Panel
-            {
-                Dock = DockStyle.Bottom,
-                Height = 60,
-                BackColor = this.BackColor
-            };
-
+            
+            var pnlBottom = new Panel { Dock = DockStyle.Bottom, Height = 60, BackColor = this.BackColor };
             var btnCloseBottom = new Button
             {
                 Text = "TUTUP",
@@ -155,76 +172,22 @@ namespace mtc_app.features.machine_history.presentation.screens
                 Size = new Size(120, 40),
                 Cursor = Cursors.Hand,
                 FlatStyle = FlatStyle.Flat,
-                Location = new Point(20, 10) // Jarak 20px dari tepi kiri
+                Location = new Point(20, 10)
             };
             btnCloseBottom.FlatAppearance.BorderSize = 0;
             btnCloseBottom.Click += (s, e) => this.Close();
 
             pnlBottom.Controls.Add(btnCloseBottom);
-            
-            // Tambahkan ke form
             this.Controls.Add(pnlBottom);
             
-            // Atur Z-Index agar pnlBottom dan pnlHeader memakan space pinggir form terlebih dahulu
-            // Dan _pnlContent yang bersifat Dock.Fill akan mengisi sisa space di tengah tanpa overlap
             pnlHeader.SendToBack();
             pnlBottom.SendToBack();
             _lblStatus.SendToBack();
             _pnlContent.BringToFront(); 
-            // =========================================================
-        }
-
-        private async System.Threading.Tasks.Task LoadHistoryDataAsync()
-        {
-            try
-            {
-                _dgvHistory.Visible = false;
-                _lblStatus.Text = "Memuat data riwayat rincian...";
-                _lblStatus.Visible = true;
-
-                // Memanggil GetChecksheetHistoryPivotAsync dengan roleTarget (Teknisi / Operator)
-                DataTable pivotData = await _repository.GetChecksheetHistoryPivotAsync(_machineId, _templateId, _roleTarget, 30);
-
-                if (pivotData.Rows.Count == 0)
-                {
-                    _lblStatus.Text = "Tidak ada riwayat patroli dalam 30 hari terakhir.";
-                }
-                else
-                {
-                    _dgvHistory.DataSource = pivotData;
-                    
-                    // Kolom 0 sekarang berisi Nama Item Checksheet (dulu namanya Tanggal)
-                    _dgvHistory.Columns[0].HeaderText = "Checksheet Item";
-                    _dgvHistory.Columns[0].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells;
-                    _dgvHistory.Columns[0].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
-                    _dgvHistory.Columns[0].Frozen = true; // Pin the item column so users can scroll dates
-
-                    // Kolom ke 1 dan seterusnya adalah kolom Tanggal ("dd/MM/yyyy")
-                    for (int i = 1; i < _dgvHistory.Columns.Count; i++)
-                    {
-                        _dgvHistory.Columns[i].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                        _dgvHistory.Columns[i].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                        _dgvHistory.Columns[i].AutoSizeMode = DataGridViewAutoSizeColumnMode.DisplayedCells; 
-                    }
-
-                    // Setelah beres render, allow user resize
-                    _dgvHistory.AllowUserToResizeColumns = true;
-
-                    _dgvHistory.Visible = true;
-                    _lblStatus.Visible = false;
-                }
-            }
-            catch (Exception ex)
-            {
-                _lblStatus.Text = "Gagal memuat history: " + ex.Message;
-                _lblStatus.ForeColor = AppColors.Danger;
-                _dgvHistory.Visible = false;
-            }
         }
 
         private void DgvHistory_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
-            // Kolom 0 adalah Tanggal, jadi skip. Format OK / NG hanya di cell nilai.
             if (e.ColumnIndex > 0 && e.Value != null)
             {
                 string status = e.Value.ToString();
