@@ -8,13 +8,14 @@ using System.Windows.Forms;
 using Dapper;
 using mtc_app.features.technician.data.dtos;
 using mtc_app.features.technician.data.repositories;
+using mtc_app.features.technician.presentation.controllers;
 using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.technician.presentation.components
 {
-    public class MachinePerformanceControl : UserControl
+    public class MachinePerformanceControl : UserControl, IMachinePerformanceView
     {
-        private readonly ITechnicianRepository _repository;
+        private readonly MachinePerformanceController _controller;
         private List<MachinePerformanceDto> _data = new List<MachinePerformanceDto>();
         private DateTime _lastStart = DateTime.Now.AddDays(-7);
         private DateTime _lastEnd = DateTime.Now;
@@ -31,7 +32,7 @@ namespace mtc_app.features.technician.presentation.components
 
         public MachinePerformanceControl(ITechnicianRepository repository)
         {
-            _repository = repository;
+            _controller = new MachinePerformanceController(this, repository);
             InitializeComponent();
             LoadAreas();
         }
@@ -52,29 +53,45 @@ namespace mtc_app.features.technician.presentation.components
             catch { /* Ignore */ }
         }
 
+        // ========================================================
+        // IMachinePerformanceView Implementation
+        // ========================================================
+
+        public string SelectedArea => cmbArea?.SelectedItem?.ToString();
+        public bool SortAscending => _sortAscending;
+
+        public void UpdateGrid(List<MachinePerformanceDto> data)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => UpdateGrid(data)));
+                return;
+            }
+            _data = data;
+            chartPanel.Invalidate();
+        }
+
+        public void ShowError(string message)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => ShowError(message)));
+                return;
+            }
+            MessageBox.Show(message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
         public async Task LoadDataAsync(DateTime start, DateTime end, string areaOverride = null)
         {
             _lastStart = start;
             _lastEnd = end;
-            
-            try
-            {
-                string area = areaOverride;
-                if (string.IsNullOrEmpty(area) && cmbArea != null && cmbArea.SelectedItem != null)
-                {
-                    area = cmbArea.SelectedItem.ToString();
-                    if (area == "All Areas") area = null;
-                }
 
-                var result = await _repository.GetMachinePerformanceAsync(start, end, area);
-                _data = result?.ToList() ?? new List<MachinePerformanceDto>();
-                
-                SortData(); // Applies sort and invalidates chart
-            }
-            catch (Exception ex)
+            if (!string.IsNullOrEmpty(areaOverride) && cmbArea.Items.Contains(areaOverride))
             {
-                MessageBox.Show($"Gagal memuat data mesin: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                cmbArea.SelectedItem = areaOverride;
             }
+
+            await _controller.LoadDataAsync(start, end);
         }
 
         // ========================================================
@@ -104,7 +121,6 @@ namespace mtc_app.features.technician.presentation.components
 
             this.Controls.Add(mainLayout);
 
-            // Title — added LAST so it docks at the very top
             lblTitle = new Label
             {
                 Text = "Analisis Downtime Mesin",
@@ -166,7 +182,7 @@ namespace mtc_app.features.technician.presentation.components
                 Width = 120,
                 Margin = new Padding(0, 3, 0, 0)
             };
-            cmbArea.SelectedIndexChanged += async (s, e) => await LoadDataAsync(_lastStart, _lastEnd);
+            cmbArea.SelectedIndexChanged += async (s, e) => await _controller.LoadDataAsync(_lastStart, _lastEnd);
             flowTitleRow.Controls.Add(cmbArea);
 
             var lblSort = new Label 
@@ -187,10 +203,10 @@ namespace mtc_app.features.technician.presentation.components
             };
             cmbSort.Items.AddRange(new object[] { "↓ Tertinggi", "↑ Terendah" });
             cmbSort.SelectedIndex = 0;
-            cmbSort.SelectedIndexChanged += (s, e) =>
+            cmbSort.SelectedIndexChanged += async (s, e) =>
             {
                 _sortAscending = cmbSort.SelectedIndex == 1;
-                SortData();
+                await _controller.LoadDataAsync(_lastStart, _lastEnd);
             };
             flowTitleRow.Controls.Add(cmbSort);
 
@@ -270,18 +286,7 @@ namespace mtc_app.features.technician.presentation.components
         // ========================================================
         // Chart Rendering (BIG SIZE VERSION)
         // ========================================================
-        private void SortData()
-        {
-            if (_data == null || _data.Count == 0) return;
-
-            if (_sortAscending)
-                _data = _data.OrderBy(x => x.TotalDowntimeSeconds).ToList();
-            else
-                _data = _data.OrderByDescending(x => x.TotalDowntimeSeconds).ToList();
-
-            chartPanel.Invalidate();
-        }
-
+        
         private void ChartPanel_Paint(object sender, PaintEventArgs e)
         {
             if (_data.Count == 0)
@@ -323,7 +328,6 @@ namespace mtc_app.features.technician.presentation.components
             // Helper function untuk gambar teks di dalam bar (FONT BESAR)
             void DrawSegmentLabel(double seconds, int x, int y, int h, bool isDarkBackground = true)
             {
-                // Jangan gambar teks jika tinggi bar terlalu pendek
                 if (h < 14) return; 
 
                 TimeSpan t = TimeSpan.FromSeconds(seconds);
@@ -345,19 +349,16 @@ namespace mtc_app.features.technician.presentation.components
 
             foreach (var item in _data)
             {
-                // 1. Calculate Raw Heights
                 int hResponse = (int)((item.ResponseDurationSeconds / maxDowntime) * availableHeight);
                 int hRepair = (int)((item.RepairDurationSeconds / maxDowntime) * availableHeight);
                 int hPart = (int)((item.PartWaitDurationSeconds / maxDowntime) * availableHeight);
                 int hOp = (int)((item.OperatorWaitDurationSeconds / maxDowntime) * availableHeight);
 
-                // 2. Apply Minimum Height Logic
                 if (item.ResponseDurationSeconds > 0 && hResponse < minVisualHeight) hResponse = minVisualHeight;
                 if (item.RepairDurationSeconds > 0 && hRepair < minVisualHeight) hRepair = minVisualHeight;
                 if (item.PartWaitDurationSeconds > 0 && hPart < minVisualHeight) hPart = minVisualHeight;
                 if (item.OperatorWaitDurationSeconds > 0 && hOp < minVisualHeight) hOp = minVisualHeight;
 
-                // 3. Draw Stacked Bars & Inner Labels
                 int currentY = chartBottomY;
 
                 // Layer 1: Response (Red)
@@ -406,7 +407,6 @@ namespace mtc_app.features.technician.presentation.components
                 using (var brush = new SolidBrush(Color.Black))
                 using (var format = new StringFormat { Alignment = StringAlignment.Center })
                 {
-                    // Posisi ditarik sedikit lebih tinggi agar aman
                     g.DrawString(totalStr, font, brush, currentX + (barWidth / 2), currentY - 28, format);
                 }
 

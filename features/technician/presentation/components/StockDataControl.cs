@@ -6,20 +6,16 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using mtc_app.features.stock.data.dtos;
 using mtc_app.features.stock.data.repositories;
+using mtc_app.features.technician.presentation.controllers;
 using mtc_app.features.rating.presentation.screens;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.technician.presentation.components
 {
-    /// <summary>
-    /// Read-only view of part request data with date filtering.
-    /// Mirrors the stock dashboard "Semua" view layout.
-    /// Clicking a row opens the RatingTechnicianForm for that ticket.
-    /// </summary>
-    public class StockDataControl : UserControl
+    public class StockDataControl : UserControl, IStockDataView
     {
-        private readonly IStockRepository _repository;
+        private readonly StockDataController _controller;
 
         // UI Components
         private StatCard _cardPending;
@@ -29,27 +25,58 @@ namespace mtc_app.features.technician.presentation.components
 
         public StockDataControl(IStockRepository repository)
         {
-            _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+            _controller = new StockDataController(this, repository);
             InitializeComponent();
+        }
+
+        // ========================================================
+        // IStockDataView Implementation
+        // ========================================================
+        public void UpdateStats(StockStatsDto stats)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => UpdateStats(stats)));
+                return;
+            }
+            _cardPending.Value = stats.PendingCount.ToString();
+            _cardReady.Value = stats.ReadyCount.ToString();
+        }
+
+        public void DisplayRequests(List<PartRequestDto> requests)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => DisplayRequests(requests)));
+                return;
+            }
+            
+            if (requests.Any())
+            {
+                _grid.Visible = true;
+                _emptyState.Visible = false;
+                _grid.DataSource = requests;
+            }
+            else
+            {
+                _grid.Visible = false;
+                _emptyState.Visible = true;
+            }
+        }
+
+        public void ShowError(string message)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => ShowError(message)));
+                return;
+            }
+            MessageBox.Show(message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         public async Task LoadDataAsync(DateTime start, DateTime end)
         {
-            try
-            {
-                var statsTask = _repository.GetStatsByDateAsync(start, end);
-                var requestsTask = _repository.GetRequestsByDateAsync(start, end);
-                await Task.WhenAll(statsTask, requestsTask);
-
-                UpdateStats(statsTask.Result);
-                DisplayRequests(requestsTask.Result);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    $"Gagal memuat data part: {ex.Message}",
-                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            await _controller.LoadDataAsync(start, end);
         }
 
         // ========================================================
@@ -62,14 +89,12 @@ namespace mtc_app.features.technician.presentation.components
             this.BackColor = AppColors.CardBackground;
             this.Dock = DockStyle.Fill;
 
-            // Build sections — add order matters for docking
-            var pnlContent = BuildContentPanel();    // Fill
-            var pnlCards = BuildCardsPanel();         // Top (below title)
+            var pnlContent = BuildContentPanel();
+            var pnlCards = BuildCardsPanel();
 
             this.Controls.Add(pnlContent);
             this.Controls.Add(pnlCards);
 
-            // Page title — added LAST so it docks at the very top
             var lblTitle = new Label
             {
                 Text = "Data Permintaan Part",
@@ -91,7 +116,7 @@ namespace mtc_app.features.technician.presentation.components
             {
                 Dock = DockStyle.Top,
                 Height = 200,
-                BackColor = Color.FromArgb(248, 249, 250), // Same as StockDashboardForm
+                BackColor = Color.FromArgb(248, 249, 250), 
                 Padding = new Padding(20, 25, 20, 25)
             };
 
@@ -101,7 +126,7 @@ namespace mtc_app.features.technician.presentation.components
                 IconType = StatIconType.Checklist,
                 AccentColor = AppColors.Warning,
                 Location = new Point(25, 25),
-                Size = new Size(300, 140) // Same as StockDashboardForm
+                Size = new Size(300, 140) 
             };
 
             _cardReady = new StatCard
@@ -109,7 +134,7 @@ namespace mtc_app.features.technician.presentation.components
                 Title = "Barang Siap",
                 IconType = StatIconType.Trophy,
                 AccentColor = AppColors.Success,
-                Location = new Point(345, 25), // 25 + 300 + 20 gap
+                Location = new Point(345, 25), 
                 Size = new Size(300, 140)
             };
 
@@ -124,7 +149,7 @@ namespace mtc_app.features.technician.presentation.components
             {
                 Dock = DockStyle.Fill,
                 BackColor = AppColors.CardBackground,
-                Padding = new Padding(25, 20, 25, 20) // Same as StockDashboardForm
+                Padding = new Padding(25, 20, 25, 20) 
             };
 
             _grid = BuildDataGrid();
@@ -157,7 +182,6 @@ namespace mtc_app.features.technician.presentation.components
                 BackgroundColor = AppColors.CardBackground,
                 BorderStyle = BorderStyle.None,
                 RowHeadersVisible = false,
-                // Match StockDashboardForm designer exactly
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
                 ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
                 ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize,
@@ -165,7 +189,6 @@ namespace mtc_app.features.technician.presentation.components
                 EnableHeadersVisualStyles = false
             };
 
-            // Column header style
             grid.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
                 Font = AppFonts.Header3,
@@ -176,7 +199,6 @@ namespace mtc_app.features.technician.presentation.components
                 Padding = new Padding(5)
             };
 
-            // Cell style
             grid.DefaultCellStyle = new DataGridViewCellStyle
             {
                 Font = AppFonts.Header3,
@@ -187,7 +209,6 @@ namespace mtc_app.features.technician.presentation.components
 
             grid.RowTemplate.Height = 80;
 
-            // Columns — identical to StockDashboardForm
             grid.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "No",
@@ -250,48 +271,15 @@ namespace mtc_app.features.technician.presentation.components
             return grid;
         }
 
-        // ========================================================
-        // Data Binding
-        // ========================================================
-
-        private void UpdateStats(StockStatsDto stats)
-        {
-            _cardPending.Value = stats.PendingCount.ToString();
-            _cardReady.Value = stats.ReadyCount.ToString();
-        }
-
-        private void DisplayRequests(IEnumerable<PartRequestDto> requests)
-        {
-            var data = requests.ToList();
-
-            if (data.Any())
-            {
-                _grid.Visible = true;
-                _emptyState.Visible = false;
-                _grid.DataSource = data;
-            }
-            else
-            {
-                _grid.Visible = false;
-                _emptyState.Visible = true;
-            }
-        }
-
-        // ========================================================
-        // Event Handlers
-        // ========================================================
-
         private void Grid_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
             if (e.RowIndex < 0) return;
 
-            // Row number
             if (_grid.Columns[e.ColumnIndex].Name == "No")
             {
                 e.Value = (e.RowIndex + 1).ToString();
             }
 
-            // Technician name — "BAHLIL + 1 lainnya" format
             if (_grid.Columns[e.ColumnIndex].Name == "Technician" && e.Value is string techName && !string.IsNullOrEmpty(techName))
             {
                 var names = techName.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries);
@@ -301,7 +289,6 @@ namespace mtc_app.features.technician.presentation.components
                 }
             }
 
-            // Localized status
             if (_grid.Columns[e.ColumnIndex].Name == "Status" && e.Value != null)
             {
                 if (int.TryParse(e.Value.ToString(), out int statusId))
@@ -317,9 +304,6 @@ namespace mtc_app.features.technician.presentation.components
             }
         }
 
-        /// <summary>
-        /// Same behavior as Work Queue ticket click — opens RatingTechnicianForm.
-        /// </summary>
         private void Grid_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
