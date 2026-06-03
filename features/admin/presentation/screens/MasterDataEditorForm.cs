@@ -3,29 +3,29 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using mtc_app.features.admin.data.repositories;
+using mtc_app.features.admin.presentation.controllers;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.admin.presentation.screens
 {
-    public class MasterDataEditorForm : Form
+    public class MasterDataEditorForm : Form, IMasterDataEditorView
     {
-        private readonly IAdminRepository _repository;
+        private readonly MasterDataEditorController _controller;
         private string _category;
         private string _subCategory;
         private IDictionary<string, object> _rowData;
         private bool _isEditMode;
-        private string[] _extraData; // Variabel baru untuk menampung Tipe Mesin dari DB
+        private string[] _extraData;
 
         private FlowLayoutPanel pnlForm;
         private AppLabel lblTitle;
 
         private Dictionary<string, Control> _inputControls = new Dictionary<string, Control>();
 
-        // Constructor sekarang menerima extraData
         public MasterDataEditorForm(IAdminRepository repository, string category, string subCategory = "", object rowData = null, string[] extraData = null)
         {
-            _repository = repository;
+            _controller = new MasterDataEditorController(this, repository);
             _category = category;
             _subCategory = subCategory;
             _rowData = rowData as IDictionary<string, object>; 
@@ -35,6 +35,64 @@ namespace mtc_app.features.admin.presentation.screens
             SetupUI();
             GenerateDynamicFields();
         }
+
+        // ==========================================
+        // IMasterDataEditorView Implementation
+        // ==========================================
+
+        public void SetBusyState(bool isBusy)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => SetBusyState(isBusy)));
+                return;
+            }
+            this.Cursor = isBusy ? Cursors.WaitCursor : Cursors.Default;
+        }
+
+        public void ShowError(string message, string title = "Error")
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => ShowError(message, title)));
+                return;
+            }
+            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        public void ShowWarning(string message, string title = "Peringatan")
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => ShowWarning(message, title)));
+                return;
+            }
+            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+
+        public void ShowSuccess(string message, string title = "Sukses")
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => ShowSuccess(message, title)));
+                return;
+            }
+            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        public void CloseForm(bool success)
+        {
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action(() => CloseForm(success)));
+                return;
+            }
+            this.DialogResult = success ? DialogResult.OK : DialogResult.Cancel;
+        }
+
+        // ==========================================
+        // UI Construction
+        // ==========================================
 
         private void SetupUI()
         {
@@ -57,7 +115,7 @@ namespace mtc_app.features.admin.presentation.screens
             btnCancel.Click += (s, e) => this.DialogResult = DialogResult.Cancel;
 
             AppButton btnSave = new AppButton { Text = "Simpan Data", Type = AppButton.ButtonType.Primary, Width = 150, Dock = DockStyle.Right };
-            btnSave.Click += BtnSave_Click;
+            btnSave.Click += async (s, e) => await BtnSave_Click();
 
             pnlFooter.Controls.Add(btnCancel);
             pnlFooter.Controls.Add(btnSave);
@@ -88,7 +146,6 @@ namespace mtc_app.features.admin.presentation.screens
             }
             else if (_category == "Mesin")
             {
-                // Ekstra data membawa gabungan array TYPES dan AREAS dari database
                 var tipeMesinTersedia = new List<string>();
                 var areaTersedia = new List<string>();
 
@@ -130,7 +187,6 @@ namespace mtc_app.features.admin.presentation.screens
             }
             else if (_category == "Checksheet")
             {
-                // Gunakan daftar asli dari Database yang dikirim lewat ekstraData. Jika kosong, beri nilai fallback.
                 string[] tipeMesinTersedia = (_extraData != null && _extraData.Length > 0) ? _extraData : new[] { "Belum ada template mesin" };
                 
                 AddComboBoxEditable("Tipe Mesin (Ketik baru atau pilih yang ada)", "tipe_mesin", tipeMesinTersedia, GetValue("tipe_mesin"));
@@ -173,7 +229,7 @@ namespace mtc_app.features.admin.presentation.screens
             cmbInput.Items.AddRange(options);
             if (!string.IsNullOrEmpty(selectedValue)) 
             {
-                cmbInput.Text = selectedValue; // Gunakan Text agar bisa menerima nilai yang tidak ada di list
+                cmbInput.Text = selectedValue;
                 if (cmbInput.Items.Contains(selectedValue)) cmbInput.SelectedItem = selectedValue;
             }
             else if (options.Length > 0) cmbInput.SelectedIndex = 0;
@@ -189,7 +245,11 @@ namespace mtc_app.features.admin.presentation.screens
 
         private string GetValue(string key) { return (_isEditMode && _rowData.ContainsKey(key) && _rowData[key] != null) ? _rowData[key].ToString() : ""; }
 
-        private async void BtnSave_Click(object sender, EventArgs e)
+        // ==========================================
+        // UI Events
+        // ==========================================
+
+        private async System.Threading.Tasks.Task BtnSave_Click()
         {
             var dataToSave = new Dictionary<string, object>();
             if (_isEditMode && _rowData.ContainsKey("id")) dataToSave["id"] = _rowData["id"];
@@ -198,28 +258,14 @@ namespace mtc_app.features.admin.presentation.screens
             {
                 string val = input.Value is ComboBox cmb ? cmb.Text : input.Value.Text;
                 if (input.Key == "old_password" || input.Key == "new_password") { dataToSave[input.Key] = val; continue; }
-                if (string.IsNullOrWhiteSpace(val)) { MessageBox.Show($"Kolom '{input.Key}' tidak boleh kosong!", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+                if (string.IsNullOrWhiteSpace(val)) { 
+                    ShowWarning($"Kolom '{input.Key}' tidak boleh kosong!"); 
+                    return; 
+                }
                 dataToSave[input.Key] = val;
             }
 
-            if (_isEditMode && _category == "User")
-            {
-                bool isNewPassFilled = !string.IsNullOrWhiteSpace(dataToSave["new_password"]?.ToString());
-                bool isOldPassFilled = !string.IsNullOrWhiteSpace(dataToSave["old_password"]?.ToString());
-                if (isNewPassFilled && !isOldPassFilled) { MessageBox.Show("Untuk mengubah password, Anda WAJIB memasukkan Password Lama!", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
-            }
-
-            try
-            {
-                this.Cursor = Cursors.WaitCursor;
-                bool success = await _repository.SaveMasterDataAsync(_category, _subCategory, _isEditMode, dataToSave);
-                if (success) {
-                    MessageBox.Show("Data berhasil disimpan!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    this.DialogResult = DialogResult.OK; 
-                } else MessageBox.Show("Penyimpanan gagal, data tidak tersimpan.", "Gagal", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            catch (Exception ex) { MessageBox.Show(ex.Message, "Gagal Disimpan", MessageBoxButtons.OK, MessageBoxIcon.Error); }
-            finally { this.Cursor = Cursors.Default; }
+            await _controller.SaveDataAsync(_category, _subCategory, _isEditMode, dataToSave);
         }
     }
 }

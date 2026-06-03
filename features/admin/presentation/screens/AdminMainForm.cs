@@ -4,17 +4,19 @@ using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using mtc_app.features.admin.data.repositories;
+using mtc_app.features.admin.presentation.controllers;
 using mtc_app.features.admin.presentation.views;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.admin.presentation.screens
 {
-    public partial class AdminMainForm : AppBaseForm
+    public partial class AdminMainForm : AppBaseForm, IAdminMainView
     {
         private Panel pnlSidebar;
         private Panel pnlContent;
         private IAdminRepository _repository;
+        private AdminMainController _controller;
         
         // Views
         private MonitoringView _monitoringView;
@@ -23,15 +25,12 @@ namespace mtc_app.features.admin.presentation.screens
         private BackupView _backupView;
         private NgPatrolAdminView _ngPatrolAdminView;
 
-        private UserControl _currentActiveView;
-
-        // Kita gunakan Button standar bawaan C# untuk menghindari konflik warna dari AppButton
         private Button _activeMenuButton;
         private List<Button> _menuButtons = new List<Button>();
         
-
         public AdminMainForm()
         {
+            _controller = new AdminMainController(this);
             InitializeServices();
             InitializeViews();
             SetupUI(); 
@@ -45,7 +44,7 @@ namespace mtc_app.features.admin.presentation.screens
         {
             await Task.Delay(50);
             if (_menuButtons.Count > 0) SetActiveMenu(_menuButtons[0]);
-            LoadView(_monitoringView);
+            _controller.NavigateTo(_monitoringView);
             _monitoringView.OnViewLoad();
         }
 
@@ -69,7 +68,6 @@ namespace mtc_app.features.admin.presentation.screens
             this.Text = "Manis - Administrator Dashboard";
             this.BackColor = AppColors.Surface;
 
-            // 1. Sidebar Panel
             pnlSidebar = new Panel { Dock = DockStyle.Left, Width = 260, BackColor = AppColors.CardBackground };
             pnlSidebar.Controls.Add(new Panel { Dock = DockStyle.Right, Width = 1, BackColor = AppColors.Separator });
             
@@ -81,44 +79,36 @@ namespace mtc_app.features.admin.presentation.screens
             pnlSidebar.Controls.Add(flowMenu);
             flowMenu.BringToFront();
 
-            // ==========================================
-            // DEFINISI MENU & DROPDOWN
-            // ==========================================
             AddMenuButton("📊 Monitoring Widget", flowMenu, _monitoringView, () => _monitoringView.OnViewLoad());
             
             AddDropdownMenu("📂 Master Data", flowMenu, new Dictionary<string, Action>
             {
-                { "👤 Data User", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("User"); } },
-                { "⚙️ Data Mesin", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Mesin"); } },
-                { "🗺️ Area Mesin", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Area Mesin"); } },
-                { "🔧 Data Sparepart", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Sparepart"); } },
-                { "⚠️ Data Problem", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Problem"); } },
-                { "📋 Data Checksheet", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Checksheet"); } },
-                { "🎯 Target Output", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Target"); } },
-                { "⏱️ Data Waktu Break", () => { LoadView(_masterDataView); _masterDataView.LoadCategory("Waktu Break"); } }
+                { "👤 Data User", () => { _controller.NavigateTo(_masterDataView); _masterDataView.LoadCategory("User"); } },
+                { "⚙️ Data Mesin", () => { _controller.NavigateTo(_masterDataView); _masterDataView.LoadCategory("Mesin"); } },
+                { "🗺️ Area Mesin", () => { _controller.NavigateTo(_masterDataView); _masterDataView.LoadCategory("Area Mesin"); } },
+                { "🔧 Data Sparepart", () => { _controller.NavigateTo(_masterDataView); _masterDataView.LoadCategory("Sparepart"); } },
+                { "⚠️ Data Problem", () => { _controller.NavigateTo(_masterDataView); _masterDataView.LoadCategory("Problem"); } },
+                { "📋 Data Checksheet", () => { _controller.NavigateTo(_masterDataView); _masterDataView.LoadCategory("Checksheet"); } },
+                { "🎯 Target Output", () => { _controller.NavigateTo(_masterDataView); _masterDataView.LoadCategory("Target"); } },
+                { "⏱️ Data Waktu Break", () => { _controller.NavigateTo(_masterDataView); _masterDataView.LoadCategory("Waktu Break"); } }
             });
 
             AddMenuButton("🚨 Data NG Cutting", flowMenu, _ngPatrolAdminView, () => _ngPatrolAdminView.LoadData());
             AddMenuButton("🖨️ Laporan / Export", flowMenu, _reportView);
             AddMenuButton("💾 Backup Database", flowMenu, _backupView);
             
-            // Footer (Logout tetap pakai AppButton karena butuh border merah)
             Panel pnlFooter = new Panel { Dock = DockStyle.Bottom, Height = 80, Padding = new Padding(24, 0, 24, 24) };
             AppButton btnLogout = new AppButton { Text = "🚪 Logout", Type = AppButton.ButtonType.Outline, Dock = DockStyle.Fill, ForeColor = AppColors.Danger };
             btnLogout.Click += (s, e) => this.Close();
             pnlFooter.Controls.Add(btnLogout);
             pnlSidebar.Controls.Add(pnlFooter);
 
-            // 2. Content Panel
             pnlContent = new Panel { Dock = DockStyle.Fill, BackColor = AppColors.Surface, Padding = new Padding(0) };
 
             this.Controls.Add(pnlContent);
             this.Controls.Add(pnlSidebar);
         }
 
-        // ==========================================
-        // HELPER: PEMBUAT TOMBOL SIDEBAR BEBAS BUG
-        // ==========================================
         private Button CreateSidebarButton(string text, int width, bool isSubMenu = false)
         {
             Button btn = new Button
@@ -126,15 +116,15 @@ namespace mtc_app.features.admin.presentation.screens
                 Text = text,
                 Width = width,
                 Height = isSubMenu ? 45 : 50,
-                Margin = new Padding(0, 0, 0, isSubMenu ? 0 : 8), // Sub-menu tidak punya jarak agar menempel
+                Margin = new Padding(0, 0, 0, isSubMenu ? 0 : 8),
                 TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(isSubMenu ? 45 : 16, 0, 0, 0), // Sub-menu menjorok ke dalam
+                Padding = new Padding(isSubMenu ? 45 : 16, 0, 0, 0),
                 Font = isSubMenu ? AppFonts.BodySmall : AppFonts.Body,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.Transparent,
                 ForeColor = AppColors.TextSecondary,
                 Cursor = Cursors.Hand,
-                TabStop = false // Hilangkan garis putus-putus saat difokuskan
+                TabStop = false
             };
             
             btn.FlatAppearance.BorderSize = 0;
@@ -152,7 +142,7 @@ namespace mtc_app.features.admin.presentation.screens
             btn.Click += (s, e) => 
             {
                 SetActiveMenu(btn);
-                LoadView(targetView);
+                _controller.NavigateTo(targetView);
                 onLoadAction?.Invoke();
             };
 
@@ -163,18 +153,15 @@ namespace mtc_app.features.admin.presentation.screens
         private void AddDropdownMenu(string text, FlowLayoutPanel parent, Dictionary<string, Action> subMenuDict)
         {
             int btnWidth = parent.Width - parent.Padding.Left - parent.Padding.Right - 5;
-
-            // 1. Tombol Utama
             Button btnMain = CreateSidebarButton(text + "   ▼", btnWidth);
             parent.Controls.Add(btnMain);
 
-            // 2. Buat anak-anak menu (Sub-menus) tapi langsung disembunyikan
             List<Button> subButtons = new List<Button>();
 
             foreach (var item in subMenuDict)
             {
                 Button btnSub = CreateSidebarButton(item.Key, btnWidth, isSubMenu: true);
-                btnSub.Visible = false; // AWALNYA DISEMBUNYIKAN
+                btnSub.Visible = false;
 
                 btnSub.Click += (s, e) => 
                 {
@@ -187,17 +174,13 @@ namespace mtc_app.features.admin.presentation.screens
                 parent.Controls.Add(btnSub);
             }
 
-            // 3. Logika untuk memunculkan anak-anak menu saat tombol utama diklik
             btnMain.Click += (s, e) => 
             {
                 bool isCurrentlyHidden = !subButtons[0].Visible;
-                
-                // Ubah panah
                 btnMain.Text = isCurrentlyHidden ? text + "   ▲" : text + "   ▼";
                 btnMain.BackColor = isCurrentlyHidden ? AppColors.SurfaceHover : Color.Transparent;
-                btnMain.Margin = new Padding(0, 0, 0, isCurrentlyHidden ? 0 : 8); // Rapikan spasi
+                btnMain.Margin = new Padding(0, 0, 0, isCurrentlyHidden ? 0 : 8);
 
-                // Tampilkan / Sembunyikan sub-menu
                 foreach (var sub in subButtons)
                 {
                     sub.Visible = isCurrentlyHidden;
@@ -207,7 +190,6 @@ namespace mtc_app.features.admin.presentation.screens
 
         private void SetActiveMenu(Button clickedButton)
         {
-            // Kembalikan semua tombol ke warna abu-abu (tidak aktif)
             foreach (var btn in _menuButtons)
             {
                 btn.BackColor = Color.Transparent;
@@ -215,15 +197,23 @@ namespace mtc_app.features.admin.presentation.screens
                 btn.Font = new Font(AppFonts.Body.FontFamily, btn.Font.Size, FontStyle.Regular);
             }
 
-            // Beri warna biru untuk tombol yang sedang diklik
             _activeMenuButton = clickedButton;
             _activeMenuButton.BackColor = AppColors.PrimaryLight;
             _activeMenuButton.ForeColor = AppColors.PrimaryDark;
             _activeMenuButton.Font = new Font(_activeMenuButton.Font.FontFamily, _activeMenuButton.Font.Size, FontStyle.Bold);
         }
 
-        private void LoadView(UserControl view)
+        // ==========================================
+        // IAdminMainView Implementation
+        // ==========================================
+
+        public void LoadView(UserControl view)
         {            
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => LoadView(view)));
+                return;
+            }
             pnlContent.Controls.Clear();
             view.Dock = DockStyle.Fill;
             pnlContent.Controls.Add(view);
