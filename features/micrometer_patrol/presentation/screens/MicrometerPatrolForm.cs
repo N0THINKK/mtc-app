@@ -1,25 +1,18 @@
 using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using System.Windows.Forms;
-using mtc_app.features.micrometer_patrol.data.dtos;
 using mtc_app.features.micrometer_patrol.data.repositories;
-using mtc_app.shared.data.dtos;
+using mtc_app.features.micrometer_patrol.presentation.controllers;
 using mtc_app.shared.data.repositories;
-using mtc_app.shared.data.session;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.micrometer_patrol.presentation.screens
 {
-    public class MicrometerPatrolForm : AppBaseForm 
+    public class MicrometerPatrolForm : AppBaseForm, IMicrometerPatrolView
     {
+        private readonly MicrometerPatrolController _controller;
         private readonly IMicrometerPatrolRepository _repository;
-        private readonly IMasterDataRepository _masterDataRepository;
-        private List<CachedShiftDto> _shifts;
-        private List<CachedMachineDto> _machines;
-        private List<string> _operators;
 
         private AppInput txtTanggal;
         private AppInput cmbShift;
@@ -27,7 +20,7 @@ namespace mtc_app.features.micrometer_patrol.presentation.screens
         private AppInput cmbMesin;
         private AppInput txtNotes;
         
-        private RadioButton[,] rbPoints = new RadioButton[5, 3]; // 5 rows, 3 columns (OK, NG, NA)
+        private RadioButton[,] rbPoints = new RadioButton[5, 3];
         
         private AppButton btnSimpan;
         private AppButton btnBatal;
@@ -35,11 +28,99 @@ namespace mtc_app.features.micrometer_patrol.presentation.screens
         public MicrometerPatrolForm(IMicrometerPatrolRepository repository, IMasterDataRepository masterDataRepository)
         {
             _repository = repository;
-            _masterDataRepository = masterDataRepository;
+            _controller = new MicrometerPatrolController(this, repository, masterDataRepository);
+            
             InitializeUI();
-            SetupFormAsync();
-            AttachEventHandlers();
+            this.Shown += async (s, e) => await _controller.LoadInitialDataAsync();
         }
+
+        // ==========================================
+        // IMicrometerPatrolView Implementation
+        // ==========================================
+
+        public string SelectedShift { get => cmbShift.InputValue; set => cmbShift.InputValue = value; }
+        public string SelectedMachine { get => cmbMesin.InputValue; set => cmbMesin.InputValue = value; }
+        public string SelectedNik { get => cmbNik.InputValue; set => cmbNik.InputValue = value; }
+        public string Notes => txtNotes.InputValue?.Trim() ?? "";
+
+        public void PopulateShifts(string[] shifts)
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(() => PopulateShifts(shifts))); return; }
+            cmbShift.SetDropdownItems(shifts);
+        }
+
+        public void PopulateMachines(string[] machines)
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(() => PopulateMachines(machines))); return; }
+            cmbMesin.SetDropdownItems(machines);
+        }
+
+        public void PopulateOperators(string[] operators)
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(() => PopulateOperators(operators))); return; }
+            cmbNik.SetDropdownItems(operators);
+        }
+
+        public void LockMachine(bool isLocked)
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(() => LockMachine(isLocked))); return; }
+            cmbMesin.Enabled = !isLocked;
+        }
+
+        public void SetTechnicianMode(string username)
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(() => SetTechnicianMode(username))); return; }
+            cmbNik.InputType = AppInput.InputTypeEnum.Text;
+            cmbNik.AllowCustomText = false;
+            cmbNik.Enabled = false;
+            cmbNik.InputValue = username;
+        }
+
+        public string GetPointValue(int index)
+        {
+            if (this.InvokeRequired) { return (string)this.Invoke(new Func<string>(() => GetPointValue(index))); }
+            if (rbPoints[index, 0].Checked) return "OK";
+            if (rbPoints[index, 1].Checked) return "NG";
+            if (rbPoints[index, 2].Checked) return "NA";
+            return "OK";
+        }
+
+        public void SetBusyState(bool isBusy)
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(() => SetBusyState(isBusy))); return; }
+            btnSimpan.Enabled = !isBusy;
+            btnSimpan.Text = isBusy ? "Menyimpan..." : "Simpan";
+            this.Cursor = isBusy ? Cursors.WaitCursor : Cursors.Default;
+        }
+
+        public void ShowError(string message, string title = "Error")
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(() => ShowError(message, title))); return; }
+            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        public void ShowWarning(string message, string title = "Peringatan")
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(() => ShowWarning(message, title))); return; }
+            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+
+        public void ShowSuccess(string message, string title = "Sukses")
+        {
+            if (this.InvokeRequired) { this.Invoke(new Action(() => ShowSuccess(message, title))); return; }
+            ToastNotification.ShowSuccess(message);
+        }
+
+        public void CloseForm(bool success)
+        {
+            if (this.InvokeRequired) { this.BeginInvoke(new Action(() => CloseForm(success))); return; }
+            this.DialogResult = success ? DialogResult.OK : DialogResult.Cancel;
+            this.Close();
+        }
+
+        // ==========================================
+        // UI Layout
+        // ==========================================
 
         private void InitializeUI()
         {
@@ -53,7 +134,6 @@ namespace mtc_app.features.micrometer_patrol.presentation.screens
             Label lblTitle = new Label { Text = "PATROLI HARIAN MIKROMETER", Font = AppFonts.Header1, ForeColor = AppColors.TextPrimary, AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Top, Height = 60 };
             this.Controls.Add(lblTitle);
 
-            // Header Layout
             TableLayoutPanel pnlHeader = new TableLayoutPanel { Dock = DockStyle.Top, Height = 130, ColumnCount = 4, AutoScroll = false, Padding = new Padding(20, 20, 20, 20) };
             pnlHeader.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
             pnlHeader.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
@@ -62,7 +142,7 @@ namespace mtc_app.features.micrometer_patrol.presentation.screens
             this.Controls.Add(pnlHeader);
             pnlHeader.BringToFront();
 
-            txtTanggal = new AppInput { LabelText = "Tanggal", InputType = AppInput.InputTypeEnum.Text, Width = 200, Enabled = false };
+            txtTanggal = new AppInput { LabelText = "Tanggal", InputType = AppInput.InputTypeEnum.Text, Width = 200, Enabled = false, InputValue = DateTime.Now.ToString("dd/MM/yyyy") };
             cmbShift = new AppInput { LabelText = "Shift", InputType = AppInput.InputTypeEnum.Dropdown, Width = 200, AllowCustomText = false };
             cmbNik = new AppInput { LabelText = "NIK", InputType = AppInput.InputTypeEnum.Dropdown, Width = 200, AllowCustomText = true };
             cmbMesin = new AppInput { LabelText = "No. Mesin", InputType = AppInput.InputTypeEnum.Dropdown, Width = 200, AllowCustomText = false };
@@ -72,7 +152,6 @@ namespace mtc_app.features.micrometer_patrol.presentation.screens
             pnlHeader.Controls.Add(cmbNik, 2, 0);
             pnlHeader.Controls.Add(cmbMesin, 3, 0);
 
-            // Body Layout
             FlowLayoutPanel pnlBody = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, Padding = new Padding(20, 10, 20, 20) };
             
             string[] questions = new string[] 
@@ -98,10 +177,8 @@ namespace mtc_app.features.micrometer_patrol.presentation.screens
                 pnlQuestion.Controls.Add(rbPoints[i, 1]);
                 pnlQuestion.Controls.Add(rbPoints[i, 2]);
 
-                // Underline
                 Panel line = new Panel { BackColor = AppColors.Border, Height = 1, Width = 880, Location = new Point(0, 60) };
                 pnlQuestion.Controls.Add(line);
-
                 pnlBody.Controls.Add(pnlQuestion);
             }
 
@@ -111,7 +188,6 @@ namespace mtc_app.features.micrometer_patrol.presentation.screens
             this.Controls.Add(pnlBody);
             pnlBody.BringToFront();
 
-            // Bottom Panel
             Panel pnlBottom = new Panel { Dock = DockStyle.Bottom, Height = 80, BackColor = AppColors.CardBackground, Padding = new Padding(30, 15, 30, 15) };
             btnBatal = new AppButton { Text = "Keluar", Type = AppButton.ButtonType.Secondary, Width = 150, Dock = DockStyle.Left };
             
@@ -121,10 +197,11 @@ namespace mtc_app.features.micrometer_patrol.presentation.screens
             btnHistory.Click += BtnHistory_Click;
             
             btnSimpan = new AppButton { Text = "Simpan", Type = AppButton.ButtonType.Primary, Width = 150, Location = new Point(170, 0) };
+            btnSimpan.Click += async (s, e) => await _controller.SavePatrolAsync();
+            btnBatal.Click += (s, e) => { this.DialogResult = DialogResult.Cancel; this.Close(); };
             
             pnlRight.Controls.Add(btnHistory);
             pnlRight.Controls.Add(btnSimpan);
-
             pnlBottom.Controls.Add(btnBatal);
             pnlBottom.Controls.Add(pnlRight);
             this.Controls.Add(pnlBottom);
@@ -139,155 +216,6 @@ namespace mtc_app.features.micrometer_patrol.presentation.screens
                 historyForm.ShowDialog(this);
             }
             this.Show();
-        }
-
-        private async void SetupFormAsync()
-        {
-            txtTanggal.InputValue = DateTime.Now.ToString("dd/MM/yyyy");
-
-            try
-            {
-                // Load Shifts
-                _shifts = await _masterDataRepository.GetShiftsAsync() ?? new List<CachedShiftDto>();
-                if (_shifts.Count > 0)
-                {
-                    cmbShift.SetDropdownItems(_shifts.Select(s => s.ShiftName).ToArray());
-                    cmbShift.InputValue = _shifts[0].ShiftName;
-                }
-
-                // Load NIK
-                if (UserSession.CurrentUser != null && UserSession.CurrentUser.RoleId != 1)
-                {
-                    // Technician -> No Dropdown, just showing initials disabled
-                    cmbNik.InputType = AppInput.InputTypeEnum.Text;
-                    cmbNik.AllowCustomText = false;
-                    cmbNik.Enabled = false;
-                    cmbNik.InputValue = UserSession.CurrentUser.Username;
-                }
-                else
-                {
-                    _operators = await _masterDataRepository.GetOperatorsAsync() ?? new List<string>();
-                    var nikList = new List<string>(_operators);
-
-                    if (UserSession.CurrentUser != null)
-                    {
-                        string userValue = string.IsNullOrWhiteSpace(UserSession.CurrentUser.Nik) 
-                            ? UserSession.CurrentUser.Username 
-                            : UserSession.CurrentUser.Nik;
-
-                        if (!nikList.Contains(userValue)) nikList.Insert(0, userValue);
-
-                        cmbNik.SetDropdownItems(nikList.ToArray());
-                        cmbNik.InputValue = userValue;
-                    }
-                    else
-                    {
-                        cmbNik.SetDropdownItems(nikList.ToArray());
-                        if (nikList.Count > 0) cmbNik.InputValue = nikList[0];
-                    }
-                }
-
-                // Load Machines
-                _machines = await _masterDataRepository.GetMachinesAsync() ?? new List<CachedMachineDto>();
-                if (_machines.Count > 0)
-                {
-                    cmbMesin.SetDropdownItems(_machines.Select(m => m.Code).ToArray());
-
-                    // Auto-detect machine from appsettings config
-                    string configMachineId = DatabaseHelper.GetMachineId();
-                    var matchedMachine = _machines.FirstOrDefault(m => m.MachineId.ToString() == configMachineId);
-                    if (matchedMachine != null)
-                    {
-                        cmbMesin.InputValue = matchedMachine.Code;
-                        cmbMesin.Enabled = false; // Lock to configured machine
-                    }
-                    else
-                    {
-                        cmbMesin.InputValue = _machines[0].Code;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Gagal memuat data master: " + ex.Message, "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
-        }
-
-        private void AttachEventHandlers()
-        {
-            btnSimpan.Click += BtnSimpan_Click;
-            btnBatal.Click += BtnBatal_Click;
-        }
-
-        private async void BtnSimpan_Click(object sender, EventArgs e)
-        {
-            var selectedShiftName = cmbShift.InputValue;
-            int shiftId = _shifts?.FirstOrDefault(s => s.ShiftName == selectedShiftName)?.ShiftId ?? 0;
-
-            var selectedMachineCode = cmbMesin.InputValue;
-            int machineId = _machines?.FirstOrDefault(m => m.Code == selectedMachineCode)?.MachineId ?? 0;
-
-            if (shiftId == 0 || machineId == 0)
-            {
-                MessageBox.Show("Shift atau Mesin tidak valid!", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            var patrolData = new MicrometerPatrolDto
-            {
-                PatrolDate = DateTime.Now,
-                ShiftId = shiftId,
-                UserId = (int)(UserSession.CurrentUser?.UserId ?? 0),
-                MachineId = machineId,
-                Point1 = GetRadioValue(0),
-                Point2 = GetRadioValue(1),
-                Point3 = GetRadioValue(2),
-                Point4 = GetRadioValue(3),
-                Point5 = GetRadioValue(4),
-                Notes = txtNotes.InputValue?.Trim() ?? ""
-            };
-
-            btnSimpan.Enabled = false;
-            btnSimpan.Text = "Menyimpan...";
-
-            try
-            {
-                bool isSuccess = await _repository.SavePatrolAsync(patrolData);
-
-                if (isSuccess)
-                {
-                    ToastNotification.ShowSuccess("Data patroli mikrometer berhasil disimpan!");
-                    this.DialogResult = DialogResult.OK;
-                    this.Close();
-                }
-                else
-                {
-                    MessageBox.Show("Gagal menyimpan data.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error: {ex.Message}", "Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                btnSimpan.Enabled = true;
-                btnSimpan.Text = "Simpan";
-            }
-        }
-
-        private string GetRadioValue(int rowIndex)
-        {
-            if (rbPoints[rowIndex, 0].Checked) return "OK";
-            if (rbPoints[rowIndex, 1].Checked) return "NG";
-            if (rbPoints[rowIndex, 2].Checked) return "NA";
-            return "OK";
-        }
-
-        private void BtnBatal_Click(object sender, EventArgs e)
-        {
-            this.DialogResult = DialogResult.Cancel;
-            this.Close();
         }
     }
 }
