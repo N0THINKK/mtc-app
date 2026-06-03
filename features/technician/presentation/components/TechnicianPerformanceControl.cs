@@ -7,16 +7,20 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using mtc_app.features.technician.data.dtos;
 using mtc_app.features.technician.data.repositories;
+using mtc_app.features.technician.presentation.controllers;
 using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.technician.presentation.components
 {
-    public class TechnicianPerformanceControl : UserControl
+    public class TechnicianPerformanceControl : UserControl, ITechnicianPerformanceView
     {
-        private readonly ITechnicianRepository _repository;
+        private readonly TechnicianPerformanceController _controller;
         private List<TechnicianPerformanceDto> _leaderboardData = new List<TechnicianPerformanceDto>();
         private string _currentMetric = "repairs"; // repairs, rating, stars
         private bool _sortAscending = false;
+
+        private DateTime _lastStart;
+        private DateTime _lastEnd;
 
         // Layout
         private TableLayoutPanel mainLayout;
@@ -34,32 +38,62 @@ namespace mtc_app.features.technician.presentation.components
 
         public TechnicianPerformanceControl(ITechnicianRepository repository)
         {
-            _repository = repository;
+            _controller = new TechnicianPerformanceController(this, repository);
             InitializeComponent();
+        }
+
+        // ========================================================
+        // ITechnicianPerformanceView Implementation
+        // ========================================================
+        
+        public string CurrentMetric => _currentMetric;
+        public bool SortAscending => _sortAscending;
+
+        public void UpdateStats(int totalRepairs, decimal avgRating)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => UpdateStats(totalRepairs, avgRating)));
+                return;
+            }
+            statsControl.UpdateStats(totalRepairs, avgRating);
+        }
+
+        public void UpdateGrid(List<TechnicianPerformanceDto> data)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => UpdateGrid(data)));
+                return;
+            }
+            _leaderboardData = data;
+            
+            if (_leaderboardData.Count == 0)
+            {
+                lblNoData.Visible = true;
+            }
+            else
+            {
+                lblNoData.Visible = false;
+            }
+            chartPanel.Invalidate();
+        }
+
+        public void ShowError(string message)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => ShowError(message)));
+                return;
+            }
+            MessageBox.Show(message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         public async Task LoadDataAsync(DateTime start, DateTime end)
         {
-            try
-            {
-                var data = await _repository.GetLeaderboardAsync(start, end);
-                _leaderboardData = data?.ToList() ?? new List<TechnicianPerformanceDto>();
-                
-                // Update shop-wide stats (sum of all technicians)
-                if (_leaderboardData.Count > 0)
-                {
-                    int totalRepairs = _leaderboardData.Sum(t => t.TotalRepairs);
-                    double avgRating = _leaderboardData.Average(t => t.AverageRating);
-                    int totalStars = _leaderboardData.Sum(t => t.TotalStars);
-                    statsControl.UpdateStats(totalRepairs, (decimal)avgRating);
-                }
-
-                SortAndRenderChart();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Gagal memuat data leaderboard: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            _lastStart = start;
+            _lastEnd = end;
+            await _controller.LoadDataAsync(start, end);
         }
 
         // ========================================================
@@ -169,7 +203,7 @@ namespace mtc_app.features.technician.presentation.components
             };
             cmbMetric.Items.AddRange(new object[] { "Jumlah Perbaikan", "Rata-rata Rating", "Total Bintang" });
             cmbMetric.SelectedIndex = 0;
-            cmbMetric.SelectedIndexChanged += (s, e) =>
+            cmbMetric.SelectedIndexChanged += async (s, e) =>
             {
                 switch (cmbMetric.SelectedIndex)
                 {
@@ -177,7 +211,7 @@ namespace mtc_app.features.technician.presentation.components
                     case 2: _currentMetric = "stars"; break;
                     default: _currentMetric = "repairs"; break;
                 }
-                SortAndRenderChart();
+                await _controller.LoadDataAsync(_lastStart, _lastEnd);
             };
             flowFilterRow.Controls.Add(cmbMetric);
 
@@ -199,10 +233,10 @@ namespace mtc_app.features.technician.presentation.components
             };
             cmbSort.Items.AddRange(new object[] { "↓ Tertinggi", "↑ Terendah" });
             cmbSort.SelectedIndex = 0;
-            cmbSort.SelectedIndexChanged += (s, e) =>
+            cmbSort.SelectedIndexChanged += async (s, e) =>
             {
                 _sortAscending = cmbSort.SelectedIndex == 1;
-                SortAndRenderChart();
+                await _controller.LoadDataAsync(_lastStart, _lastEnd);
             };
             flowFilterRow.Controls.Add(cmbSort);
 
@@ -241,39 +275,6 @@ namespace mtc_app.features.technician.presentation.components
         // ========================================================
         // Chart Rendering
         // ========================================================
-        private void SortAndRenderChart()
-        {
-            if (_leaderboardData.Count == 0)
-            {
-                lblNoData.Visible = true;
-                chartPanel.Invalidate();
-                return;
-            }
-
-            lblNoData.Visible = false;
-
-            // Sort based on current metric
-            switch (_currentMetric)
-            {
-                case "rating":
-                    _leaderboardData = _sortAscending
-                        ? _leaderboardData.OrderBy(t => t.AverageRating).ToList()
-                        : _leaderboardData.OrderByDescending(t => t.AverageRating).ToList();
-                    break;
-                case "stars":
-                    _leaderboardData = _sortAscending
-                        ? _leaderboardData.OrderBy(t => t.TotalStars).ToList()
-                        : _leaderboardData.OrderByDescending(t => t.TotalStars).ToList();
-                    break;
-                default: // repairs
-                    _leaderboardData = _sortAscending
-                        ? _leaderboardData.OrderBy(t => t.TotalRepairs).ToList()
-                        : _leaderboardData.OrderByDescending(t => t.TotalRepairs).ToList();
-                    break;
-            }
-
-            chartPanel.Invalidate();
-        }
 
         private void ChartPanel_Paint(object sender, PaintEventArgs e)
         {
@@ -420,7 +421,6 @@ namespace mtc_app.features.technician.presentation.components
 
         private Color GetBarColor(int rank)
         {
-            // Performa disamakan jadi warna kuning emas semua
             return Color.FromArgb(255, 193, 7);
         }
 

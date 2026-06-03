@@ -17,8 +17,46 @@ using mtc_app.features.machine_history.data.repositories;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
-    public partial class MachineHistoryFormTechnician : AppBaseForm
+    public partial class MachineHistoryFormTechnician : AppBaseForm, mtc_app.features.machine_history.presentation.controllers.IMachineHistoryTechnicianView
     {
+        private mtc_app.features.machine_history.presentation.controllers.MachineHistoryTechnicianController _controller;
+        public long CurrentTicketId { get => _currentTicketId; set => _currentTicketId = value; }
+        public bool IsVerified { get => _isVerified; set { _isVerified = value; UpdateUIState(); } }
+
+        public void ShowError(string message, string title = "Error") => MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        public void ShowInfo(string message, string title = "Info") => MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        public bool ShowConfirm(string message, string title = "Konfirmasi") => MessageBox.Show(message, title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+        public void RunOnUIThread(Action action) { if (this.InvokeRequired) this.Invoke(action); else action(); }
+
+        public void UpdateMachineStateIndicator(int isMachineRunning)
+        {
+            _isMachineRunning = isMachineRunning;
+            if (_isMachineRunning == 1)
+            {
+                lblMachineState.Text = "\u25b6 RUN";
+                lblMachineState.ForeColor = System.Drawing.Color.FromArgb(34, 197, 94); 
+            }
+            else
+            {
+                lblMachineState.Text = "\u25a0 STOP";
+                lblMachineState.ForeColor = System.Drawing.Color.FromArgb(239, 68, 68); 
+            }
+        }
+
+        public void ShowPreviousSessions(List<string> sessionLines)
+        {
+            _lblPreviousTechnicians.Text = string.Join("\n", sessionLines);
+            _lblPreviousTechnicians.Visible = true;
+        }
+
+        public void AddProblemItem(long problemId, string problemType, string problemDetail, bool isVerified, int index)
+        {
+            var control = new TechnicianProblemItemControl(problemId, problemType, problemDetail, isVerified, index);
+            control.RemoveRequested += (s, ev) => RemoveProblemItem(control);
+            _problemControls.Add(control);
+            pnlProblems.Controls.Add(control);
+        }
+
         private long _currentTicketId;
         private bool _isVerified = false;
         private bool _allowClose = false; 
@@ -83,10 +121,11 @@ namespace mtc_app.features.machine_history.presentation.screens
             _patrolDetailId = patrolDetailId;
 
             InitializeComponent();
-            LoadTicketStatus(); 
+            _controller = new mtc_app.features.machine_history.presentation.controllers.MachineHistoryTechnicianController(this, new TechnicianTicketRepository());
+            _ = _controller.InitializeAsync();
+
             SetupTimer();
             SetupInputs();
-            LoadTicketProblems();
             LoadOfflineTicketState();
             LoadActiveSessions(); 
             UpdateUIState();
@@ -132,78 +171,14 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        /// <summary>
-        /// If the ticket was created offline (negative ID) and has since been synced,
-        /// resolves the real ticket_id from the database and updates _currentTicketId.
-        /// </summary>
-        private bool TryResolveSyncedTicketId()
+        private async Task TryResolveSyncedTicketId()
         {
-            if (_currentTicketId >= 0) return false; // Not an offline ticket, nothing to resolve
-
-            int pendingId = (int)Math.Abs(_currentTicketId);
-            var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
-            if (request != null) return false; // Still pending, not synced yet
-
-            // Pending ticket was synced and deleted. Try to find the real ticket_id.
-            try
-            {
-                if (!ServiceLocator.NetworkMonitor.CheckNow()) return false;
-
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    conn.Open();
-                    var realId = conn.QueryFirstOrDefault<long?>(
-                        "SELECT ticket_id FROM tickets WHERE status_id IN (1, 2, 3) ORDER BY created_at DESC LIMIT 1");
-
-                    if (realId.HasValue && realId.Value > 0)
-                    {
-                        _currentTicketId = realId.Value;
-                        System.Diagnostics.Debug.WriteLine($"[FormTechnician] Resolved synced ticket: {_currentTicketId}");
-                        return true;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[FormTechnician] Failed to resolve synced ticket: {ex.Message}");
-            }
-            return false;
+            await _controller.InitializeAsync();
         }
 
         private void LoadTicketStatus()
         {
-            if (_currentTicketId <= 0) return; 
-            
-            try
-            {
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    conn.Open();
-                    var ticket = conn.QueryFirstOrDefault(@"
-                        SELECT status_id AS StatusId, 
-                               IFNULL(arrival_elapsed_seconds, 0) AS ArrivalSeconds,
-                               IFNULL(repair_elapsed_seconds, 0) AS RepairSeconds,
-                               IFNULL(inspection_elapsed_seconds, 0) AS InspectionSeconds,
-                               IFNULL(is_machine_running, 0) AS IsMachineRunning
-                        FROM tickets WHERE ticket_id = @Id",
-                        new { Id = _currentTicketId });
-                    
-                    if (ticket != null)
-                    {
-                        _ticketStatus = (int)ticket.StatusId;
-                        _arrivalSeconds = (int)ticket.ArrivalSeconds;
-                        _repairSeconds = (int)ticket.RepairSeconds;
-                        _inspectionSeconds = (int)ticket.InspectionSeconds;
-                        _isMachineRunning = (int)ticket.IsMachineRunning;
-                        
-                        UpdateMachineStateIndicator();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error loading status: {ex.Message}");
-            }
+            // Now handled by controller
         }
 
         private void UpdateMachineStateIndicator()
@@ -222,39 +197,7 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private async void LblMachineState_Click(object sender, EventArgs e)
         {
-            int newState = (_isMachineRunning == 1) ? 0 : 1;
-            string stateText = newState == 1 ? "RUN" : "STOP";
-
-            var confirm = MessageBox.Show(
-                $"Ubah status mesin menjadi {stateText}?",
-                "Konfirmasi",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
-
-            if (confirm != DialogResult.Yes) return;
-
-            try
-            {
-                if (_currentTicketId > 0)
-                {
-                    await Task.Run(() =>
-                    {
-                        using (var conn = DatabaseHelper.GetConnection())
-                        {
-                            conn.Open();
-                            conn.Execute(
-                                "UPDATE tickets SET is_machine_running = @State WHERE ticket_id = @Id",
-                                new { State = newState, Id = _currentTicketId });
-                        }
-                    });
-                }
-                _isMachineRunning = newState;
-                UpdateMachineStateIndicator();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Gagal mengubah status mesin: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            await _controller.ToggleMachineStateAsync();
         }
 
         private void SetupTimer()
@@ -265,79 +208,29 @@ namespace mtc_app.features.machine_history.presentation.screens
             
             _timerNotifSound = new Timer { Interval = 1500 }; 
             _timerNotifSound.Tick += (s, e) => System.Media.SystemSounds.Asterisk.Play();
-
-            UpdateTimerDisplay();
         }
 
         private int _tickCounter = 0;
         private void Timer_Tick(object sender, EventArgs e)
         {
-            if (!_isVerified)
-            {
-                _arrivalSeconds++;
-            }
-            else if (_ticketStatus == 2)
-            {
-                _repairSeconds++;
-                foreach (var sessionId in _activeSessionIds)
-                {
-                    if (_sessionElapsedMap.ContainsKey(sessionId))
-                    {
-                        _sessionElapsedMap[sessionId]++;
-                    }
-                }
-            }
-            else if (_ticketStatus == 3)
-            {
-                _inspectionSeconds++;
-            }
-
-            UpdateTimerDisplay();
+            _controller.OnTimerTick();
 
             _tickCounter++;
             if (_isVerified && _tickCounter % 3 == 0 && _currentTicketId > 0)
             {
                 Task.Run(() => UpdatePartRequestStatus());
             }
-
-            // Sync timer to DB every 10 seconds so Dashboard can see "Live" updates
-            if (_tickCounter % 10 == 0 && _currentTicketId > 0)
-            {
-                Task.Run(() => SaveTimerToDatabase());
-            }
         }
 
-        private void UpdateTimerDisplay()
+        public void UpdateTimerDisplay(int arrivalSeconds, int repairSeconds)
         {
-            labelArrival.Text = TimeSpan.FromSeconds(_arrivalSeconds).ToString(@"hh\:mm\:ss");
-            labelFinished.Text = TimeSpan.FromSeconds(_repairSeconds).ToString(@"hh\:mm\:ss");
+            labelArrival.Text = TimeSpan.FromSeconds(arrivalSeconds).ToString(@"hh\:mm\:ss");
+            labelFinished.Text = TimeSpan.FromSeconds(repairSeconds).ToString(@"hh\:mm\:ss");
         }
 
         private void SaveTimerToDatabase()
         {
-            if (_currentTicketId <= 0) return; 
-            
-            // Fix offline freeze: skip saving timer directly to DB if offline
-            if (!ServiceLocator.NetworkMonitor.IsOnline) return; 
-            
-            try
-            {
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    conn.Open();
-                    conn.Execute(@"
-                        UPDATE tickets 
-                        SET arrival_elapsed_seconds = @Arrival, 
-                            repair_elapsed_seconds = @Repair,
-                            inspection_elapsed_seconds = @Inspect
-                        WHERE ticket_id = @Id",
-                        new { Arrival = _arrivalSeconds, Repair = _repairSeconds, Inspect = _inspectionSeconds, Id = _currentTicketId });
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error saving timer: {ex.Message}");
-            }
+            // Now handled by controller
         }
 
         private void CreateSession(int technicianId)
@@ -438,114 +331,12 @@ namespace mtc_app.features.machine_history.presentation.screens
 
         private void LoadPreviousSessions()
         {
-            if (_currentTicketId <= 0) return;
-            
-            try
-            {
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    conn.Open();
-                    var sessions = conn.Query(@"
-                        SELECT u.full_name AS TechName, 
-                               tts.elapsed_seconds AS Elapsed,
-                               tts.is_completing_session AS IsCompleting
-                        FROM ticket_technician_sessions tts
-                        JOIN users u ON tts.technician_id = u.user_id
-                        WHERE tts.ticket_id = @Id
-                        ORDER BY tts.started_at ASC",
-                        new { Id = _currentTicketId });
-                    
-                    if (sessions.Any())
-                    {
-                        var lines = new List<string>();
-                        lines.Add("⚠️ Riwayat Sesi Teknisi:");
-                        
-                        foreach (var s in sessions)
-                        {
-                            string name = (string)s.TechName;
-                            int elapsed = (int)s.Elapsed;
-                            bool isCompleting = ((int)s.IsCompleting) == 1;
-                            
-                            var ts = TimeSpan.FromSeconds(elapsed);
-                            string duration = ts.TotalMinutes >= 1 
-                                ? $"{(int)ts.TotalMinutes} menit" 
-                                : $"{elapsed} detik";
-                            
-                            string marker = isCompleting ? " ✅" : "";
-                            lines.Add($"  • {name}: {duration}{marker}");
-                        }
-                        
-                        _lblPreviousTechnicians.Text = string.Join("\n", lines);
-                        _lblPreviousTechnicians.Visible = true;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[FormTechnician] Error loading sessions: {ex.Message}");
-            }
+            // Now handled by controller
         }
 
         private void LoadTicketProblems()
         {
-            try
-            {
-                if (_currentTicketId < 0)
-                {
-                    int pendingId = (int)Math.Abs(_currentTicketId);
-                    var request = ServiceLocator.OfflineRepo.GetPendingTicketById(pendingId);
-                    
-                    if (request != null)
-                    {
-                        foreach (var prob in request.Problems)
-                        {
-                            var control = new TechnicianProblemItemControl(
-                                0, 
-                                prob.ProblemTypeName ?? "", 
-                                prob.FailureName ?? "", 
-                                _isVerified
-                            );
-                            _problemControls.Add(control);
-                            pnlProblems.Controls.Add(control);
-                        }
-                    }
-                    return;
-                }
-
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    conn.Open();
-                    string sql = @"
-                        SELECT 
-                            tp.problem_id,
-                            COALESCE(pt.type_name, tp.problem_type_remarks, '') AS ProblemType,
-                            COALESCE(f.failure_name, tp.failure_remarks, '') AS ProblemDetail
-                        FROM ticket_problems tp
-                        LEFT JOIN problem_types pt ON tp.problem_type_id = pt.type_id
-                        LEFT JOIN failures f ON tp.failure_id = f.failure_id
-                        WHERE tp.ticket_id = @Id";
-
-                    var problems = conn.Query(sql, new { Id = _currentTicketId });
-
-                    foreach (var p in problems)
-                    {
-                        var control = new TechnicianProblemItemControl(
-                            (long)p.problem_id, 
-                            (string)p.ProblemType, 
-                            (string)p.ProblemDetail, 
-                            _isVerified,
-                            _problemControls.Count
-                        );
-                        control.RemoveRequested += (s, ev) => RemoveProblemItem(control);
-                        _problemControls.Add(control);
-                        pnlProblems.Controls.Add(control);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Gagal memuat problem: {ex.Message}", "Error");
-            }
+            // Now handled by controller
         }
 
         private void LoadOfflineTicketState()

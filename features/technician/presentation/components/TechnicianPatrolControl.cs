@@ -6,14 +6,16 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using mtc_app.features.technician.data.dtos;
 using mtc_app.features.technician.data.repositories;
+using mtc_app.features.technician.presentation.controllers;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.technician.presentation.components
 {
-    public partial class TechnicianPatrolControl : UserControl
+    public partial class TechnicianPatrolControl : UserControl, ITechnicianPatrolView
     {
-        private readonly ITechnicianRepository _repository;
+        private readonly TechnicianPatrolController _controller;
+        
         private string _currentFilter = "NG"; // "NG", "Selesai", "Semua"
         private string _currentSort = "DESC"; // "DESC", "ASC"
         private string _currentRoleFilter = "Semua"; // "Semua", "Teknisi", "Operator"
@@ -43,8 +45,130 @@ namespace mtc_app.features.technician.presentation.components
 
         public TechnicianPatrolControl(ITechnicianRepository repository)
         {
-            _repository = repository;
+            _controller = new TechnicianPatrolController(this, repository);
             InitializeComponentLayout();
+        }
+
+        // ==========================================
+        // ITechnicianPatrolView Implementation
+        // ==========================================
+        public string CurrentFilter => _currentFilter;
+        public string CurrentSort => _currentSort;
+        public string CurrentRoleFilter => _currentRoleFilter;
+        public string CurrentItemFilter => _currentItemFilter;
+
+        public void UpdateStats(int pendingCount, int resolvedCount)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => UpdateStats(pendingCount, resolvedCount)));
+                return;
+            }
+            cardPending.Value = pendingCount.ToString();
+            cardResolved.Value = resolvedCount.ToString();
+        }
+
+        public void UpdateGrid(List<PatrolNgDto> patrols)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => UpdateGrid(patrols)));
+                return;
+            }
+            gridPatrols.DataSource = patrols;
+            gridPatrols.Visible = patrols.Any();
+        }
+
+        public void UpdateItemFilterList(List<string> items, string previousSelection)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => UpdateItemFilterList(items, previousSelection)));
+                return;
+            }
+            
+            cbItemFilter.SelectedIndexChanged -= CbItemFilter_SelectedIndexChanged;
+            cbItemFilter.Items.Clear();
+            cbItemFilter.Items.Add("Semua");
+            foreach (var itemName in items)
+            {
+                cbItemFilter.Items.Add(itemName);
+            }
+            int idx = cbItemFilter.Items.IndexOf(previousSelection);
+            cbItemFilter.SelectedIndex = idx >= 0 ? idx : 0;
+            cbItemFilter.SelectedIndexChanged += CbItemFilter_SelectedIndexChanged;
+        }
+
+        public void ShowEmptyState(string title, string description)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => ShowEmptyState(title, description)));
+                return;
+            }
+            emptyState.Title = title;
+            emptyState.Description = description;
+            emptyState.Visible = true;
+        }
+
+        public void HideEmptyState()
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => HideEmptyState()));
+                return;
+            }
+            emptyState.Visible = false;
+        }
+
+        public void ShowError(string message)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => ShowError(message)));
+                return;
+            }
+            MessageBox.Show(message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        public void ShowSuccess(string message)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => ShowSuccess(message)));
+                return;
+            }
+            MessageBox.Show(message, "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        public void ShowWarning(string message)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => ShowWarning(message)));
+                return;
+            }
+            MessageBox.Show(message, "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        public bool ConfirmAction(string title, string message)
+        {
+            if (this.InvokeRequired)
+            {
+                return (bool)this.Invoke(new Func<bool>(() => ConfirmAction(title, message)));
+            }
+            return MessageBox.Show(message, title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+        }
+
+        // ==========================================
+        // UI Layout & Logic
+        // ==========================================
+
+        public async Task LoadDataAsync(DateTime start, DateTime end)
+        {
+            _startDate = start;
+            _endDate = end;
+            await _controller.LoadDataAsync(start, end);
         }
 
         private void InitializeComponentLayout()
@@ -53,14 +177,12 @@ namespace mtc_app.features.technician.presentation.components
             this.Dock = DockStyle.Fill;
             this.BackColor = AppColors.Background;
 
-            // ==========================================
-            // TOP BANNER (Stats Cards)
-            // ==========================================
+            // TOP BANNER
             pnlTopBanner = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 180,
-                BackColor = Color.FromArgb(248, 249, 250), // Matches StockDashboard
+                BackColor = Color.FromArgb(248, 249, 250),
                 Padding = new Padding(20, 25, 20, 25)
             };
             this.Controls.Add(pnlTopBanner);
@@ -85,9 +207,7 @@ namespace mtc_app.features.technician.presentation.components
             pnlTopBanner.Controls.Add(cardPending);
             pnlTopBanner.Controls.Add(cardResolved);
 
-            // ==========================================
             // FILTER PANEL
-            // ==========================================
             pnlFilters = new Panel
             {
                 Dock = DockStyle.Top,
@@ -97,7 +217,6 @@ namespace mtc_app.features.technician.presentation.components
             
             pnlFilters.Paint += (s, e) =>
             {
-                // Only draw top and bottom borders, leave left and right empty "plong sampe pojok"
                 using (Pen p = new Pen(AppColors.Border))
                 {
                     e.Graphics.DrawLine(p, 0, 0, pnlFilters.Width, 0);
@@ -157,7 +276,6 @@ namespace mtc_app.features.technician.presentation.components
             flowRight.Controls.Add(btnSortAsc);
             flowRight.Controls.Add(lblSort);
 
-            // Spacer between filters
             flowRight.Controls.Add(new Panel { Width = 30, Height = 10, BackColor = Color.Transparent });
 
             cbRoleFilter = new ComboBox
@@ -188,9 +306,6 @@ namespace mtc_app.features.technician.presentation.components
             flowRight.Controls.Add(cbRoleFilter);
             flowRight.Controls.Add(lblRoleFilter);
 
-            // ==========================================
-            // SECOND ROW: Item Filter
-            // ==========================================
             FlowLayoutPanel flowSecondRow = new FlowLayoutPanel
             {
                 Dock = DockStyle.Bottom,
@@ -228,14 +343,12 @@ namespace mtc_app.features.technician.presentation.components
             pnlFilters.Controls.Add(flowRight);
             pnlFilters.Controls.Add(flowSecondRow);
 
-            // ==========================================
-            // BOTTOM ACTIONS PANEL
-            // ==========================================
+            // ACTIONS PANEL
             pnlActions = new Panel
             {
                 Dock = DockStyle.Bottom,
                 Height = 90,
-                Width = 1200, // Force width for anchor calcs
+                Width = 1200,
                 BackColor = Color.FromArgb(248, 249, 250),
                 Padding = new Padding(25, 18, 25, 18)
             };
@@ -261,14 +374,22 @@ namespace mtc_app.features.technician.presentation.components
                 Cursor = Cursors.Hand,
                 Font = new Font("Segoe UI", 12F, FontStyle.Bold)
             };
-            btnMarkResolved.Click += BtnMarkResolved_Click;
+            btnMarkResolved.Click += async (s, e) => 
+            {
+                if (gridPatrols.CurrentRow?.DataBoundItem is PatrolNgDto dto)
+                {
+                    await _controller.MarkResolvedAsync(dto, _startDate, _endDate);
+                }
+                else
+                {
+                    ShowWarning("Pilih baris NG terlebih dahulu dari tabel.");
+                }
+            };
 
             pnlActions.Controls.Add(btnRefresh);
             pnlActions.Controls.Add(btnMarkResolved);
 
-            // ==========================================
-            // CONTENT PANEL (Grid + Empty State)
-            // ==========================================
+            // CONTENT PANEL
             pnlContent = new Panel
             {
                 Dock = DockStyle.Fill,
@@ -276,11 +397,10 @@ namespace mtc_app.features.technician.presentation.components
                 Padding = new Padding(25, 20, 25, 20)
             };
             
-            // Re-order controls for correct docking behavior
-            this.Controls.Add(pnlContent); // Fill
-            this.Controls.Add(pnlFilters); // Top
-            this.Controls.Add(pnlActions); // Bottom
-            this.Controls.Add(pnlTopBanner); // Top
+            this.Controls.Add(pnlContent); 
+            this.Controls.Add(pnlFilters); 
+            this.Controls.Add(pnlActions); 
+            this.Controls.Add(pnlTopBanner); 
 
             pnlContent.BringToFront();
 
@@ -311,7 +431,6 @@ namespace mtc_app.features.technician.presentation.components
                 EnableHeadersVisualStyles = false
             };
 
-            // Grid Styling
             gridPatrols.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
                 Font = AppFonts.Header3,
@@ -331,7 +450,6 @@ namespace mtc_app.features.technician.presentation.components
             };
             gridPatrols.RowTemplate.Height = 80;
 
-            // Columns
             gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "No", HeaderText = "No", Width = 80 });
             gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "PatrolDate", HeaderText = "Waktu Laporkan", DataPropertyName = "FormattedPatrolDate", Width = 180 });
             gridPatrols.Columns.Add(new DataGridViewTextBoxColumn { Name = "Machine", HeaderText = "Mesin", DataPropertyName = "MachineName", Width = 150 });
@@ -392,7 +510,6 @@ namespace mtc_app.features.technician.presentation.components
                 gridPatrols.CurrentCell = gridPatrols.Rows[e.RowIndex].Cells[0];
                 long ticketId = dto.TicketId ?? 0;
                 
-                // Show detail form for viewing
                 using (var ratingForm = new mtc_app.features.rating.presentation.screens.RatingTechnicianForm(ticketId, dto)) 
                 {
                     ratingForm.ShowDialog();
@@ -423,110 +540,6 @@ namespace mtc_app.features.technician.presentation.components
                     e.CellStyle.ForeColor = AppColors.Success;
                     e.CellStyle.Font = new Font(gridPatrols.DefaultCellStyle.Font, FontStyle.Bold);
                 }
-            }
-        }
-
-        public async Task LoadDataAsync(DateTime start, DateTime end)
-        {
-            _startDate = start;
-            _endDate = end;
-
-            try
-            {
-                // Parallel fetch
-                var statsTask = _repository.GetPatrolNgStatsAsync(start, end);
-                var listTask = _repository.GetPatrolNgListAsync(_currentFilter, _currentSort, start, end, _currentRoleFilter, _currentItemFilter);
-                var itemNamesTask = _repository.GetPatrolNgItemNamesAsync(start, end);
-
-                await Task.WhenAll(statsTask, listTask, itemNamesTask);
-
-                var stats = statsTask.Result;
-                var list = listTask.Result.ToList();
-                var itemNames = itemNamesTask.Result.ToList();
-
-                // Update Item Filter ComboBox (preserve selection)
-                string previousSelection = _currentItemFilter;
-                cbItemFilter.SelectedIndexChanged -= CbItemFilter_SelectedIndexChanged;
-                cbItemFilter.Items.Clear();
-                cbItemFilter.Items.Add("Semua");
-                foreach (var itemName in itemNames)
-                {
-                    cbItemFilter.Items.Add(itemName);
-                }
-                int idx = cbItemFilter.Items.IndexOf(previousSelection);
-                cbItemFilter.SelectedIndex = idx >= 0 ? idx : 0;
-                cbItemFilter.SelectedIndexChanged += CbItemFilter_SelectedIndexChanged;
-
-                // Update Stats
-                cardPending.Value = (stats?.PendingCount ?? 0).ToString();
-                cardResolved.Value = (stats?.ResolvedCount ?? 0).ToString();
-
-                // Update Grid
-                if (list.Any())
-                {
-                    gridPatrols.Visible = true;
-                    emptyState.Visible = false;
-                    gridPatrols.DataSource = list;
-                }
-                else
-                {
-                    gridPatrols.Visible = false;
-                    emptyState.Visible = true;
-
-                    if (_currentFilter == "NG")
-                    {
-                        emptyState.Title = "Tidak Ada NG Pending";
-                        emptyState.Description = "Semua masalah checksheet telah diselesaikan.";
-                    }
-                    else if (_currentFilter == "Selesai")
-                    {
-                        emptyState.Title = "Belum Ada NG Selesai";
-                        emptyState.Description = "Belum ada riwayat perbaikan NG pada rentang tanggal ini.";
-                    }
-                    else
-                    {
-                        emptyState.Title = "Tidak Ada Data";
-                        emptyState.Description = "Tidak ada riwayat NG yang dilaporkan.";
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Gagal memuat data Patroli: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private async void BtnMarkResolved_Click(object sender, EventArgs e)
-        {
-            if (gridPatrols.CurrentRow?.DataBoundItem is PatrolNgDto dto)
-            {
-                if (dto.Status == "PERBAIKAN_OK")
-                {
-                    MessageBox.Show("Item ini sudah berstatus Selesai.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
-                }
-
-                var confirm = MessageBox.Show(
-                    $"Apakah Anda yakin telah memperbaiki masalah ini?\n\nMesin: {dto.MachineName}\nItem: {dto.ItemName}", 
-                    "Konfirmasi Perbaikan", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
-                if (confirm == DialogResult.Yes)
-                {
-                    bool success = await _repository.MarkPatrolNgAsResolvedAsync(dto.DetailId);
-                    if (success)
-                    {
-                        MessageBox.Show("Berhasil ditandai selesai.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        await LoadDataAsync(_startDate, _endDate);
-                    }
-                    else
-                    {
-                        MessageBox.Show("Gagal memperbarui status. Silakan coba lagi.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-            }
-            else
-            {
-                MessageBox.Show("Pilih baris NG terlebih dahulu dari tabel.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
     }

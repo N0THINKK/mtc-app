@@ -19,8 +19,9 @@ using System.IO;
 
 namespace mtc_app.features.machine_history.presentation.screens
 {
-    public partial class MachineHistoryFormOperator : AppBaseForm
+    public partial class MachineHistoryFormOperator : AppBaseForm, mtc_app.features.machine_history.presentation.controllers.IMachineHistoryOperatorView
     {
+        private mtc_app.features.machine_history.presentation.controllers.MachineHistoryOperatorController _controller;
         private readonly IMachineHistoryRepository _repository;
         private readonly IMasterDataRepository _masterDataRepository;
         
@@ -57,21 +58,55 @@ namespace mtc_app.features.machine_history.presentation.screens
             InitializeCustomTabs();
             SetupInputs();
             
+            _controller = new mtc_app.features.machine_history.presentation.controllers.MachineHistoryOperatorController(this, _repository, _masterDataRepository);
+            
             this.WindowState = FormWindowState.Maximized;
             this.KeyPreview = true;
             this.KeyDown += HandleKeyDown;
         }
 
+        public string OperatorNik => inputOperatorNik.InputValue;
+        public string Shift => inputShift.InputValue;
+        public string Applicator => inputApplicator.InputValue;
+        public DateTime FilterStartDate => _dtpStart.Value.Date;
+        public DateTime FilterEndDate => _dtpEnd.Value.Date.AddDays(1).AddTicks(-1);
+        public string FilterArea => _cmbArea.SelectedItem?.ToString() ?? "Semua";
+
+        public List<(string ProblemType, string ProblemDetail)> GetProblems()
+        {
+            return _problemControls.Select(p => (p.InputType.InputValue, p.InputFailure.InputValue)).ToList();
+        }
+
+        public void PopulateShifts(string[] shifts) => inputShift.SetDropdownItems(shifts);
+        public void PopulateApplicators(string[] applicators) => inputApplicator.SetDropdownItems(applicators);
+        public void PopulateAreas(string[] areas)
+        {
+            foreach (var area in areas)
+            {
+                if (!_cmbArea.Items.Contains(area)) _cmbArea.Items.Add(area);
+            }
+        }
+        public void SetHistoryData(List<MachineHistoryDto> history) => _historyControl.SetData(history);
+        
+        public void ShowPendingTicket(string statusName)
+        {
+            _lnkPendingTicket.Text = $"⚠️ CONTINUE PROBLEM ({statusName})";
+            _lnkPendingTicket.Visible = true;
+            RepositionPendingLink();
+        }
+        
+        public void HidePendingTicket() => _lnkPendingTicket.Visible = false;
+        
+        public void ShowError(string message, string title = "Error") => MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        public void ShowSuccess(string message, string title = "Sukses", int autoCloseMs = 2000) => AutoClosingMessageBox.Show(message, title, autoCloseMs);
+        public void ShowWarning(string message, string title = "Peringatan") => MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
         protected override async void OnShown(EventArgs e)
         {
             base.OnShown(e);
             this.OnResize(EventArgs.Empty);
-
             await Task.Delay(50); 
-
-            LoadAreas();
-            LoadApplicatorsFromExcel();
-            await CheckForPendingTicketAsync();
+            await _controller.InitializeAsync();
         }
 
         // Main Responsive Layout Containers
@@ -190,7 +225,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             _cmbArea.SelectedIndex = 0;
 
             _btnFilter = new AppButton { Text = "Filter", Type = AppButton.ButtonType.Primary, Width = 80, Height = 30, Margin = new Padding(10, 0, 0, 0) };
-            _btnFilter.Click += async (s, e) => await LoadHistoryAsync();
+            _btnFilter.Click += async (s, e) => await _controller.LoadHistoryAsync();
 
             pnlFilter.Controls.AddRange(new Control[] { _dtpStart, lblTo, _dtpEnd, lblArea, _cmbArea, _btnFilter });
             tabHistory.Controls.Add(pnlFilter);
@@ -206,7 +241,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             {
                 if (_tabControl.SelectedTab == tabHistory)
                 {
-                    await LoadHistoryAsync();
+                    await _controller.LoadHistoryAsync();
                 }
             };
 
@@ -263,7 +298,6 @@ namespace mtc_app.features.machine_history.presentation.screens
             // 2. Shift
             inputShift = CreateInput("Shift", AppInput.InputTypeEnum.Dropdown, true);
             inputShift.AllowCustomText = false;
-            LoadShiftsFromDB();
             AddToForm(inputShift);
 
             // 3. Applicator (Dropdown dari prdmst.csv, bisa kosong)
@@ -378,155 +412,9 @@ namespace mtc_app.features.machine_history.presentation.screens
             };
         }
 
-        private async void LoadShiftsFromDB()
-        {
-            try
-            {
-                var shifts = await _masterDataRepository.GetShiftsAsync();
-                inputShift.SetDropdownItems(shifts.Select(s => s.ShiftName).ToArray());
-            }
-            catch { /* Ignore */ }
-        }
-
-        private void LoadApplicatorsFromExcel()
-        {
-            try
-            {
-                // Resolve machine code from config
-                string machineCode = "";
-                if (int.TryParse(DatabaseHelper.GetMachineId(), out int configId))
-                {
-                    var machines = Task.Run(() => _masterDataRepository.GetMachinesAsync()).Result;
-                    var machine = machines?.FirstOrDefault(m => m.MachineId == configId);
-                    if (machine != null) machineCode = machine.Code ?? "";
-                }
-
-                // Hardcode Excel path based on request
-                string excelPath = @"C:\MTC_System\Data\MasterAplikator.xls";
-                if (!File.Exists(excelPath))
-                {
-                    string fallback = excelPath + "x";
-                    if (File.Exists(fallback)) excelPath = fallback;
-                }
-
-                if (!File.Exists(excelPath)) return;
-
-                // Read applicators from MasterAplikator.xls
-                var (sideA, sideB) = ApplicatorExcelReader.ReadApplicators(excelPath, machineCode);
-                var allApplicators = sideA.Union(sideB).OrderBy(x => x).ToArray();
-
-                if (allApplicators.Length > 0)
-                {
-                    inputApplicator.SetDropdownItems(allApplicators);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[MachineHistory] Error loading applicators: {ex.Message}");
-            }
-        }
-
-        private async void LoadAreas()
-        {
-            try
-            {
-                using (var conn = DatabaseHelper.GetConnection())
-                {
-                    var areas = await conn.QueryAsync<string>("SELECT area_name FROM machine_areas WHERE area_name != 'Lain2' ORDER BY area_name");
-                    foreach (var area in areas)
-                    {
-                        if (!_cmbArea.Items.Contains(area)) 
-                            _cmbArea.Items.Add(area);
-                    }
-                }
-            }
-            catch { /* Ignore */ }
-        }
-
-        private async Task LoadHistoryAsync()
-        {
-            try
-            {
-                string areaFilter = null;
-                if (_cmbArea.SelectedItem != null && _cmbArea.SelectedItem.ToString() != "Semua")
-                {
-                    areaFilter = _cmbArea.SelectedItem.ToString();
-                }
-
-                int? machineId = null;
-                if (int.TryParse(DatabaseHelper.GetMachineId(), out int configId))
-                {
-                    machineId = configId;
-                }
-
-                var startDate = _dtpStart.Value.Date;
-                var endDate = _dtpEnd.Value.Date.AddDays(1).AddTicks(-1);
-
-                var history = await _repository.GetHistoryAsync(startDate, endDate, null, areaFilter, machineId);
-                _historyControl.SetData(history);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Gagal memuat riwayat: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
         private async void SaveButton_Click(object sender, EventArgs e)
         {
-            // [BARU] Validasi untuk input NIK Operator juga
-            if (!inputOperatorNik.ValidateInput() || !inputShift.ValidateInput())
-            {
-                MessageBox.Show("Mohon lengkapi data wajib (NIK Operator dan Shift).", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            foreach (var prob in _problemControls)
-            {
-                if (!prob.InputType.ValidateInput() || !prob.InputFailure.ValidateInput())
-                {
-                    MessageBox.Show("Mohon lengkapi detail problem.", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-            }
-
-            try 
-            {
-                int machineId = 1;
-                if (int.TryParse(DatabaseHelper.GetMachineId(), out int configId))
-                {
-                    machineId = configId;
-                }
-
-                var request = new CreateTicketRequest
-                {
-                    // [BARU] Mengambil NIK Operator dari form input, bukan dari session langsung
-                    OperatorNik = inputOperatorNik.InputValue, 
-                    ShiftName = inputShift.InputValue,
-                    ApplicatorCode = inputApplicator.InputValue,
-                    MachineId = machineId,
-                    Problems = _problemControls.Select(p => new TicketProblemRequest 
-                    { 
-                        ProblemTypeName = p.InputType.InputValue,
-                        FailureName = p.InputFailure.InputValue 
-                    }).ToList()
-                };
-
-                var result = await _repository.CreateTicketAsync(request);
-
-                string successMsg = (result.TicketId < 0) 
-                    ? "Tiket Disimpan Offline.\nMenunggu Sinkronisasi." 
-                    : $"Tiket Berhasil Dibuat!\nKode: {result.TicketCode}";
-
-                AutoClosingMessageBox.Show(successMsg, "Sukses", 2000);
-
-                OpenTechnicianForm(result.TicketId);
-            }
-            catch (Exception ex)
-            {
-                string msg = ex.Message;
-                if (ex.InnerException != null) msg += $"\nDetails: {ex.InnerException.Message}";
-                MessageBox.Show($"Gagal menyimpan: {msg}", "Error Database", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            await _controller.SubmitTicketAsync();
         }
 
         private void PanelFooter_Paint(object sender, PaintEventArgs e)
@@ -537,43 +425,9 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        private async Task CheckForPendingTicketAsync()
+        private void LnkPendingTicket_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            try
-            {
-                int machineId = 1;
-                if (int.TryParse(DatabaseHelper.GetMachineId(), out int configId))
-                {
-                    machineId = configId;
-                }
-
-                _pendingTicket = await _repository.GetActiveTicketForMachineAsync(machineId);
-                
-                if (_pendingTicket != null)
-                {
-                    _lnkPendingTicket.Text = $"⚠️ CONTINUE PROBLEM ({_pendingTicket.StatusName.ToUpper()})";
-                    _lnkPendingTicket.Visible = true;
-                    // Recalculate position after text change
-                    RepositionPendingLink();
-                }
-                else
-                {
-                    _lnkPendingTicket.Visible = false;
-                }
-            }
-            catch
-            {
-                _lnkPendingTicket.Visible = false;
-            }
-        }
-
-        private async void LnkPendingTicket_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-        {
-            if (_pendingTicket == null) return;
-
-            _tabControl.SelectedIndex = 1;
-            await LoadHistoryAsync();
-            OpenTechnicianForm(_pendingTicket.TicketId);
+            _controller.HandlePendingTicketClick();
         }
 
         private void HistoryControl_ItemClicked(object sender, MachineHistoryDto item)
@@ -584,7 +438,7 @@ namespace mtc_app.features.machine_history.presentation.screens
             }
         }
 
-        private void OpenTechnicianForm(long ticketId)
+        public void OpenTechnicianForm(long ticketId)
         {
             var technicianForm = new MachineHistoryFormTechnician(ticketId);
             this.Hide();

@@ -1,0 +1,1257 @@
+using System;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Windows.Forms;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Linq;
+using mtc_app.shared.data.dtos;
+using mtc_app.features.operator_worksheet.services;
+using mtc_app.shared.presentation.styles;
+using mtc_app.shared.infrastructure;
+namespace mtc_app.features.operator_worksheet.presentation.screens
+{
+    public partial class OperatorWorksheetForm
+    {
+        //  BUILD UI
+        // =====================================================================
+        private void InitializeUI()
+        {
+            this.SuspendLayout();
+            this.Controls.Clear();
+
+            this.BackColor = Color.FromArgb(243, 244, 246); // light gray background
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.DoubleBuffered = true;
+
+            _autoSaveTimer = new System.Windows.Forms.Timer { Interval = 20000 };
+            _autoSaveTimer.Tick += async (s, e) =>
+            {
+                _autoSaveTimer.Stop();
+                if (_activeRowData == null || _activeSource != ActiveGrid.Sequen) return;
+                
+                bool success = await PerformSaveAsync(isAutoSave: true);
+                if (success && _dgvSequen.CurrentRow != null)
+                {
+                    int nextIdx = _dgvSequen.CurrentRow.Index + 1;
+                    if (nextIdx < _dgvSequen.RowCount)
+                    {
+                        _dgvSequen.CurrentCell = _dgvSequen.Rows[nextIdx].Cells[0];
+                    }
+                }
+            };
+
+            // ---- 1) TITLE BAR ----
+            var pnlTitleBar = CreateTitleBar();
+            this.Controls.Add(pnlTitleBar);
+
+            // ---- 2) INFO HEADER ----
+            var pnlInfoHeader = CreateInfoHeader();
+            pnlInfoHeader.Top = pnlTitleBar.Bottom;
+            this.Controls.Add(pnlInfoHeader);
+
+            // ---- 2.5) WIRE VISUALIZER (di bawah header, tengah layar) ----
+            int vizWidth = (int)(this.ClientSize.Width * 0.94);
+            _wireVisualizer = new mtc_app.features.operator_worksheet.presentation.components.WireVisualizerPanel
+            {
+                Left = (this.ClientSize.Width - vizWidth) / 2,
+                Top = pnlInfoHeader.Bottom + 4,
+                Width = vizWidth,
+                Height = 65,
+                BackColor = Color.White
+            };
+            _wireVisualizer.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            this.Controls.Add(_wireVisualizer);
+
+            // ---- 3) CONTENT AREA ----
+            _pnlContent = new Panel
+            {
+                Top = _wireVisualizer.Bottom,
+                Left = 0,
+                Width = this.ClientSize.Width,
+                Height = this.ClientSize.Height - _wireVisualizer.Bottom,
+                BackColor = Color.FromArgb(243, 244, 246),
+                AutoScroll = true,
+                Padding = new Padding(12, 10, 12, 10)
+            };
+            _pnlContent.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+
+            // Calculate column widths for 2-column layout
+            int contentW = this.ClientSize.Width - 36; // minus padding
+            int gap = 8;
+            int colW = (contentW - gap) / 2;
+            int topRowHeight = 440;
+            int bottomRowHeight = 440;
+
+            // === ROW 1 LEFT: Sequen ===
+            var pnlSequen = CreateSequenPanel(colW, topRowHeight);
+            pnlSequen.Location = new Point(12, 10);
+            _pnlContent.Controls.Add(pnlSequen);
+
+            // === ROW 1 RIGHT: Aktivitas ===
+            var pnlAktivitas = CreateAktivitasPanel(colW, topRowHeight);
+            pnlAktivitas.Location = new Point(pnlSequen.Right + gap, 10);
+            _pnlContent.Controls.Add(pnlAktivitas);
+
+            // === ROW 2 LEFT: Tersimpan ===
+            var pnlTersimpan = CreateTersimpanPanel(colW, bottomRowHeight);
+            pnlTersimpan.Location = new Point(12, pnlSequen.Bottom + gap);
+            _pnlContent.Controls.Add(pnlTersimpan);
+
+            // === ROW 2 RIGHT: Input Produksi ===
+            var pnlInputProduksi = CreateInputProduksiPanel(colW, bottomRowHeight);
+            pnlInputProduksi.Location = new Point(pnlTersimpan.Right + gap, pnlAktivitas.Bottom + gap);
+            _pnlContent.Controls.Add(pnlInputProduksi);
+
+            // === BOTTOM: Gambar Terminal ===
+            int imageAreaTop = pnlTersimpan.Bottom > pnlInputProduksi.Bottom ? pnlTersimpan.Bottom + gap : pnlInputProduksi.Bottom + gap;
+            int imageAreaWidth = contentW + gap;
+            int imageAreaHeight = 450;
+
+            var pnlGambar = new Panel
+            {
+                Location = new Point(16, imageAreaTop),
+                Size = new Size(imageAreaWidth, imageAreaHeight),
+                BackColor = Color.White,
+                Padding = new Padding(8)
+            };
+            pnlGambar.Paint += (s, ev) =>
+            {
+                using (var pen = new Pen(Color.FromArgb(226, 232, 240), 1)) // slate-200 border
+                    ev.Graphics.DrawRectangle(pen, 0, 0, pnlGambar.Width - 1, pnlGambar.Height - 1);
+            };
+
+            var lblGambarTitle = new Label
+            {
+                Text = "Gambar Terminal",
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 41, 59),
+                AutoSize = true,
+                Location = new Point(12, 8)
+            };
+            pnlGambar.Controls.Add(lblGambarTitle);
+
+            _lblImageInfo = new Label
+            {
+                Text = "Pilih sequen untuk melihat gambar terminal",
+                Font = new Font("Segoe UI", 9F, FontStyle.Italic),
+                ForeColor = Color.FromArgb(148, 163, 184),
+                AutoSize = true,
+                Location = new Point(12, 30)
+            };
+            pnlGambar.Controls.Add(_lblImageInfo);
+
+            _picTerminal = new PictureBox
+            {
+                Location = new Point(12, 50),
+                Size = new Size(imageAreaWidth - 32, imageAreaHeight - 60),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.FromArgb(248, 250, 252),
+                BorderStyle = BorderStyle.FixedSingle,
+                Cursor = Cursors.Hand
+            };
+            _picTerminal.Click += (s, ev) =>
+            {
+                if (_picTerminal.Image == null) return;
+                mtc_app.features.operator_worksheet.presentation.components.ZoomableImagePopup.Show(_picTerminal.Image, _lblImageInfo.Text, this);
+            };
+            pnlGambar.Controls.Add(_picTerminal);
+            _pnlContent.Controls.Add(pnlGambar);
+
+            this.Controls.Add(_pnlContent);
+
+            this.ResumeLayout(true);
+            
+            // LoadSequenData() dipindahkan ke Form_Load setelah LoadHeaderData selesai
+        }
+
+        // =====================================================================
+        //  TITLE BAR  (Dark navy bar with title + Close button)
+        // =====================================================================
+        private Panel CreateTitleBar()
+        {
+            // Colors matching the reference screenshot
+            Color titleBgColor = Color.FromArgb(30, 41, 59);    // slate-800
+            Color titleAccent = Color.FromArgb(56, 189, 248);   // sky-400 accent for left bar
+
+            var pnl = new Panel
+            {
+                Left = 0,
+                Top = 0,
+                Width = this.ClientSize.Width,
+                Height = 52,
+                BackColor = titleBgColor
+            };
+            pnl.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+
+            // Accent stripe on the left
+            var pnlAccent = new Panel
+            {
+                Left = 0, Top = 0,
+                Width = 5, Height = pnl.Height,
+                BackColor = titleAccent
+            };
+            pnl.Controls.Add(pnlAccent);
+
+            // Title text  
+            var lblTitle = new Label
+            {
+                Text = "LEMBAR KERJA OPERATOR",
+                Font = new Font("Segoe UI", 16F, FontStyle.Bold),
+                ForeColor = Color.White,
+                AutoSize = true,
+                BackColor = Color.Transparent,
+                Location = new Point(24, 12)
+            };
+            pnl.Controls.Add(lblTitle);
+
+            // "Keluar" button
+            var btnKeluar = new Button
+            {
+                Text = "Keluar",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = AppColors.TextPrimary,
+                BackColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Size = new Size(85, 34),
+                Cursor = Cursors.Hand
+            };
+            btnKeluar.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225); // slate-300
+            btnKeluar.FlatAppearance.BorderSize = 1;
+            btnKeluar.Location = new Point(pnl.Width - btnKeluar.Width - 16, (pnl.Height - btnKeluar.Height) / 2);
+            btnKeluar.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+
+            // Rounded corners
+            btnKeluar.Paint += (s, e) =>
+            {
+                var btn = (Button)s;
+                int radius = 12;
+                var rect = new Rectangle(0, 0, btn.Width, btn.Height);
+                var path = new GraphicsPath();
+                path.AddArc(rect.X, rect.Y, radius, radius, 180, 90);
+                path.AddArc(rect.Right - radius, rect.Y, radius, radius, 270, 90);
+                path.AddArc(rect.Right - radius, rect.Bottom - radius, radius, radius, 0, 90);
+                path.AddArc(rect.X, rect.Bottom - radius, radius, radius, 90, 90);
+                path.CloseFigure();
+                btn.Region = new Region(path);
+            };
+
+            btnKeluar.Click += (s, e) => this.Close();
+
+            pnl.Controls.Add(btnKeluar);
+
+            // Allow dragging by title bar
+            lblTitle.MouseDown += (s, e) =>
+            {
+                if (e.Button == MouseButtons.Left)
+                {
+                    // Windows API for drag
+                    NativeMethods.ReleaseCapture();
+                    NativeMethods.SendMessage(this.Handle, 0xA1, 0x2, 0);
+                }
+            };
+            pnl.MouseDown += (s, e) =>
+            {
+                if (e.Button == MouseButtons.Left)
+                {
+                    NativeMethods.ReleaseCapture();
+                    NativeMethods.SendMessage(this.Handle, 0xA1, 0x2, 0);
+                }
+            };
+
+            return pnl;
+        }
+
+        // =====================================================================
+        //  INFO HEADER  (Tanggal, No Mesin, Shift, NIK, QTY bar)
+        // =====================================================================
+        private Panel CreateInfoHeader()
+        {
+            var pnl = new Panel
+            {
+                Left = 0,
+                Width = this.ClientSize.Width,
+                Height = 75, // Taller for 2 rows
+                BackColor = Color.White
+            };
+            pnl.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+
+            // Bottom separator line
+            pnl.Paint += (s, e) =>
+            {
+                var p = (Panel)s;
+                using (var pen = new Pen(Color.FromArgb(226, 232, 240), 1)) // slate-200
+                {
+                    e.Graphics.DrawLine(pen, 0, p.Height - 1, p.Width, p.Height - 1);
+                }
+            };
+
+            int leftX = 20;
+            int labelY = 12;
+            Color labelColor = Color.Black;  // slate-500
+            Color valueColor = Color.FromArgb(15, 23, 42);     // slate-900
+            Font labelFont = new Font("Segoe UI", 10F);
+            Font valueFont = new Font("Segoe UI", 10F, FontStyle.Bold);
+
+            // Row 1
+            int row1Y = 10;
+            int col1X = 20;
+            int col2X = 200;
+            int col3X = 400;
+
+            // ---- Deteksi No Urut dari No Mesin ----
+            string displayMesin = _machineNumber;
+            string displayUrut = "-";
+            int dashIdx = _machineNumber.LastIndexOf('-');
+            if (dashIdx > 0)
+            {
+                _machinePrefix = _machineNumber.Substring(0, dashIdx);
+                displayMesin = _machinePrefix;
+                displayUrut = _machineNumber.Substring(dashIdx + 1);
+            }
+            else
+            {
+                _machinePrefix = _machineNumber;
+            }
+
+            // ---- Tanggal ----
+            var lblTanggalLabel = new Label { Text = "Tanggal :", Font = labelFont, ForeColor = labelColor, AutoSize = true, Location = new Point(col1X, row1Y), BackColor = Color.Transparent };
+            pnl.Controls.Add(lblTanggalLabel);
+
+            _lblTanggal = new Label { Text = DateTime.Now.ToString("yyyy/MM/dd"), Font = valueFont, ForeColor = valueColor, AutoSize = true, Location = new Point(lblTanggalLabel.Right + 4, row1Y), BackColor = Color.Transparent };
+            pnl.Controls.Add(_lblTanggal);
+
+            // ---- No Mesin ----
+            var lblMesinLabel = new Label { Text = "Mesin :", Font = labelFont, ForeColor = labelColor, AutoSize = true, Location = new Point(col2X, row1Y), BackColor = Color.Transparent };
+            pnl.Controls.Add(lblMesinLabel);
+
+            _lblNoMesin = new Label { Text = displayMesin, Font = valueFont, ForeColor = valueColor, AutoSize = true, Location = new Point(lblMesinLabel.Right + 4, row1Y), BackColor = Color.Transparent };
+            pnl.Controls.Add(_lblNoMesin);
+
+            // ---- No Urut ----
+            var lblUrutLabel = new Label { Text = "Urut :", Font = labelFont, ForeColor = labelColor, AutoSize = true, Location = new Point(col3X, row1Y), BackColor = Color.Transparent };
+            pnl.Controls.Add(lblUrutLabel);
+
+            _txtNoUrut = new TextBox { Text = displayUrut, Font = valueFont, ForeColor = valueColor, BackColor = Color.White, BorderStyle = BorderStyle.FixedSingle, Size = new Size(60, 24), Location = new Point(lblUrutLabel.Right + 4, row1Y - 2) };
+            _txtNoUrut.Leave += (s, ev) => OnNoUrutChanged();
+            _txtNoUrut.KeyDown += (s, ev) => { if (ev.KeyCode == Keys.Enter) { OnNoUrutChanged(); ev.SuppressKeyPress = true; } };
+            pnl.Controls.Add(_txtNoUrut);
+
+            // Row 2
+            int row2Y = 40;
+            int rightEdge = pnl.Width - 20;
+
+            // ---- Shift (ComboBox) ----
+            var lblShiftLabel = new Label { Text = "Shift :", Font = labelFont, ForeColor = labelColor, AutoSize = true, Location = new Point(col1X, row2Y), BackColor = Color.Transparent };
+            pnl.Controls.Add(lblShiftLabel);
+
+            _cboShift = new ComboBox { Font = valueFont, ForeColor = valueColor, BackColor = Color.White, DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, Size = new Size(110, 28), Location = new Point(lblShiftLabel.Right + 4, row2Y - 4), Cursor = Cursors.Hand };
+            _cboShift.DisplayMember = "ShiftName";
+            _cboShift.ValueMember = "ShiftId";
+            if (_shifts != null && _shifts.Count > 0)
+            {
+                _cboShift.DataSource = _shifts;
+                try { if (_defaultShiftIndex >= 0 && _defaultShiftIndex < _cboShift.Items.Count) _cboShift.SelectedIndex = _defaultShiftIndex; } catch { }
+                _cboShift.SelectedIndexChanged += (s, ev) => { _defaultShiftIndex = _cboShift.SelectedIndex; };
+            }
+            pnl.Controls.Add(_cboShift);
+
+            // ---- NIK ----
+            var lblNikLabel = new Label { Text = "NIK :", Font = labelFont, ForeColor = labelColor, AutoSize = true, Location = new Point(col2X, row2Y), BackColor = Color.Transparent };
+            pnl.Controls.Add(lblNikLabel);
+
+            _lblNik = new Label { Text = _nikOperator, Font = valueFont, ForeColor = valueColor, AutoSize = true, Location = new Point(lblNikLabel.Right + 4, row2Y), BackColor = Color.Transparent };
+            pnl.Controls.Add(_lblNik);
+
+            // ---- QTY section (right-aligned, row 2) ----
+            _pbNetQty = new ProgressBar { Minimum = 0, Maximum = 100, Value = 0, Size = new Size(50, 16), BackColor = Color.FromArgb(226, 232, 240), Style = ProgressBarStyle.Continuous };
+            _pbNetQty.Location = new Point(rightEdge - _pbNetQty.Width, row2Y);
+            _pbNetQty.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            pnl.Controls.Add(_pbNetQty);
+
+            _lblNetQty = new Label { Text = "OK: - / -", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(22, 163, 74), AutoSize = true, BackColor = Color.Transparent };
+            _lblNetQty.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            pnl.Controls.Add(_lblNetQty);
+
+            _pbGrossQty = new ProgressBar { Minimum = 0, Maximum = 100, Value = 0, Size = new Size(50, 16), BackColor = Color.FromArgb(226, 232, 240), Style = ProgressBarStyle.Continuous };
+            _pbGrossQty.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            pnl.Controls.Add(_pbGrossQty);
+
+            _lblGrossQty = new Label { Text = "Gross: - / -", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = valueColor, AutoSize = true, BackColor = Color.Transparent };
+            _lblGrossQty.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            pnl.Controls.Add(_lblGrossQty);
+            
+            // Initial positions
+            _lblNetQty.Location = new Point(_pbNetQty.Left - 70, row2Y);
+            _pbGrossQty.Location = new Point(_lblNetQty.Left - 60, row2Y);
+            _lblGrossQty.Location = new Point(_pbGrossQty.Left - 80, row2Y);
+
+            return pnl;
+        }
+
+        // =====================================================================
+        //  SHARED HELPERS
+        // =====================================================================
+        private Color CardBg => Color.White;
+        private Color SlBorder => Color.FromArgb(226, 232, 240);
+        private Font SectionFont => new Font("Segoe UI", 12F, FontStyle.Bold);
+        private Font FieldLabelFont => new Font("Segoe UI", 9.5F);
+        private Font FieldValueFont => new Font("Segoe UI", 10F);
+
+        private Panel CreateCard(int width, int height)
+        {
+            var card = new Panel
+            {
+                Size = new Size(width, height),
+                BackColor = CardBg,
+                Padding = new Padding(16),
+            };
+            card.Paint += (s, e) =>
+            {
+                var p = (Panel)s;
+                using (var pen = new Pen(SlBorder, 1))
+                {
+                    var rect = new Rectangle(0, 0, p.Width - 1, p.Height - 1);
+                    int r = 10;
+                    var path = new GraphicsPath();
+                    path.AddArc(rect.X, rect.Y, r, r, 180, 90);
+                    path.AddArc(rect.Right - r, rect.Y, r, r, 270, 90);
+                    path.AddArc(rect.Right - r, rect.Bottom - r, r, r, 0, 90);
+                    path.AddArc(rect.X, rect.Bottom - r, r, r, 90, 90);
+                    path.CloseFigure();
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+            return card;
+        }
+
+        private TextBox CreateStyledTextBox(string placeholder, int width = 200)
+        {
+            return new TextBox
+            {
+                Font = FieldValueFont,
+                Width = width,
+                Height = 32,
+                BackColor = Color.FromArgb(248, 250, 252),
+                BorderStyle = BorderStyle.FixedSingle,
+                PlaceholderText = placeholder
+            };
+        }
+
+        // =====================================================================
+        //  LEFT PANEL: Input Produksi
+        // =====================================================================
+        private Panel CreateInputProduksiPanel(int width, int height)
+        {
+            var card = CreateCard(width, height);
+            var lblH = new Label { Text = "Input Produksi", Font = SectionFont, ForeColor = Color.FromArgb(15, 23, 42), AutoSize = true, Location = new Point(16, 14) };
+            card.Controls.Add(lblH);
+
+            int y = 44;
+            int fw = width - 40;
+
+            // SISI A / SISI B toggle
+            _btnSisiA = new Button { Text = "SISI A", Font = new Font("Segoe UI", 9.5F, FontStyle.Bold), Size = new Size(fw / 2, 32), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = AppColors.Primary, ForeColor = Color.White, Cursor = Cursors.Hand };
+            _btnSisiA.FlatAppearance.BorderSize = 0;
+            _btnSisiA.Click += (s, e) => ToggleSisi(true);
+            card.Controls.Add(_btnSisiA);
+
+            _btnSisiB = new Button { Text = "SISI B", Font = new Font("Segoe UI", 9.5F, FontStyle.Bold), Size = new Size(fw / 2, 32), Location = new Point(_btnSisiA.Right + 2, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(241, 245, 249), ForeColor = Color.FromArgb(71, 85, 105), Cursor = Cursors.Hand };
+            _btnSisiB.FlatAppearance.BorderSize = 1;
+            _btnSisiB.FlatAppearance.BorderColor = SlBorder;
+            _btnSisiB.Click += (s, e) => ToggleSisi(false);
+            card.Controls.Add(_btnSisiB);
+            y += 44;
+
+            _lblLotId = new Label { Text = "Sequen: -", Font = new Font("Segoe UI", 11F, FontStyle.Bold), ForeColor = Color.FromArgb(15, 23, 42), AutoSize = true, Location = new Point(16, y) };
+            card.Controls.Add(_lblLotId);
+            y += 28;
+
+            // Terminal & Seal side by side
+            int halfFw = (fw - 8) / 2;
+            card.Controls.Add(new Label { Text = "Terminal", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Seal", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16 + halfFw + 8, y) });
+            y += 20;
+
+            _txtTerminal = CreateStyledTextBox("Terminal", halfFw);
+            _txtTerminal.Location = new Point(16, y);
+            _txtTerminal.ReadOnly = true;
+            card.Controls.Add(_txtTerminal);
+
+            _txtSeal = CreateStyledTextBox("Seal", halfFw);
+            _txtSeal.Location = new Point(_txtTerminal.Right + 8, y);
+            _txtSeal.ReadOnly = true;
+            card.Controls.Add(_txtSeal);
+            y += 40;
+
+            // CutL (read-only dari prdmst, sama untuk Sisi A dan B)
+            card.Controls.Add(new Label { Text = "CutL", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16, y) });
+            y += 20;
+            _txtCutL = CreateStyledTextBox("0", fw);
+            _txtCutL.ReadOnly = true;
+            _txtCutL.BackColor = Color.FromArgb(248, 250, 252); // berikan warna abu-abu terang agar terlihat disabled
+            _txtCutL.Location = new Point(16, y);
+            card.Controls.Add(_txtCutL);
+            y += 40;
+
+            int labelWidth = 80;
+            int inputWidth = fw - labelWidth - 8;
+
+            card.Controls.Add(new Label { Text = "Front C/H", Font = FieldLabelFont, ForeColor = Color.Black, Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
+            _txtFrontChA = CreateStyledTextBox("Masukkan Front C/H", inputWidth);
+            _txtFrontChA.Location = new Point(16 + labelWidth + 8, y);
+            _txtFrontChA.Text = "0";
+            card.Controls.Add(_txtFrontChA);
+            y += 36;
+
+            card.Controls.Add(new Label { Text = "Rear C/H", Font = FieldLabelFont, ForeColor = Color.Black, Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
+            _txtRearChA = CreateStyledTextBox("Masukkan Rear C/H", inputWidth);
+            _txtRearChA.Location = new Point(16 + labelWidth + 8, y);
+            _txtRearChA.Text = "0";
+            card.Controls.Add(_txtRearChA);
+            y += 36;
+
+            card.Controls.Add(new Label { Text = "Front C/W", Font = FieldLabelFont, ForeColor = Color.Black, Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
+            _txtFrontCwA = CreateStyledTextBox("Masukkan Front C/W", inputWidth);
+            _txtFrontCwA.Location = new Point(16 + labelWidth + 8, y);
+            _txtFrontCwA.Text = "0";
+            card.Controls.Add(_txtFrontCwA);
+            y += 36;
+
+            card.Controls.Add(new Label { Text = "Rear C/W", Font = FieldLabelFont, ForeColor = Color.Black, Size = new Size(labelWidth, 32), TextAlign = ContentAlignment.MiddleLeft, Location = new Point(16, y) });
+            _txtRearCwA = CreateStyledTextBox("Masukkan Rear C/W", inputWidth);
+            _txtRearCwA.Location = new Point(16 + labelWidth + 8, y);
+            _txtRearCwA.Text = "0";
+            card.Controls.Add(_txtRearCwA);
+            y += 44;
+
+            return card;
+        }
+
+        private void ToggleSisi(bool isSisiA)
+        {
+            _isSisiA = isSisiA;
+            _btnSisiA.BackColor = isSisiA ? AppColors.Primary : Color.FromArgb(241, 245, 249);
+            _btnSisiA.ForeColor = isSisiA ? Color.White : Color.FromArgb(71, 85, 105);
+            _btnSisiB.BackColor = !isSisiA ? AppColors.Primary : Color.FromArgb(241, 245, 249);
+            _btnSisiB.ForeColor = !isSisiA ? Color.White : Color.FromArgb(71, 85, 105);
+
+            // Update Terminal & Seal fields based on active side
+            if (_activeRowData?.Master != null)
+            {
+                var master = _activeRowData.Master;
+                _txtTerminal.Text = isSisiA ? (master.TerminalA ?? "") : (master.TerminalB ?? "");
+                _txtSeal.Text = isSisiA ? (master.SealA ?? "") : (master.SealB ?? "");
+                LoadTerminalImage(master);
+            }
+
+            // Update Front/Rear from Jissk based on active side
+            UpdateFrontRearFields(_activeRowData?.Jissk);
+        }
+
+        private void UpdateFrontRearFields(mtc_app.features.operator_worksheet.data.dtos.JisskDto jissk)
+        {
+            if (jissk == null)
+            {
+                _txtFrontChA.Text = "0";
+                _txtFrontCwA.Text = "0";
+                _txtRearChA.Text = "0";
+                _txtRearCwA.Text = "0";
+                return;
+            }
+
+            if (_isSisiA)
+            {
+                _txtFrontChA.Text = jissk.FrontChA;
+                _txtFrontCwA.Text = jissk.FrontCwA;
+                _txtRearChA.Text = jissk.RearChA;
+                _txtRearCwA.Text = jissk.RearCwA;
+            }
+            else
+            {
+                _txtFrontChA.Text = jissk.FrontChB;
+                _txtFrontCwA.Text = jissk.FrontCwB;
+                _txtRearChA.Text = jissk.RearChB;
+                _txtRearCwA.Text = jissk.RearCwB;
+            }
+        }
+
+        // =====================================================================
+        //  MIDDLE PANEL: Aktivitas
+        // =====================================================================
+        private Panel CreateAktivitasPanel(int width, int height)
+        {
+            var card = CreateCard(width, height);
+            _lblAktivitasTitle = new Label { Text = "Aktivitas", Font = SectionFont, ForeColor = Color.FromArgb(15, 23, 42), AutoSize = true, Location = new Point(16, 14) };
+            card.Controls.Add(_lblAktivitasTitle);
+
+            int y = 44;
+            int fw = width - 40;
+            int halfW = (fw - 8) / 2;
+            int thirdW = (fw - 16) / 3;
+
+            // Lot Id Wire & Issue Kanban side by side
+            card.Controls.Add(new Label { Text = "Lot Id Wire", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Issue Kanban", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16 + halfW + 8, y) });
+            y += 20;
+
+            _txtLotIdWire = CreateStyledTextBox("Lot Id Wire", halfW);
+            _txtLotIdWire.Location = new Point(16, y);
+            _txtLotIdWire.TextChanged += (s, e) => ResetAutoSaveTimer();
+            card.Controls.Add(_txtLotIdWire);
+
+            _txtIssueKanban = CreateStyledTextBox("Issue Kanban", halfW);
+            _txtIssueKanban.Location = new Point(_txtLotIdWire.Right + 8, y);
+            _txtIssueKanban.TextChanged += (s, e) => ResetAutoSaveTimer();
+            card.Controls.Add(_txtIssueKanban);
+            y += 42;
+
+            // Lot Id Terminal A & Lot Id Terminal B side by side
+            card.Controls.Add(new Label { Text = "Lot Id Terminal A", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Lot Id Terminal B", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16 + halfW + 8, y) });
+            y += 20;
+
+            _txtLotIdTerminalA = CreateStyledTextBox("Lot Id Terminal A", halfW);
+            _txtLotIdTerminalA.Location = new Point(16, y);
+            _txtLotIdTerminalA.TextChanged += (s, e) => ResetAutoSaveTimer();
+            card.Controls.Add(_txtLotIdTerminalA);
+
+            _txtLotIdTerminalB = CreateStyledTextBox("Lot Id Terminal B", halfW);
+            _txtLotIdTerminalB.Location = new Point(_txtLotIdTerminalA.Right + 8, y);
+            _txtLotIdTerminalB.TextChanged += (s, e) => ResetAutoSaveTimer();
+            card.Controls.Add(_txtLotIdTerminalB);
+            y += 42;
+
+            // QTY Produksi & No. 4m side by side
+            card.Controls.Add(new Label { Text = "QTY Produksi", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "No. 4m", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16 + halfW + 8, y) });
+            y += 20;
+
+            _txtQtyProduksi = CreateStyledTextBox("Masukkan Qty Produksi", halfW);
+            _txtQtyProduksi.Location = new Point(16, y);
+            _txtQtyProduksi.TextChanged += (s, e) => ResetAutoSaveTimer();
+            card.Controls.Add(_txtQtyProduksi);
+
+            _txtNo4m = CreateStyledTextBox("No. 4m", halfW);
+            _txtNo4m.Location = new Point(_txtQtyProduksi.Right + 8, y);
+            _txtNo4m.TextChanged += (s, e) => ResetAutoSaveTimer();
+            card.Controls.Add(_txtNo4m);
+            y += 42;
+
+            // Kode Defect (dropdown diisi user)
+            card.Controls.Add(new Label { Text = "Kode Defect", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16, y) });
+            y += 20;
+            _cboKodeDefect = new ComboBox { Font = FieldValueFont, Size = new Size(fw, 30), Location = new Point(16, y), DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(248, 250, 252) };
+            _cboKodeDefect.SelectedIndexChanged += (s, e) => ResetAutoSaveTimer();
+            _cboKodeDefect.Items.AddRange(new object[] {
+                "- Pilih Kode Defect -",
+                "A.1 CORE FRAYING",
+                "A.2 CORE CUT CORE",
+                "A.3 CORE TIDAK TERATUR",
+                "A.4 CORE MAJU",
+                "A.5 CORE MUNDUR",
+                "A.6 CORE TIDAK TERCRIMPING",
+                "A.7 CORE SCRATCH",
+                "B.1 TERMINAL TERGORES",
+                "B.2 TERMINAL BENT UP",
+                "B.3 TERMINAL BENT DOWN",
+                "B.4 TERMINAL MELINTIR",
+                "B.5 TERMINAL UJUNG TERPOTONG",
+                "B.6 TERMINAL OPEN / FLARE",
+                "B.7 TERMINAL DEFORM",
+                "B.8 TERMINAL BRIDGE TERLALU PANJANG",
+                "B.9 TERMINAL CANTILEVER RUSAK",
+                "B.10 TERMINAL LEPAS DARI CIRCUIT",
+                "C.1 FRONT CRIMPING C/H TERLALU TINGGI",
+                "C.2 FRONT CRIMPING C/H TERLALU RENDAH",
+                "C.3 FRONT CRIMPING C/W TERLALU TINGGI",
+                "C.4 FRONT CRIMPING C/W TERLALU RENDAH",
+                "C.5 FRONT CRIMPING FLASH",
+                "D.1 REAR CRIMPING C/H TERLALU TINGGI",
+                "D.2 REAR CRIMPING C/H TERLALU RENDAH",
+                "D.3 REAR CRIMPING C/W TERLALU TINGGI",
+                "D.4 REAR CRIMPING C/W TERLALU RENDAH",
+                "D.5 REAR CRIMPING ADA DI DALAM INSULASI",
+                "D.6 REAR CRIMPING TIDAK STANDART",
+                "E.1 INSULATION TERCRIMPING",
+                "E.2 INSULATION MUNDUR",
+                "E.3 INSULATION DAMAGE",
+                "E.4 INSULATION TIDAK RATA",
+                "F.1 SEAL RUBBER TERPOTONG",
+                "F.2 SEAL RUBBER TERBALIK",
+                "F.3 SEAL RUBBER MUNDUR",
+                "F.4 SEAL RUBBER MAJU",
+                "F.5 SEAL RUBBER TERCRIMPING",
+                "F.6 SEAL RUBBER MISSING",
+                "F.7 SEAL RUBBER DAMAGE",
+                "G.1 CRIMPING FOREIGN MATERIAL",
+                "G.2 CRIMPING ADA 2 TERMINAL TERCRIMPING",
+                "G.3 CRIMPING NO CORE",
+                "G.4 CRIMPING NO STRIPPING",
+                "H.1 LANCE RUSAK",
+                "H.2 STABILIZER RUSAK",
+                "H.3 BELLMOUTH TIDAK STANDART",
+                "H.4 KONDISI CORE BAGIAN A",
+                "H.5 RESIN MASUK BAGIAN A",
+                "H.6 RESIN BAREL BAGIAN B TERBUKA",
+                "H.7 CORE TERLIHAT ATAS SISI C",
+                "H.8 CORE TERLIHAT SAMPING SISI C",
+                "H.9 SISI PUNGGUNG",
+                "H.10 ABNORMAL RESIN",
+                "H.11 PANJANG WELDING N-OK",
+                "H.12 CIRCUIT TIDAK TERBONDER",
+                "H.13 BONDER RETAK"
+            });
+            _cboKodeDefect.SelectedIndex = 0;
+            card.Controls.Add(_cboKodeDefect);
+            y += 42;
+
+            // Defect Mesin (ReadOnly) + Defect Operator (Editable) side by side
+            card.Controls.Add(new Label { Text = "Defect Mesin (otomatis)", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16, y) });
+            card.Controls.Add(new Label { Text = "Defect Operator", Font = FieldLabelFont, ForeColor = Color.Black, AutoSize = true, Location = new Point(16 + halfW + 8, y) });
+            y += 20;
+
+            _txtDefectMesin = CreateStyledTextBox("0", halfW);
+            _txtDefectMesin.Location = new Point(16, y);
+            _txtDefectMesin.Text = "0";
+            _txtDefectMesin.ReadOnly = true;
+            _txtDefectMesin.BackColor = Color.FromArgb(241, 245, 249);
+            card.Controls.Add(_txtDefectMesin);
+
+            _txtDefectOperator = CreateStyledTextBox("Masukkan jumlah defect", halfW);
+            _txtDefectOperator.Location = new Point(_txtDefectMesin.Right + 8, y);
+            _txtDefectOperator.Text = "0";
+            _txtDefectOperator.TextChanged += (s, e) => 
+            {
+                ResetAutoSaveTimer();
+                // Jika defect operator = 0, reset kode defect ke default (kosong)
+                int.TryParse(_txtDefectOperator.Text.Trim(), out int val);
+                if (val == 0 && _cboKodeDefect != null && _cboKodeDefect.SelectedIndex > 0)
+                {
+                    _cboKodeDefect.SelectedIndex = 0;
+                }
+            };
+            card.Controls.Add(_txtDefectOperator);
+            y += 48;
+
+            // Button Simpan
+            var btnSave = new Button { Text = "Simpan", Font = new Font("Segoe UI", 9.5F, FontStyle.Bold), Size = new Size(fw, 34), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(16, 185, 129), ForeColor = Color.White, Cursor = Cursors.Hand };
+            btnSave.FlatAppearance.BorderSize = 0;
+            btnSave.Click += BtnSimpanAktivitas_Click;
+            card.Controls.Add(btnSave);
+            y += 38;
+
+            // Button Lihat Record
+            var btnLihatRecord = new Button { Text = "Lihat Record", Font = new Font("Segoe UI", 9F, FontStyle.Regular), Size = new Size(fw, 30), Location = new Point(16, y), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(59, 130, 246), ForeColor = Color.White, Cursor = Cursors.Hand };
+            btnLihatRecord.FlatAppearance.BorderSize = 0;
+            btnLihatRecord.Click += (s, e) => ShowSavedRecordsPopup();
+            card.Controls.Add(btnLihatRecord);
+
+            return card;
+        }
+
+        private async void BtnSimpanAktivitas_Click(object sender, EventArgs e)
+        {
+            await PerformSaveAsync(isAutoSave: false);
+        }
+
+        private void ResetAutoSaveTimer()
+        {
+            if (_isPopulatingFields) return;
+            if (_activeRowData != null && _activeSource == ActiveGrid.Sequen)
+            {
+                _autoSaveTimer.Stop();
+                _autoSaveTimer.Start();
+            }
+        }
+
+        private async Task<bool> PerformSaveAsync(bool isAutoSave)
+        {
+            if (_activeRowData == null)
+            {
+                if (!isAutoSave) MessageBox.Show("Pilih sequen terlebih dahulu.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            var rowData = _activeRowData;
+
+            // Cegah simpan ulang dari grid SEQUEN jika sudah tersimpan
+            if (_activeSource == ActiveGrid.Sequen && rowData.DbRecord != null)
+            {
+                if (!isAutoSave) MessageBox.Show("Sequen ini sudah tersimpan. Gunakan tabel 'Sudah Tersimpan' untuk mengedit.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return false;
+            }
+
+            // Ambil kode defect dari dropdown
+            string kodeDefect = _cboKodeDefect.SelectedIndex > 0 ? _cboKodeDefect.SelectedItem.ToString() : string.Empty;
+
+            // Parse defect operator
+            int.TryParse(_txtDefectOperator.Text.Trim(), out int defectOperator);
+            int.TryParse(_txtQtyProduksi.Text.Trim(), out int qtyProduct);
+
+            // Validasi: jika defect operator > 0, wajib pilih kode defect
+            if (defectOperator > 0 && string.IsNullOrEmpty(kodeDefect))
+            {
+                if (!isAutoSave) 
+                {
+                    MessageBox.Show("Jika ada Defect Operator, wajib memilih Kode Defect.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    _cboKodeDefect.Focus();
+                }
+                return false;
+            }
+
+            // Ambil shift dari combo
+            string shiftName = _cboShift?.SelectedItem is CachedShiftDto shift ? shift.ShiftName : "";
+            
+            if (string.IsNullOrWhiteSpace(shiftName))
+            {
+                if (!isAutoSave) MessageBox.Show("Silakan pilih Shift terlebih dahulu.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            int.TryParse(rowData.Log?.QtyDefect ?? "0", out int defectMesin);
+
+            var record = new mtc_app.features.operator_worksheet.data.dtos.LkoRecordDto
+            {
+                // Jika edit dari Tersimpan, carry over Id agar repo UPDATE bukan INSERT
+                Id = rowData.DbRecord?.Id ?? 0,
+                WaktuSimpan = DateTime.Now,
+                NoMesin = GetEffectiveMachineNumber(),
+                IdMesin = _activeMachineId,
+                ShiftName = shiftName,
+                Nik = _nikOperator,
+                Sequen = rowData.DisplaySequen,
+                UrutanKanban = rowData.DisplayUrutanPengerjaan,
+                QtyProduct = qtyProduct,
+                No4m = _txtNo4m.Text.Trim(),
+                QtyDefectMesin = defectMesin,
+                QtyDefectOperator = defectOperator,
+                KodeDefect = kodeDefect,
+                LotIdWire = _txtLotIdWire.Text.Trim(),
+                LotIdTerminalA = _txtLotIdTerminalA.Text.Trim(),
+                LotIdTerminalB = _txtLotIdTerminalB.Text.Trim(),
+                IssueKanban = _txtIssueKanban.Text.Trim(),
+                CutLength = _txtCutL.Text.Trim(),
+
+                // Master data
+                KombinasiWire = rowData.Master?.KombinasiWire ?? "",
+                TerminalA = rowData.Master?.TerminalA ?? "",
+                TerminalB = rowData.Master?.TerminalB ?? "",
+                SealA = rowData.Master?.SealA ?? "",
+                SealB = rowData.Master?.SealB ?? "",
+                QtyMaster = rowData.Master?.Qty ?? "",
+
+                // Jissk data
+                // Jissk data - ambil dari TextBox (yang mungkin sudah diedit operator)
+                // Sisi aktif menggunakan nilai dari TextBox, sisi tidak aktif dari Jissk DTO
+                FrontChA = _isSisiA ? _txtFrontChA.Text.Trim() : (rowData.Jissk?.FrontChA ?? "0"),
+                FrontCwA = _isSisiA ? _txtFrontCwA.Text.Trim() : (rowData.Jissk?.FrontCwA ?? "0"),
+                RearChA = _isSisiA ? _txtRearChA.Text.Trim() : (rowData.Jissk?.RearChA ?? "0"),
+                RearCwA = _isSisiA ? _txtRearCwA.Text.Trim() : (rowData.Jissk?.RearCwA ?? "0"),
+                FrontChB = !_isSisiA ? _txtFrontChA.Text.Trim() : (rowData.Jissk?.FrontChB ?? "0"),
+                FrontCwB = !_isSisiA ? _txtFrontCwA.Text.Trim() : (rowData.Jissk?.FrontCwB ?? "0"),
+                RearChB = !_isSisiA ? _txtRearChA.Text.Trim() : (rowData.Jissk?.RearChB ?? "0"),
+                RearCwB = !_isSisiA ? _txtRearCwA.Text.Trim() : (rowData.Jissk?.RearCwB ?? "0"),
+
+                // Waktu mesin
+                WaktuMulai = rowData.Log?.WaktuMulaiPengerjaan ?? "",
+                WaktuSelesai = rowData.Log?.WaktuSelesaiPengerjaan ?? ""
+            };
+
+            try
+            {
+                bool savedOnline = await _lkoService.SaveToDatabase(record);
+
+                // Update DB record reference di data lokal
+                rowData.DbRecord = record;
+                rowData.IsOffline = !savedOnline;
+
+                if (_controller != null) await _controller.LoadAllDataAsync();
+                _dgvSequen.Refresh();
+
+                if (!isAutoSave)
+                {
+                    string aksi = _activeSource == ActiveGrid.Tersimpan ? "diperbarui" : "disimpan";
+                    if (savedOnline)
+                    {
+                        MessageBox.Show($"Data berhasil {aksi}.", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Server tidak tersedia. Data {aksi} secara offline dan akan di-sync otomatis saat koneksi kembali.", "Tersimpan Offline", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                }
+                
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (!isAutoSave) MessageBox.Show("Gagal menyimpan: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+        }
+
+        // =====================================================================
+        //  RIGHT PANEL: Sequen
+        // =====================================================================
+        private Panel CreateSequenPanel(int width, int height)
+        {
+            var card = CreateCard(width, height);
+            card.Controls.Add(new Label { Text = "SEQUEN", Font = new Font("Segoe UI", 13F, FontStyle.Bold), ForeColor = Color.FromArgb(15, 23, 42), AutoSize = true, Location = new Point(16, 14) });
+
+            var btnRefresh = new Button {
+                Text = "Refresh", 
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular), 
+                Size = new Size(80, 26), 
+                Location = new Point(width - 100, 14), 
+                FlatStyle = FlatStyle.Flat, 
+                BackColor = Color.FromArgb(248, 250, 252), 
+                ForeColor = Color.FromArgb(15, 23, 42), 
+                Cursor = Cursors.Hand 
+            };
+            btnRefresh.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
+            btnRefresh.Click += (s, e) => {
+                if (_controller != null) _ = _controller.LoadAllDataAsync();
+            };
+            card.Controls.Add(btnRefresh);
+
+            int y = 40;
+            int fw = width - 36;
+            var txtSearch = CreateStyledTextBox("Cari...", fw);
+            txtSearch.Location = new Point(16, y);
+            card.Controls.Add(txtSearch);
+            y += 38;
+
+            // Tombol Simpan Terpilih
+            var btnSimpanTerpilih = new Button
+            {
+                Text = "Simpan Terpilih",
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                Size = new Size(fw / 2 - 4, 34),
+                Location = new Point(16, y),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(34, 197, 94),
+                ForeColor = Color.White,
+                Cursor = Cursors.Hand
+            };
+            btnSimpanTerpilih.FlatAppearance.BorderSize = 0;
+            btnSimpanTerpilih.Click += BtnSimpanTerpilih_Click;
+            card.Controls.Add(btnSimpanTerpilih);
+
+            // Tombol Pilih Semua / Batal Pilih
+            var btnPilihSemua = new Button
+            {
+                Text = "Pilih Semua",
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Size = new Size(fw / 2 - 4, 34),
+                Location = new Point(16 + fw / 2 + 4, y),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(71, 85, 105),
+                ForeColor = Color.White,
+                Cursor = Cursors.Hand
+            };
+            btnPilihSemua.FlatAppearance.BorderSize = 0;
+            btnPilihSemua.Click += (s, ev) =>
+            {
+                if (_dgvSequen.Rows.Count == 0) return;
+                
+                // Cek apakah semua baris *yang belum tersimpan* sudah tercentang
+                bool allUnsavedChecked = true;
+                bool hasUnsaved = false;
+
+                foreach (DataGridViewRow r in _dgvSequen.Rows)
+                {
+                    var rowData = r.DataBoundItem as LkoService.LkoAggregatedData;
+                    if (rowData != null && rowData.DbRecord == null) // Hanya pedulikan yang belum tersimpan
+                    {
+                        hasUnsaved = true;
+                        if (r.Cells["Pilih"].Value == null || !(bool)r.Cells["Pilih"].Value)
+                        {
+                            allUnsavedChecked = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (!hasUnsaved)
+                {
+                    MessageBox.Show("Semua data sudah tersimpan.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Toggle: jika semua yg belum tersimpan sudah dicentang, batal centang semua. 
+                // Jika belum, centang semua yg belum tersimpan.
+                foreach (DataGridViewRow r in _dgvSequen.Rows)
+                {
+                    var rowData = r.DataBoundItem as LkoService.LkoAggregatedData;
+                    if (rowData != null && rowData.DbRecord == null)
+                    {
+                        r.Cells["Pilih"].Value = !allUnsavedChecked;
+                    }
+                    else
+                    {
+                        r.Cells["Pilih"].Value = false; // Pastikan yg sudah tersimpan tidak tercentang
+                    }
+                }
+                
+                btnPilihSemua.Text = allUnsavedChecked ? "Pilih Semua" : "Batal Pilih";
+                _dgvSequen.RefreshEdit();
+            };
+            card.Controls.Add(btnPilihSemua);
+            y += 40;
+
+            _dgvSequen = new DataGridView
+            {
+                Location = new Point(16, y),
+                Size = new Size(fw, height - y - 16),
+                BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.None,
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                GridColor = Color.FromArgb(241, 245, 249),
+                RowHeadersVisible = false,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                ReadOnly = false,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                MultiSelect = false,
+                AutoGenerateColumns = false,
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                ColumnHeadersHeight = 32,
+                RowTemplate = { Height = 30 },
+                EnableHeadersVisualStyles = false,
+                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(248, 250, 252), ForeColor = Color.Black, Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
+                DefaultCellStyle = new DataGridViewCellStyle { ForeColor = Color.Black, SelectionBackColor = Color.FromArgb(219, 234, 254), SelectionForeColor = Color.Black, Padding = new Padding(4) },
+                EditMode = DataGridViewEditMode.EditProgrammatically
+            };
+            // Kolom checkbox - satu-satunya yang bisa diedit
+            var chkCol = new DataGridViewCheckBoxColumn
+            {
+                Name = "Pilih",
+                HeaderText = "V",
+                Width = 35,
+                FalseValue = false,
+                TrueValue = true,
+                ReadOnly = false
+            };
+            _dgvSequen.Columns.Add(chkCol);
+            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Sequen", HeaderText = "SEQUEN", DataPropertyName = "DisplaySequen", Width = 70, ReadOnly = true });
+            _dgvSequen.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "DisplayUrutanPengerjaan", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, ReadOnly = true });
+            _dgvSequen.SelectionChanged += DgvSequen_SelectionChanged;
+            _dgvSequen.CellFormatting += DgvSequen_CellFormatting;
+
+            // Range selection: klik checkbox pertama, lalu klik checkbox kedua -> semua di antaranya ikut tercentang
+            int _lastCheckedIndex = -1;
+            _dgvSequen.CellClick += (s, ev) =>
+            {
+                if (ev.RowIndex < 0) return;
+                var cell = _dgvSequen.Rows[ev.RowIndex].Cells["Pilih"];
+                bool current = cell.Value != null && (bool)cell.Value;
+                bool newVal = !current;
+                cell.Value = newVal;
+
+                if (newVal && _lastCheckedIndex >= 0 && _lastCheckedIndex != ev.RowIndex)
+                {
+                    // Auto-centang semua baris di antara _lastCheckedIndex dan ev.RowIndex
+                    int from = Math.Min(_lastCheckedIndex, ev.RowIndex);
+                    int to = Math.Max(_lastCheckedIndex, ev.RowIndex);
+                    for (int i = from; i <= to; i++)
+                    {
+                        _dgvSequen.Rows[i].Cells["Pilih"].Value = true;
+                    }
+                }
+
+                _lastCheckedIndex = newVal ? ev.RowIndex : -1;
+                _dgvSequen.RefreshEdit();
+            };
+
+            txtSearch.TextChanged += (s, e) =>
+            {
+                string f = txtSearch.Text.Trim();
+                _dgvSequen.DataSource = string.IsNullOrEmpty(f) ? _worksheetData :
+                    _worksheetData.Where(d => d.DisplaySequen?.Trim() == f).ToList();
+            };
+
+            card.Controls.Add(_dgvSequen);
+            return card;
+        }
+
+        private async void BtnSimpanTerpilih_Click(object sender, EventArgs e)
+        {
+            // Kumpulkan baris yang dicentang
+            var checkedRows = new List<LkoService.LkoAggregatedData>();
+            foreach (DataGridViewRow row in _dgvSequen.Rows)
+            {
+                bool isChecked = row.Cells["Pilih"].Value != null && (bool)row.Cells["Pilih"].Value;
+                if (!isChecked) continue;
+                var rowData = row.DataBoundItem as LkoService.LkoAggregatedData;
+                if (rowData != null) checkedRows.Add(rowData);
+            }
+
+            if (checkedRows.Count == 0)
+            {
+                MessageBox.Show("Centang satu atau lebih sequen terlebih dahulu.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            string shiftName = _cboShift?.SelectedItem is CachedShiftDto shift ? shift.ShiftName : "";
+            if (string.IsNullOrWhiteSpace(shiftName))
+            {
+                MessageBox.Show("Silakan pilih Shift terlebih dahulu.", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            int savedCount = 0;
+            int skippedCount = 0;
+
+            foreach (var rowData in checkedRows)
+            {
+                // Skip yang sudah tersimpan
+                if (rowData.DbRecord != null) { skippedCount++; continue; }
+
+                int.TryParse(rowData.Log?.QtyDefect ?? "0", out int defectMesin);
+                int.TryParse(rowData.Log?.QtyProduk ?? "0", out int qtyProduct);
+
+                var record = new mtc_app.features.operator_worksheet.data.dtos.LkoRecordDto
+                {
+                    WaktuSimpan = DateTime.Now,
+                    NoMesin = GetEffectiveMachineNumber(),
+                    IdMesin = _activeMachineId,
+                    ShiftName = shiftName,
+                    Nik = _nikOperator,
+                    Sequen = rowData.DisplaySequen,
+                    UrutanKanban = rowData.DisplayUrutanPengerjaan,
+                    QtyProduct = qtyProduct,
+                    No4m = "",
+                    QtyDefectMesin = defectMesin,
+                    QtyDefectOperator = 0,
+                    KodeDefect = "",
+                    LotIdWire = "",
+                    LotIdTerminalA = "",
+                    LotIdTerminalB = "",
+                    IssueKanban = "",
+                    CutLength = rowData.Master?.CutLength ?? "",
+                    KombinasiWire = rowData.Master?.KombinasiWire ?? "",
+                    TerminalA = rowData.Master?.TerminalA ?? "",
+                    TerminalB = rowData.Master?.TerminalB ?? "",
+                    SealA = rowData.Master?.SealA ?? "",
+                    SealB = rowData.Master?.SealB ?? "",
+                    QtyMaster = rowData.Master?.Qty ?? "",
+                    FrontChA = rowData.Jissk?.FrontChA ?? "0",
+                    FrontCwA = rowData.Jissk?.FrontCwA ?? "0",
+                    RearChA = rowData.Jissk?.RearChA ?? "0",
+                    RearCwA = rowData.Jissk?.RearCwA ?? "0",
+                    FrontChB = rowData.Jissk?.FrontChB ?? "0",
+                    FrontCwB = rowData.Jissk?.FrontCwB ?? "0",
+                    RearChB = rowData.Jissk?.RearChB ?? "0",
+                    RearCwB = rowData.Jissk?.RearCwB ?? "0",
+                    WaktuMulai = rowData.Log?.WaktuMulaiPengerjaan ?? "",
+                    WaktuSelesai = rowData.Log?.WaktuSelesaiPengerjaan ?? ""
+                };
+
+                try
+                {
+                    bool savedOnline = await _lkoService.SaveToDatabase(record);
+                    rowData.DbRecord = record;
+                    rowData.IsOffline = !savedOnline;
+                    savedCount++;
+                }
+                catch { }
+            }
+
+            // Reset semua checkbox
+            foreach (DataGridViewRow row in _dgvSequen.Rows)
+                row.Cells["Pilih"].Value = false;
+
+            // Refresh UI
+            _dgvSequen.Refresh();
+            if (_controller != null) await _controller.LoadAllDataAsync();
+
+            string msg = $"{savedCount} sequen berhasil disimpan.";
+            if (skippedCount > 0) msg += $"\n{skippedCount} sequen dilewati (sudah tersimpan).";
+            MessageBox.Show(msg, "Simpan Terpilih", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        // =====================================================================
+        //  BOTTOM PANEL: Riwayat Produksi
+        // =====================================================================
+        private Panel CreateTersimpanPanel(int width, int height)
+        {
+            var card = CreateCard(width, height);
+
+            int gap = 24;
+            int totalGridW = width - 32 - gap;
+            int gridWTersimpan = (int)(totalGridW * 0.6);   // Tersimpan lebih lebar (2 kolom)
+            int gridWProduct = totalGridW - gridWTersimpan;  // Barcode lebih kecil (1 kolom saja)
+
+            // Label for Tersimpan
+            card.Controls.Add(new Label { Text = "SUDAH TERSIMPAN", Font = new Font("Segoe UI", 11F, FontStyle.Bold), ForeColor = Color.FromArgb(34, 197, 94), AutoSize = true, Location = new Point(16, 12) });
+
+            // Label for Product (Belum Dikerjakan)
+            card.Controls.Add(new Label { Text = "BARCODE", Font = new Font("Segoe UI", 11F, FontStyle.Bold), ForeColor = Color.FromArgb(245, 158, 11), AutoSize = true, Location = new Point(16 + gridWTersimpan + gap, 12) });
+
+            // Grid Tersimpan
+            _dgvTersimpan = new DataGridView
+            {
+                Location = new Point(16, 38),
+                Size = new Size(gridWTersimpan, height - 54),
+                BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.None,
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                GridColor = Color.FromArgb(241, 245, 249),
+                RowHeadersVisible = false,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                ReadOnly = true,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AutoGenerateColumns = false,
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                ColumnHeadersHeight = 32,
+                RowTemplate = { Height = 28 },
+                EnableHeadersVisualStyles = false,
+                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(248, 250, 252), ForeColor = Color.Black, Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
+                DefaultCellStyle = new DataGridViewCellStyle { ForeColor = Color.Black, SelectionBackColor = Color.FromArgb(220, 252, 231), SelectionForeColor = Color.Black, Padding = new Padding(4) }
+            };
+            _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "Sequen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            _dgvTersimpan.Columns.Add(new DataGridViewTextBoxColumn { Name = "Urutan", HeaderText = "Urutan", DataPropertyName = "UrutanKanban", Width = 75 });
+
+            _dgvTersimpan.SelectionChanged += DgvTersimpan_SelectionChanged;
+            card.Controls.Add(_dgvTersimpan);
+
+            // Grid Product
+            _dgvProduct = new DataGridView
+            {
+                Location = new Point(16 + gridWTersimpan + gap, 38),
+                Size = new Size(gridWProduct, height - 54),
+                BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.None,
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                GridColor = Color.FromArgb(241, 245, 249),
+                RowHeadersVisible = false,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                ReadOnly = true,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AutoGenerateColumns = false,
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                ColumnHeadersHeight = 32,
+                RowTemplate = { Height = 28 },
+                EnableHeadersVisualStyles = false,
+                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.FromArgb(254, 252, 232), ForeColor = Color.Black, Font = new Font("Segoe UI", 9F, FontStyle.Bold), Alignment = DataGridViewContentAlignment.MiddleLeft, Padding = new Padding(4) },
+                DefaultCellStyle = new DataGridViewCellStyle { ForeColor = Color.Black, SelectionBackColor = Color.FromArgb(254, 243, 199), SelectionForeColor = Color.Black, Padding = new Padding(4) }
+            };
+            _dgvProduct.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Sequen", DataPropertyName = "Sequen", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            _dgvProduct.SelectionChanged += DgvProduct_SelectionChanged;
+            _dgvProduct.CellClick += (s, ev) =>
+            {
+                if (ev.RowIndex < 0) return;
+                // Force populate even if row is already selected (fixes single-row grid)
+                DgvProduct_SelectionChanged(s, ev);
+            };
+
+            card.Controls.Add(_dgvProduct);
+
+            return card;
+        }
+    }
+}

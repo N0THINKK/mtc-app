@@ -6,14 +6,15 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using mtc_app.features.applicator_patrol.data.dtos;
 using mtc_app.features.applicator_patrol.data.repositories;
+using mtc_app.features.technician.presentation.controllers;
 using mtc_app.shared.presentation.components;
 using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.technician.presentation.components
 {
-    public partial class TechnicianApplicatorPatrolControl : UserControl
+    public partial class TechnicianApplicatorPatrolControl : UserControl, ITechnicianApplicatorPatrolView
     {
-        private readonly IApplicatorPatrolRepository _repository;
+        private readonly TechnicianApplicatorPatrolController _controller;
         private string _currentSort = "DESC"; // "DESC", "ASC"
         
         private StatCard cardNg;
@@ -33,9 +34,77 @@ namespace mtc_app.features.technician.presentation.components
 
         public TechnicianApplicatorPatrolControl(IApplicatorPatrolRepository repository)
         {
-            _repository = repository;
+            _controller = new TechnicianApplicatorPatrolController(this, repository);
             InitializeComponentLayout();
         }
+
+        // ==========================================
+        // ITechnicianApplicatorPatrolView Implementation
+        // ==========================================
+        
+        public string CurrentSort => _currentSort;
+
+        public void UpdateStats(int totalNgCount)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => UpdateStats(totalNgCount)));
+                return;
+            }
+            cardNg.Value = totalNgCount.ToString();
+        }
+
+        public void UpdateGrid(List<ApplicatorNgDto> patrols)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => UpdateGrid(patrols)));
+                return;
+            }
+            gridPatrols.DataSource = patrols;
+            gridPatrols.Visible = patrols.Any();
+        }
+
+        public void ShowEmptyState()
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(ShowEmptyState));
+                return;
+            }
+            emptyState.Visible = true;
+        }
+
+        public void HideEmptyState()
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(HideEmptyState));
+                return;
+            }
+            emptyState.Visible = false;
+        }
+
+        public void ShowError(string message)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => ShowError(message)));
+                return;
+            }
+            MessageBox.Show(message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        public async Task LoadDataAsync(DateTime start, DateTime end)
+        {
+            _startDate = start;
+            _endDate = end;
+            await _controller.LoadDataAsync(start, end);
+        }
+
+        // ==========================================
+        // UI Layout & Logic
+        // ==========================================
 
         private void InitializeComponentLayout()
         {
@@ -43,9 +112,7 @@ namespace mtc_app.features.technician.presentation.components
             this.Dock = DockStyle.Fill;
             this.BackColor = AppColors.Background;
 
-            // ==========================================
-            // TOP BANNER (Stats Cards)
-            // ==========================================
+            // TOP BANNER
             pnlTopBanner = new Panel
             {
                 Dock = DockStyle.Top,
@@ -65,9 +132,7 @@ namespace mtc_app.features.technician.presentation.components
             };
             pnlTopBanner.Controls.Add(cardNg);
 
-            // ==========================================
             // FILTER PANEL
-            // ==========================================
             pnlFilters = new Panel
             {
                 Dock = DockStyle.Top,
@@ -121,9 +186,7 @@ namespace mtc_app.features.technician.presentation.components
             pnlFilters.Controls.Add(flowLeft);
             pnlFilters.Controls.Add(flowRight);
 
-            // ==========================================
             // BOTTOM ACTIONS PANEL
-            // ==========================================
             pnlActions = new Panel
             {
                 Dock = DockStyle.Bottom,
@@ -146,9 +209,7 @@ namespace mtc_app.features.technician.presentation.components
 
             pnlActions.Controls.Add(btnRefresh);
 
-            // ==========================================
             // CONTENT PANEL (Grid + Empty State)
-            // ==========================================
             pnlContent = new Panel
             {
                 Dock = DockStyle.Fill,
@@ -288,41 +349,6 @@ namespace mtc_app.features.technician.presentation.components
                     }
                 }
                 e.Value = string.Join(Environment.NewLine, labels);
-            }
-        }
-
-        public async Task LoadDataAsync(DateTime start, DateTime end)
-        {
-            _startDate = start;
-            _endDate = end;
-
-            try
-            {
-                var statsTask = _repository.GetApplicatorNgStatsAsync(start, end);
-                var listTask = _repository.GetApplicatorNgListAsync(start, end, _currentSort);
-
-                await Task.WhenAll(statsTask, listTask);
-
-                var stats = statsTask.Result;
-                var list = listTask.Result.ToList();
-
-                cardNg.Value = (stats?.TotalNgCount ?? 0).ToString();
-
-                if (list.Any())
-                {
-                    gridPatrols.Visible = true;
-                    emptyState.Visible = false;
-                    gridPatrols.DataSource = list;
-                }
-                else
-                {
-                    gridPatrols.Visible = false;
-                    emptyState.Visible = true;
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Gagal memuat data NG Aplikator: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
