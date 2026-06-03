@@ -11,9 +11,7 @@ namespace mtc_app.features.operator_worksheet.presentation.screens
                 components.Dispose();
             }
             // Dispose file watchers
-            foreach (var w in _fileWatchers) try { w?.Dispose(); } catch { }
-            try { _debounceTimerSequen?.Dispose(); } catch { }
-            try { _debounceTimerProduct?.Dispose(); } catch { }
+            try { _fileWatcherService?.Dispose(); } catch { }
             base.Dispose(disposing);
         }
 
