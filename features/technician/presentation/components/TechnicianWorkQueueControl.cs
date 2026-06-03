@@ -7,26 +7,24 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using mtc_app.features.technician.data.dtos;
 using mtc_app.features.technician.data.repositories;
+using mtc_app.features.technician.presentation.controllers;
 using mtc_app.features.rating.presentation.screens;
 using mtc_app.shared.presentation.styles;
 
 namespace mtc_app.features.technician.presentation.components
 {
-    public class TechnicianWorkQueueControl : UserControl
+    public class TechnicianWorkQueueControl : UserControl, ITechnicianWorkQueueView
     {
-        // Win32 API untuk menghentikan/melanjutkan painting sepenuhnya
         [DllImport("user32.dll")]
         private static extern int SendMessage(IntPtr hWnd, int wMsg, bool wParam, int lParam);
         private const int WM_SETREDRAW = 0x000B;
 
-        private readonly ITechnicianRepository _repository;
+        private readonly TechnicianWorkQueueController _controller;
         private readonly Timer _timerRefresh;
-        private List<TicketDto> _allTickets = new List<TicketDto>();
-        private string _lastDataFingerprint = "";
-        private bool _isSystemActive = true;
-        private bool _isLoading = false;
+        
         private DateTime _currentStart = DateTime.Now.Date;
         private DateTime _currentEnd = DateTime.Now.Date.AddDays(1).AddSeconds(-1);
+        private bool _isSystemActive = true;
 
         // UI Controls
         private Panel panelHeader;
@@ -49,21 +47,21 @@ namespace mtc_app.features.technician.presentation.components
         
         public TechnicianWorkQueueControl(ITechnicianRepository repository)
         {
-            _repository = repository;
+            _controller = new TechnicianWorkQueueController(this, repository);
             
             _timerRefresh = new Timer();
             _timerRefresh.Interval = 60000; // 1 menit
-            _timerRefresh.Tick += (s, e) => LoadData();
+            _timerRefresh.Tick += async (s, e) => await _controller.LoadDataAsync(_currentStart, _currentEnd);
 
             InitializeComponent();
             SetupEventHandlers();
         }
 
-        public void StartAutoRefresh()
+        public async void StartAutoRefresh()
         {
             if (!this.DesignMode)
             {
-                LoadData();
+                await _controller.LoadDataAsync(_currentStart, _currentEnd);
                 _timerRefresh.Start();
             }
         }
@@ -71,6 +69,123 @@ namespace mtc_app.features.technician.presentation.components
         public void StopAutoRefresh()
         {
             _timerRefresh.Stop();
+        }
+
+        public async void LoadData(DateTime? start = null, DateTime? end = null)
+        {
+            if (start.HasValue) _currentStart = start.Value;
+            if (end.HasValue) _currentEnd = end.Value;
+            await _controller.LoadDataAsync(_currentStart, _currentEnd);
+        }
+
+        // ========================================================
+        // ITechnicianWorkQueueView Implementation
+        // ========================================================
+        
+        public int SelectedStatusFilterIndex => cmbFilterStatus.SelectedIndex;
+        public int SelectedSortIndex => cmbSortBy.SelectedIndex;
+
+        public void UpdateStatusIndicator(bool isActive, string timestampText)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => UpdateStatusIndicator(isActive, timestampText)));
+                return;
+            }
+
+            lblLastUpdate.Text = timestampText;
+            _isSystemActive = isActive;
+            
+            if (isActive)
+            {
+                panelStatusBar.BackColor = Color.FromArgb(240, 253, 244);
+                lblSystemStatus.Text = "Sistem Aktif";
+                lblSystemStatus.ForeColor = Color.FromArgb(21, 128, 61);
+            }
+            else
+            {
+                panelStatusBar.BackColor = Color.FromArgb(254, 242, 242);
+                lblSystemStatus.Text = "Sistem Error";
+                lblSystemStatus.ForeColor = Color.FromArgb(185, 28, 28);
+            }
+            picStatusIndicator.Invalidate();
+        }
+
+        public void UpdateStats(int openCount, int processCount, int doneCount, int machineRunning, int machineTotal)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => UpdateStats(openCount, processCount, doneCount, machineRunning, machineTotal)));
+                return;
+            }
+            statsControl.UpdateStats(openCount, processCount, doneCount, machineRunning, machineTotal);
+        }
+
+        public void RenderTickets(List<TicketDto> tickets)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => RenderTickets(tickets)));
+                return;
+            }
+
+            SendMessage(pnlTicketList.Handle, WM_SETREDRAW, false, 0);
+            try
+            {
+                pnlTicketList.SuspendLayout();
+                
+                var toDispose = pnlTicketList.Controls.Cast<Control>()
+                    .Where(c => c != panelEmptyState).ToList();
+                pnlTicketList.Controls.Clear();
+                foreach (var ctrl in toDispose) ctrl.Dispose();
+
+                panelEmptyState.Visible = false;
+                foreach (var ticket in tickets)
+                {
+                    var card = new TechnicianTicketCardControl();
+                    card.UpdateDisplay(ticket);
+                    card.OnCardClick += Card_OnCardClick;
+                    pnlTicketList.Controls.Add(card);
+                }
+
+                pnlTicketList.ResumeLayout(true);
+            }
+            finally
+            {
+                SendMessage(pnlTicketList.Handle, WM_SETREDRAW, true, 0);
+                pnlTicketList.Invalidate(true);
+                pnlTicketList.Update();
+            }
+        }
+
+        public void ShowEmptyState(string title, string message)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => ShowEmptyState(title, message)));
+                return;
+            }
+
+            var toDispose = pnlTicketList.Controls.Cast<Control>()
+                    .Where(c => c != panelEmptyState).ToList();
+            pnlTicketList.Controls.Clear();
+            foreach (var ctrl in toDispose) ctrl.Dispose();
+
+            lblEmptyTitle.Text = title;
+            lblEmptyMessage.Text = message;
+            panelEmptyState.Visible = true;
+            CenterEmptyState();
+            pnlTicketList.Controls.Add(panelEmptyState);
+        }
+
+        public void ShowError(string message)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => ShowError(message)));
+                return;
+            }
+            MessageBox.Show($"Gagal memuat daftar tiket: {message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         // ========================================================
@@ -207,8 +322,7 @@ namespace mtc_app.features.technician.presentation.components
                 Margin = new Padding(0, 20, AppDimens.MarginLarge, 0)
             };
             
-            // [UPDATE] Menambahkan "Inspeksi" ke dalam dropdown
-            cmbFilterStatus.Items.AddRange(new object[] { "Semua", "Belum Ditangani", "Sedang Diperbaiki", "Inspeksi", "Selesai" });
+            cmbFilterStatus.Items.AddRange(new object[] { "Semua", "Belum Ditangani", "Sedang Diperbaiki", "Inspeksi", "Selesai", "Mesin Error" });
             cmbFilterStatus.SelectedIndex = 0;
 
             var lblSortBy = new Label 
@@ -295,9 +409,12 @@ namespace mtc_app.features.technician.presentation.components
         // ========================================================
         private void SetupEventHandlers()
         {
-            cmbFilterStatus.SelectedIndexChanged += (s, e) => RenderTickets();
-            cmbSortBy.SelectedIndexChanged += (s, e) => RenderTickets();
-            btnClearFilters.Click += (s, e) => ClearFilters();
+            cmbFilterStatus.SelectedIndexChanged += (s, e) => _controller.ForceReRender();
+            cmbSortBy.SelectedIndexChanged += (s, e) => _controller.ForceReRender();
+            btnClearFilters.Click += (s, e) => {
+                cmbFilterStatus.SelectedIndex = 0;
+                cmbSortBy.SelectedIndex = 0;
+            };
             
             panelHeader.Paint += (s, e) =>
             {
@@ -310,185 +427,25 @@ namespace mtc_app.features.technician.presentation.components
             };
         }
 
-        // ========================================================
-        // Data Loading & Rendering
-        // ========================================================
-
-        /// <summary>
-        /// Membuat fingerprint dari data tiket untuk deteksi perubahan.
-        /// Jika fingerprint sama, tidak perlu re-render UI.
-        /// </summary>
-        private string BuildDataFingerprint(List<TicketDto> tickets)
-        {
-            if (tickets == null || tickets.Count == 0) return "EMPTY";
-            // Gabungkan field-field yang relevan untuk mendeteksi perubahan
-            var parts = tickets.Select(t =>
-                $"{t.TicketId}|{t.StatusId}|{t.IsMachineRunning}|{t.ArrivalSeconds}|{t.RepairSeconds}|{t.InspectionSeconds}|{t.TechnicianName}");
-            return string.Join(";", parts);
-        }
-
-        // [UPDATE] Mempertahankan fitur Mesin Beroperasi (a/b)
-        public async void LoadData(DateTime? start = null, DateTime? end = null)
-        {
-            if (start.HasValue) _currentStart = start.Value;
-            if (end.HasValue) _currentEnd = end.Value;
-            
-            if (_isLoading) return;
-            _isLoading = true;
-            try
-            {
-                var ticketsRaw = await _repository.GetActiveTicketsAsync(_currentStart, _currentEnd);
-                var newTickets = ticketsRaw.ToList();
-                
-                int openCount = newTickets.Count(t => t.StatusId == 1);
-                int processCount = newTickets.Count(t => t.StatusId == 2);
-                int doneCount = newTickets.Count(t => t.StatusId == 3);
-                
-                // Ambil indikator Run/Total Mesin 10 menit
-                var machineStats = await _repository.GetMachineRunStatsAsync();
-
-                statsControl.UpdateStats(openCount, processCount, doneCount, machineStats.Running, machineStats.Total);
-                lblLastUpdate.Text = $"Terakhir diperbarui: {DateTime.Now:HH:mm:ss}";
-                
-                // Cek apakah data berubah, skip re-render jika sama
-                var newFingerprint = BuildDataFingerprint(newTickets);
-                if (newFingerprint == _lastDataFingerprint)
-                {
-                    // Data tidak berubah, hanya update timestamp
-                    UpdateStatusIndicator(true);
-                    return;
-                }
-
-                _allTickets = newTickets;
-                _lastDataFingerprint = newFingerprint;
-                
-                RenderTickets();
-                UpdateStatusIndicator(true);
-            }
-            catch (Exception ex)
-            {
-                _timerRefresh.Stop();
-                UpdateStatusIndicator(false);
-                MessageBox.Show($"Gagal memuat daftar tiket: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                _isLoading = false;
-            }
-        }
-
-        private void RenderTickets()
-        {
-            // Matikan painting Windows sepenuhnya untuk mencegah layar blank putih
-            SendMessage(pnlTicketList.Handle, WM_SETREDRAW, false, 0);
-            
-            try
-            {
-                pnlTicketList.SuspendLayout();
-                
-                // Hapus kartu lama
-                var toDispose = pnlTicketList.Controls.Cast<Control>()
-                    .Where(c => c != panelEmptyState).ToList();
-                pnlTicketList.Controls.Clear();
-                foreach (var ctrl in toDispose) ctrl.Dispose();
-
-                var filtered = _allTickets.AsEnumerable();
-
-                int statusIndex = cmbFilterStatus.SelectedIndex;
-                if (statusIndex == 1) filtered = filtered.Where(t => t.StatusId == 1);       // Belum Ditangani
-                else if (statusIndex == 2) filtered = filtered.Where(t => t.StatusId == 2);  // Sedang Diperbaiki
-                else if (statusIndex == 3) filtered = filtered.Where(t => t.StatusId == 3);  // Inspeksi
-                else if (statusIndex == 4) filtered = filtered.Where(t => t.StatusId == 4);  // Selesai
-                else if (statusIndex == 5) filtered = filtered.Where(t => t.IsMachineRunning == 0); // Mesin Error (Run=0)
-
-                int sortIndex = cmbSortBy.SelectedIndex;
-                List<TicketDto> sortedList;
-
-                // [UPDATE PENTING] Custom OrderBy untuk Urgensi
-                if (sortIndex == 0)
-                {
-                    sortedList = filtered.OrderByDescending(t => t.StatusId).ThenByDescending(t => t.CreatedAt).ToList();
-                }
-                else if (sortIndex == 1)
-                {
-                    sortedList = filtered.OrderBy(t => t.CreatedAt).ToList();
-                }
-                else
-                {
-                    sortedList = filtered.OrderByDescending(t => t.CreatedAt).ToList();
-                }
-
-                if (sortedList.Count == 0)
-                {
-                    panelEmptyState.Visible = true;
-                    CenterEmptyState();
-                    pnlTicketList.Controls.Add(panelEmptyState);
-                }
-                else
-                {
-                    panelEmptyState.Visible = false;
-                    foreach (var ticket in sortedList)
-                    {
-                        var card = new TechnicianTicketCardControl();
-                        card.UpdateDisplay(ticket);
-                        card.OnCardClick += Card_OnCardClick;
-                        pnlTicketList.Controls.Add(card);
-                    }
-                }
-
-                pnlTicketList.ResumeLayout(true);
-            }
-            finally
-            {
-                // Nyalakan kembali painting dan refresh sekali saja
-                SendMessage(pnlTicketList.Handle, WM_SETREDRAW, true, 0);
-                pnlTicketList.Invalidate(true);
-                pnlTicketList.Update();
-            }
-        }
-
-        private void Card_OnCardClick(object sender, long ticketId)
+        private async void Card_OnCardClick(object sender, long ticketId)
         {
             using (var form = new RatingTechnicianForm(ticketId))
             {
                 if (form.ShowDialog() == DialogResult.OK)
                 {
-                    LoadData();
+                    await _controller.LoadDataAsync(_currentStart, _currentEnd);
                 }
             }
         }
 
         // ========================================================
-        // Status & UI Helpers
+        // UI Helpers
         // ========================================================
-        private void UpdateStatusIndicator(bool isActive)
-        {
-            _isSystemActive = isActive;
-            if (isActive)
-            {
-                panelStatusBar.BackColor = Color.FromArgb(240, 253, 244);
-                lblSystemStatus.Text = "Sistem Aktif";
-                lblSystemStatus.ForeColor = Color.FromArgb(21, 128, 61);
-            }
-            else
-            {
-                panelStatusBar.BackColor = Color.FromArgb(254, 242, 242);
-                lblSystemStatus.Text = "Sistem Error";
-                lblSystemStatus.ForeColor = Color.FromArgb(185, 28, 28);
-            }
-            picStatusIndicator.Invalidate();
-        }
 
         private void CenterEmptyState()
         {
             panelEmptyState.Left = (pnlTicketList.ClientSize.Width - panelEmptyState.Width) / 2;
             panelEmptyState.Top = (pnlTicketList.ClientSize.Height - panelEmptyState.Height) / 2;
-        }
-
-        private void ClearFilters()
-        {
-            cmbFilterStatus.SelectedIndex = 0;
-            cmbSortBy.SelectedIndex = 0;
         }
 
         private void DrawEmptyIcon(Graphics g)
@@ -517,9 +474,6 @@ namespace mtc_app.features.technician.presentation.components
         }
     }
 
-    /// <summary>
-    /// Panel dengan double-buffering untuk mengurangi flicker saat scroll/repaint.
-    /// </summary>
     internal class DoubleBufferedPanel : Panel
     {
         public DoubleBufferedPanel()
